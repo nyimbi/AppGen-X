@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The `trade_finance_operations` PBC is a packaged business capability for Letters of credit, guarantees, documentary collections, sanctions checks, shipment documents, and trade settlement. It owns schema, migrations, models, services, API contracts, AppGen-X event contracts, handlers, UI fragments, AI agent skills, configuration, rules, parameters, seed data, package metadata, tests, and release evidence. It composes with other AppGen-X PBCs only through declared APIs, AppGen-X events, or package-local projections.
+The `trade_finance_operations` PBC is a world-class packaged business capability for trade-finance issuance, presentation, compliance, discrepancy, finance, settlement, and message-evidence work. It owns letters of credit, guarantees and standby credits, documentary collections, trade bills, trade loans, shipment document intake, sanctions and compliance controls, discrepancy decisions, collateral and margin cover, limit reservations, fee calculations, settlement release, SWIFT-like evidence, package-local governance, and release evidence. It is designed as a composable AppGen-X package, not a thin catalog row. The package owns its schema, migrations, models, services, APIs, event contracts, handlers, UI fragments, AI agent skills, rules, parameters, configuration, seed data, standalone app shell, release evidence, and runtime smoke checks.
 
 ## Stable Identity
 
@@ -11,100 +11,62 @@ The `trade_finance_operations` PBC is a packaged business capability for Letters
 - Package directory: `src/pyAppGen/pbcs/trade_finance_operations`.
 - Runtime entrypoint: `trade_finance_operations_runtime_capabilities()`.
 - UI entrypoint: `trade_finance_operations_ui_contract()`.
+- Standalone app entrypoint: `TradeFinanceOperationsStandaloneApp` in `standalone.py`.
 - Source registration entrypoint: `implementation_contract()`.
 - Allowed database backends: PostgreSQL, MySQL, and MariaDB.
-- Eventing standard: fixed AppGen-X outbox/inbox event contract.
+- Eventing standard: fixed AppGen-X outbox, inbox, and dead-letter contract.
 - User-facing stream-engine selector: forbidden and hidden.
 
 ## Owned Datastore Boundary
 
-- `trade_finance_operations_letter_of_credit`: owns letter of credit lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `trade_finance_operations_bank_guarantee`: owns bank guarantee lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `trade_finance_operations_documentary_collection`: owns documentary collection lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `trade_finance_operations_trade_document`: owns trade document lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `trade_finance_operations_sanctions_check`: owns sanctions check lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `trade_finance_operations_shipment_evidence`: owns shipment evidence lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `trade_finance_operations_trade_settlement`: owns trade settlement lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `trade_finance_operations_trade_finance_operations_policy_rule`: owns trade finance operations policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `trade_finance_operations_trade_finance_operations_runtime_parameter`: owns trade finance operations runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `trade_finance_operations_trade_finance_operations_schema_extension`: owns trade finance operations schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `trade_finance_operations_trade_finance_operations_control_assertion`: owns trade finance operations control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `trade_finance_operations_trade_finance_operations_governed_model`: owns trade finance operations governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+The package owns only `trade_finance_operations_` tables. It does not mutate foreign or shared tables. Cross-PBC collaboration must happen through declared APIs, AppGen-X events, or read-only projections. The owned schema covers issuance records, bills, loans, document packages, shipment evidence, sanctions checks, discrepancy cases, collateral and limit records, fee accruals, settlement records, SWIFT-like evidence, policy rules, runtime parameters, schema extensions, control assertions, governed models, and AppGen-X inbox/outbox/dead-letter tables. The boundary is explicit: if a table reference is foreign, shared, or lacks the `trade_finance_operations_` prefix, the package must reject it.
 
-Runtime AppGen-X event tables are `trade_finance_operations_appgen_outbox_event`, `trade_finance_operations_appgen_inbox_event`, and `trade_finance_operations_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /letter-of-credits', 'POST /bank-guarantees', 'POST /documentary-collections', 'POST /trade-documents', 'POST /sanctions-checks', 'GET /trade-finance-operations-workbench').
+## Schema, Migrations, and Models
 
-## Executable Domain Operations
+Schema generation is package-local and auditable. `migrations/001_initial.sql` materializes the owned tables required for trade finance operations. `runtime.py`, `models.py`, and `schema_contract.py` expose the owned schema contract, logical model list, backend allowlist, and migration evidence. The schema includes records for letters of credit, bank guarantees and SBLC, documentary collections, trade bills, trade loans, shipment and trade-document packages, sanctions decisions, discrepancy cases, collateral and margin positions, limit reservations, fee accruals, settlements, and SWIFT-like message evidence. Policy, parameter, schema-extension, control-assertion, and governed-model tables keep the PBC self-contained and side-effect-free.
 
-- `create_letter_of_credit`: validates policy, writes owned `trade_finance_operations_letter_of_credit` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_bank_guarantee`: validates policy, writes owned `trade_finance_operations_bank_guarantee` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_documentary_collection`: validates policy, writes owned `trade_finance_operations_documentary_collection` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_trade_document`: validates policy, writes owned `trade_finance_operations_trade_document` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_sanctions_check`: validates policy, writes owned `trade_finance_operations_sanctions_check` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_shipment_evidence`: validates policy, writes owned `trade_finance_operations_shipment_evidence` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_trade_settlement`: validates policy, writes owned `trade_finance_operations_trade_settlement` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_trade_finance_operations_policy_rule`: validates policy, writes owned `trade_finance_operations_trade_finance_operations_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_trade_finance_operations_runtime_parameter`: validates policy, writes owned `trade_finance_operations_trade_finance_operations_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_trade_finance_operations_schema_extension`: validates policy, writes owned `trade_finance_operations_trade_finance_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_trade_finance_operations_control_assertion`: validates policy, writes owned `trade_finance_operations_trade_finance_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_trade_finance_operations_governed_model`: validates policy, writes owned `trade_finance_operations_trade_finance_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_trade_finance_operations_13`: validates policy, writes owned `trade_finance_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_trade_finance_operations_14`: validates policy, writes owned `trade_finance_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_trade_finance_operations_15`: validates policy, writes owned `trade_finance_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_trade_finance_operations_16`: validates policy, writes owned `trade_finance_operations_letter_of_credit` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_trade_finance_operations_17`: validates policy, writes owned `trade_finance_operations_bank_guarantee` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_trade_finance_operations_18`: validates policy, writes owned `trade_finance_operations_documentary_collection` records, emits AppGen-X events, and returns side-effect-free evidence.
+## Services, APIs, and Queries
 
-Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
+Service and API contracts are explicit. Command methods cover `configure_runtime`, `set_parameter`, `register_rule`, `register_schema_extension`, `receive_event`, `command_letter_of_credit`, and the trade-domain operations for issuance, collections, bills, loans, shipment documents, sanctions, discrepancies, collateral, limits, fees, settlement, SWIFT-like evidence, amendment simulation, and release-evidence export. Query methods cover workbench, case detail, release evidence pack, advanced assessment, and document instruction parsing. Public API routes include the legacy package routes `POST /letter-of-credits`, `POST /bank-guarantees`, `POST /documentary-collections`, `POST /trade-documents`, `POST /sanctions-checks`, and `GET /trade-finance-operations-workbench`, plus richer package-local routes for trade bills, trade loans, discrepancy decisions, collateral, limits, fees, settlement, and SWIFT-like messages. Every command keeps an idempotency key, stays inside the owned datastore plus outbox transaction boundary, and never exposes a stream-engine picker.
 
-## Standard Table-Stakes Capabilities
+## Events, Outbox, Inbox, Dead-Letter, Idempotency, and Retry
 
-The package covers lifecycle intake, identity and classification, validation, approvals, exception handling, audit evidence, role-aware workbenches, assistant-guided task execution, configuration, rule compilation, bounded parameters, seed data, RBAC, route dispatch, typed events, idempotent handlers, retry, and dead-letter triage. It includes PostgreSQL, MySQL, and MariaDB backend allowlists and never exposes stream-engine pickers.
+AppGen-X eventing is mandatory. The package emits typed lifecycle events such as creation, update, approval, exception, presentation receipt, discrepancy raise, waiver request, screening block, settlement completion, and SWIFT-evidence creation. It consumes `PolicyChanged`, `AuditEventSealed`, and `OperationalKpiChanged`. Event handlers require idempotency keys, ignore duplicates, preserve retry metadata, and route unknown events into the owned dead-letter table. The event contract, handlers, and route metadata all keep the event contract fixed to AppGen-X and keep stream-engine controls hidden. This is a non-negotiable policy for PostgreSQL, MySQL, and MariaDB deployments.
 
-## Advanced Capabilities
+## UI, Workbench, Forms, Wizards, Controls, and RBAC
 
-- Event-sourced operational history for Trade Finance Operations domain records.
-- Multi-tenant policy isolation with owned table boundaries.
-- Schema evolution resilience through package-local schema extensions.
-- Autonomous anomaly detection and specialist exception triage.
-- Semantic document and instruction understanding for professional intake.
-- Predictive risk scoring and confidence-ranked recommendations.
-- Counterfactual scenario simulation for policy and operational choices.
-- Cryptographic audit proofs for high-value records and decisions.
-- Continuous control testing over domain lifecycle events.
-- Carbon and sustainability awareness where operational decisions affect footprint.
-- Cross-PBC event federation through AppGen-X only.
-- Governed AI agent execution with human confirmation for mutations.
+The UI surface includes the core fragments `TradeFinanceOperationsWorkbench`, `TradeFinanceOperationsDetail`, and `TradeFinanceOperationsAssistantPanel`. The workbench is an operations cockpit with issuance, presentation, sanctions hold, discrepancy, collateral and limit, settlement, and release-evidence queues. Forms cover issuance, guarantees/SBLC, documentary collections, bills, loans, shipment document packages, sanctions review, discrepancy decisions, collateral, limits, fees, settlement, and SWIFT-like message evidence. Wizards orchestrate issuance, guarantee/SBLC setup, documentary collections, presentation examination, trade-loan and settlement workflows, and release-evidence review. Controls provide queue cards, document-matrix comparison, sanctions boundary guardrails, collateral and limit coverage, fee waterfalls, SWIFT evidence consoles, and release gates. RBAC is explicit through `trade_finance_operations.read`, `trade_finance_operations.create`, `trade_finance_operations.update`, `trade_finance_operations.approve`, and `trade_finance_operations.admin`.
 
-## Rules, Parameters, and Configuration
+## Rules, Parameters, Configuration, and Governance
 
-Rules are first-class artifacts: ('letter_of_credit_policy', 'bank_guarantee_policy', 'documentary_collection_policy', 'trade_document_policy', 'sanctions_check_policy', 'shipment_evidence_policy'). Parameters are bounded artifacts: ('quality_score_floor', 'materiality_threshold', 'approval_sla_hours', 'risk_threshold', 'forecast_horizon_days', 'workbench_limit'). Configuration includes database backend, event topic, retry limit, default policy, workbench limits, confirmation requirements for agent writes, and tenant isolation options.
+Rules are first-class artifacts covering letters of credit, guarantees, standby credits, documentary collections, shipment documents, sanctions and compliance, discrepancy resolution, limits and collateral, fees, and settlement release. Parameters are bounded artifacts covering quality, materiality, approval SLA, risk thresholds, workbench limits, sanctions hold SLAs, waiver SLAs, collateral haircuts, and limit buffers. Configuration enforces PostgreSQL/MySQL/MariaDB, the fixed AppGen-X event topic, retry limits, default policy packs, and dual-control requirements. Governance hooks compile rules, evaluate rules, validate configuration, set parameters, and prove that no mutation path bypasses confirmation or owned-table checks.
 
-## Public APIs and Services
+## Agent, Chatbot, Skills, and Governed Datastore CRUD
 
-APIs are ('POST /letter-of-credits', 'POST /bank-guarantees', 'POST /documentary-collections', 'POST /trade-documents', 'POST /sanctions-checks', 'GET /trade-finance-operations-workbench'). Services preserve idempotency keys, permission names, owned table scopes, route metadata, and event mappings. Services write only to `trade_finance_operations_` tables and package-local event tables.
+The package contributes a single-agent namespace `trade_finance_operations_skills` through `chatbot_interface_contract()` and `composed_agent_contribution()`. The chatbot explicitly includes `governed_datastore_crud`, document instruction intake, mutation preview, sanctions boundary guidance, and release-evidence explanation. Every skill is confirmation-gated for mutation, uses the AppGen-X contract, and rejects foreign tables. The agent can parse document instructions, map them to forms, wizards, and routes, preview governed CRUD actions, suggest discrepancy paths, and explain screening boundaries. It cannot clear a blocked sanctions case by itself and cannot write outside `trade_finance_operations_` tables.
 
-## Events and Handlers
+## Standalone One-PBC App Workflow
 
-Emitted events: ('TradeFinanceOperationsCreated', 'TradeFinanceOperationsUpdated', 'TradeFinanceOperationsApproved', 'TradeFinanceOperationsExceptionOpened'). Consumed events: ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged'). Handlers require event IDs, ignore duplicates, record AppGen-X inbox entries, and write dead-letter evidence for unknown or exhausted events.
+`standalone.py` composes the package into an executable one-PBC app. A typical journey issues a letter of credit or guarantee, reserves exposure, posts collateral or margin, records shipment documents, runs sanctions and compliance screening, examines the document package, opens or waives discrepancies, assesses fees, settles the case, records SWIFT-like evidence, and generates a release-evidence pack. Documentary collections, trade bills, and trade loans follow the same governed path. Amendment simulation is explicitly non-mutating so operators can compare before-and-after effects on limits, fees, and screening without changing live state. The workbench, detail page, forms, wizards, controls, assistant preview, and release-evidence pack are all package-local and side-effect-free in tests.
 
-## UI, Workbench, and Agent Skills
+## Side-Effect-Free Self-Registration and Release Evidence
 
-Workbench views include ('letter of credit board', 'bank guarantee board', 'documentary collection board', 'trade document board', 'sanctions check board', 'shipment evidence board', 'trade settlement board'). The UI exposes operational queues, detail panels, rule editors, parameter editors, assistant panels, exception triage, analytics, and release evidence. The agent contributes `trade_finance_operations_skills`, parses documents and instructions, produces governed CRUD previews, validates owned table boundaries, requires human confirmation for writes, and participates in the composed single application assistant.
-
-## Release Evidence and Tests
-
-Release readiness proves schema, migrations, models, service contracts, route contracts, AppGen-X eventing, idempotent handlers, retry/dead-letter evidence, UI surfaces, RBAC, configuration, rules, parameters, seed data, package metadata, side-effect-free registration, domain-depth operations, agent integration, and generation smoke readiness. Focused package tests cover schema/service/release evidence, event contracts, package metadata, route contracts, governance hooks, and idempotent handlers.
+The package self-registers through `register_pbc()`, `registration_plan()`, `package_metadata_manifest()`, `validate_package_metadata()`, and `package_discovery_plan()`. Registration is side-effect-free: it validates the manifest, returns a catalog patch, and proves publishability without mutating any shared registry. Release evidence covers schema, services, routes, events, handlers, UI, forms, wizards, controls, RBAC, configuration, rules, parameters, seed data, standalone workflow checks, assistant guardrails, and smoke checks. Tests cover schema/service/release evidence, event contracts, package metadata and discovery, service and route surfaces, governance hooks, idempotent handlers, forms/wizards/controls, capability assurance, and the standalone journey.
 
 ## Manifest Traceability Appendix
 
+This appendix preserves traceability to the catalog-backed PBC manifest values used by repo-level audits.
+
 - tables: letter_of_credit, bank_guarantee, documentary_collection, trade_document, sanctions_check, shipment_evidence, trade_settlement, trade_finance_operations_policy_rule, trade_finance_operations_runtime_parameter, trade_finance_operations_schema_extension, trade_finance_operations_control_assertion, trade_finance_operations_governed_model
-- operations: create_letter_of_credit, record_bank_guarantee, review_documentary_collection, approve_trade_document, simulate_sanctions_check, create_shipment_evidence, record_trade_settlement, review_trade_finance_operations_policy_rule, approve_trade_finance_operations_runtime_parameter, simulate_trade_finance_operations_schema_extension, create_trade_finance_operations_control_assertion, record_trade_finance_operations_governed_model, operate_trade_finance_operations_13, operate_trade_finance_operations_14, operate_trade_finance_operations_15, operate_trade_finance_operations_16, operate_trade_finance_operations_17, operate_trade_finance_operations_18
+- apis: POST /letter-of-credits, POST /bank-guarantees, POST /documentary-collections, POST /trade-documents, POST /sanctions-checks, GET /trade-finance-operations-workbench
 - emits: TradeFinanceOperationsCreated, TradeFinanceOperationsUpdated, TradeFinanceOperationsApproved, TradeFinanceOperationsExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
-- rules: letter_of_credit_policy, bank_guarantee_policy, documentary_collection_policy, trade_document_policy, sanctions_check_policy, shipment_evidence_policy
-- parameters: quality_score_floor, materiality_threshold, approval_sla_hours, risk_threshold, forecast_horizon_days, workbench_limit
 - ui_fragments: TradeFinanceOperationsWorkbench, TradeFinanceOperationsDetail, TradeFinanceOperationsAssistantPanel
 - permissions: trade_finance_operations.read, trade_finance_operations.create, trade_finance_operations.update, trade_finance_operations.approve, trade_finance_operations.admin
 - configuration: TRADE_FINANCE_OPERATIONS_DATABASE_URL, TRADE_FINANCE_OPERATIONS_EVENT_TOPIC, TRADE_FINANCE_OPERATIONS_RETRY_LIMIT, TRADE_FINANCE_OPERATIONS_DEFAULT_POLICY
 - standard_features: letter_of_credit_management, trade_finance_operations_workflow, trade_finance_operations_analytics, configuration_schema, rule_engine, parameter_engine, owned_schema_migrations_models, appgen_x_outbox_inbox_eventing, idempotent_handlers, retry_dead_letter_evidence, permissions, seed_data, workbench, agentic_document_instruction_intake, governed_datastore_crud, ai_agent_task_assistance, configuration_workbench, continuous_release_assurance
 - advanced_capabilities: trade_finance_operations_event_sourced_operational_history, trade_finance_operations_multi_tenant_policy_isolation, trade_finance_operations_schema_evolution_resilience, trade_finance_operations_autonomous_anomaly_detection, trade_finance_operations_semantic_document_instruction_understanding, trade_finance_operations_predictive_risk_scoring, trade_finance_operations_counterfactual_scenario_simulation, trade_finance_operations_cryptographic_audit_proofs, trade_finance_operations_continuous_control_testing, trade_finance_operations_carbon_and_sustainability_awareness, trade_finance_operations_cross_pbc_event_federation, trade_finance_operations_governed_ai_agent_execution
+
+## Extended Standalone Surfaces
+
+Beyond the audit appendix above, the package-local standalone app also exposes trade bills, trade loans, discrepancy cases, collateral margins, limit reservations, fee accruals, settlement detail, SWIFT-like evidence, release-evidence review, and amendment simulation. These richer surfaces remain package-local, use the same AppGen-X event contract, and do not require any shared-table or stream-engine exceptions.

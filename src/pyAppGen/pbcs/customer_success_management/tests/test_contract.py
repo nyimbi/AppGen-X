@@ -17,8 +17,12 @@ from pyAppGen.pbcs.customer_success_management.ui import customer_success_manage
 
 
 def test_generated_schema_service_and_release_evidence():
-    assert build_schema_contract()['ok'] is True
-    assert build_service_contract()['ok'] is True
+    schema = build_schema_contract()
+    service = build_service_contract()
+    assert schema['ok'] is True
+    assert service['ok'] is True
+    assert any(table['logical_table'] == 'customer_touchpoint' for table in schema['tables'])
+    assert 'record_touchpoint' in service['command_methods']
     assert build_release_evidence()['ok'] is True
     assert release_readiness_manifest()['ok'] is True
     assert validate_release_evidence()['ok'] is True
@@ -58,6 +62,7 @@ def test_service_and_route_surface_are_executable():
     assert workbench['forms']
     assert workbench['wizards']
     assert workbench['controls']
+    assert 'touchpoint_timeline' in workbench['panels']
 
 
 def test_configuration_permissions_and_seed_hooks_are_executable():

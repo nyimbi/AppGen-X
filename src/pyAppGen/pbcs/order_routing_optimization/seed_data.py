@@ -29,7 +29,7 @@ def validate_seed_data():
     )
     plan = seed_plan()
     return {
-        'ok': plan['ok'] and not invalid_tables and not invalid_rows,
+        'ok': plan['ok'] and not invalid_tables and not invalid_rows and standalone_seed_bundle()['ok'],
         'pbc': PBC_KEY,
         'plan': plan,
         'invalid_tables': invalid_tables,
@@ -41,3 +41,30 @@ def validate_seed_data():
 def smoke_test():
     """Exercise seed validation without writing rows."""
     return validate_seed_data()
+
+
+def standalone_seed_bundle():
+    """Return domain-rich seed rows for a one-PBC routing app."""
+    rows = (
+        {
+            'table': 'order_routing_optimization_routing_node',
+            'rows': (
+                {'node_id': 'node_west_dc', 'region': 'west', 'node_type': 'distribution_center', 'status': 'active'},
+                {'node_id': 'node_central_store', 'region': 'central', 'node_type': 'store', 'status': 'active'},
+            ),
+        },
+        {
+            'table': 'order_routing_optimization_capacity_snapshot',
+            'rows': (
+                {'snapshot_id': 'cap_west_001', 'node_id': 'node_west_dc', 'available_units': 60, 'reserved_units': 10, 'status': 'current'},
+                {'snapshot_id': 'cap_central_001', 'node_id': 'node_central_store', 'available_units': 22, 'reserved_units': 4, 'status': 'current'},
+            ),
+        },
+        {
+            'table': 'order_routing_optimization_routing_rule',
+            'rows': (
+                {'rule_id': 'rule_split_sla', 'rule_type': 'split', 'regions': ('west', 'central'), 'status': 'active'},
+            ),
+        },
+    )
+    return {'ok': True, 'pbc': PBC_KEY, 'rows': rows, 'side_effects': ()}

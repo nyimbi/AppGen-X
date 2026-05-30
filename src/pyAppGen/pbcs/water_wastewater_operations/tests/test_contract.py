@@ -11,39 +11,56 @@ from pyAppGen.pbcs.water_wastewater_operations.agent import agent_skill_manifest
 
 
 def test_generated_schema_service_and_release_evidence():
-    assert build_schema_contract()['ok'] is True
+    schema = build_schema_contract()
+    release = build_release_evidence()
+    assert schema['ok'] is True
     assert build_service_contract()['ok'] is True
-    assert build_release_evidence()['ok'] is True
+    assert release['ok'] is True
     assert release_readiness_manifest()['ok'] is True
     assert validate_release_evidence()['ok'] is True
+    assert release['control']['summary']['smoke_scenario_count'] >= 8
 
 
 def test_manifest_and_event_contract():
     assert implementation_contract()['pbc'] == 'water_wastewater_operations'
-    assert event_contract_manifest()['ok'] is True
+    event_manifest = event_contract_manifest()
+    assert event_manifest['ok'] is True
+    assert 'sample_collected' in event_manifest['domain_event_specializations']
     assert validate_event_contract()['ok'] is True
 
 
 def test_agent_chatbot_skills_are_executable():
-    assert agent_skill_manifest()['ok'] is True
-    assert chatbot_interface_contract()['ok'] is True
-    assert document_instruction_plan('doc', 'create')['ok'] is True
+    skills = agent_skill_manifest()
+    chatbot = chatbot_interface_contract()
+    plan = document_instruction_plan('incident report', 'create governed_datastore_crud incident draft')
+    assert skills['ok'] is True
+    assert chatbot['ok'] is True
+    assert 'governed_datastore_crud' in chatbot['capabilities']
+    assert all(skill['requires_confirmation'] is True for skill in skills['skills'])
+    assert plan['ok'] is True
+    assert plan['requires_human_confirmation'] is True
     assert datastore_crud_plan('create')['ok'] is True
+    assert datastore_crud_plan('read')['requires_confirmation'] is True
     assert datastore_crud_plan('update', table='foreign_table')['ok'] is False
 
 
 def test_registration_plan_is_side_effect_free():
     assert package_metadata_manifest()['pbc'] == 'water_wastewater_operations'
     assert validate_package_metadata()['ok'] is True
-    assert package_discovery_plan()['ok'] is True
-    assert package_discovery_plan()['side_effects'] == ()
+    discovery = package_discovery_plan()
+    assert discovery['ok'] is True
+    assert discovery['side_effects'] == ()
 
 
 def test_service_and_route_surface_are_executable():
-    assert service_operation_contracts()['ok'] is True
-    assert api_route_contracts()['ok'] is True
+    service_contracts = service_operation_contracts()
+    api_contracts = api_route_contracts()
+    assert service_contracts['ok'] is True
+    assert api_contracts['ok'] is True
     assert validate_api_route_contracts()['ok'] is True
-    assert service_operation_contracts()['operation_contract']
+    assert service_contracts['operation_contract']
+    assert any(contract.get('command') == 'record_pressure_quality_sample' for contract in api_contracts['contracts'])
+    assert any(contract.get('query') == 'build_release_evidence' for contract in api_contracts['contracts'])
 
 
 def test_configuration_permissions_and_seed_hooks_are_executable():

@@ -12,11 +12,12 @@ This PBC now runs as a standalone one-PBC application inside `src/pyAppGen/pbcs/
 
 ## Main entrypoints
 
-- `standalone.DomStandaloneApplication` for the mutable one-PBC app shell.
+- `standalone.DomStandaloneApplication` for the mutable one-PBC app shell with SQLite-backed repository/read models.
 - `services.DomStandaloneService` for package-local service methods.
 - `routes.dispatch_standalone_route` for route-to-service execution.
 - `ui.dom_ui_contract` and `ui.dom_render_workbench` for forms, wizards, controls, and workbench output.
 - `agent.document_instruction_plan` and `agent.datastore_crud_plan` for document intake and governed mutation previews.
+- `standalone.standalone_release_snapshot` and `seed_data.standalone_seed_bundle` for demo/bootstrap and release-proof snapshots.
 - `audit.run_dom_pbc_audit` and `release_evidence.build_release_evidence` for package-local audits.
 
 ## Constraints

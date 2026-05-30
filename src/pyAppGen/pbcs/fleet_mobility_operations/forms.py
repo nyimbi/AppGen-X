@@ -1,0 +1,16 @@
+"""Form catalog for the fleet_mobility_operations PBC."""
+from __future__ import annotations
+PBC_KEY = "fleet_mobility_operations"
+FORM_CATALOG = (
+    {"key": "vehicle_readiness_form", "title": "Vehicle dispatch readiness", "target_table": "fleet_mobility_operations_vehicle", "fields": ("vehicle_id","depot","vehicle_class","registration_status","fuel_or_soc","telematics_fresh_at","open_defects","dispatch_verdict"), "validations": ("registration_current","telematics_fresh","no_open_blockers"), "permission": "fleet_mobility_operations.update"},
+    {"key": "driver_assignment_form", "title": "Driver assignment and rest check", "target_table": "fleet_mobility_operations_driver_assignment", "fields": ("assignment_id","driver_id","vehicle_id","route_id","shift_start","shift_end","rest_window_hours","license_class","medical_expires_on","handoff_ack"), "validations": ("no_overlap","minimum_rest","credential_current"), "permission": "fleet_mobility_operations.approve"},
+    {"key": "telematics_ingestion_form", "title": "Telematics event intake", "target_table": "fleet_mobility_operations_telematics_event", "fields": ("device_id","vehicle_id","event_time","received_at","latitude","longitude","odometer","speed","ignition","idempotency_key"), "validations": ("device_known","timestamp_sane","replay_safe"), "permission": "fleet_mobility_operations.create"},
+    {"key": "route_plan_form", "title": "Stop-level route plan", "target_table": "fleet_mobility_operations_route_plan", "fields": ("route_id","vehicle_id","driver_id","stops","planned_departure","eta_windows","dwell_limits","geofences","completion_risk"), "validations": ("vehicle_ready","driver_ready","stop_sequence_valid"), "permission": "fleet_mobility_operations.approve"},
+    {"key": "fuel_ev_reconciliation_form", "title": "Fuel and EV reconciliation", "target_table": "fleet_mobility_operations_fuel_transaction", "fields": ("transaction_id","vehicle_id","card_id","amount","units","site_geofence","odometer","soc_percent","route_energy_required"), "validations": ("fuel_card_match","geofence_allowed","energy_sufficient"), "permission": "fleet_mobility_operations.update"},
+    {"key": "maintenance_horizon_form", "title": "Maintenance readiness horizon", "target_table": "fleet_mobility_operations_maintenance_schedule", "fields": ("vehicle_id","due_date","due_odometer","engine_hours_due","parts_ready","bay_capacity","route_commitments","return_to_road_criteria"), "validations": ("horizon_projected","parts_ready_for_service","route_conflict_checked"), "permission": "fleet_mobility_operations.update"},
+    {"key": "safety_incident_form", "title": "Safety and roadside incident", "target_table": "fleet_mobility_operations_safety_event", "fields": ("incident_id","vehicle_id","driver_id","location","severity","driver_status","tow_required","replacement_vehicle_action","contained_at","closed_at"), "validations": ("incident_lifecycle_valid","driver_support_recorded","evidence_attached"), "permission": "fleet_mobility_operations.approve"},
+)
+def form_catalog() -> dict:
+    return {"ok": True, "pbc": PBC_KEY, "forms": FORM_CATALOG, "side_effects": ()}
+def smoke_test() -> dict:
+    return {"ok": len(FORM_CATALOG) >= 7 and all(f["target_table"].startswith(f"{PBC_KEY}_") for f in FORM_CATALOG), "side_effects": ()}

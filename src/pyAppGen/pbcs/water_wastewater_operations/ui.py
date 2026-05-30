@@ -1,19 +1,63 @@
-from .domain_depth import domain_capability_surface_contract, DOMAIN_OPERATIONS, DOMAIN_RULES, DOMAIN_PARAMETERS, DOMAIN_ADVANCED_CAPABILITIES, DOMAIN_OWNED_TABLES, DOMAIN_EDGE_CASES
-PBC_KEY = 'water_wastewater_operations'
+from . import operations_engine as engine
+from .domain_depth import domain_capability_surface_contract
+
+PBC_KEY = engine.PBC_KEY
+
 
 def water_wastewater_operations_ui_contract():
     surface = domain_capability_surface_contract()
-    return {'ok': True, 'pbc': PBC_KEY, 'fragments': ('WaterWastewaterOperationsWorkbench',
- 'WaterWastewaterOperationsDetail',
- 'WaterWastewaterOperationsAssistantPanel'), 'configuration_editor': True, 'stream_engine_picker_visible': False, 'action_permissions': ('water_wastewater_operations.read',
- 'water_wastewater_operations.create',
- 'water_wastewater_operations.update',
- 'water_wastewater_operations.approve',
- 'water_wastewater_operations.admin'), 'full_capability_surface': {'operation_actions': DOMAIN_OPERATIONS, 'rule_editors': DOMAIN_RULES, 'parameter_editors': DOMAIN_PARAMETERS, 'advanced_panels': DOMAIN_ADVANCED_CAPABILITIES, 'table_browsers': DOMAIN_OWNED_TABLES, 'edge_case_queues': DOMAIN_EDGE_CASES, 'agent_tools': tuple(f'{PBC_KEY}_skills.{op}' for op in DOMAIN_OPERATIONS), 'navigation_sections': ('overview','operations','edge_case_triage','advanced_intelligence','release_evidence'), 'coverage': surface['coverage']}, 'side_effects': ()}
+    return {
+        "ok": True,
+        "pbc": PBC_KEY,
+        "fragments": engine.UI_FRAGMENTS,
+        "configuration_editor": {"enabled": True, "stream_engine_picker_visible": False},
+        "forms": engine.FORM_DEFINITIONS,
+        "wizards": engine.WIZARD_DEFINITIONS,
+        "controls": engine.CONTROL_DEFINITIONS,
+        "command_center_sections": engine.WORKBENCH_SECTIONS,
+        "stream_engine_picker_visible": False,
+        "action_permissions": (
+            f"{PBC_KEY}.read",
+            f"{PBC_KEY}.operate",
+            f"{PBC_KEY}.approve",
+            f"{PBC_KEY}.admin",
+            f"{PBC_KEY}.event",
+            f"{PBC_KEY}.audit",
+        ),
+        "full_capability_surface": {
+            "operation_actions": engine.DOMAIN_OPERATIONS,
+            "rule_editors": engine.RULES,
+            "parameter_editors": tuple(engine.PARAMETER_SPECS),
+            "advanced_panels": engine.ADVANCED_CAPABILITIES,
+            "table_browsers": engine.OWNED_TABLES,
+            "edge_case_queues": surface["edge_case_surfaces"],
+            "agent_tools": tuple(f"{PBC_KEY}_skills.{skill['name']}" for skill in engine.AGENT_SKILLS),
+            "navigation_sections": ("overview", "operations", "compliance", "incidents", "release_evidence"),
+            "coverage": surface["coverage"],
+        },
+        "side_effects": (),
+    }
 
-def water_wastewater_operations_render_workbench():
-    ui = water_wastewater_operations_ui_contract(); full = ui['full_capability_surface']
-    return {'ok': True, 'pbc': PBC_KEY, 'route': f'/workbench/pbcs/{PBC_KEY}', 'operation_actions': full['operation_actions'], 'table_browsers': full['table_browsers'], 'side_effects': ()}
+
+def water_wastewater_operations_ui_binding_contract():
+    return {
+        "format": "appgen.water-wastewater-operations-ui-binding-contract.v1",
+        "ok": True,
+        "pbc": PBC_KEY,
+        "binding_evidence": {
+            "runtime_tables": engine.RUNTIME_TABLES,
+            "forms": engine.FORM_DEFINITIONS,
+            "wizards": engine.WIZARD_DEFINITIONS,
+            "controls": engine.CONTROL_DEFINITIONS,
+            "outbox_table": engine.RUNTIME_TABLES[0],
+        },
+        "side_effects": (),
+    }
+
+
+def water_wastewater_operations_render_workbench(state=None, tenant="default", filters=None):
+    return engine.build_workbench_view(state, tenant=tenant, filters=filters)
+
 
 def smoke_test():
-    return {'ok': water_wastewater_operations_ui_contract()['ok'] and water_wastewater_operations_render_workbench()['ok'], 'side_effects': ()}
+    return {"ok": water_wastewater_operations_ui_contract()["ok"] and water_wastewater_operations_render_workbench()["ok"] and water_wastewater_operations_ui_binding_contract()["ok"], "side_effects": ()}

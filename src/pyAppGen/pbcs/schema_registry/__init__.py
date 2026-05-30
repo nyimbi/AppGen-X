@@ -2,10 +2,15 @@
 
 from .manifest import PBC_MANIFEST
 
-from ..source_contract import source_pbc_package_contract
 from ..source_contract import source_package_metadata
-from ..source_contract import validate_source_package_metadata
+from ..source_contract import source_pbc_package_contract
 from ..source_contract import source_registration_plan
+from ..source_contract import validate_source_package_metadata
+from .agent import standalone_agent_workspace_contract
+from .forms import schema_registry_form_catalog
+from .forms import schema_registry_form_keys
+from .repository import SchemaRegistryRepository
+from .repository import schema_registry_repository_manifest
 from .runtime import SCHEMA_REGISTRY_ALLOWED_DATABASE_BACKENDS
 from .runtime import SCHEMA_REGISTRY_CONSUMED_EVENT_TYPES
 from .runtime import SCHEMA_REGISTRY_EMITTED_EVENT_TYPES
@@ -36,9 +41,19 @@ from .runtime import schema_registry_set_parameter
 from .runtime import schema_registry_submit_schema_version
 from .runtime import schema_registry_validate_payload
 from .runtime import schema_registry_verify_owned_table_boundary
+from .standalone import SchemaRegistryStandaloneApp
+from .standalone import smoke_test as standalone_smoke_test
+from .standalone import standalone_app_manifest
+from .ui import SCHEMA_REGISTRY_CONTROL_KEYS
+from .ui import SCHEMA_REGISTRY_FORM_KEYS
 from .ui import SCHEMA_REGISTRY_UI_FRAGMENT_KEYS
+from .ui import SCHEMA_REGISTRY_WIZARD_KEYS
+from .ui import schema_registry_render_standalone_app
 from .ui import schema_registry_render_workbench
+from .ui import schema_registry_standalone_app_contract
 from .ui import schema_registry_ui_contract
+from .wizards import schema_registry_wizard_catalog
+from .wizards import schema_registry_wizard_keys
 
 PBC_KEY = "schema_registry"
 
@@ -56,6 +71,12 @@ def implementation_contract() -> dict:
         "service_contract": schema_registry_build_service_contract(),
         "release_evidence_contract": schema_registry_build_release_evidence(),
         "permissions_contract": schema_registry_permissions_contract(),
+        "repository_contract": schema_registry_repository_manifest(),
+        "standalone_app_contract": standalone_app_manifest(),
+        "forms": schema_registry_form_keys(),
+        "wizards": schema_registry_wizard_keys(),
+        "controls": SCHEMA_REGISTRY_CONTROL_KEYS,
+        "assistant_workspace": standalone_agent_workspace_contract(),
         "owned_tables": SCHEMA_REGISTRY_OWNED_TABLES,
         "allowed_database_backends": SCHEMA_REGISTRY_ALLOWED_DATABASE_BACKENDS,
         "required_event_topic": SCHEMA_REGISTRY_REQUIRED_EVENT_TOPIC,
@@ -105,9 +126,10 @@ def package_discovery_plan(existing_catalog: dict | None = None) -> dict:
 def smoke_test() -> dict:
     """Exercise package metadata validation and discovery planning."""
     discovery = package_discovery_plan()
+    standalone = standalone_smoke_test()
     return {
-        "ok": discovery["ok"],
+        "ok": discovery["ok"] and standalone["ok"],
         "discovery": discovery,
+        "standalone": standalone,
         "side_effects": (),
     }
-

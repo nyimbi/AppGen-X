@@ -1,36 +1,60 @@
 """Service contract for the data_product_catalog PBC."""
+from __future__ import annotations
+
+from .blueprint import EVENT_CONTRACT, OPERATION_BLUEPRINTS, PBC_KEY, QUERY_BLUEPRINTS
+
+COMMAND_METHODS = (
+    "configure_runtime",
+    "set_parameter",
+    "register_rule",
+    "register_schema_extension",
+    "receive_event",
+    "command_data_product",
+) + tuple(item["name"] for item in OPERATION_BLUEPRINTS)
+QUERY_METHODS = tuple(
+    dict.fromkeys(
+        (
+            "query_workbench",
+            "build_workbench_view",
+            "list_forms",
+            "list_wizards",
+            "list_controls",
+            "document_instruction_plan",
+            "datastore_crud_plan",
+            "run_advanced_assessment",
+        )
+        + tuple(item["name"] for item in QUERY_BLUEPRINTS if item["name"] != "query_workbench")
+    )
+)
 
 
-def build_service_contract():
-    return {'format': 'appgen.data-product-catalog-service-contract.v1', 'ok': True, 'pbc': 'data_product_catalog', 'command_methods': ('command_data_product', 'configure_runtime', 'set_parameter', 'register_rule'), 'query_methods': ('query_workbench',), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
-
-
-def data_product_catalog_build_service_contract():
-    return build_service_contract()
-
-
-def validate_service_contract():
-    contract = build_service_contract()
-    return {'ok': contract['ok'] and bool(contract['command_methods']) and bool(contract['query_methods']) and contract['shared_table_access'] is False, 'contract': contract, 'side_effects': ()}
-
-
-def smoke_test():
-    return validate_service_contract()
-
-from .domain_depth import DOMAIN_OPERATIONS, domain_depth_contract
-
-_BASE_BUILD_SERVICE_CONTRACT = build_service_contract
-
-def build_service_contract():
-    base = dict(_BASE_BUILD_SERVICE_CONTRACT())
-    domain = domain_depth_contract()
+def build_service_contract() -> dict:
     return {
-        **base,
-        'ok': base.get('ok') is True and domain['ok'],
-        'command_methods': tuple(dict.fromkeys(tuple(base.get('command_methods', ())) + tuple(DOMAIN_OPERATIONS))),
-        'world_class_domain_depth': domain,
+        "format": "appgen.data-product-catalog-service-contract.v1",
+        "ok": True,
+        "pbc": PBC_KEY,
+        "command_methods": COMMAND_METHODS,
+        "query_methods": QUERY_METHODS,
+        "shared_table_access": False,
+        "transaction_boundary": "owned_datastore_plus_outbox",
+        "event_contract": EVENT_CONTRACT,
+        "side_effects": (),
     }
 
 
-def data_product_catalog_build_service_contract():
+def data_product_catalog_build_service_contract() -> dict:
     return build_service_contract()
+
+
+def validate_service_contract() -> dict:
+    contract = build_service_contract()
+    return {
+        "ok": contract["ok"] and len(contract["command_methods"]) >= 15 and bool(contract["query_methods"]),
+        "contract": contract,
+        "side_effects": (),
+    }
+
+
+def smoke_test() -> dict:
+    validation = validate_service_contract()
+    return {"ok": validation["ok"], "validation": validation, "side_effects": ()}

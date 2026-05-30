@@ -269,3 +269,52 @@ def smoke_test():
         "cards": cards,
         "side_effects": (),
     }
+
+
+
+def quality_assurance_form_contracts() -> dict:
+    contracts = (
+        {'key': 'QualityConfigurationForm', 'operation': 'configure_runtime', 'table': 'quality_assurance_quality_configuration', 'fields': QUALITY_ASSURANCE_REQUIRED_CONFIGURATION_FIELDS, 'permission': 'quality_assurance.configure', 'keywords': ('configure', 'event topic', 'backend')},
+        {'key': 'QualityRuleForm', 'operation': 'register_rule', 'table': 'quality_assurance_quality_rule', 'fields': QUALITY_ASSURANCE_REQUIRED_RULE_FIELDS, 'permission': 'quality_assurance.configure', 'keywords': ('rule', 'sampling', 'release')},
+        {'key': 'InspectionPlanForm', 'operation': 'create_inspection_plan', 'table': 'quality_assurance_inspection_plan', 'fields': ('plan_id', 'tenant', 'item', 'site', 'source', 'sampling_method', 'sample_size', 'revision', 'status'), 'permission': 'quality_assurance.configure', 'keywords': ('plan', 'inspection', 'sampling')},
+        {'key': 'InspectionResultForm', 'operation': 'record_inspection_result', 'table': 'quality_assurance_inspection_result', 'fields': ('result_id', 'tenant', 'plan_id', 'lot_id', 'order_id', 'measurements', 'defects', 'inspector'), 'permission': 'quality_assurance.execute', 'keywords': ('result', 'measurement', 'defect', 'spc')},
+        {'key': 'QualityHoldForm', 'operation': 'create_quality_hold', 'table': 'quality_assurance_quality_hold', 'fields': ('hold_id', 'tenant', 'item', 'lot_id', 'site', 'reason', 'severity'), 'permission': 'quality_assurance.execute', 'keywords': ('hold', 'lot isolation', 'defect')},
+        {'key': 'NonConformanceForm', 'operation': 'raise_nonconformance', 'table': 'quality_assurance_non_conformance', 'fields': ('nonconformance_id', 'tenant', 'result_id', 'defect_class', 'severity', 'root_cause'), 'permission': 'quality_assurance.execute', 'keywords': ('nonconformance', 'capa', 'root cause')},
+    )
+    return {'format': 'appgen.quality-assurance-standalone-forms.v1', 'ok': all(item['table'].startswith('quality_assurance_') for item in contracts), 'pbc': 'quality_assurance', 'contracts': contracts, 'side_effects': ()}
+
+
+def quality_assurance_wizard_contracts() -> dict:
+    contracts = (
+        {'key': 'InspectionLotIntakeWizard', 'steps': ('parse_document', 'create_plan', 'record_result', 'evaluate_spc', 'preview_mutation'), 'forms': ('InspectionPlanForm', 'InspectionResultForm'), 'keywords': ('document', 'certificate', 'inspection', 'lot')},
+        {'key': 'NonConformanceDispositionWizard', 'steps': ('raise_nonconformance', 'classify_defect', 'assign_capa', 'approve_disposition'), 'forms': ('NonConformanceForm',), 'keywords': ('nonconformance', 'defect', 'root cause', 'disposition')},
+        {'key': 'HoldReleaseWizard', 'steps': ('create_hold', 'run_controls', 'generate_quality_proof', 'release_hold'), 'forms': ('QualityHoldForm',), 'keywords': ('hold', 'release', 'proof', 'control')},
+    )
+    return {'format': 'appgen.quality-assurance-standalone-wizards.v1', 'ok': all(item['steps'] for item in contracts), 'pbc': 'quality_assurance', 'contracts': contracts, 'side_effects': ()}
+
+
+def quality_assurance_control_catalog() -> dict:
+    contracts = (
+        {'key': 'quality_backend_event_contract', 'operation': 'run_control_tests', 'table': 'quality_assurance_quality_control_assertion', 'permission': 'quality_assurance.audit'},
+        {'key': 'quality_spc_release_control', 'operation': 'run_control_tests', 'table': 'quality_assurance_quality_control_assertion', 'permission': 'quality_assurance.audit'},
+        {'key': 'quality_proof_control', 'operation': 'generate_quality_proof', 'table': 'quality_assurance_audit_evidence_packet', 'permission': 'quality_assurance.audit'},
+    )
+    return {'format': 'appgen.quality-assurance-standalone-controls.v1', 'ok': all(item['table'].startswith('quality_assurance_') for item in contracts), 'pbc': 'quality_assurance', 'contracts': contracts, 'side_effects': ()}
+
+
+def quality_assurance_standalone_workbench_blueprint() -> dict:
+    forms = quality_assurance_form_contracts()
+    wizards = quality_assurance_wizard_contracts()
+    controls = quality_assurance_control_catalog()
+    return {'format': 'appgen.quality-assurance-standalone-workbench.v1', 'ok': forms['ok'] and wizards['ok'] and controls['ok'], 'pbc': 'quality_assurance', 'forms': forms['contracts'], 'wizards': wizards['contracts'], 'controls': controls['contracts'], 'panels': quality_assurance_ui_contract()['panels'], 'side_effects': ()}
+
+
+def quality_assurance_render_standalone_workbench(workbench: dict) -> dict:
+    blueprint = quality_assurance_standalone_workbench_blueprint()
+    cards = (
+        {'key': 'plans', 'value': workbench.get('plan_count', 0), 'fragment': 'InspectionPlanConsole'},
+        {'key': 'results', 'value': workbench.get('result_count', 0), 'fragment': 'InspectionResultCapture'},
+        {'key': 'holds', 'value': workbench.get('hold_count', 0), 'fragment': 'QualityHoldBoard'},
+        {'key': 'nonconformances', 'value': workbench.get('nonconformance_count', workbench.get('open_nc_count', 0)), 'fragment': 'NonConformanceBoard'},
+    )
+    return {'format': 'appgen.quality-assurance-standalone-render.v1', 'ok': blueprint['ok'] and bool(cards), 'pbc': 'quality_assurance', 'tenant': workbench.get('tenant'), 'cards': cards, 'forms': tuple(item['key'] for item in blueprint['forms']), 'wizards': tuple(item['key'] for item in blueprint['wizards']), 'controls': tuple(item['key'] for item in blueprint['controls']), 'side_effects': ()}

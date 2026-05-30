@@ -10,10 +10,10 @@ from .runtime import workflow_orchestration_build_api_contract
 
 
 PBC_MANIFEST = {
-    "pbc": 'workflow_orchestration',
+    "pbc": "workflow_orchestration",
     "label": "Distributed Workflow Orchestration Engine",
     "mesh": "platform",
-    "description": "Workflow definitions, instances, signals, timers, sagas, compensations, human tasks, rules, parameters, configuration, AppGen-X eventing, and governed orchestration telemetry.",
+    "description": "Workflow definitions, versions, instances, signals, timers, sagas, compensations, human tasks, policy gates, AppGen-X eventing, and governed orchestration telemetry.",
     "datastore_backend": "postgresql",
     "tables": WORKFLOW_ORCHESTRATION_OWNED_TABLES + WORKFLOW_ORCHESTRATION_RUNTIME_TABLES,
     "apis": tuple(route["route"] for route in workflow_orchestration_build_api_contract()["routes"]),
@@ -21,14 +21,15 @@ PBC_MANIFEST = {
     "consumes": WORKFLOW_ORCHESTRATION_CONSUMED_EVENT_TYPES,
     "template": None,
     "ui_fragments": (
-        "WorkflowOrchestrationWorkbench",
-        "WorkflowDefinitionConsole",
-        "WorkflowInstanceBoard",
-        "SignalInboxPanel",
-        "TimerTaskConsole",
-        "SagaStepTimeline",
-        "CompensationConsole",
+        "WorkflowWorkbench",
+        "StateMachineDesigner",
+        "WorkflowInstanceMonitor",
+        "SignalInbox",
+        "TimerConsole",
+        "SagaStepBoard",
+        "CompensationPlanner",
         "HumanTaskQueue",
+        "WorkflowReleaseWorkbench",
         "WorkflowConfigurationPanel",
     ),
     "permissions": (
@@ -50,6 +51,7 @@ PBC_MANIFEST = {
     ),
     "capabilities": tuple(f"workflow_orchestration.{table}" for table in WORKFLOW_ORCHESTRATION_OWNED_TABLES + WORKFLOW_ORCHESTRATION_RUNTIME_TABLES),
     "standard_features": WORKFLOW_ORCHESTRATION_STANDARD_FEATURE_KEYS,
+    "advanced_capabilities": WORKFLOW_ORCHESTRATION_RUNTIME_CAPABILITY_KEYS,
     "workflows": (
         "command_workflow_definitions",
         "command_workflow_instances",
@@ -59,6 +61,7 @@ PBC_MANIFEST = {
         "command_compensations",
         "command_event_inbox",
         "query_workflow_orchestration_workbench",
+        "standalone_workflow_authoring",
     ),
     "analytics": (
         "workflow_start_rate",
@@ -68,9 +71,9 @@ PBC_MANIFEST = {
         "human_task_sla",
         "workflow_completed_throughput",
     ),
-    "advanced_capabilities": WORKFLOW_ORCHESTRATION_RUNTIME_CAPABILITY_KEYS,
+    "advanced_runtime": WORKFLOW_ORCHESTRATION_RUNTIME_CAPABILITY_KEYS,
     "migrations": ("migrations/001_initial.sql",),
     "seed_data": ("seed_data.py",),
-    "tests": ("tests/test_contract.py",),
-    "docs": ("RELEASE_EVIDENCE.md", "SPECIFICATION.md"),
+    "tests": ("tests/test_contract.py", "tests/test_runtime_capabilities.py", "tests/test_standalone.py"),
+    "docs": ("README.md", "RELEASE_EVIDENCE.md", "SPECIFICATION.md", "implementation-plan.md", "implementation-status.md"),
 }

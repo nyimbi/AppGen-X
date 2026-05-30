@@ -7,7 +7,10 @@ Generated checks:
 - source_package_directory
 - owned_schema_only
 - migration_artifact
+- runtime_event_tables
 - model_artifact
+- repository_contract
+- standalone_app_contract
 - domain_capability_depth
 - workflow_coverage
 - policy_control_coverage
@@ -21,6 +24,7 @@ Generated checks:
 - idempotent_handlers
 - retry_dead_letter_policy
 - ui_fragments
+- forms_and_wizards
 - permissions
 - configuration_schema
 - seed_data
@@ -35,6 +39,7 @@ Generated checks:
 - contract_tests
 
 Verification snapshot:
-- `./.venv/bin/pytest src/pyAppGen/pbcs/composition_engine/tests -q`
 - `python3 -m compileall src/pyAppGen/pbcs/composition_engine`
-- Runtime smoke and package-local release evidence returned `True`
+- `./.venv/bin/pytest src/pyAppGen/pbcs/composition_engine/tests -q`
+- `./.venv/bin/pytest tests/test_pbc_composition_engine_runtime.py -q`
+- Standalone bootstrap, wizard, assistant-preview, control-center, and repository sync smoke return `True`

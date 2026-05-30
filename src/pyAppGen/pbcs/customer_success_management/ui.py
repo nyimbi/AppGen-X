@@ -12,7 +12,6 @@ def customer_success_management_ui_contract() -> dict:
     contract = build_ui_contract()
     return {
         **contract,
-        "stream_engine_picker_visible": False,
         "full_capability_surface": {
             "operation_actions": tuple(DOMAIN_OPERATIONS),
             "rule_editors": tuple(DOMAIN_RULES),
@@ -23,6 +22,7 @@ def customer_success_management_ui_contract() -> dict:
             "navigation_sections": (
                 "command_center",
                 "accounts",
+                "touchpoint_timeline",
                 "health_cockpit",
                 "playbook_board",
                 "renewal_room",
@@ -38,6 +38,7 @@ def customer_success_management_ui_contract() -> dict:
         "navigation_sections": (
             "command_center",
             "accounts",
+            "touchpoint_timeline",
             "health_cockpit",
             "playbook_board",
             "renewal_room",
@@ -61,7 +62,6 @@ def customer_success_management_render_workbench(state: dict | None = None) -> d
         "controls": workbench["controls"],
         "summary": workbench["summary"],
         "configuration_editor": True,
-        "stream_engine_picker_visible": False,
         "action_permissions": tuple(customer_success_management_ui_contract()["action_permissions"]),
         "advanced_panels": tuple(customer_success_management_ui_contract()["advanced_panels"]),
         "agent_tools": (

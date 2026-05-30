@@ -1,88 +1,76 @@
-"""Service layer for the master_data_governance PBC."""
-PBC_KEY = 'master_data_governance'
-EVENT_CONTRACT = {'outbox_table': f'{PBC_KEY}_appgen_outbox_event', 'inbox_table': f'{PBC_KEY}_appgen_inbox_event', 'dead_letter_table': f'{PBC_KEY}_appgen_dead_letter_event', 'event_contract': 'AppGen-X'}
-COMMAND_OPERATIONS = ('command_master_record', 'configure_runtime', 'set_parameter', 'register_rule')
-QUERY_OPERATIONS = ('query_workbench',)
-OWNED_TABLES = ('master_data_governance_master_record', 'master_data_governance_golden_record', 'master_data_governance_match_candidate', 'master_data_governance_merge_decision', 'master_data_governance_survivorship_rule', 'master_data_governance_data_quality_rule', 'master_data_governance_stewardship_task', 'master_data_governance_downstream_sync_event', 'master_data_governance_appgen_outbox_event', 'master_data_governance_appgen_inbox_event', 'master_data_governance_appgen_dead_letter_event')
+"""Service layer for the standalone master_data_governance slice."""
+from __future__ import annotations
+
+from .standalone import MasterDataGovernanceStandaloneService
+from .standalone import standalone_service_operation_contracts
+from .standalone import standalone_store_smoke_test
+
+PBC_KEY = "master_data_governance"
+EVENT_CONTRACT = {
+    "outbox_table": f"{PBC_KEY}_appgen_outbox_event",
+    "inbox_table": f"{PBC_KEY}_appgen_inbox_event",
+    "dead_letter_table": f"{PBC_KEY}_appgen_dead_letter_event",
+    "event_contract": "AppGen-X",
+}
 
 
-def _operation_contract(name, kind):
-    return {'operation': name, 'operation_kind': kind, 'owned_tables': OWNED_TABLES[:2] if kind == 'command' else (), 'read_tables': OWNED_TABLES[:2] if kind == 'query' else (), 'emitted_event': ('GoldenRecordPublished', 'MergeDecisionApproved', 'StewardshipTaskOpened', 'MasterDataSynced')[0] if kind == 'command' else None, 'transaction_boundary': 'owned_datastore_plus_outbox' if kind == 'command' else 'read_only_projection'}
+COMMAND_OPERATIONS = tuple(item["operation"] for item in standalone_service_operation_contracts()["contracts"] if item["operation_kind"] == "command")
+QUERY_OPERATIONS = tuple(item["operation"] for item in standalone_service_operation_contracts()["contracts"] if item["operation_kind"] == "query")
+OWNED_TABLES = standalone_service_operation_contracts()["store_contract"]["table_keys"]
 
 
-class MasterDataGovernanceService:
-    def __getattr__(self, name):
-        if name in COMMAND_OPERATIONS:
-            return lambda payload=None, _name=name: self._command(_name, payload or {})
-        if name in QUERY_OPERATIONS:
-            return lambda payload=None, _name=name: self._query(_name, payload or {})
-        raise AttributeError(name)
+class MasterDataGovernanceService(MasterDataGovernanceStandaloneService):
+    """Compatibility facade that now delegates to the standalone service."""
 
-    def _command(self, name, payload):
-        contract = _operation_contract(name, 'command')
-        return {'ok': True, 'operation': name, 'operation_kind': 'command', 'read_only': False, 'payload': dict(payload), 'operation_contract': contract, 'outbox_table': EVENT_CONTRACT['outbox_table'], 'emits': (contract['emitted_event'],), 'transaction_boundary': 'owned_datastore_plus_outbox', 'side_effects': ()}
 
-    def _query(self, name, payload):
-        contract = _operation_contract(name, 'query')
-        return {'ok': True, 'operation': name, 'operation_kind': 'query', 'read_only': True, 'payload': dict(payload), 'operation_contract': contract, 'outbox_table': None, 'emits': (), 'side_effects': ()}
+
+def _operation_contract(operation: str) -> dict:
+    contract = next(item for item in standalone_service_operation_contracts()["contracts"] if item["operation"] == operation)
+    return {
+        "operation": contract["operation"],
+        "operation_kind": contract["operation_kind"],
+        "owned_tables": (contract["table"],) if contract["operation_kind"] == "command" else (),
+        "read_tables": (contract["table"],) if contract["operation_kind"] == "query" else (),
+        "emitted_event": contract.get("event_contract") if contract["operation_kind"] == "command" else None,
+        "transaction_boundary": contract["transaction_boundary"],
+    }
+
 
 
 def service_operation_manifest():
-    return {'ok': True, 'pbc': PBC_KEY, 'service_class': 'MasterDataGovernanceService', 'command_operations': COMMAND_OPERATIONS, 'query_operations': QUERY_OPERATIONS, 'event_contract': EVENT_CONTRACT, 'side_effects': ()}
+    manifest = standalone_service_operation_contracts()
+    return {
+        "ok": manifest["ok"],
+        "pbc": PBC_KEY,
+        "service_class": "MasterDataGovernanceService",
+        "command_operations": COMMAND_OPERATIONS,
+        "query_operations": QUERY_OPERATIONS,
+        "event_contract": EVENT_CONTRACT,
+        "standalone_service_contract": manifest,
+        "side_effects": (),
+    }
+
 
 
 def service_operation_contracts():
-    contracts = tuple(_operation_contract(name, 'command') for name in COMMAND_OPERATIONS) + tuple(_operation_contract(name, 'query') for name in QUERY_OPERATIONS)
-    return {'ok': True, 'pbc': PBC_KEY, 'contracts': contracts, 'operation_contract': contracts[0], 'side_effects': ()}
+    manifest = standalone_service_operation_contracts()
+    contracts = tuple(_operation_contract(item["operation"]) for item in manifest["contracts"])
+    return {"ok": manifest["ok"], "pbc": PBC_KEY, "contracts": contracts, "operation_contract": contracts[0], "side_effects": ()}
+
 
 
 def operation_plan(operation, payload=None):
     manifest = service_operation_manifest()
-    kind = 'query' if operation in manifest['query_operations'] else 'command'
-    return {'ok': operation in manifest['query_operations'] + manifest['command_operations'], 'operation': operation, 'operation_kind': kind, 'payload': dict(payload or {}), 'side_effects': ()}
+    kind = "query" if operation in manifest["query_operations"] else "command"
+    return {"ok": operation in manifest["query_operations"] + manifest["command_operations"], "operation": operation, "operation_kind": kind, "payload": dict(payload or {}), "side_effects": ()}
+
 
 
 def smoke_test():
-    service = MasterDataGovernanceService()
-    command = getattr(service, COMMAND_OPERATIONS[0])({'tenant': 'tenant-smoke'})
-    query = getattr(service, QUERY_OPERATIONS[0])({'tenant': 'tenant-smoke'})
-    return {'ok': command['ok'] and query['ok'] and service_operation_contracts()['ok'], 'command': command, 'query': query, 'side_effects': ()}
-
-# World-class domain operations exposed through the package service facade.
-from .domain_depth import DOMAIN_OPERATIONS as DOMAIN_DEPTH_COMMAND_OPERATIONS
-from .domain_depth import DOMAIN_OWNED_TABLES as DOMAIN_DEPTH_OWNED_TABLES
-from .domain_depth import execute_domain_operation as execute_domain_depth_operation
-
-COMMAND_OPERATIONS = tuple(dict.fromkeys(tuple(COMMAND_OPERATIONS) + tuple(DOMAIN_DEPTH_COMMAND_OPERATIONS)))
-OWNED_TABLES = tuple(dict.fromkeys(tuple(OWNED_TABLES) + tuple(DOMAIN_DEPTH_OWNED_TABLES)))
-
-_BaseMasterDataGovernanceService = MasterDataGovernanceService
-
-class MasterDataGovernanceService(_BaseMasterDataGovernanceService):
-    def __getattr__(self, name):
-        if name in DOMAIN_DEPTH_COMMAND_OPERATIONS:
-            return lambda payload=None, _name=name: self._domain_command(_name, payload or {})
-        return super().__getattr__(name)
-
-    def _domain_command(self, name, payload):
-        plan = execute_domain_depth_operation(name, payload)
-        return {
-            'ok': plan['ok'],
-            'operation': name,
-            'operation_kind': 'command',
-            'read_only': False,
-            'payload': dict(payload),
-            'operation_contract': {
-                'operation': name,
-                'operation_kind': 'command',
-                'owned_tables': plan.get('owned_tables', ()),
-                'read_tables': (),
-                'emitted_event': plan.get('emitted_event'),
-                'transaction_boundary': 'owned_datastore_plus_outbox',
-            },
-            'outbox_table': EVENT_CONTRACT['outbox_table'],
-            'emits': (plan.get('emitted_event'),) if plan.get('emitted_event') else (),
-            'transaction_boundary': 'owned_datastore_plus_outbox',
-            'domain_depth': plan,
-            'side_effects': (),
-        }
+    smoke = standalone_store_smoke_test()
+    return {
+        "ok": smoke["ok"] and service_operation_contracts()["ok"],
+        "smoke": smoke,
+        "contracts": service_operation_contracts(),
+        "side_effects": (),
+    }

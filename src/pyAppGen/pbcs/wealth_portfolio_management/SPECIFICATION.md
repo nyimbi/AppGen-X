@@ -2,107 +2,83 @@
 
 ## Purpose
 
-The `wealth_portfolio_management` PBC is a packaged business capability for Client portfolios, mandates, suitability, rebalancing, performance, fees, and advisory controls. It owns schema, migrations, models, services, API contracts, AppGen-X event contracts, handlers, UI fragments, AI agent skills, configuration, rules, parameters, seed data, package metadata, tests, and release evidence. It composes with other AppGen-X PBCs only through declared APIs, AppGen-X events, or package-local projections.
+`wealth_portfolio_management` is a package-local packaged business capability for advisor-led household portfolio management. The package owns the portfolio lifecycle inside its boundary: household and client profile capture, investment mandate and investment policy statement maintenance, suitability and risk readiness, portfolio drift monitoring, tax-aware rebalance proposal authoring, fee and performance evidence, advisor review workflows, document readiness, and compliance surveillance. The package is designed for AppGen-X composition, so every workflow is expressed as source-controlled schema, services, routes, UI fragments, governed agent skills, tests, and release evidence rather than hidden runtime magic.
 
 ## Stable Identity
 
-- PBC key: `wealth_portfolio_management`.
-- Mesh: `finops`.
-- Package directory: `src/pyAppGen/pbcs/wealth_portfolio_management`.
-- Runtime entrypoint: `wealth_portfolio_management_runtime_capabilities()`.
-- UI entrypoint: `wealth_portfolio_management_ui_contract()`.
-- Source registration entrypoint: `implementation_contract()`.
-- Allowed database backends: PostgreSQL, MySQL, and MariaDB.
-- Eventing standard: fixed AppGen-X outbox/inbox event contract.
-- User-facing stream-engine selector: forbidden and hidden.
+- PBC key: `wealth_portfolio_management`
+- Label: `Wealth Portfolio Management`
+- Mesh: `finops`
+- Package directory: `src/pyAppGen/pbcs/wealth_portfolio_management`
+- Runtime entrypoint: `wealth_portfolio_management_runtime_capabilities()`
+- UI entrypoint: `wealth_portfolio_management_ui_contract()`
+- Standalone entrypoint: `wealth_portfolio_management_standalone_app_contract()`
+- Side-effect-free package registration: `register_pbc()`, `registration_plan()`, `package_metadata_manifest()`, and `package_discovery_plan()`
 
-## Owned Datastore Boundary
+The package keeps one stable identity across source audit, package discovery, generation smoke, and standalone workbench execution. The source registration entrypoints are intentionally side-effect free so repository audits can prove package discovery without mutating any catalog or shared runtime state.
 
-- `wealth_portfolio_management_client_portfolio`: owns client portfolio lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `wealth_portfolio_management_investment_mandate`: owns investment mandate lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `wealth_portfolio_management_suitability_profile`: owns suitability profile lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `wealth_portfolio_management_rebalance_order`: owns rebalance order lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `wealth_portfolio_management_performance_snapshot`: owns performance snapshot lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `wealth_portfolio_management_fee_schedule`: owns fee schedule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `wealth_portfolio_management_advisory_review`: owns advisory review lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `wealth_portfolio_management_wealth_portfolio_management_policy_rule`: owns wealth portfolio management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `wealth_portfolio_management_wealth_portfolio_management_runtime_parameter`: owns wealth portfolio management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `wealth_portfolio_management_wealth_portfolio_management_schema_extension`: owns wealth portfolio management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `wealth_portfolio_management_wealth_portfolio_management_control_assertion`: owns wealth portfolio management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `wealth_portfolio_management_wealth_portfolio_management_governed_model`: owns wealth portfolio management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+## Owned Boundary And Datastore Policy
 
-Runtime AppGen-X event tables are `wealth_portfolio_management_appgen_outbox_event`, `wealth_portfolio_management_appgen_inbox_event`, and `wealth_portfolio_management_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /client-portfolios', 'POST /investment-mandates', 'POST /suitability-profiles', 'POST /rebalance-orders', 'POST /performance-snapshots', 'GET /wealth-portfolio-management-workbench').
+Deployment-facing ownership stays on package-local tables prefixed with `wealth_portfolio_management_`. The source package contract owns `wealth_portfolio_management_client_portfolio`, `wealth_portfolio_management_investment_mandate`, `wealth_portfolio_management_suitability_profile`, `wealth_portfolio_management_rebalance_order`, `wealth_portfolio_management_performance_snapshot`, `wealth_portfolio_management_fee_schedule`, `wealth_portfolio_management_advisory_review`, `wealth_portfolio_management_wealth_portfolio_management_policy_rule`, `wealth_portfolio_management_wealth_portfolio_management_runtime_parameter`, `wealth_portfolio_management_wealth_portfolio_management_schema_extension`, `wealth_portfolio_management_wealth_portfolio_management_control_assertion`, and `wealth_portfolio_management_wealth_portfolio_management_governed_model`, plus the AppGen-X outbox, inbox, and dead-letter tables.
 
-## Executable Domain Operations
+No foreign or shared table is mutated. External client mastering, custody books, security mastering, and execution systems are represented only through declared APIs, AppGen-X events, or package-local projections. The package explicitly supports PostgreSQL, MySQL, and MariaDB for deployment. The standalone execution harness uses sqlite only inside the package directory for focused tests and smoke evidence; it does not change the deployment datastore policy.
 
-- `create_client_portfolio`: validates policy, writes owned `wealth_portfolio_management_client_portfolio` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_investment_mandate`: validates policy, writes owned `wealth_portfolio_management_investment_mandate` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_suitability_profile`: validates policy, writes owned `wealth_portfolio_management_suitability_profile` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_rebalance_order`: validates policy, writes owned `wealth_portfolio_management_rebalance_order` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_performance_snapshot`: validates policy, writes owned `wealth_portfolio_management_performance_snapshot` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_fee_schedule`: validates policy, writes owned `wealth_portfolio_management_fee_schedule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_advisory_review`: validates policy, writes owned `wealth_portfolio_management_advisory_review` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_wealth_portfolio_management_policy_rule`: validates policy, writes owned `wealth_portfolio_management_wealth_portfolio_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_wealth_portfolio_management_runtime_parameter`: validates policy, writes owned `wealth_portfolio_management_wealth_portfolio_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_wealth_portfolio_management_schema_extension`: validates policy, writes owned `wealth_portfolio_management_wealth_portfolio_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_wealth_portfolio_management_control_assertion`: validates policy, writes owned `wealth_portfolio_management_wealth_portfolio_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_wealth_portfolio_management_governed_model`: validates policy, writes owned `wealth_portfolio_management_wealth_portfolio_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_wealth_portfolio_management_13`: validates policy, writes owned `wealth_portfolio_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_wealth_portfolio_management_14`: validates policy, writes owned `wealth_portfolio_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_wealth_portfolio_management_15`: validates policy, writes owned `wealth_portfolio_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_wealth_portfolio_management_16`: validates policy, writes owned `wealth_portfolio_management_client_portfolio` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_wealth_portfolio_management_17`: validates policy, writes owned `wealth_portfolio_management_investment_mandate` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_wealth_portfolio_management_18`: validates policy, writes owned `wealth_portfolio_management_suitability_profile` records, emits AppGen-X events, and returns side-effect-free evidence.
+## Schema, Migrations, And Models
 
-Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
+The source package materializes owned schema through `migrations/001_initial.sql`, `schema_contract.py`, and `models.py`. Source-owned records intentionally keep a common envelope with `id`, `tenant`, `code`, `status`, `version`, `payload`, `created_at`, and `updated_at` so the package can hold wealth-specific detail without leaking across bounded contexts. Rich wealth detail is stored inside the payload envelope for household goals, IPS settings, benchmark history, risk data, holdings, tax lots, drift, fee projections, review evidence, and compliance findings.
 
-## Standard Table-Stakes Capabilities
+The standalone sqlite harness deepens that source contract by materializing executable local tables for document packages and surveillance alerts in addition to the owned business tables and AppGen-X event evidence. This keeps the generated source package compact while still giving the PBC a usable one-package workbench.
 
-The package covers lifecycle intake, identity and classification, validation, approvals, exception handling, audit evidence, role-aware workbenches, assistant-guided task execution, configuration, rule compilation, bounded parameters, seed data, RBAC, route dispatch, typed events, idempotent handlers, retry, and dead-letter triage. It includes PostgreSQL, MySQL, and MariaDB backend allowlists and never exposes stream-engine pickers.
+## Services, APIs, And Commands
 
-## Advanced Capabilities
+The source service surface preserves deterministic contract evidence for `configure_runtime`, `set_parameter`, `register_rule`, `command_client_portfolio`, and the wealth-specific domain operation set. The standalone service layer adds executable workflows that an advisor workbench can actually run:
 
-- Event-sourced operational history for Wealth Portfolio Management domain records.
-- Multi-tenant policy isolation with owned table boundaries.
-- Schema evolution resilience through package-local schema extensions.
-- Autonomous anomaly detection and specialist exception triage.
-- Semantic document and instruction understanding for professional intake.
-- Predictive risk scoring and confidence-ranked recommendations.
-- Counterfactual scenario simulation for policy and operational choices.
-- Cryptographic audit proofs for high-value records and decisions.
-- Continuous control testing over domain lifecycle events.
-- Carbon and sustainability awareness where operational decisions affect footprint.
-- Cross-PBC event federation through AppGen-X only.
-- Governed AI agent execution with human confirmation for mutations.
+- create household and client portfolio records
+- capture investment policy and mandate evidence
+- record suitability and risk-capacity evidence
+- record fee schedule projections
+- ingest document packages and missing-document evidence
+- generate tax-aware trade proposals from model drift, restrictions, and cash needs
+- record performance snapshots
+- record advisor review outcomes
+- run compliance surveillance over suitability, drift, cash needs, documents, and review state
 
-## Rules, Parameters, and Configuration
+Public APIs remain `POST /client-portfolios`, `POST /investment-mandates`, `POST /suitability-profiles`, `POST /rebalance-orders`, `POST /performance-snapshots`, and `GET /wealth-portfolio-management-workbench`. The package-local standalone workbench adds internal execution routes under `/app/wealth-portfolio-management/...` for onboarding, rebalancing, surveillance, and detail views.
 
-Rules are first-class artifacts: ('client_portfolio_policy', 'investment_mandate_policy', 'suitability_profile_policy', 'rebalance_order_policy', 'performance_snapshot_policy', 'fee_schedule_policy'). Parameters are bounded artifacts: ('quality_score_floor', 'materiality_threshold', 'approval_sla_hours', 'risk_threshold', 'forecast_horizon_days', 'workbench_limit'). Configuration includes database backend, event topic, retry limit, default policy, workbench limits, confirmation requirements for agent writes, and tenant isolation options.
+## Eventing, Handlers, And Retry
 
-## Public APIs and Services
+AppGen-X is the only eventing contract. Emitted events are `WealthPortfolioManagementCreated`, `WealthPortfolioManagementUpdated`, `WealthPortfolioManagementApproved`, and `WealthPortfolioManagementExceptionOpened`. Consumed events are `PolicyChanged`, `AuditEventSealed`, and `OperationalKpiChanged`. Unknown inbound events are routed to `wealth_portfolio_management_appgen_dead_letter_event`, known inbound events are recorded in `wealth_portfolio_management_appgen_inbox_event`, and all outbound operational activity is recorded in `wealth_portfolio_management_appgen_outbox_event`.
 
-APIs are ('POST /client-portfolios', 'POST /investment-mandates', 'POST /suitability-profiles', 'POST /rebalance-orders', 'POST /performance-snapshots', 'GET /wealth-portfolio-management-workbench'). Services preserve idempotency keys, permission names, owned table scopes, route metadata, and event mappings. Services write only to `wealth_portfolio_management_` tables and package-local event tables.
+The package hides all stream-engine selectors. No stream-engine picker is exposed in configuration, services, UI, routes, or agent surfaces. The event contract is fixed to AppGen-X with idempotency keys, retry evidence, and dead-letter handling.
 
-## Events and Handlers
+## Rules, Parameters, Configuration, And Seed Data
 
-Emitted events: ('WealthPortfolioManagementCreated', 'WealthPortfolioManagementUpdated', 'WealthPortfolioManagementApproved', 'WealthPortfolioManagementExceptionOpened'). Consumed events: ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged'). Handlers require event IDs, ignore duplicates, record AppGen-X inbox entries, and write dead-letter evidence for unknown or exhausted events.
+Rule and parameter handling are first-class source artifacts. Rules cover client portfolio policy, investment policy statement policy, suitability profile policy, restriction policy, cash needs policy, tax lot policy, and advisor review policy. Parameters cover drift tolerance, cash buffer months, tax budget limits, review cycle days, wash-sale window days, and workbench limits.
 
-## UI, Workbench, and Agent Skills
+Configuration is represented by `WEALTH_PORTFOLIO_MANAGEMENT_DATABASE_URL`, `WEALTH_PORTFOLIO_MANAGEMENT_EVENT_TOPIC`, `WEALTH_PORTFOLIO_MANAGEMENT_RETRY_LIMIT`, and `WEALTH_PORTFOLIO_MANAGEMENT_DEFAULT_POLICY`. Seed hooks remain package-local and side-effect free so release audits can validate the existence of seed plans without mutating real state.
 
-Workbench views include ('client portfolio board', 'investment mandate board', 'suitability profile board', 'rebalance order board', 'performance snapshot board', 'fee schedule board', 'advisory review board'). The UI exposes operational queues, detail panels, rule editors, parameter editors, assistant panels, exception triage, analytics, and release evidence. The agent contributes `wealth_portfolio_management_skills`, parses documents and instructions, produces governed CRUD previews, validates owned table boundaries, requires human confirmation for writes, and participates in the composed single application assistant.
+## UI, Workbench, Permissions, And Agent Skills
 
-## Release Evidence and Tests
+UI fragments remain `WealthPortfolioManagementWorkbench`, `WealthPortfolioManagementDetail`, and `WealthPortfolioManagementAssistantPanel`. The standalone workbench blueprint adds explicit forms, wizards, and controls for household onboarding, goal and risk capture, investment policy statements, trade proposal approval, advisor review, tax-aware rebalancing, cash planning, document collection, surveillance, drift heatmaps, restriction matrices, tax-lot grids, fee projection cards, document checklists, and a governed AI assistant panel.
 
-Release readiness proves schema, migrations, models, service contracts, route contracts, AppGen-X eventing, idempotent handlers, retry/dead-letter evidence, UI surfaces, RBAC, configuration, rules, parameters, seed data, package metadata, side-effect-free registration, domain-depth operations, agent integration, and generation smoke readiness. Focused package tests cover schema/service/release evidence, event contracts, package metadata, route contracts, governance hooks, and idempotent handlers.
+Permissions are `wealth_portfolio_management.read`, `wealth_portfolio_management.create`, `wealth_portfolio_management.update`, `wealth_portfolio_management.approve`, and `wealth_portfolio_management.admin`. The package chatbot exposes `governed_datastore_crud` and document-instruction intake with confirmation-gated mutation skills. Every mutation-oriented skill requires confirmation before it can lead to a write path, and every CRUD preview validates that the target table stays inside the `wealth_portfolio_management_` boundary.
+
+## Standard And Advanced Capabilities
+
+Standard features include `client_portfolio_management`, `wealth_portfolio_management_workflow`, `wealth_portfolio_management_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`, `permissions`, `seed_data`, `workbench`, `agentic_document_instruction_intake`, `governed_datastore_crud`, `ai_agent_task_assistance`, `configuration_workbench`, and `continuous_release_assurance`.
+
+Advanced capabilities include `wealth_portfolio_management_event_sourced_operational_history`, `wealth_portfolio_management_multi_tenant_policy_isolation`, `wealth_portfolio_management_schema_evolution_resilience`, `wealth_portfolio_management_autonomous_anomaly_detection`, `wealth_portfolio_management_semantic_document_instruction_understanding`, `wealth_portfolio_management_predictive_risk_scoring`, `wealth_portfolio_management_counterfactual_scenario_simulation`, `wealth_portfolio_management_cryptographic_audit_proofs`, `wealth_portfolio_management_continuous_control_testing`, `wealth_portfolio_management_carbon_and_sustainability_awareness`, `wealth_portfolio_management_cross_pbc_event_federation`, and `wealth_portfolio_management_governed_ai_agent_execution`.
+
+## Release Evidence And Tests
+
+Release readiness is package-local and explicit. The package proves source artifacts, schema, migrations, models, service contracts, route contracts, event contracts, handlers, permissions, configuration, rules, parameters, seed hooks, agent capability evidence, documentation, standalone app smoke, and repository audit compatibility. Focused tests cover source package contracts plus the standalone wealth workflow end to end. Release evidence is surfaced through `RELEASE_EVIDENCE.md`, `release_evidence.py`, `tests/test_contract.py`, and `tests/test_standalone.py`.
 
 ## Manifest Traceability Appendix
 
 - tables: client_portfolio, investment_mandate, suitability_profile, rebalance_order, performance_snapshot, fee_schedule, advisory_review, wealth_portfolio_management_policy_rule, wealth_portfolio_management_runtime_parameter, wealth_portfolio_management_schema_extension, wealth_portfolio_management_control_assertion, wealth_portfolio_management_governed_model
-- operations: create_client_portfolio, record_investment_mandate, review_suitability_profile, approve_rebalance_order, simulate_performance_snapshot, create_fee_schedule, record_advisory_review, review_wealth_portfolio_management_policy_rule, approve_wealth_portfolio_management_runtime_parameter, simulate_wealth_portfolio_management_schema_extension, create_wealth_portfolio_management_control_assertion, record_wealth_portfolio_management_governed_model, operate_wealth_portfolio_management_13, operate_wealth_portfolio_management_14, operate_wealth_portfolio_management_15, operate_wealth_portfolio_management_16, operate_wealth_portfolio_management_17, operate_wealth_portfolio_management_18
+- apis: POST /client-portfolios, POST /investment-mandates, POST /suitability-profiles, POST /rebalance-orders, POST /performance-snapshots, GET /wealth-portfolio-management-workbench
 - emits: WealthPortfolioManagementCreated, WealthPortfolioManagementUpdated, WealthPortfolioManagementApproved, WealthPortfolioManagementExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
-- rules: client_portfolio_policy, investment_mandate_policy, suitability_profile_policy, rebalance_order_policy, performance_snapshot_policy, fee_schedule_policy
-- parameters: quality_score_floor, materiality_threshold, approval_sla_hours, risk_threshold, forecast_horizon_days, workbench_limit
 - ui_fragments: WealthPortfolioManagementWorkbench, WealthPortfolioManagementDetail, WealthPortfolioManagementAssistantPanel
 - permissions: wealth_portfolio_management.read, wealth_portfolio_management.create, wealth_portfolio_management.update, wealth_portfolio_management.approve, wealth_portfolio_management.admin
 - configuration: WEALTH_PORTFOLIO_MANAGEMENT_DATABASE_URL, WEALTH_PORTFOLIO_MANAGEMENT_EVENT_TOPIC, WEALTH_PORTFOLIO_MANAGEMENT_RETRY_LIMIT, WEALTH_PORTFOLIO_MANAGEMENT_DEFAULT_POLICY

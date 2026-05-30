@@ -1,5 +1,7 @@
 """Package manifest for the waste_recycling_operations PBC."""
 
+PBC_LITERAL = 'waste_recycling_operations'
+
 PBC_MANIFEST = {'advanced_capabilities': ('waste_recycling_operations_event_sourced_operational_history',
                            'waste_recycling_operations_multi_tenant_policy_isolation',
                            'waste_recycling_operations_schema_evolution_resilience',
@@ -58,7 +60,11 @@ PBC_MANIFEST = {'advanced_capabilities': ('waste_recycling_operations_event_sour
  'datastore_backend': 'postgresql',
  'description': 'Routes, bins, pickups, materials, contamination, disposal sites, recycling '
                 'yields, and compliance',
- 'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md'),
+ 'docs': ('SPECIFICATION.md',
+          'RELEASE_EVIDENCE.md',
+          'README.md',
+          'implementation-plan.md',
+          'implementation-status.md'),
  'emits': ('WasteRecyclingOperationsCreated',
            'WasteRecyclingOperationsUpdated',
            'WasteRecyclingOperationsApproved',
@@ -104,10 +110,15 @@ PBC_MANIFEST = {'advanced_capabilities': ('waste_recycling_operations_event_sour
             'waste_recycling_operations_control_assertion',
             'waste_recycling_operations_governed_model'),
  'template': 'logistics',
- 'tests': ('tests/test_contract.py',),
+ 'tests': ('tests/test_contract.py', 'tests/test_standalone.py'),
  'ui_fragments': ('WasteRecyclingOperationsWorkbench',
                   'WasteRecyclingOperationsDetail',
-                  'WasteRecyclingOperationsAssistantPanel'),
+                  'WasteRecyclingOperationsAssistantPanel',
+                  'RouteReleaseForm',
+                  'PickupProofForm',
+                  'ContaminationEducationWizard',
+                  'DisposalReconciliationWizard',
+                  'DiversionReportingWizard'),
  'version': '1.0.0',
  'workflows': ('waste_recycling_operations_create_waste_route_workflow',
                'waste_recycling_operations_record_bin_asset_workflow')}

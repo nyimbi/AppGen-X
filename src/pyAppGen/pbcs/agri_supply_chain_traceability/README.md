@@ -1,49 +1,68 @@
 # Agri Supply Chain Traceability
 
-This AppGen-X PBC owns package-local traceability records for farm lots, certifications, storage events, transport legs, recall links, provenance proof, and release-readiness decisions.
+`agri_supply_chain_traceability` is now an executable standalone AppGen-X PBC slice.
+This package owns its schema and model contracts, runtime state transitions,
+stateful service layer, API routes, workbench UI metadata, forms, wizards,
+controls, event/handler surfaces, permissions, governed agent planning, release
+artifacts, and focused tests without depending on shared generator changes.
 
-## Executable Slice
+## Standalone Slice
 
-This implementation delivers a real pre-shipment release gate from the backlog. The slice records traceability evidence into package-local runtime state and computes an explainable release verdict.
+The implemented slice is a one-PBC traceability app focused on release-readiness
+for agricultural shipments. It can bootstrap package-local state, record the
+core evidence needed for traceability, render a standalone workbench, and issue
+an explainable release verdict.
 
-### Release Gate Checks
+### Covered package-local records
 
-- active source farm lot
-- provenance proof linking the release candidate to the source lot
-- certification coverage for lot, site, commodity, and shipment date
-- no unresolved storage or cold-chain exceptions
-- no unresolved transport, seal-integrity, or receiving-confirmation issues
-- no active recall link
-- no pending hazards, lab results, or corrective actions on the candidate
+- `farm_lot`
+- `input_batch`
+- `certification`
+- `storage_event`
+- `transport_leg`
+- `recall_link`
+- `provenance_proof`
 
-### Main Runtime Entry Points
+### Covered workflows
 
-- `agri_supply_chain_traceability_command_farm_lot`
-- `agri_supply_chain_traceability_record_certification`
-- `agri_supply_chain_traceability_record_storage_event`
-- `agri_supply_chain_traceability_record_transport_leg`
-- `agri_supply_chain_traceability_record_recall_link`
-- `agri_supply_chain_traceability_record_provenance_proof`
-- `agri_supply_chain_traceability_assess_release_readiness`
-- `agri_supply_chain_traceability_query_workbench`
+- farm lot intake
+- input application capture
+- certification scope review
+- storage and cold-chain review
+- transport and seal review
+- provenance proof capture
+- release-readiness assessment
+- document-led intake planning
+- recall investigation planning
 
-### Contracts Updated
+## Main Entrypoints
 
-- Runtime capabilities advertise `assess_release_readiness`.
-- Service contracts expose release-gate and evidence-recording commands.
-- UI metadata exposes a release-gate panel in the workbench surface.
-- Agent metadata exposes release-readiness guidance and release-gate preview hints.
-- Release evidence includes the release-gate artifact and required evidence classes.
+- Runtime: `runtime.py`
+- Services: `services.py`
+- Routes: `routes.py`
+- UI/workbench: `ui.py`
+- Standalone app: `standalone.py`
+- Agent planning: `agent.py`
+- Release audit: `release_evidence.py`
+- Focused tests: `tests/test_contract.py`, `tests/test_standalone.py`
 
-### Validation
+## What the standalone app exposes
 
-Run:
+- A stateful service over package-local runtime state.
+- Route dispatch for runtime configuration, evidence recording, workbench reads,
+  service-contract reads, release-evidence reads, and release-gate execution.
+- Workbench shell metadata with navigation, forms, wizards, and reusable
+  controls for intake, compliance, release review, and document planning.
+- Governed CRUD and document-instruction planning that stay inside owned agri
+  traceability tables.
+- Release evidence that checks source artifacts, implementation audit coverage,
+  and standalone generation smoke for this package.
 
-```bash
-./.venv/bin/python -m pytest -q \
-  src/pyAppGen/pbcs/agri_supply_chain_traceability/tests/test_contract.py \
-  tests/test_pbc_agri_supply_chain_traceability_implementation.py \
-  tests/test_pbc_agri_supply_chain_traceability_runtime.py
-```
+## Validation
 
-Expected result for this slice: all tests pass.
+Focused package-local validation is captured in:
+
+- `tests/test_contract.py`
+- `tests/test_standalone.py`
+- `implementation-status.md`
+- `RELEASE_EVIDENCE.md`

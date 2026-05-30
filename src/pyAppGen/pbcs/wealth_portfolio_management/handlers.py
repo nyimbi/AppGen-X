@@ -7,11 +7,11 @@ def handler_manifest():
 
 def dispatch_event(event):
     idem = event.get('idempotency_key') or event.get('event_id') or repr(event)
-    if idem in _HANDLED:
-        return {'ok': True, 'duplicate': True, 'idempotency_key': idem, 'side_effects': ()}
-    _HANDLED.add(idem)
     if event.get('event_type') not in CONSUMED:
-        return {'ok': False, 'dead_letter_table': f'{PBC_KEY}_appgen_dead_letter_event', 'retry_policy': {'max_attempts': 5}, 'idempotency_key': idem, 'side_effects': ()}
+        return {'ok': False, 'duplicate': idem in _HANDLED, 'dead_letter_table': f'{PBC_KEY}_appgen_dead_letter_event', 'retry_policy': {'max_attempts': 5}, 'idempotency_key': idem, 'side_effects': ()}
+    if idem in _HANDLED:
+        return {'ok': True, 'duplicate': True, 'idempotency_key': idem, 'retry_policy': {'max_attempts': 5}, 'side_effects': ()}
+    _HANDLED.add(idem)
     return {'ok': True, 'duplicate': False, 'idempotency_key': idem, 'retry_policy': {'max_attempts': 5}, 'side_effects': ()}
 
 def smoke_test():

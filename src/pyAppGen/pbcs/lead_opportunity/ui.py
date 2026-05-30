@@ -6,6 +6,7 @@ from .runtime import LEAD_OPPORTUNITY_ALLOWED_DATABASE_BACKENDS
 from .runtime import LEAD_OPPORTUNITY_REQUIRED_EVENT_TOPIC
 from .runtime import LEAD_OPPORTUNITY_OWNED_TABLES
 from .runtime import LEAD_OPPORTUNITY_RUNTIME_TABLES
+from .app_surface import single_pbc_lead_opportunity_app_contract
 
 
 LEAD_OPPORTUNITY_UI_FRAGMENT_KEYS = (
@@ -32,6 +33,27 @@ LEAD_OPPORTUNITY_UI_FRAGMENT_KEYS = (
 )
 
 
+def lead_opportunity_forms_contract() -> dict:
+    """Return standalone database-backed form metadata for generated apps."""
+    from .app_surface import lead_opportunity_forms_contract as _forms
+
+    return _forms()
+
+
+def lead_opportunity_wizards_contract() -> dict:
+    """Return standalone guided workflow metadata for generated apps."""
+    from .app_surface import lead_opportunity_wizards_contract as _wizards
+
+    return _wizards()
+
+
+def lead_opportunity_controls_contract() -> dict:
+    """Return standalone control metadata for generated apps."""
+    from .app_surface import lead_opportunity_controls_contract as _controls
+
+    return _controls()
+
+
 def lead_opportunity_ui_contract() -> dict:
     return {
         "format": "appgen.lead-opportunity-ui-contract.v1",
@@ -39,6 +61,10 @@ def lead_opportunity_ui_contract() -> dict:
         "pbc": "lead_opportunity",
         "implementation_directory": "src/pyAppGen/pbcs/lead_opportunity",
         "fragments": LEAD_OPPORTUNITY_UI_FRAGMENT_KEYS,
+        "forms": lead_opportunity_forms_contract()["forms"],
+        "wizards": lead_opportunity_wizards_contract()["wizards"],
+        "controls": lead_opportunity_controls_contract()["controls"],
+        "single_pbc_app": single_pbc_lead_opportunity_app_contract(),
         "routes": (
             "/workbench/pbcs/lead_opportunity",
             "/workbench/pbcs/lead_opportunity/leads",
@@ -134,6 +160,10 @@ def lead_opportunity_render_workbench(state: dict, *, tenant: str, principal_per
         "route": "/workbench/pbcs/lead_opportunity",
         "fragments": contract["fragments"],
         "cards": cards,
+        "forms": contract["forms"],
+        "wizards": contract["wizards"],
+        "controls": contract["controls"],
+        "single_pbc_app": contract["single_pbc_app"],
         "visible_actions": visible_actions,
         "locked_actions": tuple(action for action in action_permissions if action not in visible_actions),
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
@@ -232,6 +262,10 @@ def smoke_test():
         and bool(contract.get("fragments"))
         and bool(contract.get("routes"))
         and bool(cards)
+        and bool(contract.get("forms"))
+        and bool(contract.get("wizards"))
+        and bool(contract.get("controls"))
+        and contract.get("single_pbc_app", {}).get("ok") is True
         and bool(contract.get("action_permissions"))
         and bool(configuration_editor)
         and configuration_editor.get("stream_engine_picker_visible", configuration_editor.get("user_facing_stream_engine_picker", False)) is False

@@ -14,9 +14,9 @@ These gates are implemented in [release_evidence.py](/Volumes/Media/src/pjs/appg
 
 - Owned tables are package-local and all start with `customer_success_management_`
 - The migration is coherent and executable for the package-local SQLite smoke harness
-- Services, routes, UI/workbench, forms, wizards, controls, AppGen-X events, and agent planning all derive from one shared executable implementation
+- Services, routes, touchpoint-aware UI/workbench, forms, wizards, controls, AppGen-X events, and agent planning all derive from one shared executable implementation
 - Event handling records inbox/outbox/dead-letter entries and suppresses duplicate idempotency keys
-- Focused tests cover contracts, slice-app execution, migration bootstrap, route dispatch, release audits, and boundary enforcement
+- Focused tests cover contracts, slice-app execution, touchpoint capture, migration bootstrap, route dispatch, release audits, and boundary enforcement
 
 ## Suggested validation commands
 

@@ -10,6 +10,9 @@ from .runtime import API_GATEWAY_MESH_REQUIRED_EVENT_TOPIC
 from .runtime import api_gateway_mesh_build_route_publication_safety_case
 from .runtime import api_gateway_mesh_build_workbench_view
 from .runtime import api_gateway_mesh_permissions_contract
+from .forms import api_gateway_mesh_form_catalog
+from .wizards import api_gateway_mesh_wizard_catalog
+from .controls import api_gateway_mesh_control_catalog
 
 
 API_GATEWAY_MESH_UI_FRAGMENT_KEYS = (
@@ -30,6 +33,9 @@ API_GATEWAY_MESH_UI_FRAGMENT_KEYS = (
     "GatewayReleaseEvidencePanel",
     "RouteSafetyCasePanel",
     "GatewayIncidentTriagePanel",
+    "GatewayFormsConsole",
+    "GatewayWizardConsole",
+    "GatewayControlCenter",
 )
 
 
@@ -108,6 +114,9 @@ def api_gateway_mesh_ui_contract() -> dict:
             },
         ),
         "action_permissions": api_gateway_mesh_permissions_contract()["action_permissions"],
+        "forms": api_gateway_mesh_form_catalog()["forms"],
+        "wizards": api_gateway_mesh_wizard_catalog()["wizards"],
+        "controls": api_gateway_mesh_control_catalog()["controls"],
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_timezone"),
             "allowed_database_backends": API_GATEWAY_MESH_ALLOWED_DATABASE_BACKENDS,

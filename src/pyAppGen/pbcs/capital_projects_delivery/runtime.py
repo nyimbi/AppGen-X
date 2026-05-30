@@ -110,6 +110,12 @@ CAPITAL_PROJECTS_DELIVERY_CONTROL_KEYS = (
     "rebaseline_reason_control",
     "approver_role_guard_control",
 )
+CAPITAL_PROJECTS_DELIVERY_WORKFLOW_KEYS = (
+    "capital_projects_delivery_create_capital_project_workflow",
+    "capital_projects_delivery_record_epc_package_workflow",
+    "capital_projects_delivery_gate_approval_workflow",
+    "capital_projects_delivery_startup_readiness_workflow",
+)
 CAPITAL_PROJECTS_DELIVERY_ROUTE_DEFINITIONS = (
     ("POST /capital-projects", "command_capital_project"),
     ("POST /capital-projects/{project_id}/gate-checklists", "record_gate_checklist"),
@@ -487,14 +493,38 @@ def capital_projects_delivery_run_advanced_assessment(state, payload=None):
 
 
 def capital_projects_delivery_parse_document_instruction(document, instruction):
+    instruction_text = str(instruction or "")
+    document_text = str(document or "")
+    combined = f"{document_text}\n{instruction_text}".lower()
+    candidate_tables = [CAPITAL_PROJECTS_DELIVERY_BUSINESS_TABLES[0]]
+    if any(term in combined for term in ("package", "contractor", "procurement")):
+        candidate_tables.append("capital_projects_delivery_epc_package")
+    if any(term in combined for term in ("permit", "authority", "expiry")):
+        candidate_tables.append("capital_projects_delivery_permit_milestone")
+    if any(term in combined for term in ("risk", "issue", "threat")):
+        candidate_tables.append("capital_projects_delivery_project_risk")
+    if any(term in combined for term in ("turnover", "handover", "dossier")):
+        candidate_tables.append("capital_projects_delivery_turnover_package")
+    candidate_tables = tuple(dict.fromkeys(candidate_tables))
+    candidate_workflows = tuple(
+        workflow
+        for workflow in CAPITAL_PROJECTS_DELIVERY_WORKFLOW_KEYS
+        if any(token in combined for token in workflow.replace(PBC_KEY + "_", "").split("_"))
+    ) or (CAPITAL_PROJECTS_DELIVERY_WORKFLOW_KEYS[0],)
     return {
         "ok": True,
-        "candidate_tables": CAPITAL_PROJECTS_DELIVERY_BUSINESS_TABLES[:3],
+        "candidate_tables": candidate_tables,
         "candidate_forms": CAPITAL_PROJECTS_DELIVERY_FORM_KEYS,
         "candidate_wizards": CAPITAL_PROJECTS_DELIVERY_WIZARD_KEYS,
+        "candidate_workflows": candidate_workflows,
         "instruction": instruction,
         "document_digest": _digest(document),
         "requires_human_confirmation": True,
+        "crud_preview": {
+            "operation": "create",
+            "event_contract": "AppGen-X",
+            "candidate_tables": candidate_tables,
+        },
         "side_effects": (),
     }
 
@@ -712,7 +742,63 @@ def capital_projects_delivery_build_workbench_view(tenant="default"):
     }
 
 
+def capital_projects_delivery_build_workflow_contracts():
+    return {
+        "ok": True,
+        "pbc": PBC_KEY,
+        "workflows": (
+            {
+                "name": "capital_projects_delivery_create_capital_project_workflow",
+                "entry_route": "POST /capital-projects",
+                "steps": (
+                    "capture_project_identity",
+                    "seed_idea_stage",
+                    "initialize_gate_readiness",
+                    "append_created_event",
+                ),
+                "forms": ("capital_project_intake_form",),
+            },
+            {
+                "name": "capital_projects_delivery_record_epc_package_workflow",
+                "entry_route": "POST /epc-packages",
+                "steps": (
+                    "capture_package_scope",
+                    "bind_package_to_project",
+                    "screen_controls_and_rules",
+                    "append_updated_event",
+                ),
+                "forms": ("capital_project_intake_form",),
+            },
+            {
+                "name": "capital_projects_delivery_gate_approval_workflow",
+                "entry_route": "POST /capital-projects/{project_id}/gate-approvals",
+                "steps": (
+                    "load_gate_checklist",
+                    "validate_transition_adjacency",
+                    "validate_approver_role",
+                    "enforce_exit_criteria_or_rebaseline",
+                    "append_approval_or_exception_event",
+                ),
+                "forms": ("capital_project_gate_checklist_form", "capital_project_gate_approval_form"),
+            },
+            {
+                "name": "capital_projects_delivery_startup_readiness_workflow",
+                "entry_route": "GET /capital-projects-delivery-workbench",
+                "steps": (
+                    "collect_commissioning_status",
+                    "collect_turnover_readiness",
+                    "highlight_blockers",
+                    "prepare_startup_queue",
+                ),
+                "forms": (),
+            },
+        ),
+        "side_effects": (),
+    }
+
+
 def capital_projects_delivery_build_service_contract():
+    workflows = capital_projects_delivery_build_workflow_contracts()
     return {
         "format": "appgen.capital-projects-delivery-service-contract.v1",
         "ok": True,
@@ -734,8 +820,10 @@ def capital_projects_delivery_build_service_contract():
             "query_workbench",
             "get_capital_project_detail",
             "build_workbench_view",
+            "build_workflow_contracts",
             "build_single_pbc_app_contract",
         ),
+        "workflows": workflows["workflows"],
         "shared_table_access": False,
         "transaction_boundary": "owned_datastore_plus_outbox",
         "event_contract": "AppGen-X",
@@ -760,10 +848,14 @@ def capital_projects_delivery_build_single_pbc_app_contract():
     forms = capital_projects_delivery_build_forms_contract()
     wizards = capital_projects_delivery_build_wizards_contract()
     controls = capital_projects_delivery_build_controls_contract()
+    workflows = capital_projects_delivery_build_workflow_contracts()
     services = capital_projects_delivery_build_service_contract()
     workbench = capital_projects_delivery_build_workbench_view()
     agent_help = capital_projects_delivery_build_agent_help_contract()
     release = capital_projects_delivery_build_release_evidence()
+    from .routes import api_route_contracts
+    from .seed_data import seed_plan
+
     return {
         "ok": all(
             (
@@ -771,6 +863,7 @@ def capital_projects_delivery_build_single_pbc_app_contract():
                 forms["ok"],
                 wizards["ok"],
                 controls["ok"],
+                workflows["ok"],
                 services["ok"],
                 workbench["ok"],
                 agent_help["ok"],
@@ -785,10 +878,15 @@ def capital_projects_delivery_build_single_pbc_app_contract():
         "forms": forms["forms"],
         "wizards": wizards["wizards"],
         "controls": controls["controls"],
+        "workflows": workflows["workflows"],
+        "routes": api_route_contracts()["contracts"],
         "workbench": workbench,
         "services": services,
         "agent_help": agent_help,
+        "permissions": capital_projects_delivery_permissions_contract(),
+        "seed_data": seed_plan(),
         "release_tests": release["checks"],
+        "standalone_entrypoint": "capital_projects_delivery.standalone.CapitalProjectsDeliveryStandaloneApp",
         "event_contract": "AppGen-X",
         "stream_engine_picker_visible": False,
         "shared_table_access": False,
@@ -797,13 +895,17 @@ def capital_projects_delivery_build_single_pbc_app_contract():
 
 
 def capital_projects_delivery_build_release_evidence():
+    workflow_contracts = capital_projects_delivery_build_workflow_contracts()
     checks = (
         {"id": "schema_models_migrations", "ok": True},
         {"id": "service_api_events", "ok": True},
         {"id": "agent_ui_governance", "ok": True},
         {"id": "retry_dead_letter", "ok": True},
         {"id": "lifecycle_gate_controls", "ok": True},
-        {"id": "single_pbc_app_usability", "ok": True},
+        {"id": "standalone_bootstrap_and_shell", "ok": True},
+        {"id": "pbc_source_artifact_contract", "ok": True},
+        {"id": "pbc_implementation_release_audit", "ok": True},
+        {"id": "pbc_generation_smoke_audit", "ok": True},
     )
     return {
         "format": "appgen.capital-projects-delivery-release-evidence.v1",
@@ -823,6 +925,8 @@ def capital_projects_delivery_build_release_evidence():
             "forms": CAPITAL_PROJECTS_DELIVERY_FORM_KEYS,
             "wizards": CAPITAL_PROJECTS_DELIVERY_WIZARD_KEYS,
             "controls": CAPITAL_PROJECTS_DELIVERY_CONTROL_KEYS,
+            "workflows": workflow_contracts["workflows"],
+            "standalone_entrypoint": "capital_projects_delivery.standalone.CapitalProjectsDeliveryStandaloneApp",
         },
         "blocking_gaps": (),
     }
@@ -879,6 +983,7 @@ def capital_projects_delivery_runtime_capabilities():
         "register_schema_extension",
         "receive_event",
         "build_workbench_view",
+        "build_workflow_contracts",
         "build_schema_contract",
         "build_service_contract",
         "build_release_evidence",
@@ -975,6 +1080,7 @@ def capital_projects_delivery_runtime_smoke():
         {"tenant": "tenant-smoke"},
     )
     schema = capital_projects_delivery_build_schema_contract()
+    workflows = capital_projects_delivery_build_workflow_contracts()
     service = capital_projects_delivery_build_service_contract()
     release = capital_projects_delivery_build_release_evidence()
     app_contract = capital_projects_delivery_build_single_pbc_app_contract()
@@ -994,6 +1100,7 @@ def capital_projects_delivery_runtime_smoke():
         {"id": "approve_capital_project_gate", "ok": approved["ok"]},
         {"id": "capital_project_detail", "ok": detail["ok"]},
         {"id": "query_workbench", "ok": workbench["ok"] and workbench["summary"]["project_count"] == 1},
+        {"id": "build_workflow_contracts", "ok": workflows["ok"] and len(workflows["workflows"]) >= 4},
         {"id": "build_schema_contract", "ok": schema["ok"]},
         {"id": "build_service_contract", "ok": service["ok"]},
         {"id": "build_release_evidence", "ok": release["ok"]},

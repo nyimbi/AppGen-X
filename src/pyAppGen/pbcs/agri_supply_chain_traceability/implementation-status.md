@@ -1,45 +1,40 @@
-## Implementation Status
+# Agri Supply Chain Traceability Implementation Status
 
-### Completed In This Slice
+## Status
 
-- Implemented a package-local pre-shipment release gate for `agri_supply_chain_traceability`.
-- Added executable evidence-recording functions for:
-  - `farm_lot`
-  - `certification`
-  - `storage_event`
-  - `transport_leg`
-  - `recall_link`
-  - `provenance_proof`
-- Added a release-readiness assessment that evaluates:
-  - active farm-lot presence
-  - provenance completeness
-  - certification scope and validity on shipment date
-  - unresolved storage exceptions
-  - unresolved transport or seal-integrity exceptions
-  - active recall links
-  - pending hazards, lab results, and corrective actions
-- Wired the slice into:
-  - runtime capabilities
-  - service command contracts
-  - workbench UI metadata
-  - assistant and release-gate preview metadata
-  - release evidence artifacts
+Implemented a package-local standalone one-PBC traceability app slice around the
+release-readiness workflow.
 
-### Self Review Notes
+## Completed
 
-- Fixed an initial matching bug where the release gate did not treat the source `farm_lot` record itself as relevant evidence.
-- Kept the scope inside package-local state and AppGen-X event emission only.
-- Did not add dependencies or widen datastore assumptions beyond PostgreSQL, MySQL, and MariaDB.
+- Added executable standalone composition in `standalone.py` with bootstrap,
+  demo workspace loading, workbench rendering, and release snapshot support.
+- Replaced metadata-only service behavior with a stateful package-local service
+  that executes runtime commands and queries against owned agri traceability
+  state.
+- Expanded the API route catalog to cover runtime configuration, evidence
+  capture, release-gate execution, service-contract reads, release-evidence
+  reads, and legacy compatibility aliases.
+- Added UI shell metadata plus package-local forms, wizards, and reusable
+  controls for receiving, compliance, release review, and document intake.
+- Strengthened agent/document planning and model manifests so CRUD previews,
+  routes, permissions, and required fields point to real owned-table behavior.
+- Added release-evidence audits for source artifacts, implementation readiness,
+  and generation smoke.
+- Added focused package-local tests in `tests/test_contract.py` and
+  `tests/test_standalone.py`.
+- Refreshed `README.md`, `implementation-plan.md`, and `RELEASE_EVIDENCE.md`.
 
-### Verification
+## Verification Target
 
-- `./.venv/bin/python -m py_compile src/pyAppGen/pbcs/agri_supply_chain_traceability/runtime.py src/pyAppGen/pbcs/agri_supply_chain_traceability/services.py src/pyAppGen/pbcs/agri_supply_chain_traceability/ui.py src/pyAppGen/pbcs/agri_supply_chain_traceability/agent.py src/pyAppGen/pbcs/agri_supply_chain_traceability/release_gate.py tests/test_pbc_agri_supply_chain_traceability_implementation.py`
-- `./.venv/bin/python -m pytest -q src/pyAppGen/pbcs/agri_supply_chain_traceability/tests/test_contract.py tests/test_pbc_agri_supply_chain_traceability_implementation.py tests/test_pbc_agri_supply_chain_traceability_runtime.py`
-  - Result: `12 passed`
+This slice is considered complete when the package compiles, focused tests pass,
+release evidence validates, and standalone smoke passes in the isolated
+worktree.
 
-### Remaining Backlog Outside This Slice
+## Remaining Risks
 
-- Harvest-batch creation and split/merge lineage graphs.
-- Explicit custody-transfer event modeling.
-- Lab-result and corrective-action record types instead of candidate-payload declarations.
-- Recall command-center and graph-first operator workbench flows.
+- The slice uses synthetic package-local runtime state rather than a live web
+  server or database process.
+- The release gate remains centered on the currently owned evidence set; deeper
+  lineage features from `improve1.md` such as split/merge harvest graphs and
+  explicit custody transfers remain future backlog work.

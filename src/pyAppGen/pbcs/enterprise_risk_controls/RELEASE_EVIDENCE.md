@@ -1,12 +1,25 @@
-# Enterprise Risk and Controls Release Evidence
+# Enterprise Risk Controls Release Evidence
 
-The package directory `pbcs/enterprise_risk_controls` contains the executable PBC implementation, manifest, schema, migrations, models, services, API routes, AppGen-X events, idempotent handlers, UI workbench fragments, permissions, configuration, rules, parameters, seed data, agent skills, chatbot contracts, and tests.
+## Coverage
 
-## Evidence
+This package now exposes package-local evidence for:
 
-- Owned tables are under the `enterprise_risk_controls_` prefix and foreign datastore mutation is rejected.
-- Migrations create package-owned tables for PostgreSQL, MySQL, and MariaDB compatible SQL.
-- Services expose command/query contracts with owned datastore plus outbox transaction boundaries.
-- Events use the AppGen-X outbox, inbox, retry, idempotency, and dead-letter contract.
-- Agent skills support document instruction intake and governed datastore CRUD previews.
-- Release readiness is executable through `release_evidence.py` and package-local tests.
+- schema and owned-table boundaries,
+- service and API contracts,
+- AppGen-X events and idempotent handlers,
+- workbench UI, forms, wizards, and controls,
+- assistant preview guardrails,
+- configuration, rules, parameters, and permissions,
+- focused tests and package-local documentation.
+
+## Primary Evidence Sources
+
+- `release_evidence.py`
+- `tests/test_contract.py`
+- `tests/test_app_surface.py`
+- `runtime.py`
+- `services.py`, `routes.py`, `ui.py`, `agent.py`, `controls.py`
+
+## Release Gate Expectation
+
+The package is considered ready only when `validate_release_evidence()` passes, focused tests pass, and the package compiles without syntax errors.

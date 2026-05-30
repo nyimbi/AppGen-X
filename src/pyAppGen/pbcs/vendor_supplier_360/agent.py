@@ -1,5 +1,7 @@
 """Agent and chatbot assistance for the vendor_supplier_360 PBC."""
 PBC_KEY = 'vendor_supplier_360'
+from .app_surface import document_instruction_vendor_supplier_360_plan, single_pbc_vendor_supplier_360_app_contract
+
 OWNED_TABLES = ('vendor_supplier_360_supplier_profile', 'vendor_supplier_360_supplier_site', 'vendor_supplier_360_supplier_certification', 'vendor_supplier_360_supplier_bank_validation', 'vendor_supplier_360_supplier_risk_signal', 'vendor_supplier_360_supplier_esg_disclosure', 'vendor_supplier_360_supplier_scorecard', 'vendor_supplier_360_supplier_onboarding_case', 'vendor_supplier_360_appgen_outbox_event', 'vendor_supplier_360_appgen_inbox_event', 'vendor_supplier_360_appgen_dead_letter_event')
 
 
@@ -9,11 +11,12 @@ def agent_skill_manifest():
 
 
 def chatbot_interface_contract():
-    return {'ok': True, 'pbc': PBC_KEY, 'entrypoint': f'/assistant/pbc/{PBC_KEY}', 'single_agent_contribution': f'{PBC_KEY}_skills', 'capabilities': ('task_guidance','document_instruction_intake','governed_datastore_crud','mutation_preview'), 'side_effects': ()}
+    return {'ok': True, 'pbc': PBC_KEY, 'entrypoint': f'/assistant/pbc/{PBC_KEY}', 'single_agent_contribution': f'{PBC_KEY}_skills', 'capabilities': ('task_guidance','document_instruction_intake','governed_datastore_crud','mutation_preview','forms_wizards_and_controls'), 'side_effects': ()}
 
 
 def document_instruction_plan(document, instruction):
-    return {'ok': True, 'pbc': PBC_KEY, 'document_digest': str(abs(hash(document))), 'instruction': instruction, 'candidate_tables': OWNED_TABLES[:3], 'requires_human_confirmation': True, 'crud_preview': {'operation': 'create', 'event_contract': 'AppGen-X'}, 'side_effects': ()}
+    app_plan = document_instruction_vendor_supplier_360_plan(str(document or ''), str(instruction or ''))
+    return {'ok': True, 'pbc': PBC_KEY, 'document_digest': str(abs(hash(document))), 'instruction': instruction, 'candidate_tables': OWNED_TABLES[:3], 'proposed_operation': app_plan['proposed_operation'], 'target_table': app_plan['target_table'], 'supplier_plan': app_plan, 'requires_human_confirmation': True, 'crud_preview': {'operation': 'create', 'event_contract': 'AppGen-X'}, 'side_effects': ()}
 
 
 def datastore_crud_plan(action, table=None, payload=None):
@@ -26,8 +29,9 @@ def datastore_crud_plan(action, table=None, payload=None):
 
 def composed_agent_contribution():
     namespace = f'{PBC_KEY}_skills'
-    return {'ok': True, 'pbc': PBC_KEY, 'single_agent_skill_namespace': namespace, 'dsl_tools': (namespace, f'{PBC_KEY}_crud', f'{PBC_KEY}_documents'), 'side_effects': ()}
+    standalone_app = single_pbc_vendor_supplier_360_app_contract()
+    return {'ok': True, 'pbc': PBC_KEY, 'single_agent_skill_namespace': namespace, 'dsl_tools': (namespace, f'{PBC_KEY}_crud', f'{PBC_KEY}_documents'), 'standalone_app': standalone_app, 'side_effects': ()}
 
 
 def smoke_test():
-    return {'ok': agent_skill_manifest()['ok'] and chatbot_interface_contract()['ok'] and document_instruction_plan('doc','create')['ok'] and datastore_crud_plan('create')['ok'] and datastore_crud_plan('update', table='foreign_table')['ok'] is False and composed_agent_contribution()['ok'], 'side_effects': ()}
+    return {'ok': agent_skill_manifest()['ok'] and chatbot_interface_contract()['ok'] and document_instruction_plan('new bank account','validate supplier bank')['ok'] and datastore_crud_plan('create')['ok'] and datastore_crud_plan('update', table='foreign_table')['ok'] is False and document_instruction_plan('new bank account','validate supplier bank')['target_table'].startswith(f'{PBC_KEY}_') and composed_agent_contribution()['ok'] and composed_agent_contribution()['standalone_app']['ok'], 'side_effects': ()}

@@ -109,3 +109,11 @@ def smoke_test() -> dict:
         "side_effects": (),
     }
 
+
+
+from .repository import PersonnelIdentityRepository
+from .repository import personnel_identity_repository_contract
+from .standalone import PersonnelIdentityStandaloneApp
+from .standalone import standalone_app_manifest
+from .ui import personnel_identity_render_standalone_app
+from .ui import personnel_identity_standalone_app_contract

@@ -20,7 +20,6 @@ def chatbot_interface_contract() -> dict:
         "pbc": PBC_KEY,
         "entrypoint": f"/assistant/pbc/{PBC_KEY}",
         "single_agent_contribution": f"{PBC_KEY}_skills",
-        "stream_engine_picker_visible": False,
         "capabilities": (
             "task_guidance",
             "document_instruction_intake",
@@ -50,7 +49,6 @@ def composed_agent_contribution() -> dict:
         "single_agent_skill_namespace": namespace,
         "dsl_tools": (namespace, f"{PBC_KEY}_crud", f"{PBC_KEY}_documents"),
         "owned_tables": BUSINESS_TABLES,
-        "stream_engine_picker_visible": False,
         "side_effects": (),
     }
 

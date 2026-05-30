@@ -1,15 +1,68 @@
-from .runtime import student_financial_aid_build_release_evidence
+"""Release evidence for the student_financial_aid PBC."""
+from __future__ import annotations
 
-def build_release_evidence():
-    return student_financial_aid_build_release_evidence()
+from .slice_app import (
+    PBC_KEY,
+    build_release_evidence as _build_release_evidence,
+    pbc_generation_smoke_audit,
+    pbc_implementation_release_audit,
+    pbc_source_artifact_contract,
+)
 
-def release_readiness_manifest():
+
+def build_release_evidence() -> dict:
+    return _build_release_evidence()
+
+
+def student_financial_aid_build_release_evidence() -> dict:
+    return build_release_evidence()
+
+
+def release_readiness_manifest() -> dict:
     evidence = build_release_evidence()
-    return {'ok': evidence['ok'], 'pbc': evidence['pbc'], 'sections': ('schema','services','events','handlers','ui','agent','governance'), 'blocking_gaps': (), 'boundary_gaps': (), 'evidence': evidence, 'side_effects': ()}
+    return {
+        "ok": evidence["ok"],
+        "pbc": PBC_KEY,
+        "sections": (
+            "schema",
+            "service",
+            "api",
+            "events",
+            "handlers",
+            "ui",
+            "agent",
+            "governance",
+            "tests",
+            "release_audits",
+        ),
+        "checks": evidence["checks"],
+        "blocking_gaps": tuple(evidence.get("blocking_gaps", ())),
+        "boundary_gaps": tuple(evidence.get("boundary_gaps", ())),
+        "audits": evidence["audits"],
+        "side_effects": (),
+    }
 
-def validate_release_evidence():
-    manifest = release_readiness_manifest()
-    return {'ok': manifest['ok'], 'pbc': manifest['pbc'], 'missing_sections': (), 'failed_checks': (), 'boundary_gaps': (), 'side_effects': ()}
 
-def smoke_test():
-    return {'ok': release_readiness_manifest()['ok'] and validate_release_evidence()['ok'], 'side_effects': ()}
+def validate_release_evidence() -> dict:
+    evidence = build_release_evidence()
+    failed = tuple(check for check in evidence["checks"] if not check["ok"])
+    return {
+        "ok": evidence["ok"] and not failed and not evidence["boundary_gaps"],
+        "missing_sections": (),
+        "failed_checks": failed,
+        "boundary_gaps": evidence["boundary_gaps"],
+        "blocking_gaps": evidence["blocking_gaps"],
+        "side_effects": (),
+    }
+
+
+def smoke_test() -> dict:
+    source = pbc_source_artifact_contract()
+    implementation = pbc_implementation_release_audit()
+    generation = pbc_generation_smoke_audit()
+    validation = validate_release_evidence()
+    return {
+        "ok": source["ok"] and implementation["ok"] and generation["ok"] and validation["ok"],
+        "validation": validation,
+        "side_effects": (),
+    }

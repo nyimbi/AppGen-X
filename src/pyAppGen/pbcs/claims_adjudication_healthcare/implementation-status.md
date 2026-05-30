@@ -1,21 +1,20 @@
-# Implementation Status
+# Healthcare Claims Adjudication Implementation Status
 
-## Complete
+## Status
 
-- Replaced scaffolded generic runtime behavior with a package-local executable adjudication slice.
-- Added owned dataclasses and schema metadata for claims, claim lines, coding reviews, benefit rules, denials, appeals, payment-integrity cases, governance records, document instructions, and AppGen-X event tables.
-- Implemented executable claim intake, duplicate replay detection, line adjudication, coding review generation, payment-integrity escalation, denial creation, appeal overturn flow, and workbench query summaries.
-- Reworked services, routes, UI metadata, handlers, release evidence, seed data, permissions, and capability assurance to reflect the executable slice.
-- Added focused package-local tests for adjudication, stale projection handling, denial/appeal flow, route dispatch, and agent document-instruction CRUD support.
+Standalone PBC implementation completed on branch `pbc/claims-adjudication-healthcare-standalone`.
 
-## Validation Status
+## Completed Work
 
-- Import/syntax validation: passed via `python3 -m compileall`.
-- Focused package tests: passed.
-- Existing repo-level runtime test for this PBC: passed.
+- Added `standalone.py` with improve1-mapped forms, wizards, controls, declared projection dependencies, executable adjudication helpers, route contracts, DSL exposure, and a full simulation.
+- Wired standalone evidence into `__init__.py`, `ui.py`, `routes.py`, `agent.py`, and `release_evidence.py`.
+- Added `tests/test_standalone_app.py` covering improve1 surface coverage, owned tables, eventing, adjudication helpers, boundary guards, routes, release evidence, agent contribution, and package smoke.
+- Refreshed README, implementation plan, and this status file inside the PBC directory.
 
-## Remaining Gaps
+## Boundary
 
-- Persistence is still in-memory; migration DDL documents the owned schema but is not executed here.
-- No real external projections are fetched; eligibility/provider freshness is represented by supplied evidence fields.
-- UI outputs are metadata/workbench contracts, not rendered frontend components.
+The PBC owns claims, claim lines, coding reviews, benefit rules, denials, appeals, payment integrity cases, policy/rule/configuration/control/governed-model records, and AppGen-X event tables. It does not own enrollment, provider, authorization, accumulator, fee schedule, pharmacy, clinical EHR, or audit source-of-truth tables.
+
+## Known Gaps
+
+The slice is side-effect-free and package-local; it does not exercise live clearinghouse feeds, real payer pricing systems, or live PostgreSQL/MySQL/MariaDB instances.

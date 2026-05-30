@@ -58,7 +58,7 @@ PBC_MANIFEST = {'advanced_capabilities': ('lending_origination_servicing_event_s
  'datastore_backend': 'postgresql',
  'description': 'Loan applications, underwriting, offers, disbursement, repayment, servicing, '
                 'collections, and covenant monitoring',
- 'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md'),
+ 'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md', 'README.md', 'implementation-plan.md', 'implementation-status.md'),
  'emits': ('LendingOriginationServicingCreated',
            'LendingOriginationServicingUpdated',
            'LendingOriginationServicingApproved',
@@ -104,10 +104,17 @@ PBC_MANIFEST = {'advanced_capabilities': ('lending_origination_servicing_event_s
             'lending_origination_servicing_control_assertion',
             'lending_origination_servicing_governed_model'),
  'template': 'reporting',
- 'tests': ('tests/test_contract.py',),
+ 'tests': ('tests/test_contract.py', 'tests/test_standalone.py'),
  'ui_fragments': ('LendingOriginationServicingWorkbench',
                   'LendingOriginationServicingDetail',
                   'LendingOriginationServicingAssistantPanel'),
  'version': '1.0.0',
  'workflows': ('lending_origination_servicing_create_loan_application_workflow',
-               'lending_origination_servicing_record_borrower_profile_workflow')}
+               'lending_origination_servicing_record_borrower_profile_workflow',
+               'lending_origination_servicing_application_to_decision_workflow',
+               'lending_origination_servicing_collateral_workflow',
+               'lending_origination_servicing_offer_to_funding_workflow',
+               'lending_origination_servicing_boarding_schedule_workflow',
+               'lending_origination_servicing_payment_payoff_workflow',
+               'lending_origination_servicing_collections_workout_workflow',
+               'lending_origination_servicing_compliance_covenant_workflow')}

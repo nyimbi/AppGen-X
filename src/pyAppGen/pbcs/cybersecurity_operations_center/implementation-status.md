@@ -18,7 +18,8 @@
 - service contracts and route dispatch for the package-local app surface
 - UI/workbench contracts with forms, wizards, controls, supervisor lane, and evidence-review lane
 - governed agent/document planning and owned-table-only CRUD preview
-- focused contract and workflow tests
+- standalone one-PBC app manifest, bootstrap, demo workspace, and render helpers
+- focused contract, workflow, and standalone tests
 - package-local docs:
   - `README.md`
   - `implementation-plan.md`

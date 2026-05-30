@@ -1408,9 +1408,9 @@ def agent_skill_manifest() -> dict:
             {
                 "name": f"{PBC_KEY}_read_records",
                 "scope": PBC_KEY,
-                "description": "Read owned contract lifecycle records",
-                "requires_confirmation_for_mutation": False,
-                "uses_appgen_event_contract": False,
+                "description": "Read owned contract lifecycle records with auditable assistant context",
+                "requires_confirmation_for_mutation": True,
+                "uses_appgen_event_contract": True,
                 "target_table": "contract_lifecycle_contract_record",
             },
             {
@@ -2704,6 +2704,9 @@ def runtime_capabilities() -> dict:
             "build_schema_contract",
             "build_service_contract",
             "build_release_evidence",
+            "parse_document_instruction",
+            "command_contract_record",
+            "run_advanced_assessment",
         ),
         "capabilities": ADVANCED_CAPABILITIES,
         "standard_features": (

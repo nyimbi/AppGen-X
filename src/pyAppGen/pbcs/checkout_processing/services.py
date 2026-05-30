@@ -313,3 +313,150 @@ def smoke_test() -> dict:
         "result": result,
         "side_effects": (),
     }
+
+
+
+# Standalone one-PBC application service surface. These operations delegate to the
+# package-local repository and produce durable forms, workflow runs, controls, read
+# models, and agent sessions for a checkout-only composed app.
+STANDALONE_OPERATION_CONTRACTS = (
+    {
+        "operation": "seed_demo_workspace",
+        "operation_kind": "command",
+        "method": "POST",
+        "path": "/app/checkout-processing/demo-workspace",
+        "permission": "checkout_processing.configure",
+        "owned_tables": (
+            "checkout_processing_runtime_state",
+            "checkout_processing_form_submission",
+            "checkout_processing_workflow_run",
+            "checkout_processing_control_execution",
+            "checkout_processing_agent_session",
+            "checkout_processing_workbench_read_model",
+        ),
+        "read_tables": (),
+        "emitted_event": "CheckoutCompleted",
+    },
+    {
+        "operation": "build_workbench",
+        "operation_kind": "query",
+        "method": "GET",
+        "path": "/app/checkout-processing/workbench",
+        "permission": "checkout_processing.audit",
+        "owned_tables": (),
+        "read_tables": ("checkout_processing_workbench_read_model",),
+        "emitted_event": None,
+    },
+    {
+        "operation": "create_cart",
+        "operation_kind": "command",
+        "method": "POST",
+        "path": "/app/checkout-processing/carts",
+        "permission": "checkout_processing.cart",
+        "owned_tables": ("checkout_processing_runtime_state", "checkout_processing_form_submission"),
+        "read_tables": (),
+        "emitted_event": "CartCreated",
+    },
+    {
+        "operation": "open_checkout_session",
+        "operation_kind": "command",
+        "method": "POST",
+        "path": "/app/checkout-processing/sessions",
+        "permission": "checkout_processing.checkout",
+        "owned_tables": ("checkout_processing_runtime_state", "checkout_processing_workflow_run"),
+        "read_tables": (),
+        "emitted_event": "CheckoutStarted",
+    },
+    {
+        "operation": "complete_checkout",
+        "operation_kind": "command",
+        "method": "POST",
+        "path": "/app/checkout-processing/checkouts/complete",
+        "permission": "checkout_processing.checkout",
+        "owned_tables": ("checkout_processing_runtime_state", "checkout_processing_workflow_run"),
+        "read_tables": (),
+        "emitted_event": "CheckoutCompleted",
+    },
+    {
+        "operation": "generate_checkout_proof",
+        "operation_kind": "command",
+        "method": "POST",
+        "path": "/app/checkout-processing/proofs",
+        "permission": "checkout_processing.audit",
+        "owned_tables": ("checkout_processing_control_execution",),
+        "read_tables": (),
+        "emitted_event": "CheckoutProofGenerated",
+    },
+    {
+        "operation": "run_agent_skill",
+        "operation_kind": "command",
+        "method": "POST",
+        "path": "/app/checkout-processing/assistant/sessions",
+        "permission": "checkout_processing.audit",
+        "owned_tables": ("checkout_processing_agent_session",),
+        "read_tables": (),
+        "emitted_event": "CheckoutAssistantSessionRecorded",
+    },
+)
+
+
+def standalone_service_operation_contracts() -> dict:
+    commands = tuple(item for item in STANDALONE_OPERATION_CONTRACTS if item["operation_kind"] == "command")
+    queries = tuple(item for item in STANDALONE_OPERATION_CONTRACTS if item["operation_kind"] == "query")
+    all_tables = tuple(table for item in STANDALONE_OPERATION_CONTRACTS for table in item["owned_tables"] + item["read_tables"])
+    return {
+        "format": "appgen.checkout-processing-standalone-services.v1",
+        "ok": bool(STANDALONE_OPERATION_CONTRACTS)
+        and all(table.startswith("checkout_processing_") for table in all_tables)
+        and all(item["emitted_event"] for item in commands)
+        and all(item["emitted_event"] is None for item in queries),
+        "pbc": "checkout_processing",
+        "service_class": "CheckoutProcessingStandaloneService",
+        "operations": tuple(item["operation"] for item in STANDALONE_OPERATION_CONTRACTS),
+        "command_operations": tuple(item["operation"] for item in commands),
+        "query_operations": tuple(item["operation"] for item in queries),
+        "contracts": STANDALONE_OPERATION_CONTRACTS,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "side_effects": (),
+    }
+
+
+class CheckoutProcessingStandaloneService:
+    """Stateful service facade for a standalone checkout application."""
+
+    def __init__(self, repository=None, *, database_path=":memory:"):
+        if repository is None:
+            from .repository import CheckoutProcessingStandaloneRepository
+
+            repository = CheckoutProcessingStandaloneRepository(database_path=database_path)
+        self.repository = repository
+
+    def close(self):
+        close = getattr(self.repository, "close", None)
+        if callable(close):
+            close()
+
+    def seed_demo_workspace(self, tenant="tenant_demo") -> dict:
+        return self.repository.seed_demo_workspace(tenant=tenant)
+
+    def build_workbench(self, tenant="tenant_demo") -> dict:
+        return self.repository.build_workbench(tenant)
+
+    def create_cart(self, payload: dict | None = None, *, tenant="tenant_demo") -> dict:
+        supplied = dict(payload or {})
+        return self.repository.create_cart(supplied.get("tenant", tenant), supplied)
+
+    def open_checkout_session(self, payload: dict | None = None, *, tenant="tenant_demo") -> dict:
+        supplied = dict(payload or {})
+        return self.repository.open_checkout_session(supplied.get("tenant", tenant), supplied)
+
+    def complete_checkout(self, session_id: str, *, tenant="tenant_demo") -> dict:
+        return self.repository.complete_checkout(tenant, session_id)
+
+    def generate_checkout_proof(self, session_id: str, disclosure=("session_id", "order_id", "status"), *, tenant="tenant_demo") -> dict:
+        return self.repository.generate_checkout_proof(tenant, session_id, tuple(disclosure))
+
+    def run_agent_skill(self, payload: dict | None = None, *, skill="checkout_processing.document_instruction_intake", tenant="tenant_demo") -> dict:
+        supplied = dict(payload or {})
+        return self.repository.run_agent_skill(supplied.get("tenant", tenant), supplied.get("skill", skill), supplied)

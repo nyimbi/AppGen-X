@@ -1,29 +1,20 @@
-# Warehouse Management Core Release Evidence
+# WMS Core Release Evidence
 
-Directory: `pbcs/wms_core`
+Package path: `src/pyAppGen/pbcs/wms_core`
 
-Generated checks:
-- stable_manifest
-- source_package_directory
-- owned_schema_only
-- migration_artifact
-- model_artifact
-- domain_capability_depth
-- workflow_coverage
-- policy_control_coverage
-- automation_loop_coverage
-- analytics_coverage
-- advanced_domain_not_required
-- service_commands
-- api_routes
-- event_outbox_inbox
-- typed_emitted_events
-- typed_consumed_events
-- idempotent_handlers
-- retry_dead_letter_policy
-- ui_fragments
-- permissions
-- configuration_schema
-- seed_data
-- self_registration_metadata
-- contract_tests
+## Summary
+
+`wms_core` now ships as a standalone warehouse-execution PBC with package-local repository bindings, forms/wizards/controls, a one-PBC standalone app, and focused smoke coverage for bootstrap, workflow execution, release evidence, and read-model projection.
+
+## Package evidence
+
+- `repository.py` binds operational forms to WMS-owned tables only.
+- `standalone.py` bootstraps configuration, parameters, rules, warehouse masters, inbound events, and one inbound-to-ship workflow.
+- `ui.py` exposes domain-specific forms, wizards, controls, navigation, and assistant namespace wiring.
+- `release_evidence.py` now verifies artifacts, agent surface, repository surface, UI composition, and standalone smoke in addition to the runtime release checks.
+
+## Verification intent
+
+- Compile package-local Python modules for `wms_core`.
+- Run focused package tests including standalone coverage.
+- Run relevant `pyAppGen.pbc` audits for `wms_core`.

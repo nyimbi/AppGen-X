@@ -29,7 +29,7 @@ def validate_seed_data():
     )
     plan = seed_plan()
     return {
-        'ok': plan['ok'] and not invalid_tables and not invalid_rows,
+        'ok': plan['ok'] and not invalid_tables and not invalid_rows and standalone_seed_bundle()['ok'],
         'pbc': PBC_KEY,
         'plan': plan,
         'invalid_tables': invalid_tables,
@@ -41,3 +41,14 @@ def validate_seed_data():
 def smoke_test():
     """Exercise seed validation without writing rows."""
     return validate_seed_data()
+
+
+def standalone_seed_bundle():
+    """Return domain-rich seed rows for a one-PBC service desk app."""
+    rows = (
+        {'table': 'service_ticketing_service_queue', 'rows': ({'queue_id': 'queue_enterprise_support', 'name': 'Enterprise Support', 'assignment_mode': 'skill_balanced', 'status': 'active'},)},
+        {'table': 'service_ticketing_sla_policy', 'rows': ({'sla_policy_id': 'sla_p1', 'priority': 'P1', 'first_response_minutes': 15, 'resolution_target_hours': 4, 'status': 'active'},)},
+        {'table': 'service_ticketing_support_ticket', 'rows': ({'ticket_id': 'ticket_seed_001', 'customer_id': 'cust_001', 'priority': 'P2', 'queue': 'queue_enterprise_support', 'status': 'open'},)},
+        {'table': 'service_ticketing_service_rule', 'rows': ({'rule_id': 'rule_assignment_skill_balance', 'scope': 'assignment', 'status': 'active'},)},
+    )
+    return {'ok': True, 'pbc': PBC_KEY, 'rows': rows, 'side_effects': ()}

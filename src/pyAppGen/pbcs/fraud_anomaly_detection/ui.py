@@ -6,6 +6,7 @@ from .runtime import FRAUD_ANOMALY_DETECTION_ALLOWED_DATABASE_BACKENDS
 from .runtime import FRAUD_ANOMALY_DETECTION_OWNED_TABLES
 from .runtime import FRAUD_ANOMALY_DETECTION_REQUIRED_EVENT_TOPIC
 from .runtime import FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES
+from .app_surface import single_pbc_fraud_anomaly_detection_app_contract
 
 
 FRAUD_ANOMALY_DETECTION_UI_FRAGMENT_KEYS = (
@@ -24,6 +25,27 @@ FRAUD_ANOMALY_DETECTION_UI_FRAGMENT_KEYS = (
     "PolicyChangeMonitor",
     "RiskDeadLetterQueue",
 )
+
+
+def fraud_anomaly_detection_forms_contract() -> dict:
+    """Return one-PBC app forms for fraud operations."""
+    from .app_surface import fraud_anomaly_detection_forms_contract as _forms
+
+    return _forms()
+
+
+def fraud_anomaly_detection_wizards_contract() -> dict:
+    """Return one-PBC app wizards for fraud operations."""
+    from .app_surface import fraud_anomaly_detection_wizards_contract as _wizards
+
+    return _wizards()
+
+
+def fraud_anomaly_detection_controls_contract() -> dict:
+    """Return one-PBC app controls for fraud operations."""
+    from .app_surface import fraud_anomaly_detection_controls_contract as _controls
+
+    return _controls()
 
 
 def fraud_anomaly_detection_ui_contract() -> dict:
@@ -85,6 +107,10 @@ def fraud_anomaly_detection_ui_contract() -> dict:
             "event_contract": "AppGen-X",
             "stream_engine_picker_visible": False,
         },
+        "forms": fraud_anomaly_detection_forms_contract()["forms"],
+        "wizards": fraud_anomaly_detection_wizards_contract()["wizards"],
+        "controls": fraud_anomaly_detection_controls_contract()["controls"],
+        "single_pbc_app": single_pbc_fraud_anomaly_detection_app_contract(),
         "event_surfaces": {
             "emits": ("FraudRiskScored", "RiskCaseOpened"),
             "consumes": ("CheckoutCompleted", "PaymentCaptured", "AccessPolicyChanged"),
@@ -134,6 +160,10 @@ def fraud_anomaly_detection_render_workbench(
         "event_outbox_count": len(state.get("outbox", ())),
         "dead_letter_count": len(state.get("dead_letter", ())),
         "binding_evidence": view["binding_evidence"],
+        "forms": contract["forms"],
+        "wizards": contract["wizards"],
+        "controls": contract["controls"],
+        "single_pbc_app": contract["single_pbc_app"],
     }
 
 
@@ -214,6 +244,7 @@ def smoke_test():
         "event_surfaces": event_surfaces,
         "binding_evidence": binding_evidence,
     }
+    standalone_app = contract.get("single_pbc_app", {})
     return {
         "format": "appgen.pbc-ui-smoke-test.v1",
         "ok": contract.get("ok") is True
@@ -222,6 +253,11 @@ def smoke_test():
         and bool(contract.get("routes"))
         and bool(cards)
         and bool(contract.get("action_permissions"))
+        and bool(contract.get("forms"))
+        and bool(contract.get("wizards"))
+        and bool(contract.get("controls"))
+        and standalone_app.get("ok") is True
+        and standalone_app.get("database_backed") is True
         and bool(configuration_editor)
         and configuration_editor.get("stream_engine_picker_visible", configuration_editor.get("user_facing_stream_engine_picker", False)) is False
         and bool(contract.get("parameter_editor"))

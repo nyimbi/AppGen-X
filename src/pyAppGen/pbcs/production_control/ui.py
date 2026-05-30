@@ -267,3 +267,46 @@ def smoke_test():
         "cards": cards,
         "side_effects": (),
     }
+
+
+
+def production_control_form_contracts() -> dict:
+    contracts=(
+        {'key':'ProductionConfigurationForm','operation':'configure_runtime','table':'production_control_production_configuration','fields':PRODUCTION_CONTROL_SUPPORTED_CONFIGURATION_FIELDS,'permission':'production_control.configure','keywords':('configure','site','work center')},
+        {'key':'WorkCenterForm','operation':'register_work_center','table':'production_control_work_center','fields':('work_center_id','tenant','site','name','work_center_type','capacity_hours','efficiency','status','identity'),'permission':'production_control.configure','keywords':('work center','asset','capacity')},
+        {'key':'ProductionOrderForm','operation':'create_production_order','table':'production_control_production_order','fields':('order_id','tenant','site','item','quantity','route','priority','planned_order_id'),'permission':'production_control.execute','keywords':('order','planned order','route')},
+        {'key':'RoutingStepForm','operation':'define_routing_step','table':'production_control_routing_step','fields':('step_id','tenant','order_id','sequence','work_center_id','standard_minutes','setup_minutes','quality_gate'),'permission':'production_control.execute','keywords':('routing','operation','quality gate')},
+        {'key':'ExecutionRecordForm','operation':'confirm_operation','table':'production_control_operation_confirmation','fields':('step_id','good_qty','scrap_qty','labor_hours','machine_hours','confirmed_by'),'permission':'production_control.execute','keywords':('confirm','labor','machine','scrap')},
+        {'key':'DowntimeForm','operation':'record_downtime','table':'production_control_downtime_event','fields':('downtime_id','tenant','work_center_id','order_id','reason','minutes'),'permission':'production_control.execute','keywords':('downtime','maintenance','material')},
+    )
+    return {'format':'appgen.production-control-standalone-forms.v1','ok':all(i['table'].startswith('production_control_') for i in contracts),'pbc':'production_control','contracts':contracts,'side_effects':()}
+
+def production_control_wizard_contracts() -> dict:
+    contracts=(
+        {'key':'ShopFloorPacketIntakeWizard','steps':('parse_packet','create_order','define_routing','preview_execution_plan'),'forms':('ProductionOrderForm','RoutingStepForm'),'keywords':('document','packet','shop floor','instruction')},
+        {'key':'ScheduleAndDispatchWizard','steps':('check_capacity','schedule_order','publish_dispatch_list'),'forms':('WorkCenterForm','ProductionOrderForm'),'keywords':('schedule','dispatch','capacity')},
+        {'key':'OperationExecutionWizard','steps':('start_operation','record_material','book_time','record_quality','confirm_operation'),'forms':('ExecutionRecordForm','DowntimeForm'),'keywords':('operation','execute','confirm','time')},
+        {'key':'ProductionCompletionWizard','steps':('complete_order','run_controls','generate_completion_proof','publish_appgen_event'),'forms':('ExecutionRecordForm',),'keywords':('complete','proof','receipt')},
+    )
+    return {'format':'appgen.production-control-standalone-wizards.v1','ok':all(i['steps'] for i in contracts),'pbc':'production_control','contracts':contracts,'side_effects':()}
+
+def production_control_control_catalog() -> dict:
+    contracts=(
+        {'key':'production_backend_event_contract','operation':'run_control_tests','table':'production_control_production_audit_entry','permission':'production_control.audit'},
+        {'key':'production_completion_control','operation':'run_control_tests','table':'production_control_completion_proof','permission':'production_control.audit'},
+        {'key':'completion_proof_control','operation':'generate_completion_proof','table':'production_control_completion_proof','permission':'production_control.audit'},
+    )
+    return {'format':'appgen.production-control-standalone-controls.v1','ok':all(i['table'].startswith('production_control_') for i in contracts),'pbc':'production_control','contracts':contracts,'side_effects':()}
+
+def production_control_standalone_workbench_blueprint() -> dict:
+    forms=production_control_form_contracts(); wizards=production_control_wizard_contracts(); controls=production_control_control_catalog()
+    return {'format':'appgen.production-control-standalone-workbench.v1','ok':forms['ok'] and wizards['ok'] and controls['ok'],'pbc':'production_control','forms':forms['contracts'],'wizards':wizards['contracts'],'controls':controls['contracts'],'panels':production_control_ui_contract()['panels'],'side_effects':()}
+
+def production_control_render_standalone_workbench(workbench: dict) -> dict:
+    bp=production_control_standalone_workbench_blueprint(); cards=(
+        {'key':'work_centers','value':workbench.get('work_center_count',0),'fragment':'WorkCenterConsole'},
+        {'key':'orders','value':workbench.get('order_count',workbench.get('production_order_count',0)),'fragment':'ProductionOrderBoard'},
+        {'key':'completed_orders','value':workbench.get('completed_order_count',0),'fragment':'OeeDashboard'},
+        {'key':'operations','value':workbench.get('operation_count',0),'fragment':'RoutingEditor'},
+        {'key':'downtime_minutes','value':workbench.get('downtime_minutes',0),'fragment':'DowntimeConsole'},)
+    return {'format':'appgen.production-control-standalone-render.v1','ok':bp['ok'] and bool(cards),'pbc':'production_control','tenant':workbench.get('tenant'),'cards':cards,'forms':tuple(i['key'] for i in bp['forms']),'wizards':tuple(i['key'] for i in bp['wizards']),'controls':tuple(i['key'] for i in bp['controls']),'side_effects':()}

@@ -1,15 +1,27 @@
-from .runtime import real_estate_property_management_build_release_evidence
+"""Release evidence wrappers for real estate property management."""
+from .standalone import build_release_evidence as _build_release_evidence
+from .standalone import release_readiness_manifest as _release_readiness_manifest
+from .standalone import validate_release_evidence as _validate_release_evidence
+
 
 def build_release_evidence():
-    return real_estate_property_management_build_release_evidence()
+    return _build_release_evidence()
+
 
 def release_readiness_manifest():
-    evidence = build_release_evidence()
-    return {'ok': evidence['ok'], 'pbc': evidence['pbc'], 'sections': ('schema','services','events','handlers','ui','agent','governance'), 'blocking_gaps': (), 'boundary_gaps': (), 'evidence': evidence, 'side_effects': ()}
+    manifest = _release_readiness_manifest()
+    manifest.setdefault('blocking_gaps', ())
+    manifest.setdefault('boundary_gaps', ())
+    return manifest
+
 
 def validate_release_evidence():
-    manifest = release_readiness_manifest()
-    return {'ok': manifest['ok'], 'pbc': manifest['pbc'], 'missing_sections': (), 'failed_checks': (), 'boundary_gaps': (), 'side_effects': ()}
+    validation = _validate_release_evidence()
+    validation.setdefault('blocking_gaps', ())
+    validation.setdefault('boundary_gaps', ())
+    return validation
+
 
 def smoke_test():
-    return {'ok': release_readiness_manifest()['ok'] and validate_release_evidence()['ok'], 'side_effects': ()}
+    validation = validate_release_evidence()
+    return {'ok': validation['ok'], 'validation': validation, 'blocking_gaps': validation.get('blocking_gaps', ()), 'boundary_gaps': validation.get('boundary_gaps', ()), 'side_effects': ()}

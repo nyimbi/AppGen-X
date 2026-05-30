@@ -52,3 +52,17 @@ def grant_fund_accounting_render_workbench(state=None):
         'table_browsers': full['table_browsers'],
         'agent_tools': full['agent_tools'],
     }
+
+from .forms import form_catalog
+from .wizards import wizard_catalog
+from .controls import control_catalog
+
+def grant_fund_accounting_standalone_ui_contract():
+    ui = grant_fund_accounting_ui_contract()
+    return {'ok': ui['ok'] and len(form_catalog()['forms']) >= 10 and len(wizard_catalog()['wizards']) >= 6 and len(control_catalog()['controls']) >= 11, 'pbc': PBC_KEY, 'fragments': ui['fragments'], 'forms': form_catalog()['forms'], 'wizards': wizard_catalog()['wizards'], 'controls': control_catalog()['controls'], 'navigation_sections': tuple(dict.fromkeys(tuple(ui.get('navigation_sections', ())) + ('award_intake','cost_allowability','drawdowns','match','reports','closeout'))), 'side_effects': ()}
+
+_BASE_GRANT_FUND_ACCOUNTING_SMOKE_TEST = smoke_test
+def smoke_test():
+    base = _BASE_GRANT_FUND_ACCOUNTING_SMOKE_TEST()
+    standalone = grant_fund_accounting_standalone_ui_contract()
+    return {'ok': base['ok'] and standalone['ok'], 'base': base, 'standalone': standalone, 'side_effects': ()}

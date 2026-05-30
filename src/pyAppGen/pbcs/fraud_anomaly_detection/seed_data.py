@@ -38,6 +38,21 @@ def validate_seed_data():
     }
 
 
+def standalone_seed_bundle():
+    """Return seed rows that make a one-PBC fraud operations app immediately usable."""
+    rows = (
+        {"table": "fraud_anomaly_detection_fraud_rule", "rows": ({"code": "HIGH-RISK-CHECKOUT", "status": "active", "risk_domain": "checkout"},)},
+        {"table": "fraud_anomaly_detection_fraud_parameter", "rows": ({"code": "CASE-OPEN-THRESHOLD", "status": "active", "value": "0.82"},)},
+        {"table": "fraud_anomaly_detection_fraud_configuration", "rows": ({"code": "DEFAULT-SCORING", "status": "active", "database_backend": "postgresql", "event_contract": "AppGen-X"},)},
+        {"table": "fraud_anomaly_detection_behavior_baseline", "rows": ({"code": "NEW-SUBJECT-BASELINE", "status": "active", "metric": "checkout_velocity"},)},
+        {"table": "fraud_anomaly_detection_analyst_queue_item", "rows": ({"code": "DEFAULT-QUEUE", "status": "active", "queue": "fraud_review"},)},
+    )
+    invalid_tables = tuple(item["table"] for item in rows if not item["table"].startswith(f"{PBC_KEY}_"))
+    return {"ok": bool(rows) and not invalid_tables, "pbc": PBC_KEY, "rows": rows, "invalid_tables": invalid_tables, "side_effects": ()}
+
+
 def smoke_test():
     """Exercise seed validation without writing rows."""
-    return validate_seed_data()
+    validation = validate_seed_data()
+    standalone = standalone_seed_bundle()
+    return {**validation, "ok": validation["ok"] and standalone["ok"], "standalone_seed_bundle": standalone}

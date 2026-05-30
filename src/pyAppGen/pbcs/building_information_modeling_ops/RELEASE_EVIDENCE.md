@@ -1,6 +1,6 @@
 # Release Evidence - Building Information Modeling Operations
 
-This package now ships release evidence for the implemented federation-governance slice at `src/pyAppGen/pbcs/building_information_modeling_ops`.
+This package ships release evidence for the implemented federation-governance standalone slice at `src/pyAppGen/pbcs/building_information_modeling_ops`.
 
 ## Evidence Produced
 
@@ -9,16 +9,13 @@ This package now ships release evidence for the implemented federation-governanc
 - Forms for coordinate baselines, model package registration, and federation assembly.
 - Wizards for federation setup and release readiness.
 - Controls for coordinate alignment, issue-purpose publish gates, approval lineage, and owned-table boundary enforcement.
-- Workbench views for federation operations, blocked package triage, and release evidence review.
+- Standalone app bootstrap and demo workbench rendering through `standalone.py`.
+- Assistant document-instruction and datastore CRUD planning before governed mutation.
 - Release evidence bundles that include contributor checksums, approval states, coordinate basis, and lineage hash.
 
 ## Validation Summary
 
-- Package-local tests pass: `13/13`.
+- Package-local tests pass: `16/16`.
 - Package compile pass succeeds.
-- Single-PBC app smoke confirms:
-  - `usable_as_one_pbc_app = True`
-  - `forms = 3`
-  - `wizards = 2`
-  - `controls = 4`
-  - `smoke_ok = True`
+- Standalone smoke confirms `active_federations = 1`, `doc_plan_ok = True`, and `crud_plan_ok = True`.
+- Package-local audit pass succeeds across 12 smoke contracts: package, agent, capability, config, events, handlers, permissions, release, routes, runtime, standalone, and UI.

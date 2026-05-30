@@ -185,16 +185,7 @@ def customer_success_management_runtime_capabilities() -> dict:
         **runtime,
         "ok": runtime["ok"] and smoke["ok"],
         "owned_tables": CUSTOMER_SUCCESS_MANAGEMENT_OWNED_TABLES,
-        "operations": tuple(
-            dict.fromkeys(
-                tuple(build_service_contract()["command_methods"] + build_service_contract()["query_methods"])
-                + (
-                    "build_schema_contract",
-                    "build_service_contract",
-                    "build_release_evidence",
-                )
-            )
-        ),
+        "operations": tuple(build_service_contract()["command_methods"] + build_service_contract()["query_methods"]),
         "smoke": smoke,
         "side_effects": (),
     }

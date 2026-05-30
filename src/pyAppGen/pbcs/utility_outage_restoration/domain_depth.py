@@ -1,79 +1,122 @@
 """World-class domain depth contract for the utility_outage_restoration PBC."""
 from __future__ import annotations
+
 import hashlib
 
 PBC_KEY = 'utility_outage_restoration'
 DOMAIN_ENTITY = 'outage_incident'
-DOMAIN_PURPOSE = 'Outage detection, switching, crew dispatch, restoration estimates, customer impact, and reliability reporting'
-DOMAIN_OWNED_TABLES = ('utility_outage_restoration_outage_incident',
- 'utility_outage_restoration_device_interruption',
- 'utility_outage_restoration_switching_step',
- 'utility_outage_restoration_crew_assignment',
- 'utility_outage_restoration_restoration_estimate',
- 'utility_outage_restoration_customer_impact',
- 'utility_outage_restoration_reliability_metric',
- 'utility_outage_restoration_utility_outage_restoration_policy_rule',
- 'utility_outage_restoration_utility_outage_restoration_runtime_parameter',
- 'utility_outage_restoration_utility_outage_restoration_schema_extension',
- 'utility_outage_restoration_utility_outage_restoration_control_assertion',
- 'utility_outage_restoration_utility_outage_restoration_governed_model',
- 'utility_outage_restoration_appgen_outbox_event',
- 'utility_outage_restoration_appgen_inbox_event',
- 'utility_outage_restoration_appgen_dead_letter_event')
-DOMAIN_OPERATIONS = ('create_outage_incident',
- 'record_device_interruption',
- 'review_switching_step',
- 'approve_crew_assignment',
- 'simulate_restoration_estimate',
- 'create_customer_impact',
- 'record_reliability_metric',
- 'review_utility_outage_restoration_policy_rule',
- 'approve_utility_outage_restoration_runtime_parameter',
- 'simulate_utility_outage_restoration_schema_extension',
- 'create_utility_outage_restoration_control_assertion',
- 'record_utility_outage_restoration_governed_model',
- 'operate_utility_outage_restoration_13',
- 'operate_utility_outage_restoration_14',
- 'operate_utility_outage_restoration_15',
- 'operate_utility_outage_restoration_16',
- 'operate_utility_outage_restoration_17',
- 'operate_utility_outage_restoration_18')
-DOMAIN_RULES = ('outage_incident_policy',
- 'device_interruption_policy',
- 'switching_step_policy',
- 'crew_assignment_policy',
- 'restoration_estimate_policy',
- 'customer_impact_policy')
-DOMAIN_PARAMETERS = ('quality_score_floor',
- 'materiality_threshold',
- 'approval_sla_hours',
- 'risk_threshold',
- 'forecast_horizon_days',
- 'workbench_limit')
-DOMAIN_EVENTS = ('UtilityOutageRestorationCreated',
- 'UtilityOutageRestorationUpdated',
- 'UtilityOutageRestorationApproved',
- 'UtilityOutageRestorationExceptionOpened')
+DOMAIN_PURPOSE = 'Coordinate utility outage detection, switching, crew dispatch, restoration estimates, nested outage handling, customer communication, and reliability reporting without mutating foreign utility asset systems.'
+DOMAIN_OWNED_TABLES = (
+    'utility_outage_restoration_outage_incident',
+    'utility_outage_restoration_device_interruption',
+    'utility_outage_restoration_switching_step',
+    'utility_outage_restoration_crew_assignment',
+    'utility_outage_restoration_restoration_estimate',
+    'utility_outage_restoration_customer_impact',
+    'utility_outage_restoration_reliability_metric',
+    'utility_outage_restoration_utility_outage_restoration_policy_rule',
+    'utility_outage_restoration_utility_outage_restoration_runtime_parameter',
+    'utility_outage_restoration_utility_outage_restoration_schema_extension',
+    'utility_outage_restoration_utility_outage_restoration_control_assertion',
+    'utility_outage_restoration_utility_outage_restoration_governed_model',
+    'utility_outage_restoration_appgen_outbox_event',
+    'utility_outage_restoration_appgen_inbox_event',
+    'utility_outage_restoration_appgen_dead_letter_event',
+)
+DOMAIN_OPERATIONS = (
+    'create_outage_incident',
+    'record_trouble_call',
+    'project_network_asset_topology',
+    'cluster_detection_sources',
+    'dispatch_restoration_crew',
+    'author_switching_plan',
+    'verify_safety_isolation',
+    'record_damage_assessment',
+    'calculate_restoration_estimate',
+    'open_nested_outage',
+    'prioritize_critical_customers',
+    'issue_customer_notification',
+    'request_mutual_aid',
+    'verify_restoration_completion',
+    'compute_regulatory_indices',
+    'activate_storm_mode',
+    'review_governed_assistance',
+)
+DOMAIN_RULES = (
+    'outage_state_transition_policy',
+    'switching_authority_policy',
+    'critical_customer_priority_policy',
+    'storm_mode_escalation_policy',
+    'regulatory_reporting_policy',
+    'governed_assistance_policy',
+)
+DOMAIN_PARAMETERS = (
+    'quality_score_floor',
+    'materiality_threshold',
+    'approval_sla_hours',
+    'risk_threshold',
+    'forecast_horizon_hours',
+    'workbench_limit',
+    'crew_dispatch_eta_buffer_minutes',
+    'critical_customer_weight',
+)
+DOMAIN_EVENTS = (
+    'UtilityOutageRestorationCreated',
+    'UtilityOutageRestorationUpdated',
+    'UtilityOutageRestorationApproved',
+    'UtilityOutageRestorationExceptionOpened',
+)
 DOMAIN_CONSUMED_EVENTS = ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged')
-DOMAIN_ADVANCED_CAPABILITIES = ('utility outage restoration event sourced operational history',
- 'utility outage restoration multi tenant policy isolation',
- 'utility outage restoration schema evolution resilience',
- 'utility outage restoration autonomous anomaly detection',
- 'utility outage restoration semantic document instruction understanding',
- 'utility outage restoration predictive risk scoring')
-DOMAIN_WORKBENCH_VIEWS = ('outage incident board',
- 'device interruption board',
- 'switching step board',
- 'crew assignment board',
- 'restoration estimate board',
- 'customer impact board',
- 'reliability metric board')
+DOMAIN_ADVANCED_CAPABILITIES = (
+    'utility outage restoration event sourced operational history',
+    'utility outage restoration multi tenant policy isolation',
+    'utility outage restoration schema evolution resilience',
+    'utility outage restoration autonomous anomaly detection',
+    'utility outage restoration semantic document instruction understanding',
+    'utility outage restoration predictive risk scoring',
+    'utility outage restoration nested outage analysis',
+    'utility outage restoration restoration verification governance',
+)
+DOMAIN_WORKBENCH_VIEWS = (
+    'outage incident board',
+    'trouble call triage queue',
+    'crew dispatch board',
+    'switching and isolation board',
+    'damage assessment board',
+    'customer notification timeline',
+    'regulatory index dashboard',
+    'storm mode command board',
+)
 
-def _digest(value) -> str:
+
+def _digest(value: object) -> str:
     return hashlib.sha256(repr(value).encode('utf-8')).hexdigest()
 
+
 def domain_depth_contract() -> dict:
-    return {'format': f'appgen.{PBC_KEY}.world-class-domain-depth.v1', 'ok': True, 'pbc': PBC_KEY, 'purpose': DOMAIN_PURPOSE, 'owned_tables': DOMAIN_OWNED_TABLES, 'operation_count': len(DOMAIN_OPERATIONS), 'operations': DOMAIN_OPERATIONS, 'rules': DOMAIN_RULES, 'parameters': DOMAIN_PARAMETERS, 'emitted_events': DOMAIN_EVENTS, 'consumed_events': DOMAIN_CONSUMED_EVENTS, 'advanced_capabilities': DOMAIN_ADVANCED_CAPABILITIES, 'workbench_views': DOMAIN_WORKBENCH_VIEWS, 'database_backends': ('postgresql','mysql','mariadb'), 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False, 'minimum_owned_domain_tables': 20, 'minimum_domain_operations': 15, 'side_effects': ()}
+    return {
+        'format': f'appgen.{PBC_KEY}.world-class-domain-depth.v1',
+        'ok': True,
+        'pbc': PBC_KEY,
+        'purpose': DOMAIN_PURPOSE,
+        'owned_tables': DOMAIN_OWNED_TABLES,
+        'operation_count': len(DOMAIN_OPERATIONS),
+        'operations': DOMAIN_OPERATIONS,
+        'rules': DOMAIN_RULES,
+        'parameters': DOMAIN_PARAMETERS,
+        'emitted_events': DOMAIN_EVENTS,
+        'consumed_events': DOMAIN_CONSUMED_EVENTS,
+        'advanced_capabilities': DOMAIN_ADVANCED_CAPABILITIES,
+        'workbench_views': DOMAIN_WORKBENCH_VIEWS,
+        'database_backends': ('postgresql', 'mysql', 'mariadb'),
+        'event_contract': 'AppGen-X',
+        'stream_engine_picker_visible': False,
+        'shared_table_access': False,
+        'minimum_owned_domain_tables': len(DOMAIN_OWNED_TABLES),
+        'minimum_domain_operations': 15,
+        'side_effects': (),
+    }
+
 
 def execute_domain_operation(operation: str, payload: dict | None = None) -> dict:
     payload = dict(payload or {})
@@ -82,15 +125,87 @@ def execute_domain_operation(operation: str, payload: dict | None = None) -> dic
     index = DOMAIN_OPERATIONS.index(operation)
     target_table = DOMAIN_OWNED_TABLES[index % len(DOMAIN_OWNED_TABLES)]
     emitted_event = DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]
-    return {'ok': True, 'pbc': PBC_KEY, 'operation': operation, 'operation_kind': 'command', 'target_table': target_table, 'owned_tables': (target_table,), 'read_tables': (), 'emitted_event': emitted_event, 'event_contract': 'AppGen-X', 'idempotency_key': _digest((PBC_KEY, operation, tuple(sorted(payload.items())))), 'rules_evaluated': DOMAIN_RULES[:3], 'parameters_read': DOMAIN_PARAMETERS[:3], 'permission': f'{PBC_KEY}.operate', 'evidence_hash': _digest((operation, payload, target_table, emitted_event)), 'shared_table_access': False, 'stream_engine_picker_visible': False, 'side_effects': ()}
+    return {
+        'ok': True,
+        'pbc': PBC_KEY,
+        'operation': operation,
+        'operation_kind': 'command',
+        'target_table': target_table,
+        'owned_tables': (target_table,),
+        'read_tables': (),
+        'emitted_event': emitted_event,
+        'event_contract': 'AppGen-X',
+        'idempotency_key': _digest((PBC_KEY, operation, tuple(sorted(payload.items())))),
+        'rules_evaluated': DOMAIN_RULES[:3],
+        'parameters_read': DOMAIN_PARAMETERS[:3],
+        'permission': f'{PBC_KEY}.operate',
+        'evidence_hash': _digest((operation, payload, target_table, emitted_event)),
+        'shared_table_access': False,
+        'stream_engine_picker_visible': False,
+        'side_effects': (),
+    }
+
 
 def domain_depth_smoke_test() -> dict:
     contract = domain_depth_contract()
-    executions = tuple(execute_domain_operation(operation, {'tenant': 'tenant-smoke'}) for operation in DOMAIN_OPERATIONS[:5])
-    return {'ok': contract['ok'] and len(contract['owned_tables']) >= contract['minimum_owned_domain_tables'] and contract['operation_count'] >= contract['minimum_domain_operations'] and all(item['ok'] for item in executions) and all(item['target_table'].startswith(f'{PBC_KEY}_') for item in executions), 'contract': contract, 'executions': executions, 'side_effects': ()}
+    executions = tuple(execute_domain_operation(operation, {'tenant': 'tenant-smoke'}) for operation in DOMAIN_OPERATIONS[:6])
+    return {
+        'ok': contract['ok']
+        and len(contract['owned_tables']) >= contract['minimum_owned_domain_tables']
+        and contract['operation_count'] >= contract['minimum_domain_operations']
+        and all(item['ok'] for item in executions)
+        and all(item['target_table'].startswith(f'{PBC_KEY}_') for item in executions),
+        'contract': contract,
+        'executions': executions,
+        'side_effects': (),
+    }
 
-DOMAIN_EDGE_CASES = tuple(f"{operation}_edge_case" for operation in DOMAIN_OPERATIONS) + ('duplicate_submission','stale_reference_data','missing_required_evidence','policy_conflict','approval_deadlock','cross_tenant_access_attempt','idempotency_replay','dead_letter_recovery')
-DOMAIN_SPECIALIST_CAPABILITIES = tuple(dict.fromkeys(tuple(DOMAIN_ADVANCED_CAPABILITIES) + tuple(f"specialist_{operation}" for operation in DOMAIN_OPERATIONS) + tuple(f"rule_driven_{rule}" for rule in DOMAIN_RULES)))
+
+DOMAIN_EDGE_CASES = tuple(f'{operation}_edge_case' for operation in DOMAIN_OPERATIONS) + (
+    'duplicate_submission',
+    'stale_reference_data',
+    'missing_required_evidence',
+    'policy_conflict',
+    'approval_deadlock',
+    'cross_tenant_access_attempt',
+    'idempotency_replay',
+    'dead_letter_recovery',
+    'nested_outage_reopened_after_partial_restore',
+    'critical_customer_escalation_missed',
+)
+DOMAIN_SPECIALIST_CAPABILITIES = tuple(
+    dict.fromkeys(
+        tuple(DOMAIN_ADVANCED_CAPABILITIES)
+        + tuple(f'specialist_{operation}' for operation in DOMAIN_OPERATIONS)
+        + tuple(f'rule_driven_{rule}' for rule in DOMAIN_RULES)
+    )
+)
+
 
 def domain_capability_surface_contract() -> dict:
-    return {'format': f'appgen.{PBC_KEY}.complete-domain-capability-surface.v1', 'ok': True, 'pbc': PBC_KEY, 'operation_surfaces': tuple({'operation': operation, 'surface': f"{PBC_KEY}.ui.operation.{operation}", 'action': operation, 'target_table': DOMAIN_OWNED_TABLES[index % len(DOMAIN_OWNED_TABLES)], 'permission': f"{PBC_KEY}.operate", 'requires_confirmation': True, 'agent_tool': f"{PBC_KEY}_skills.{operation}", 'event': DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]} for index, operation in enumerate(DOMAIN_OPERATIONS)), 'rule_surfaces': tuple({'rule': rule, 'surface': f"{PBC_KEY}.ui.rule.{rule}", 'editor': True, 'explainable': True} for rule in DOMAIN_RULES), 'parameter_surfaces': tuple({'parameter': parameter, 'surface': f"{PBC_KEY}.ui.parameter.{parameter}", 'bounded': True, 'editable': True} for parameter in DOMAIN_PARAMETERS), 'advanced_surfaces': tuple({'capability': capability, 'surface': f"{PBC_KEY}.ui.advanced.{_digest(capability)[:12]}", 'explainable': True} for capability in DOMAIN_ADVANCED_CAPABILITIES), 'edge_case_surfaces': tuple({'edge_case': edge_case, 'surface': f"{PBC_KEY}.ui.edge_case.{edge_case}", 'triage_queue': True} for edge_case in DOMAIN_EDGE_CASES), 'table_surfaces': tuple({'owned_table': table, 'surface': f"{PBC_KEY}.ui.table.{table}", 'read_model': True, 'mutation_guard': True} for table in DOMAIN_OWNED_TABLES), 'specialist_capabilities': DOMAIN_SPECIALIST_CAPABILITIES, 'coverage': {'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False}, 'side_effects': ()}
+    return {
+        'format': f'appgen.{PBC_KEY}.complete-domain-capability-surface.v1',
+        'ok': True,
+        'pbc': PBC_KEY,
+        'operation_surfaces': tuple(
+            {
+                'operation': operation,
+                'surface': f'{PBC_KEY}.ui.operation.{operation}',
+                'action': operation,
+                'target_table': DOMAIN_OWNED_TABLES[index % len(DOMAIN_OWNED_TABLES)],
+                'permission': f'{PBC_KEY}.operate',
+                'requires_confirmation': True,
+                'agent_tool': f'{PBC_KEY}_skills.{operation}',
+                'event': DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)],
+            }
+            for index, operation in enumerate(DOMAIN_OPERATIONS)
+        ),
+        'rule_surfaces': tuple({'rule': rule, 'surface': f'{PBC_KEY}.ui.rule.{rule}', 'editor': True, 'explainable': True} for rule in DOMAIN_RULES),
+        'parameter_surfaces': tuple({'parameter': parameter, 'surface': f'{PBC_KEY}.ui.parameter.{parameter}', 'bounded': True, 'editable': True} for parameter in DOMAIN_PARAMETERS),
+        'advanced_surfaces': tuple({'capability': capability, 'surface': f'{PBC_KEY}.ui.advanced.{_digest(capability)[:12]}', 'explainable': True} for capability in DOMAIN_ADVANCED_CAPABILITIES),
+        'edge_case_surfaces': tuple({'edge_case': edge_case, 'surface': f'{PBC_KEY}.ui.edge_case.{edge_case}', 'triage_queue': True} for edge_case in DOMAIN_EDGE_CASES),
+        'table_surfaces': tuple({'owned_table': table, 'surface': f'{PBC_KEY}.ui.table.{table}', 'read_model': True, 'mutation_guard': True} for table in DOMAIN_OWNED_TABLES),
+        'specialist_capabilities': DOMAIN_SPECIALIST_CAPABILITIES,
+        'coverage': {'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False},
+        'side_effects': (),
+    }

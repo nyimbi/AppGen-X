@@ -1,19 +1,38 @@
-PBC_KEY = 'food_safety_quality_compliance'
-from .events import CONSUMED
-_HANDLED = set()
+from .slice_app import CONSUMED_EVENT_TYPES as CONSUMED
+from .slice_app import DEAD_LETTER_TABLE
+from .slice_app import empty_state
+from .slice_app import handler_manifest
+from .slice_app import receive_event
 
-def handler_manifest():
-    return {'ok': True, 'pbc': PBC_KEY, 'consumes': CONSUMED, 'idempotency_key': 'required', 'retry_policy': {'max_attempts': 5}, 'dead_letter_table': f'{PBC_KEY}_appgen_dead_letter_event', 'side_effects': ()}
+_HANDLER_STATE = empty_state()
+
 
 def dispatch_event(event):
-    idem = event.get('idempotency_key') or event.get('event_id') or repr(event)
-    if idem in _HANDLED:
-        return {'ok': True, 'duplicate': True, 'idempotency_key': idem, 'side_effects': ()}
-    _HANDLED.add(idem)
-    if event.get('event_type') not in CONSUMED:
-        return {'ok': False, 'dead_letter_table': f'{PBC_KEY}_appgen_dead_letter_event', 'retry_policy': {'max_attempts': 5}, 'idempotency_key': idem, 'side_effects': ()}
-    return {'ok': True, 'duplicate': False, 'idempotency_key': idem, 'retry_policy': {'max_attempts': 5}, 'side_effects': ()}
+    global _HANDLER_STATE
+    result = receive_event(_HANDLER_STATE, event)
+    _HANDLER_STATE = result["state"]
+    if result.get("duplicate"):
+        return {"ok": True, "duplicate": True, "idempotency_key": result["idempotency_key"], "side_effects": ()}
+    if not result["ok"]:
+        return {
+            "ok": False,
+            "duplicate": False,
+            "idempotency_key": event.get("idempotency_key"),
+            "dead_letter_table": DEAD_LETTER_TABLE,
+            "retry_policy": {"max_attempts": 5},
+            "side_effects": (),
+        }
+    return {
+        "ok": True,
+        "duplicate": False,
+        "idempotency_key": result["idempotency_key"],
+        "retry_policy": {"max_attempts": 5},
+        "side_effects": (),
+    }
+
 
 def smoke_test():
-    first = dispatch_event({'event_type': CONSUMED[0], 'idempotency_key': f'{PBC_KEY}:smoke'}); second = dispatch_event({'event_type': CONSUMED[0], 'idempotency_key': f'{PBC_KEY}:smoke'}); failed = dispatch_event({'event_type': 'Unexpected', 'idempotency_key': f'{PBC_KEY}:bad'})
-    return {'ok': first['ok'] and second['duplicate'] and failed['dead_letter_table'].endswith('dead_letter_event'), 'side_effects': ()}
+    first = dispatch_event({"event_type": CONSUMED[0], "idempotency_key": f"{CONSUMED[0]}:smoke"})
+    second = dispatch_event({"event_type": CONSUMED[0], "idempotency_key": f"{CONSUMED[0]}:smoke"})
+    failed = dispatch_event({"event_type": "Unexpected", "idempotency_key": "bad-food-safety-quality-compliance"})
+    return {"ok": handler_manifest()["ok"] and first["ok"] and second["duplicate"] and failed["dead_letter_table"].endswith("dead_letter_event"), "side_effects": ()}

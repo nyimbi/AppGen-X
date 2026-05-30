@@ -18,6 +18,7 @@ from .lifecycle import (
     query_workbench,
     transition_deposit_account,
 )
+from .workflows import build_workflow_surface, workflow_manifest
 
 PBC_KEY = "banking_core_accounts"
 BANKING_CORE_ACCOUNTS_OWNED_TABLES = (
@@ -228,6 +229,9 @@ BANKING_CORE_ACCOUNTS_WORKBENCH_VIEWS = (
         "filters": ("tenant", "lifecycle_state"),
         "actions": (),
     },
+)
+BANKING_CORE_ACCOUNTS_WORKFLOW_KEYS = tuple(
+    workflow["workflow_id"] for workflow in workflow_manifest()["workflows"]
 )
 
 
@@ -508,6 +512,16 @@ def banking_core_accounts_build_control_surface():
     }
 
 
+def banking_core_accounts_build_workflow_surface(state=None, tenant="default"):
+    workflow_surface = build_workflow_surface(state=state, tenant=tenant)
+    return {
+        **workflow_surface,
+        "event_contract": LIFECYCLE_EVENT_CONTRACT,
+        "stream_engine_picker_visible": False,
+        "shared_table_access": False,
+    }
+
+
 def banking_core_accounts_build_service_contract():
     return {
         "format": "appgen.banking-core-accounts-service-contract.v1",
@@ -526,10 +540,16 @@ def banking_core_accounts_build_service_contract():
             "parse_document_instruction",
         )
         + DOMAIN_OPERATIONS,
-        "query_methods": ("query_workbench", "query_account_detail", "build_workbench_view"),
+        "query_methods": (
+            "query_workbench",
+            "query_account_detail",
+            "build_workbench_view",
+            "build_workflow_surface",
+        ),
         "forms": tuple(form["form_id"] for form in BANKING_CORE_ACCOUNTS_FORMS),
         "wizards": tuple(wizard["wizard_id"] for wizard in BANKING_CORE_ACCOUNTS_WIZARDS),
         "controls": tuple(control["control_id"] for control in BANKING_CORE_ACCOUNTS_CONTROLS),
+        "workflows": BANKING_CORE_ACCOUNTS_WORKFLOW_KEYS,
         "shared_table_access": False,
         "transaction_boundary": "owned_datastore_plus_outbox",
         "event_contract": LIFECYCLE_EVENT_CONTRACT,
@@ -581,6 +601,7 @@ def banking_core_accounts_build_workbench_view(state=None, tenant="default"):
 
 def banking_core_accounts_build_app_surface(state=None, tenant="default"):
     workbench = banking_core_accounts_build_workbench_view(state=state, tenant=tenant)
+    workflows = banking_core_accounts_build_workflow_surface(state=state, tenant=tenant)
     return {
         "ok": True,
         "pbc": PBC_KEY,
@@ -591,7 +612,9 @@ def banking_core_accounts_build_app_surface(state=None, tenant="default"):
         "forms": BANKING_CORE_ACCOUNTS_FORMS,
         "wizards": BANKING_CORE_ACCOUNTS_WIZARDS,
         "controls": BANKING_CORE_ACCOUNTS_CONTROLS,
+        "workflows": workflows["workflows"],
         "workbench": workbench,
+        "workflow_surface": workflows,
         "detail_route": "GET /deposit-accounts/{account_id}",
         "assistant_entrypoint": f"/assistant/pbc/{PBC_KEY}",
         "event_contract": LIFECYCLE_EVENT_CONTRACT,
@@ -619,6 +642,7 @@ def banking_core_accounts_build_release_evidence():
             "forms": BANKING_CORE_ACCOUNTS_FORMS,
             "wizards": BANKING_CORE_ACCOUNTS_WIZARDS,
             "controls": BANKING_CORE_ACCOUNTS_CONTROLS,
+            "workflows": BANKING_CORE_ACCOUNTS_WORKFLOW_KEYS,
             "app_surface": banking_core_accounts_build_app_surface(),
             "events": {
                 "contract": LIFECYCLE_EVENT_CONTRACT,
@@ -645,6 +669,7 @@ def banking_core_accounts_permissions_contract():
             "banking_core_accounts.operate",
         ),
         "roles": ("operator", "approver", "auditor"),
+        "workflow_ids": BANKING_CORE_ACCOUNTS_WORKFLOW_KEYS,
         "side_effects": (),
     }
 
@@ -684,6 +709,7 @@ def banking_core_accounts_runtime_capabilities():
         "build_service_contract",
         "build_release_evidence",
         "build_app_surface",
+        "build_workflow_surface",
         "permissions_contract",
         "verify_owned_table_boundary",
         "command_deposit_account",
@@ -707,6 +733,7 @@ def banking_core_accounts_runtime_capabilities():
         "forms": BANKING_CORE_ACCOUNTS_FORMS,
         "wizards": BANKING_CORE_ACCOUNTS_WIZARDS,
         "controls": BANKING_CORE_ACCOUNTS_CONTROLS,
+        "workflows": BANKING_CORE_ACCOUNTS_WORKFLOW_KEYS,
         "workbench_views": BANKING_CORE_ACCOUNTS_WORKBENCH_VIEWS,
         "single_pbc_app": banking_core_accounts_build_app_surface(),
         "smoke": smoke,
@@ -804,6 +831,9 @@ def banking_core_accounts_runtime_smoke():
     workbench = banking_core_accounts_build_workbench_view(
         state=reopened["state"], tenant="tenant-smoke"
     )
+    workflow_surface = banking_core_accounts_build_workflow_surface(
+        state=reopened["state"], tenant="tenant-smoke"
+    )
     app_surface = banking_core_accounts_build_app_surface(
         state=reopened["state"], tenant="tenant-smoke"
     )
@@ -834,6 +864,7 @@ def banking_core_accounts_runtime_smoke():
         {"id": "control_surface", "ok": controls["ok"]},
         {"id": "build_release_evidence", "ok": release["ok"]},
         {"id": "build_workbench_view", "ok": workbench["ok"]},
+        {"id": "build_workflow_surface", "ok": workflow_surface["ok"]},
         {"id": "single_pbc_app_surface", "ok": app_surface["ok"] and app_surface["single_pbc_app"]},
         {"id": "owned_boundary_rejects_foreign_table", "ok": boundary["ok"] is False},
         {"id": "domain_depth", "ok": domain["ok"]},
@@ -859,6 +890,7 @@ def banking_core_accounts_runtime_smoke():
         "controls": controls,
         "release": release,
         "workbench": workbench,
+        "workflow_surface": workflow_surface,
         "app_surface": app_surface,
         "domain_depth": domain,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),

@@ -2,69 +2,70 @@
 
 ## Delivered Slice
 
-Implemented a package-local, executable slice for:
+Implemented a package-local standalone slice for:
 
 1. Canonical campaign brief modeling.
-2. Pre-launch readiness gating.
+2. Launch-readiness review and launch attempt handling.
+3. One-PBC standalone app composition for routes, services, UI, assistant planning, governance, and release evidence.
 
-This replaces part of the previous scaffold behavior with deterministic advertising-specific planning and launch control logic.
+## What Was Added Or Tightened
 
-## What Was Added
-
-- Deterministic campaign brief normalization and validation.
-- Campaign plan creation that stores a structured brief, fingerprint, planning summary, and initial launch gate.
-- Launch readiness review with explicit blockers for missing approvals, missing readiness evidence, and open launch dependencies.
-- Launch attempt handling that emits only declared AppGen-X event types:
-  - `AdvertisingCampaignOperationsApproved`
-  - `AdvertisingCampaignOperationsExceptionOpened`
-- Workbench command-center summary data for blocked versus ready launch plans.
-- Service and agent preview surfaces for the new slice.
+- Stateful package-local service contracts with method/path route alignment.
+- Standalone app shell with bootstrap, demo workspace loading, workbench rendering, and release snapshots.
+- UI forms, wizards, and controls for brief capture, launch review, runtime configuration, and assistant document planning.
+- Assistant CRUD planning that maps documents to governed target tables and required confirmation.
+- Package-local workflow catalog for brief-to-plan, launch gate review, and document-instruction planning.
+- Package-local release evidence and focused tests under the PBC package.
 
 ## Changed Files
 
-- `src/pyAppGen/pbcs/advertising_campaign_operations/campaign_planning.py`
-- `src/pyAppGen/pbcs/advertising_campaign_operations/runtime.py`
-- `src/pyAppGen/pbcs/advertising_campaign_operations/services.py`
-- `src/pyAppGen/pbcs/advertising_campaign_operations/ui.py`
+- `src/pyAppGen/pbcs/advertising_campaign_operations/__init__.py`
 - `src/pyAppGen/pbcs/advertising_campaign_operations/agent.py`
+- `src/pyAppGen/pbcs/advertising_campaign_operations/config.py`
+- `src/pyAppGen/pbcs/advertising_campaign_operations/handlers.py`
 - `src/pyAppGen/pbcs/advertising_campaign_operations/implementation-plan.md`
 - `src/pyAppGen/pbcs/advertising_campaign_operations/implementation-status.md`
+- `src/pyAppGen/pbcs/advertising_campaign_operations/models.py`
+- `src/pyAppGen/pbcs/advertising_campaign_operations/permissions.py`
 - `src/pyAppGen/pbcs/advertising_campaign_operations/README.md`
-- `tests/test_pbc_advertising_campaign_operations_implementation.py`
-
-## Self Code Review
-
-Review focus:
-
-- Brief normalization stayed deterministic across equivalent submissions.
-- Launch review remained rerunnable and side-effect free.
-- Launch attempt emitted only manifest-declared AppGen-X event types.
-- New workbench summary data stayed inside the package boundary.
-
-Issue found and fixed:
-
-- Runtime smoke initially built the workbench view without a matching tenant filter, which weakened verification of the new command-center summary. The smoke path now passes the campaign tenant so the summary is exercised against the created launch-ready plan.
+- `src/pyAppGen/pbcs/advertising_campaign_operations/RELEASE_EVIDENCE.md`
+- `src/pyAppGen/pbcs/advertising_campaign_operations/release_evidence.py`
+- `src/pyAppGen/pbcs/advertising_campaign_operations/routes.py`
+- `src/pyAppGen/pbcs/advertising_campaign_operations/schema_contract.py`
+- `src/pyAppGen/pbcs/advertising_campaign_operations/service_contract.py`
+- `src/pyAppGen/pbcs/advertising_campaign_operations/services.py`
+- `src/pyAppGen/pbcs/advertising_campaign_operations/standalone.py`
+- `src/pyAppGen/pbcs/advertising_campaign_operations/tests/test_contract.py`
+- `src/pyAppGen/pbcs/advertising_campaign_operations/tests/test_standalone.py`
+- `src/pyAppGen/pbcs/advertising_campaign_operations/ui.py`
+- `src/pyAppGen/pbcs/advertising_campaign_operations/workflows.py`
 
 ## Validation
 
-Commands run:
+Commands executed:
 
-- `./.venv/bin/python -m py_compile src/pyAppGen/pbcs/advertising_campaign_operations/campaign_planning.py src/pyAppGen/pbcs/advertising_campaign_operations/runtime.py src/pyAppGen/pbcs/advertising_campaign_operations/services.py src/pyAppGen/pbcs/advertising_campaign_operations/ui.py src/pyAppGen/pbcs/advertising_campaign_operations/agent.py tests/test_pbc_advertising_campaign_operations_implementation.py`
-- `./.venv/bin/pytest tests/test_pbc_advertising_campaign_operations_implementation.py tests/test_pbc_advertising_campaign_operations_runtime.py src/pyAppGen/pbcs/advertising_campaign_operations/tests/test_contract.py`
+- `PYTHONPATH=src python3 -m py_compile src/pyAppGen/pbcs/advertising_campaign_operations/*.py src/pyAppGen/pbcs/advertising_campaign_operations/tests/*.py`
+- `PYTHONPATH=src python3 - <<'PY' ...` to import both package test modules and execute all `test_*` functions directly
+- `PYTHONPATH=src python3 - <<'PY' ...` to run package, routes, services, standalone, workflows, and release-evidence smoke/audit entry points
 
-Result:
+Results:
 
 - Python compilation passed.
-- Focused implementation, runtime, and package contract tests passed: `12 passed`.
+- Focused package tests passed through the direct harness: `9` tests executed.
+- Package-local smoke/audit entry points passed: package, routes, services, standalone, workflows, and release evidence all returned `True`.
+
+Environment gap:
+
+- Direct `pytest` execution is currently unavailable because `/usr/local/bin/pytest` references a missing Python 3.9 interpreter on this machine.
 
 ## Remaining Backlog
 
 Not implemented in this slice:
 
-- Flight-plan versioning and channel-mix planning.
-- Media buying hold ledger.
-- Budget versioning and reserve controls.
-- Pacing heatmaps and exception persistence.
-- Billing reconciliation and performance normalization.
+- Flight-plan versioning and channel-mix scenario planning.
+- Media buying hold ledger and make-good operations.
+- Budget reserve versioning and billing reconciliation.
+- Performance normalization and pacing heatmaps.
+- Broader publisher qualification response workflows beyond inbox handling.
 
-Those can build on the new structured brief and launch-gate foundation without changing the event contract.
+Those can build on the new standalone planning and launch-gate foundation without requiring shared-generator changes.

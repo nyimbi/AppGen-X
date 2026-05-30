@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The `court_case_management` PBC is a packaged business capability for Filings, hearings, dockets, parties, judgments, orders, calendars, and court operations. It owns schema, migrations, models, services, API contracts, AppGen-X event contracts, handlers, UI fragments, AI agent skills, configuration, rules, parameters, seed data, package metadata, tests, and release evidence. It composes with other AppGen-X PBCs only through declared APIs, AppGen-X events, or package-local projections.
+The `court_case_management` PBC is the packaged business capability for trial-court intake and operations. It exists so a composed application can run court case intake, filing review, evidence lodging, hearings, docket chronology, orders, tasks, release evidence, and governed assistant workflows without leaning on shared foreign court tables. The package is intentionally side-effect-free at registration time and keeps discovery, registration, and runtime evidence inside the package boundary.
 
 ## Stable Identity
 
@@ -10,101 +10,58 @@ The `court_case_management` PBC is a packaged business capability for Filings, h
 - Mesh: `relationship`.
 - Package directory: `src/pyAppGen/pbcs/court_case_management`.
 - Runtime entrypoint: `court_case_management_runtime_capabilities()`.
+- Standalone entrypoint: `CourtCaseManagementStandaloneApplication` in `standalone.py`.
 - UI entrypoint: `court_case_management_ui_contract()`.
-- Source registration entrypoint: `implementation_contract()`.
-- Allowed database backends: PostgreSQL, MySQL, and MariaDB.
-- Eventing standard: fixed AppGen-X outbox/inbox event contract.
-- User-facing stream-engine selector: forbidden and hidden.
+- Source registration entrypoint: `implementation_contract()` and `package_discovery_plan()`.
+- Eventing standard: fixed AppGen-X outbox, inbox, and dead-letter contract.
+- Supported ordinary backends: PostgreSQL, MySQL, and MariaDB.
 
-## Owned Datastore Boundary
+## Owned Boundary, Schema, Migration, And Model Generation
 
-- `court_case_management_court_case`: owns court case lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `court_case_management_filing`: owns filing lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `court_case_management_hearing`: owns hearing lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `court_case_management_docket_entry`: owns docket entry lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `court_case_management_party`: owns party lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `court_case_management_judgment`: owns judgment lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `court_case_management_court_order`: owns court order lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `court_case_management_court_case_management_policy_rule`: owns court case management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `court_case_management_court_case_management_runtime_parameter`: owns court case management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `court_case_management_court_case_management_schema_extension`: owns court case management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `court_case_management_court_case_management_control_assertion`: owns court case management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `court_case_management_court_case_management_governed_model`: owns court case management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+Owned business tables include `court_case_management_court_case`, `court_case_management_filing`, `court_case_management_evidence_item`, `court_case_management_hearing`, `court_case_management_case_task`, `court_case_management_docket_entry`, `court_case_management_party`, `court_case_management_judgment`, and `court_case_management_court_order`. Governance and platform tables remain `court_case_management_court_case_management_policy_rule`, `court_case_management_court_case_management_runtime_parameter`, `court_case_management_court_case_management_schema_extension`, `court_case_management_court_case_management_control_assertion`, `court_case_management_court_case_management_governed_model`, `court_case_management_appgen_outbox_event`, `court_case_management_appgen_inbox_event`, and `court_case_management_appgen_dead_letter_event`.
 
-Runtime AppGen-X event tables are `court_case_management_appgen_outbox_event`, `court_case_management_appgen_inbox_event`, and `court_case_management_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'CustomerUpdated', 'SupplierQualified') and API contracts ('POST /court-cases', 'POST /filings', 'POST /hearings', 'POST /docket-entrys', 'POST /partys', 'GET /court-case-management-workbench').
+Schema generation stays package-local. `runtime.py` materializes the schema contract, migration list, and model contract metadata. `migrations/001_initial.sql` is the materialized migration artifact. `models.py` exposes generated model contracts from the runtime schema contract. The package does not mutate shared or foreign tables; collaboration happens through API contracts, projections, and AppGen-X events.
 
-## Executable Domain Operations
+## Service, API, Route, Command, And Query Surface
 
-- `create_court_case`: validates policy, writes owned `court_case_management_court_case` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_filing`: validates policy, writes owned `court_case_management_filing` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_hearing`: validates policy, writes owned `court_case_management_hearing` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_docket_entry`: validates policy, writes owned `court_case_management_docket_entry` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_party`: validates policy, writes owned `court_case_management_party` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_judgment`: validates policy, writes owned `court_case_management_judgment` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_court_order`: validates policy, writes owned `court_case_management_court_order` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_court_case_management_policy_rule`: validates policy, writes owned `court_case_management_court_case_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_court_case_management_runtime_parameter`: validates policy, writes owned `court_case_management_court_case_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_court_case_management_schema_extension`: validates policy, writes owned `court_case_management_court_case_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_court_case_management_control_assertion`: validates policy, writes owned `court_case_management_court_case_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_court_case_management_governed_model`: validates policy, writes owned `court_case_management_court_case_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_court_case_management_13`: validates policy, writes owned `court_case_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_court_case_management_14`: validates policy, writes owned `court_case_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_court_case_management_15`: validates policy, writes owned `court_case_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_court_case_management_16`: validates policy, writes owned `court_case_management_court_case` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_court_case_management_17`: validates policy, writes owned `court_case_management_filing` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_court_case_management_18`: validates policy, writes owned `court_case_management_hearing` records, emits AppGen-X events, and returns side-effect-free evidence.
+The service layer exposes command and query operations. Commands include case intake, party registration, filing intake, evidence intake, hearing scheduling, task creation and completion, order drafting, and order entry. Queries include workbench and case-detail views. `services.py` exposes both the contract service surface and a standalone service wrapper.
 
-Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
+API and route evidence lives in `routes.py`. Key routes are `POST /court-cases`, `POST /filings`, `POST /evidence`, `POST /hearings`, `POST /tasks`, `POST /tasks/complete`, `POST /court-orders`, `POST /court-orders/enter`, `POST /docket-entrys`, `POST /partys`, and `GET /court-case-management-workbench`. The package distinguishes command paths from query paths and keeps route dispatch side-effect-free until an explicit standalone application instance executes the request.
 
-## Standard Table-Stakes Capabilities
+## Events, Handlers, Outbox, Inbox, Dead-Letter, Idempotency, And Retry
 
-The package covers lifecycle intake, identity and classification, validation, approvals, exception handling, audit evidence, role-aware workbenches, assistant-guided task execution, configuration, rule compilation, bounded parameters, seed data, RBAC, route dispatch, typed events, idempotent handlers, retry, and dead-letter triage. It includes PostgreSQL, MySQL, and MariaDB backend allowlists and never exposes stream-engine pickers.
+The event contract is AppGen-X. Emitted events are `CourtCaseManagementCreated`, `CourtCaseManagementUpdated`, `CourtCaseManagementApproved`, and `CourtCaseManagementExceptionOpened`. Consumed events are `PolicyChanged`, `CustomerUpdated`, and `SupplierQualified`. The package records outbox, inbox, and dead-letter evidence. Handlers preserve idempotency, reject unexpected events into the dead-letter table, and retain retry policy evidence. This package treats idempotent event handling and retry evidence as first-class release requirements.
 
-## Advanced Capabilities
+## UI, Workbench, Permissions, And RBAC
 
-- Event-sourced operational history for Court Case Management domain records.
-- Multi-tenant policy isolation with owned table boundaries.
-- Schema evolution resilience through package-local schema extensions.
-- Autonomous anomaly detection and specialist exception triage.
-- Semantic document and instruction understanding for professional intake.
-- Predictive risk scoring and confidence-ranked recommendations.
-- Counterfactual scenario simulation for policy and operational choices.
-- Cryptographic audit proofs for high-value records and decisions.
-- Continuous control testing over domain lifecycle events.
-- Carbon and sustainability awareness where operational decisions affect footprint.
-- Cross-PBC event federation through AppGen-X only.
-- Governed AI agent execution with human confirmation for mutations.
+The UI includes `CourtCaseManagementWorkbench`, `CourtCaseManagementDetail`, and `CourtCaseManagementAssistantPanel`. The workbench organizes clerk deficiency queues, accepted filings, evidence review, chambers order review, courtroom calendar, pending tasks, restricted items, and open cases. The detail view provides a chronological timeline for filings, evidence, hearings, orders, tasks, and docket entries.
 
-## Rules, Parameters, and Configuration
+Permissions and RBAC are package-local. The standard permission set is `court_case_management.read`, `court_case_management.create`, `court_case_management.update`, `court_case_management.approve`, and `court_case_management.admin`. Controls enforce docket chronology, signed-order entry, evidence custody, judge and courtroom scheduling, task completion authority, and sealed-record access.
 
-Rules are first-class artifacts: ('court_case_policy', 'filing_policy', 'hearing_policy', 'docket_entry_policy', 'party_policy', 'judgment_policy'). Parameters are bounded artifacts: ('quality_score_floor', 'materiality_threshold', 'approval_sla_hours', 'risk_threshold', 'forecast_horizon_days', 'workbench_limit'). Configuration includes database backend, event topic, retry limit, default policy, workbench limits, confirmation requirements for agent writes, and tenant isolation options.
+## Rules, Parameters, Configuration, And Governance
 
-## Public APIs and Services
+Rules, parameters, and configuration are explicit package artifacts. Rule evidence includes case-numbering, filing-deficiency, evidence, hearing, and task policy. Parameter evidence includes workbench limits, deficiency review windows, hearing buffers, and evidence review windows. Configuration includes `COURT_CASE_MANAGEMENT_DATABASE_URL`, `COURT_CASE_MANAGEMENT_EVENT_TOPIC`, `COURT_CASE_MANAGEMENT_RETRY_LIMIT`, and `COURT_CASE_MANAGEMENT_DEFAULT_POLICY`. Governance hooks live in `config.py`, `permissions.py`, and `seed_data.py`, and the package keeps validation, compile-rule, evaluate-rule, permission manifests, and seed plans executable.
 
-APIs are ('POST /court-cases', 'POST /filings', 'POST /hearings', 'POST /docket-entrys', 'POST /partys', 'GET /court-case-management-workbench'). Services preserve idempotency keys, permission names, owned table scopes, route metadata, and event mappings. Services write only to `court_case_management_` tables and package-local event tables.
+## Agent, Assistant, Chatbot, Skill, Document, Instruction, CRUD, Datastore, And Mutation Surface
 
-## Events and Handlers
+`agent.py` contributes governed assistant skills for filing triage, hearing preparation, and order follow-up. The assistant or chatbot surface accepts a document plus instruction, maps the request to a court-specific skill, and produces a governed CRUD datastore mutation preview. Mutations always require human confirmation. Document and instruction intake is constrained to package-owned tables, and foreign-table mutation attempts are rejected.
 
-Emitted events: ('CourtCaseManagementCreated', 'CourtCaseManagementUpdated', 'CourtCaseManagementApproved', 'CourtCaseManagementExceptionOpened'). Consumed events: ('PolicyChanged', 'CustomerUpdated', 'SupplierQualified'). Handlers require event IDs, ignore duplicates, record AppGen-X inbox entries, and write dead-letter evidence for unknown or exhausted events.
+## Side-Effect-Free Registration, Discovery, Standard Capabilities, Advanced Capabilities, Release Evidence, Tests, And Seed Data
 
-## UI, Workbench, and Agent Skills
+The package keeps self-registration, package metadata, and discovery side-effect-free. `implementation_contract()`, `package_metadata_manifest()`, `validate_package_metadata()`, and `package_discovery_plan()` exist so tooling can register or discover the PBC without mutating external systems. Standard capabilities include workflow support, analytics, configuration schema, rule engine, parameter engine, owned schema migrations and models, AppGen-X outbox and inbox eventing, idempotent handlers, retry dead-letter evidence, permissions, seed data, workbench, agentic document instruction intake, governed datastore CRUD, AI agent task assistance, configuration workbench, continuous release assurance, single-PBC domain app, forms, wizards, and controls. Advanced capabilities include event sourced operational history, multi-tenant policy isolation, schema evolution resilience, autonomous anomaly detection, semantic document instruction understanding, predictive risk scoring, counterfactual scenario simulation, cryptographic audit proofs, continuous control testing, carbon and sustainability awareness, cross-PBC event federation, and governed AI agent execution.
 
-Workbench views include ('court case board', 'filing board', 'hearing board', 'docket entry board', 'party board', 'judgment board', 'court order board'). The UI exposes operational queues, detail panels, rule editors, parameter editors, assistant panels, exception triage, analytics, and release evidence. The agent contributes `court_case_management_skills`, parses documents and instructions, produces governed CRUD previews, validates owned table boundaries, requires human confirmation for writes, and participates in the composed single application assistant.
-
-## Release Evidence and Tests
-
-Release readiness proves schema, migrations, models, service contracts, route contracts, AppGen-X eventing, idempotent handlers, retry/dead-letter evidence, UI surfaces, RBAC, configuration, rules, parameters, seed data, package metadata, side-effect-free registration, domain-depth operations, agent integration, and generation smoke readiness. Focused package tests cover schema/service/release evidence, event contracts, package metadata, route contracts, governance hooks, and idempotent handlers.
+Release evidence is bundled through `release_evidence.py`, `RELEASE_EVIDENCE.md`, focused standalone audits, package tests, and runtime smoke evidence. Seed data stays local to `seed_data.py` and is referenced explicitly in release evidence and validation.
 
 ## Manifest Traceability Appendix
 
-- tables: court_case, filing, hearing, docket_entry, party, judgment, court_order, court_case_management_policy_rule, court_case_management_runtime_parameter, court_case_management_schema_extension, court_case_management_control_assertion, court_case_management_governed_model
-- operations: create_court_case, record_filing, review_hearing, approve_docket_entry, simulate_party, create_judgment, record_court_order, review_court_case_management_policy_rule, approve_court_case_management_runtime_parameter, simulate_court_case_management_schema_extension, create_court_case_management_control_assertion, record_court_case_management_governed_model, operate_court_case_management_13, operate_court_case_management_14, operate_court_case_management_15, operate_court_case_management_16, operate_court_case_management_17, operate_court_case_management_18
-- emits: CourtCaseManagementCreated, CourtCaseManagementUpdated, CourtCaseManagementApproved, CourtCaseManagementExceptionOpened
-- consumes: PolicyChanged, CustomerUpdated, SupplierQualified
-- rules: court_case_policy, filing_policy, hearing_policy, docket_entry_policy, party_policy, judgment_policy
-- parameters: quality_score_floor, materiality_threshold, approval_sla_hours, risk_threshold, forecast_horizon_days, workbench_limit
-- ui_fragments: CourtCaseManagementWorkbench, CourtCaseManagementDetail, CourtCaseManagementAssistantPanel
-- permissions: court_case_management.read, court_case_management.create, court_case_management.update, court_case_management.approve, court_case_management.admin
-- configuration: COURT_CASE_MANAGEMENT_DATABASE_URL, COURT_CASE_MANAGEMENT_EVENT_TOPIC, COURT_CASE_MANAGEMENT_RETRY_LIMIT, COURT_CASE_MANAGEMENT_DEFAULT_POLICY
-- standard_features: court_case_management, court_case_management_workflow, court_case_management_analytics, configuration_schema, rule_engine, parameter_engine, owned_schema_migrations_models, appgen_x_outbox_inbox_eventing, idempotent_handlers, retry_dead_letter_evidence, permissions, seed_data, workbench, agentic_document_instruction_intake, governed_datastore_crud, ai_agent_task_assistance, configuration_workbench, continuous_release_assurance
-- advanced_capabilities: court_case_management_event_sourced_operational_history, court_case_management_multi_tenant_policy_isolation, court_case_management_schema_evolution_resilience, court_case_management_autonomous_anomaly_detection, court_case_management_semantic_document_instruction_understanding, court_case_management_predictive_risk_scoring, court_case_management_counterfactual_scenario_simulation, court_case_management_cryptographic_audit_proofs, court_case_management_continuous_control_testing, court_case_management_carbon_and_sustainability_awareness, court_case_management_cross_pbc_event_federation, court_case_management_governed_ai_agent_execution
+- `tables`: `court_case`, `filing`, `hearing`, `docket_entry`, `party`, `judgment`, `court_order`, `court_case_management_policy_rule`, `court_case_management_runtime_parameter`, `court_case_management_schema_extension`, `court_case_management_control_assertion`, `court_case_management_governed_model`, `evidence_item`, `case_task`
+- `apis`: `POST /court-cases`, `POST /filings`, `POST /hearings`, `POST /docket-entrys`, `POST /partys`, `GET /court-case-management-workbench`, `POST /evidence`, `POST /tasks`, `POST /tasks/complete`
+- `emits`: `CourtCaseManagementCreated`, `CourtCaseManagementUpdated`, `CourtCaseManagementApproved`, `CourtCaseManagementExceptionOpened`
+- `consumes`: `PolicyChanged`, `CustomerUpdated`, `SupplierQualified`
+- `ui_fragments`: `CourtCaseManagementWorkbench`, `CourtCaseManagementDetail`, `CourtCaseManagementAssistantPanel`
+- `permissions`: `court_case_management.read`, `court_case_management.create`, `court_case_management.update`, `court_case_management.approve`, `court_case_management.admin`
+- `configuration`: `COURT_CASE_MANAGEMENT_DATABASE_URL`, `COURT_CASE_MANAGEMENT_EVENT_TOPIC`, `COURT_CASE_MANAGEMENT_RETRY_LIMIT`, `COURT_CASE_MANAGEMENT_DEFAULT_POLICY`
+- `standard_features`: `court_case_management`, `court_case_management_workflow`, `court_case_management_analytics`, `configuration_schema`, `rule_engine`, `parameter_engine`, `owned_schema_migrations_models`, `appgen_x_outbox_inbox_eventing`, `idempotent_handlers`, `retry_dead_letter_evidence`, `permissions`, `seed_data`, `workbench`, `agentic_document_instruction_intake`, `governed_datastore_crud`, `ai_agent_task_assistance`, `configuration_workbench`, `continuous_release_assurance`, `single_pbc_domain_app`, `forms`, `wizards`, `controls`
+- `advanced_capabilities`: `court_case_management_event_sourced_operational_history`, `court_case_management_multi_tenant_policy_isolation`, `court_case_management_schema_evolution_resilience`, `court_case_management_autonomous_anomaly_detection`, `court_case_management_semantic_document_instruction_understanding`, `court_case_management_predictive_risk_scoring`, `court_case_management_counterfactual_scenario_simulation`, `court_case_management_cryptographic_audit_proofs`, `court_case_management_continuous_control_testing`, `court_case_management_carbon_and_sustainability_awareness`, `court_case_management_cross_pbc_event_federation`, `court_case_management_governed_ai_agent_execution`
+- `docs`: `README.md`, `implementation-plan.md`, `implementation-status.md`, `RELEASE_EVIDENCE.md`, `SPECIFICATION.md`
+- `tests`: `tests/test_contract.py`, `tests/test_court_operations_app.py`, `tests/test_standalone.py`

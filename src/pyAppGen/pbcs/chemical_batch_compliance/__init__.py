@@ -19,6 +19,9 @@ from .runtime import chemical_batch_compliance_runtime_smoke
 from .runtime import chemical_batch_compliance_verify_owned_table_boundary
 from .ui import chemical_batch_compliance_render_workbench
 from .ui import chemical_batch_compliance_ui_contract
+from .standalone import ChemicalBatchComplianceStandaloneApp
+from .standalone import single_pbc_app_contract
+from .standalone import standalone_smoke_test
 from ..source_contract import source_package_metadata
 from ..source_contract import source_pbc_package_contract
 from ..source_contract import source_registration_plan
@@ -97,6 +100,9 @@ __all__ = (
     "package_metadata_manifest",
     "register_pbc",
     "registration_plan",
+    "ChemicalBatchComplianceStandaloneApp",
+    "single_pbc_app_contract",
+    "standalone_smoke_test",
     "smoke_test",
     "validate_package_metadata",
 )

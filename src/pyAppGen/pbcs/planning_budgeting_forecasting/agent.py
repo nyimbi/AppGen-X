@@ -1,5 +1,7 @@
 """Agent and chatbot assistance for the planning_budgeting_forecasting PBC."""
 PBC_KEY = 'planning_budgeting_forecasting'
+from .app_surface import document_instruction_planning_budgeting_forecasting_plan, single_pbc_planning_budgeting_forecasting_app_contract
+
 OWNED_TABLES = ('planning_budgeting_forecasting_planning_model', 'planning_budgeting_forecasting_budget_version', 'planning_budgeting_forecasting_forecast_cycle', 'planning_budgeting_forecasting_planning_scenario', 'planning_budgeting_forecasting_driver_assumption', 'planning_budgeting_forecasting_allocation_rule', 'planning_budgeting_forecasting_variance_analysis', 'planning_budgeting_forecasting_planning_approval', 'planning_budgeting_forecasting_appgen_outbox_event', 'planning_budgeting_forecasting_appgen_inbox_event', 'planning_budgeting_forecasting_appgen_dead_letter_event')
 
 
@@ -13,7 +15,8 @@ def chatbot_interface_contract():
 
 
 def document_instruction_plan(document, instruction):
-    return {'ok': True, 'pbc': PBC_KEY, 'document_digest': str(abs(hash(document))), 'instruction': instruction, 'candidate_tables': OWNED_TABLES[:3], 'requires_human_confirmation': True, 'crud_preview': {'operation': 'create', 'event_contract': 'AppGen-X'}, 'side_effects': ()}
+    app_plan = document_instruction_planning_budgeting_forecasting_plan(str(document or ''), str(instruction or ''))
+    return {'ok': True, 'pbc': PBC_KEY, 'document_digest': str(abs(hash(document))), 'instruction': instruction, 'candidate_tables': OWNED_TABLES[:3], 'proposed_operation': app_plan['proposed_operation'], 'target_table': app_plan['target_table'], 'planning_plan': app_plan, 'requires_human_confirmation': True, 'crud_preview': {'operation': 'create', 'event_contract': 'AppGen-X'}, 'side_effects': ()}
 
 
 def datastore_crud_plan(action, table=None, payload=None):
@@ -26,8 +29,9 @@ def datastore_crud_plan(action, table=None, payload=None):
 
 def composed_agent_contribution():
     namespace = f'{PBC_KEY}_skills'
-    return {'ok': True, 'pbc': PBC_KEY, 'single_agent_skill_namespace': namespace, 'dsl_tools': (namespace, f'{PBC_KEY}_crud', f'{PBC_KEY}_documents'), 'side_effects': ()}
+    standalone_app = single_pbc_planning_budgeting_forecasting_app_contract()
+    return {'ok': True, 'pbc': PBC_KEY, 'single_agent_skill_namespace': namespace, 'dsl_tools': (namespace, f'{PBC_KEY}_crud', f'{PBC_KEY}_documents'), 'standalone_app': standalone_app, 'side_effects': ()}
 
 
 def smoke_test():
-    return {'ok': agent_skill_manifest()['ok'] and chatbot_interface_contract()['ok'] and document_instruction_plan('doc','create')['ok'] and datastore_crud_plan('create')['ok'] and datastore_crud_plan('update', table='foreign_table')['ok'] is False and composed_agent_contribution()['ok'], 'side_effects': ()}
+    return {'ok': agent_skill_manifest()['ok'] and chatbot_interface_contract()['ok'] and document_instruction_plan('rolling forecast','open cycle')['ok'] and datastore_crud_plan('create')['ok'] and datastore_crud_plan('update', table='foreign_table')['ok'] is False and document_instruction_plan('rolling forecast','open cycle')['target_table'].startswith(f'{PBC_KEY}_') and composed_agent_contribution()['ok'] and composed_agent_contribution()['standalone_app']['ok'], 'side_effects': ()}

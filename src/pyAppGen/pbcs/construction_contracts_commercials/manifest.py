@@ -46,6 +46,7 @@ PBC_MANIFEST = {
     "permissions": PERMISSIONS,
     "seed_data": ("seed_data.py",),
     "standard_features": CONSTRUCTION_CONTRACTS_COMMERCIALS_STANDARD_FEATURE_KEYS,
+    "standalone_artifacts": ("standalone.py",),
     "tables": (
         "construction_contract",
         "pay_application",
@@ -61,9 +62,9 @@ PBC_MANIFEST = {
         "construction_contracts_commercials_governed_model",
     ),
     "template": "reporting",
-    "tests": ("tests/test_contract.py",),
+    "tests": ("tests/test_contract.py", "tests/test_standalone.py"),
     "ui_fragments": CONSTRUCTION_CONTRACTS_COMMERCIALS_UI_FRAGMENT_KEYS,
-    "version": "1.1.0",
+    "version": "1.2.0",
     "workflows": DOMAIN_OPERATIONS,
     "rules": DOMAIN_RULES,
 }

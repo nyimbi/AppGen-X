@@ -1,5 +1,7 @@
 """Package manifest for the travel_management PBC."""
 
+PBC_LITERAL = 'travel_management'
+
 PBC_MANIFEST = {'advanced_capabilities': ('travel_management_event_sourced_operational_history',
                            'travel_management_multi_tenant_policy_isolation',
                            'travel_management_schema_evolution_resilience',
@@ -56,7 +58,7 @@ PBC_MANIFEST = {'advanced_capabilities': ('travel_management_event_sourced_opera
  'datastore_backend': 'postgresql',
  'description': 'Travel requests, bookings, itineraries, policy compliance, duty of care, expense '
                 'handoff, supplier feeds, and carbon tracking.',
- 'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md'),
+ 'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md', 'README.md', 'implementation-plan.md', 'implementation-status.md'),
  'emits': ('TravelApproved', 'TravelBooked', 'DutyOfCareAlerted', 'TravelExpenseHandedOff'),
  'label': 'Travel Management',
  'mesh': 'hcm',
@@ -95,9 +97,15 @@ PBC_MANIFEST = {'advanced_capabilities': ('travel_management_event_sourced_opera
             'travel_expense_handoff',
             'travel_carbon_record'),
  'template': 'workflow',
- 'tests': ('tests/test_contract.py',),
+ 'tests': ('tests/test_contract.py', 'tests/test_standalone.py'),
  'ui_fragments': ('TravelManagementWorkbench',
                   'TravelManagementDetail',
-                  'TravelManagementAssistantPanel'),
+                  'TravelManagementAssistantPanel',
+                  'TripRequestReadinessForm',
+                  'TripRequestReadinessWizard',
+                  'BookingIntentWizard',
+                  'DutyOfCareResponseWizard',
+                  'DisruptionRebookingWizard',
+                  'ExpenseHandoffWizard'),
  'version': '1.0.0',
  'workflows': ('travel_request_workflow', 'travel_management_approval_workflow')}

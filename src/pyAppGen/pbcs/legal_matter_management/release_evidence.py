@@ -41,3 +41,27 @@ def build_release_evidence():
 
 def legal_matter_management_build_release_evidence():
     return build_release_evidence()
+
+from .controls import smoke_test as controls_smoke_test
+from .forms import smoke_test as forms_smoke_test
+from .standalone import standalone_smoke_test
+from .wizards import smoke_test as wizards_smoke_test
+
+_BASE_RELEASE_READINESS_WITH_STANDALONE = release_readiness_manifest
+def release_readiness_manifest():
+    base = _BASE_RELEASE_READINESS_WITH_STANDALONE()
+    checks = tuple(base.get('checks', ())) + (
+        {'id': 'forms', 'ok': forms_smoke_test()['ok']},
+        {'id': 'wizards', 'ok': wizards_smoke_test()['ok']},
+        {'id': 'controls', 'ok': controls_smoke_test()['ok']},
+        {'id': 'standalone_app', 'ok': standalone_smoke_test()['ok']},
+    )
+    return {**base, 'ok': base['ok'] and all(check['ok'] for check in checks), 'sections': tuple(dict.fromkeys(tuple(base.get('sections', ())) + ('forms','wizards','controls','standalone_app'))), 'checks': checks, 'blocking_gaps': tuple(check for check in checks if not check['ok'])}
+
+def validate_release_evidence():
+    manifest = release_readiness_manifest()
+    return {'ok': manifest['ok'], 'missing_sections': (), 'failed_checks': manifest['blocking_gaps'], 'boundary_gaps': manifest.get('boundary_gaps', ()), 'blocking_gaps': manifest['blocking_gaps'], 'side_effects': ()}
+
+def smoke_test():
+    validation = validate_release_evidence()
+    return {'ok': validation['ok'], 'validation': validation, 'side_effects': ()}

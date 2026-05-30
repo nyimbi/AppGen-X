@@ -2,42 +2,40 @@
 
 ## Completed in This Slice
 
-- Added a hand-authored implementation plan from `improve1.md`, manifest,
-  runtime, service, UI, agent, and release-evidence inspection.
-- Implemented `maintenance_release.py` with executable release-to-service
-  governance for component eligibility, work-card closeout, duplicate
-  inspection, technician authorization, tooling, consumables, deferred defects,
-  airworthiness directives, and human certifier evidence.
-- Wired `aviation_maintenance_repair_assess_release_to_service` into runtime
-  state, workbench queries, service contracts, release evidence, UI panels, and
-  agent previews.
-- Added focused implementation tests in
-  `tests/test_pbc_aviation_maintenance_repair_implementation.py`.
-- Added this status file and a README for implementers.
-
-## Review Notes
-
-- No cross-PBC table access was introduced.
-- Event outputs remain `AviationMaintenanceRepairApproved` or
-  `AviationMaintenanceRepairExceptionOpened` on the AppGen-X event contract.
-- The assistant is explicitly barred from certifying release; it only previews
-  and explains evidence for a human certifier.
-- No dependencies were added.
+- Replaced generic package placeholders with domain-specific model and schema
+  contracts for aircraft, components, work cards, deferred defects,
+  airworthiness directives, compliance releases, and governance records.
+- Added executable workflow contracts for `release_to_service` and
+  `document_instruction_planning` and wired them into runtime, services,
+  routes, UI, and assistant planning.
+- Hardened maintenance release evaluation to produce explicit blocker evidence
+  for work-card state, duplicate inspection, authorization expiry, tooling,
+  consumables, component eligibility, deferred defects, AD compliance, and
+  human certifier requirements.
+- Added standalone workbench forms, wizards, controls, service/route metadata,
+  AppGen-X event envelopes, idempotent handlers, permissions, and release
+  evidence gates.
+- Added focused package tests for successful release, blocked release, document
+  planning, workbench exposure, and rule/permission coverage.
 
 ## Validation Evidence
 
-Pending final batch validation after parallel agent results are integrated:
+- `python3 -m compileall .`
+- `PYTHONPATH=/private/tmp/appgen-pbc-aviation-maintenance-repair-standalone/src python3 -m unittest discover -s /private/tmp/appgen-pbc-aviation-maintenance-repair-standalone/src/pyAppGen/pbcs/aviation_maintenance_repair/tests -p 'test_*.py'`
+- `PYTHONPATH=/private/tmp/appgen-pbc-aviation-maintenance-repair-standalone/src python3 -c "from pyAppGen.pbcs.aviation_maintenance_repair import smoke_test; from pyAppGen.pbcs.aviation_maintenance_repair.runtime import aviation_maintenance_repair_runtime_smoke; from pyAppGen.pbcs.aviation_maintenance_repair.release_evidence import smoke_test as release_smoke; from pyAppGen.pbcs.aviation_maintenance_repair.capability_assurance import smoke_test as capability_smoke; print({'package': smoke_test()['ok'], 'runtime': aviation_maintenance_repair_runtime_smoke()['ok'], 'release': release_smoke()['ok'], 'capability': capability_smoke()['ok']})"`
 
-- focused aviation implementation tests;
-- existing aviation runtime and package contract tests;
-- Python compile for `maintenance_release.py`, runtime, service, UI, and agent;
-- selected PBC release and generation smoke audits for the batch.
+Observed results:
 
-## Remaining Depth for Later Slices
+- `compileall`: passed
+- `unittest`: 11 tests passed
+- package/runtime/release/capability smoke audits: all returned `True`
 
-- Add full aircraft configuration baseline and utilization forecasting.
-- Add maintenance program versioning and task applicability simulation.
-- Add visit planning control-tower behavior with critical-path material
-  blockers and non-routine work generation.
-- Add reliability analytics and repeat-defect detection.
+## Known Gaps
 
+- The standalone slice uses package-local in-memory state and contract metadata;
+  it does not integrate with external dispatch, inventory, or identity systems.
+- The physical migration DDL remains envelope-style with JSON payload columns;
+  domain-specific field semantics are enforced at the package contract and
+  workflow layer, not as fully expanded SQL columns.
+- No web UI rendering or external API server was started; validation stayed at
+  the package-contract and runtime-execution level.

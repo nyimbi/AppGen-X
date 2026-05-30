@@ -25,7 +25,8 @@ def chatbot_interface_contract():
     return {'ok': True, 'pbc': PBC_KEY, 'entrypoint': f'/assistant/pbc/{PBC_KEY}', 'single_agent_contribution': f'{PBC_KEY}_skills', 'capabilities': ('task_guidance','document_instruction_intake','governed_datastore_crud','mutation_preview','gate_assignment_decision_rationale'), 'side_effects': ()}
 
 def document_instruction_plan(document, instruction):
-    return {'ok': True, 'pbc': PBC_KEY, 'document_digest': str(abs(hash(document))), 'instruction': instruction, 'candidate_tables': OWNED_TABLES[:3], 'requires_human_confirmation': True, 'crud_preview': {'operation': 'create', 'event_contract': 'AppGen-X'}, 'side_effects': ()}
+    from .standalone import assistant_document_plan
+    return assistant_document_plan(document, instruction)
 
 def datastore_crud_plan(action, table=None, payload=None):
     target = table or OWNED_TABLES[0]
@@ -38,8 +39,10 @@ def gate_assignment_decision_rationale(request, candidate_stands=None, occupied_
     return {'ok': True, 'pbc': PBC_KEY, 'summary': explanation['summary'], 'recommendation': explanation['recommendation'], 'blocked_options': explanation['blocked_options'], 'event_contract': 'AppGen-X', 'side_effects': ()}
 
 def composed_agent_contribution():
+    from .standalone import single_pbc_app_contract
     namespace = f'{PBC_KEY}_skills'
-    return {'ok': True, 'pbc': PBC_KEY, 'single_agent_skill_namespace': namespace, 'dsl_tools': (namespace, f'{PBC_KEY}_crud', f'{PBC_KEY}_documents'), 'side_effects': ()}
+    app = single_pbc_app_contract()
+    return {'ok': True and app['ok'], 'pbc': PBC_KEY, 'single_agent_skill_namespace': namespace, 'dsl_tools': (namespace, f'{PBC_KEY}_crud', f'{PBC_KEY}_documents'), 'standalone_app': app['dsl_exposure'], 'side_effects': ()}
 
 def smoke_test():
     rationale = gate_assignment_decision_rationale({'flight_number': 'AOM-SMOKE'})

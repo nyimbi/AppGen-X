@@ -20,6 +20,11 @@ from pyAppGen.pbcs.banking_core_accounts.events import (
 )
 from pyAppGen.pbcs.banking_core_accounts.handlers import dispatch_event, handler_manifest
 from pyAppGen.pbcs.banking_core_accounts.models import lifecycle_model_manifest
+from pyAppGen.pbcs.banking_core_accounts.permissions import (
+    authorize,
+    permission_manifest,
+    permission_plan,
+)
 from pyAppGen.pbcs.banking_core_accounts.release_evidence import (
     build_release_evidence,
     release_readiness_manifest,
@@ -40,6 +45,11 @@ from pyAppGen.pbcs.banking_core_accounts.schema_contract import build_schema_con
 from pyAppGen.pbcs.banking_core_accounts.service_contract import build_service_contract
 from pyAppGen.pbcs.banking_core_accounts.services import service_operation_contracts
 from pyAppGen.pbcs.banking_core_accounts.ui import banking_core_accounts_ui_contract
+from pyAppGen.pbcs.banking_core_accounts.workflows import (
+    build_workflow_surface,
+    plan_workflow,
+    workflow_manifest,
+)
 
 
 def test_generated_schema_service_and_release_evidence():
@@ -67,7 +77,10 @@ def test_agent_chatbot_skills_and_help_are_executable():
     assert assistant_help_manifest()["ok"] is True
     assert chatbot_interface_contract()["ok"] is True
     assert document_instruction_plan("doc", "open account")["ok"] is True
+    update_plan = datastore_crud_plan("update")
     assert datastore_crud_plan("create")["ok"] is True
+    assert update_plan["route"] == "POST /deposit-accounts/{account_id}/transitions"
+    assert update_plan["required_permission"] == "banking_core_accounts.update"
     assert datastore_crud_plan("update", table="foreign_table")["ok"] is False
 
 
@@ -96,6 +109,7 @@ def test_configuration_permissions_and_seed_hooks_are_executable():
     smoke = banking_core_accounts_runtime_smoke()
     assert smoke["ok"] is True
     assert smoke["reopened"]["account"]["lifecycle_state"] == "reopened"
+    assert smoke["workflow_surface"]["ok"] is True
 
 
 def test_event_handlers_are_idempotent_and_retryable():
@@ -115,3 +129,15 @@ def test_event_handlers_are_idempotent_and_retryable():
             {"event_type": "Unexpected", "idempotency_key": "bad-banking_core_accounts"}
         )["dead_letter_table"].endswith("dead_letter_event")
     )
+
+
+def test_workflows_and_permissions_are_explicit_and_executable():
+    manifest = workflow_manifest()
+    assert manifest["ok"] is True
+    assert len(manifest["workflow_ids"]) == 3
+    assert plan_workflow("banking_core_accounts_create_deposit_account_workflow")["ok"] is True
+    assert build_workflow_surface()["ok"] is True
+    assert permission_manifest()["ok"] is True
+    assert authorize("banking_core_accounts.update", {"roles": ("operator",)})["ok"] is True
+    assert authorize("banking_core_accounts.approve", {"roles": ("operator",)})["ok"] is False
+    assert permission_plan("transition_deposit_account", {"roles": ("approver",)})["ok"] is False

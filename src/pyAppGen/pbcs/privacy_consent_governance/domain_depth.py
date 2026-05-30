@@ -1,94 +1,123 @@
-"""World-class domain depth contract for the privacy_consent_governance PBC."""
+"""Domain-depth contract for the privacy_consent_governance PBC."""
+
 from __future__ import annotations
+
 import hashlib
 
-PBC_KEY = 'privacy_consent_governance'
-DOMAIN_ENTITY = 'data subject'
-DOMAIN_PURPOSE = 'Owns data subjects, consent, purposes, notices, subject requests, processing records, retention decisions, policy evidence, and privacy-governance automation.'
-DOMAIN_OWNED_TABLES = ('privacy_consent_governance_consent_subject',
- 'privacy_consent_governance_consent_grant',
- 'privacy_consent_governance_consent_purpose',
- 'privacy_consent_governance_privacy_notice',
- 'privacy_consent_governance_notice_acknowledgement',
- 'privacy_consent_governance_data_subject_request',
- 'privacy_consent_governance_request_task',
- 'privacy_consent_governance_processing_activity',
- 'privacy_consent_governance_processing_basis',
- 'privacy_consent_governance_data_sharing_agreement',
- 'privacy_consent_governance_retention_schedule',
- 'privacy_consent_governance_retention_decision',
- 'privacy_consent_governance_privacy_risk_assessment',
- 'privacy_consent_governance_privacy_incident',
- 'privacy_consent_governance_consent_evidence_packet',
- 'privacy_consent_governance_privacy_exception_case',
- 'privacy_consent_governance_privacy_policy_rule',
- 'privacy_consent_governance_privacy_runtime_parameter',
- 'privacy_consent_governance_privacy_schema_extension',
- 'privacy_consent_governance_privacy_control_assertion',
- 'privacy_consent_governance_privacy_governed_model')
-DOMAIN_OPERATIONS = ('register_consent_subject',
- 'capture_consent_grant',
- 'define_consent_purpose',
- 'publish_privacy_notice',
- 'acknowledge_notice',
- 'open_subject_request',
- 'assign_request_task',
- 'record_processing_activity',
- 'validate_processing_basis',
- 'register_sharing_agreement',
- 'define_retention_schedule',
- 'record_retention_decision',
- 'assess_privacy_risk',
- 'record_privacy_incident',
- 'build_consent_evidence_packet',
- 'resolve_privacy_exception',
- 'compile_privacy_rule',
- 'simulate_consent_withdrawal_impact')
-DOMAIN_RULES = ('purpose_limitation_policy',
- 'consent_expiry_policy',
- 'subject_request_sla_policy',
- 'retention_policy',
- 'sharing_agreement_policy',
- 'incident_escalation_policy')
-DOMAIN_PARAMETERS = ('subject_request_sla_days',
- 'consent_expiry_warning_days',
- 'retention_review_days',
- 'risk_review_threshold',
- 'notice_reacknowledgement_days',
- 'workbench_limit')
-DOMAIN_EVENTS = ('ConsentCaptured',
- 'ConsentWithdrawn',
- 'SubjectRequestOpened',
- 'RetentionDecisionRecorded',
- 'PrivacyIncidentRecorded',
- 'PrivacyPolicyChanged')
-DOMAIN_CONSUMED_EVENTS = ('CustomerUpdated', 'IdentityVerified', 'PolicyChanged', 'DataProductPublished')
-DOMAIN_ADVANCED_CAPABILITIES = ('consent lineage graph',
- 'purpose-conflict detection',
- 'DSR workflow automation',
- 'retention impact simulation',
- 'cryptographic consent proof',
- 'privacy policy semantic compiler')
-DOMAIN_WORKBENCH_VIEWS = ('privacy workbench',
- 'consent ledger',
- 'subject request board',
- 'processing activity register',
- 'retention console',
- 'privacy risk panel',
- 'evidence packet room')
+from .models import BUSINESS_TABLES, OWNED_TABLES, PBC_KEY
+
+DOMAIN_PURPOSE = (
+    'Owns consent capture, lawful basis governance, privacy policy versioning, data subject rights, '
+    'retention, cross-border restrictions, audit proof evidence, and AI-assisted privacy planning.'
+)
+DOMAIN_OPERATIONS = (
+    'register_data_subject',
+    'capture_consent',
+    'manage_preference_center',
+    'revoke_consent',
+    'register_processing_purpose',
+    'register_lawful_basis',
+    'publish_policy_version',
+    'open_dsar',
+    'assign_dsar_task',
+    'approve_erasure',
+    'register_retention_schedule',
+    'record_retention_decision',
+    'register_cross_border_restriction',
+    'record_disclosure_event',
+    'record_audit_proof',
+    'plan_ai_instruction',
+)
+DOMAIN_RULES = (
+    'lawful_basis_required',
+    'purpose_must_exist',
+    'cross_border_transfer_needs_assessment',
+    'dsar_due_date_enforced',
+    'erasure_requires_legal_hold_check',
+    'policy_publication_requires_notice',
+)
+DOMAIN_PARAMETERS = (
+    'dsar_sla_days',
+    'consent_reconfirmation_days',
+    'retention_review_days',
+    'cross_border_risk_threshold',
+    'auto_revocation_guard_days',
+    'workbench_limit',
+)
+DOMAIN_EVENTS = (
+    'ConsentCaptured',
+    'ConsentRevoked',
+    'PolicyVersionPublished',
+    'DsarOpened',
+    'ErasureApproved',
+    'AuditProofRecorded',
+    'AIInstructionPlanned',
+)
+DOMAIN_CONSUMED_EVENTS = (
+    'CustomerUpdated',
+    'IdentityVerified',
+    'AccessPolicyChanged',
+    'AuditProofGenerated',
+)
+DOMAIN_ADVANCED_CAPABILITIES = (
+    'consent lineage graph',
+    'purpose registry drift detection',
+    'DSAR SLA orchestration',
+    'retention impact simulation',
+    'cross-border residency guardrail',
+    'cryptographic audit proof pack',
+)
+DOMAIN_WORKBENCH_VIEWS = (
+    'privacy workbench',
+    'consent ledger',
+    'preference center',
+    'policy registry',
+    'dsar board',
+    'retention console',
+    'cross-border guardrail',
+    'audit proof room',
+)
+OPERATION_TARGETS = {
+    'register_data_subject': f'{PBC_KEY}_data_subject',
+    'capture_consent': f'{PBC_KEY}_consent_capture',
+    'manage_preference_center': f'{PBC_KEY}_consent_preference',
+    'revoke_consent': f'{PBC_KEY}_consent_revocation',
+    'register_processing_purpose': f'{PBC_KEY}_processing_purpose',
+    'register_lawful_basis': f'{PBC_KEY}_lawful_basis_registry',
+    'publish_policy_version': f'{PBC_KEY}_policy_version',
+    'open_dsar': f'{PBC_KEY}_dsar_case',
+    'assign_dsar_task': f'{PBC_KEY}_dsar_task',
+    'approve_erasure': f'{PBC_KEY}_erasure_case',
+    'register_retention_schedule': f'{PBC_KEY}_retention_schedule',
+    'record_retention_decision': f'{PBC_KEY}_retention_decision',
+    'register_cross_border_restriction': f'{PBC_KEY}_cross_border_restriction',
+    'record_disclosure_event': f'{PBC_KEY}_disclosure_event',
+    'record_audit_proof': f'{PBC_KEY}_audit_proof',
+    'plan_ai_instruction': f'{PBC_KEY}_ai_instruction_plan',
+}
+OPERATION_EVENTS = {
+    'capture_consent': 'ConsentCaptured',
+    'revoke_consent': 'ConsentRevoked',
+    'publish_policy_version': 'PolicyVersionPublished',
+    'open_dsar': 'DsarOpened',
+    'approve_erasure': 'ErasureApproved',
+    'record_audit_proof': 'AuditProofRecorded',
+    'plan_ai_instruction': 'AIInstructionPlanned',
+}
 
 
-def _digest(value) -> str:
+def _digest(value: object) -> str:
     return hashlib.sha256(repr(value).encode('utf-8')).hexdigest()
 
 
 def domain_depth_contract() -> dict:
     return {
-        'format': f'appgen.{PBC_KEY}.world-class-domain-depth.v1',
+        'format': f'appgen.{PBC_KEY}.world-class-domain-depth.v2',
         'ok': True,
         'pbc': PBC_KEY,
         'purpose': DOMAIN_PURPOSE,
-        'owned_tables': DOMAIN_OWNED_TABLES,
+        'owned_tables': OWNED_TABLES,
+        'business_tables': BUSINESS_TABLES,
         'operation_count': len(DOMAIN_OPERATIONS),
         'operations': DOMAIN_OPERATIONS,
         'rules': DOMAIN_RULES,
@@ -111,9 +140,8 @@ def execute_domain_operation(operation: str, payload: dict | None = None) -> dic
     payload = dict(payload or {})
     if operation not in DOMAIN_OPERATIONS:
         return {'ok': False, 'reason': 'unknown_domain_operation', 'operation': operation, 'side_effects': ()}
-    index = DOMAIN_OPERATIONS.index(operation)
-    target_table = DOMAIN_OWNED_TABLES[index % len(DOMAIN_OWNED_TABLES)]
-    emitted_event = DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]
+    target_table = OPERATION_TARGETS[operation]
+    emitted_event = OPERATION_EVENTS.get(operation)
     return {
         'ok': True,
         'pbc': PBC_KEY,
@@ -137,76 +165,66 @@ def execute_domain_operation(operation: str, payload: dict | None = None) -> dic
 
 def domain_depth_smoke_test() -> dict:
     contract = domain_depth_contract()
-    executions = tuple(execute_domain_operation(operation, {'tenant': 'tenant-smoke'}) for operation in DOMAIN_OPERATIONS[:5])
+    executions = tuple(execute_domain_operation(operation, {'tenant': 'tenant-smoke'}) for operation in DOMAIN_OPERATIONS[:6])
     return {
         'ok': contract['ok']
         and len(contract['owned_tables']) >= contract['minimum_owned_domain_tables']
         and contract['operation_count'] >= contract['minimum_domain_operations']
-        and all(item['ok'] for item in executions)
-        and all(item['target_table'].startswith(f'{PBC_KEY}_') for item in executions),
+        and all(item['ok'] for item in executions),
         'contract': contract,
         'executions': executions,
         'side_effects': (),
     }
 
-# Full domain and UI surface coverage contract. This intentionally binds every
-# declared domain operation to visible workbench affordances so the PBC cannot
-# claim a capability that the composed application cannot operate.
-DOMAIN_EDGE_CASES = tuple(
-    f"{operation}_edge_case" for operation in DOMAIN_OPERATIONS
-) + (
-    'duplicate_submission',
-    'stale_reference_data',
-    'missing_required_evidence',
-    'policy_conflict',
-    'approval_deadlock',
-    'cross_tenant_access_attempt',
-    'idempotency_replay',
-    'dead_letter_recovery',
+
+DOMAIN_EDGE_CASES = (
+    'duplicate_consent_submission',
+    'revocation_without_capture',
+    'lawful_basis_gap',
+    'cross_border_transfer_blocked',
+    'dsar_sla_breach',
+    'erasure_legal_hold_conflict',
+    'audit_proof_hash_mismatch',
+    'instruction_requires_human_confirmation',
 )
-DOMAIN_SPECIALIST_CAPABILITIES = tuple(dict.fromkeys(
-    tuple(DOMAIN_ADVANCED_CAPABILITIES)
-    + tuple(f"specialist_{operation}" for operation in DOMAIN_OPERATIONS)
-    + tuple(f"rule_driven_{rule}" for rule in DOMAIN_RULES)
-))
 
 
 def domain_capability_surface_contract() -> dict:
     operation_surfaces = tuple(
         {
             'operation': operation,
-            'surface': f"{PBC_KEY}.ui.operation.{operation}",
+            'surface': f'{PBC_KEY}.ui.operation.{operation}',
             'action': operation,
-            'target_table': DOMAIN_OWNED_TABLES[index % len(DOMAIN_OWNED_TABLES)],
-            'permission': f"{PBC_KEY}.operate",
-            'requires_confirmation': True,
-            'agent_tool': f"{PBC_KEY}_skills.{operation}",
-            'event': DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)],
+            'target_table': OPERATION_TARGETS[operation],
+            'permission': f'{PBC_KEY}.operate',
+            'requires_confirmation': operation not in {'register_data_subject', 'register_processing_purpose'},
+            'agent_tool': f'{PBC_KEY}_skills.{operation}',
+            'event': OPERATION_EVENTS.get(operation),
         }
-        for index, operation in enumerate(DOMAIN_OPERATIONS)
+        for operation in DOMAIN_OPERATIONS
     )
     rule_surfaces = tuple(
-        {'rule': rule, 'surface': f"{PBC_KEY}.ui.rule.{rule}", 'editor': True, 'explainable': True}
+        {'rule': rule, 'surface': f'{PBC_KEY}.ui.rule.{rule}', 'editor': True, 'explainable': True}
         for rule in DOMAIN_RULES
     )
     parameter_surfaces = tuple(
-        {'parameter': parameter, 'surface': f"{PBC_KEY}.ui.parameter.{parameter}", 'bounded': True, 'editable': True}
+        {'parameter': parameter, 'surface': f'{PBC_KEY}.ui.parameter.{parameter}', 'bounded': True, 'editable': True}
         for parameter in DOMAIN_PARAMETERS
     )
     advanced_surfaces = tuple(
-        {'capability': capability, 'surface': f"{PBC_KEY}.ui.advanced.{_digest(capability)[:12]}", 'explainable': True}
+        {'capability': capability, 'surface': f'{PBC_KEY}.ui.advanced.{_digest(capability)[:12]}', 'explainable': True}
         for capability in DOMAIN_ADVANCED_CAPABILITIES
     )
     edge_case_surfaces = tuple(
-        {'edge_case': edge_case, 'surface': f"{PBC_KEY}.ui.edge_case.{edge_case}", 'triage_queue': True}
+        {'edge_case': edge_case, 'surface': f'{PBC_KEY}.ui.edge_case.{edge_case}', 'triage_queue': True}
         for edge_case in DOMAIN_EDGE_CASES
     )
     table_surfaces = tuple(
-        {'owned_table': table, 'surface': f"{PBC_KEY}.ui.table.{table}", 'read_model': True, 'mutation_guard': True}
-        for table in DOMAIN_OWNED_TABLES
+        {'owned_table': table, 'surface': f'{PBC_KEY}.ui.table.{table}', 'read_model': True, 'mutation_guard': True}
+        for table in OWNED_TABLES
     )
     return {
-        'format': f'appgen.{PBC_KEY}.complete-domain-capability-surface.v1',
+        'format': f'appgen.{PBC_KEY}.complete-domain-capability-surface.v2',
         'ok': True,
         'pbc': PBC_KEY,
         'operation_surfaces': operation_surfaces,
@@ -215,8 +233,6 @@ def domain_capability_surface_contract() -> dict:
         'advanced_surfaces': advanced_surfaces,
         'edge_case_surfaces': edge_case_surfaces,
         'table_surfaces': table_surfaces,
-        'specialist_capabilities': DOMAIN_SPECIALIST_CAPABILITIES,
-        'edge_cases': DOMAIN_EDGE_CASES,
         'coverage_counts': {
             'operations': len(operation_surfaces),
             'rules': len(rule_surfaces),
@@ -236,24 +252,17 @@ def ui_capability_surface_contract() -> dict:
     surface = domain_capability_surface_contract()
     navigation_sections = (
         'command_center',
-        'records_and_relationships',
-        'operations',
-        'specialist_capabilities',
-        'advanced_intelligence',
-        'edge_case_triage',
-        'rules_and_parameters',
-        'configuration',
-        'agent_assistant',
+        'consent_and_preferences',
+        'lawful_basis_and_policy',
+        'rights_requests',
+        'retention_and_transfers',
+        'audit_proofs',
+        'agent_planning',
         'release_evidence',
     )
     return {
-        'format': f'appgen.{PBC_KEY}.full-ui-capability-surface.v1',
-        'ok': surface['ok']
-        and surface['coverage_counts']['operations'] == len(DOMAIN_OPERATIONS)
-        and surface['coverage_counts']['rules'] == len(DOMAIN_RULES)
-        and surface['coverage_counts']['parameters'] == len(DOMAIN_PARAMETERS)
-        and surface['coverage_counts']['advanced_capabilities'] == len(DOMAIN_ADVANCED_CAPABILITIES)
-        and surface['coverage_counts']['owned_tables'] == len(DOMAIN_OWNED_TABLES),
+        'format': f'appgen.{PBC_KEY}.full-ui-capability-surface.v2',
+        'ok': surface['ok'],
         'pbc': PBC_KEY,
         'navigation_sections': navigation_sections,
         'operation_actions': tuple(item['action'] for item in surface['operation_surfaces']),

@@ -1,39 +1,37 @@
 # Capital Projects Delivery
 
-`capital_projects_delivery` is a self-contained AppGen PBC for capital project
-stage-gate governance inside a single package boundary.
+`capital_projects_delivery` is a standalone AppGen-X packaged business capability for capital project lifecycle control. The package owns its schema contracts, executable runtime, service layer, API routes, workbench UI, forms, wizards, controls, workflow descriptors, AppGen-X event contract, governed assistant planning surface, release evidence, and standalone bootstrap path.
 
-## Implemented Slice
+## What This Package Now Provides
 
-This package now executes a real capital project lifecycle slice:
+- A package-local runtime that governs capital project stage-gate transitions, checklist evidence, approvals, rollback rebaselining, inbox/outbox/dead-letter eventing, and workbench projections.
+- Runtime-driven schema, model, service, route, workflow, permission, seed, and release contracts so the standalone slice stays aligned with executable behavior.
+- A standalone one-PBC app surface in `standalone.py` that bootstraps configuration, parameters, rules, policy events, demo project data, route dispatch, workbench rendering, and release snapshots entirely inside this package.
+- UI contracts for workbench fragments plus explicit forms, wizards, controls, navigation, and permission-aware rendering for intake, checklist, approval, assistant, and release-review flows.
+- Agent/document-planning helpers that extract capital-project facts from text and return governed CRUD or mutation previews with routes, permissions, idempotency keys, workflows, and AppGen-X event expectations.
 
-- create a capital project with a governed default lifecycle stage,
-- capture gate checklist evidence through package-local forms,
-- approve or reject phase transitions with approver-role controls,
-- require a rebaseline reason for backward movement,
-- surface gate status in detail and workbench views,
-- emit AppGen-X lifecycle events only.
+## Key Entrypoints
 
-## Single-PBC App Surfaces
+- Runtime: `runtime.py`
+- Services: `services.py`
+- Routes: `routes.py`
+- UI/workbench: `ui.py`
+- Agent planning: `agent.py`
+- Standalone app: `standalone.py`
+- Release audit: `release_evidence.py`
 
-The package exposes a one-PBC app contract with:
+## Implemented Standalone Slice
 
-- database-backed owned tables, migrations, and model contracts,
-- forms: intake, gate checklist, gate approval,
-- wizards: onboarding and gate approval,
-- controls: transition adjacency, exit criteria, rebaseline, approver role,
-- services and routes for create, checklist, approval, detail, and workbench,
-- UI fragments for workbench, detail, assistant panel, and gate wizard,
-- agent help for blocked gates, approvals, rebaselines, and workbench summaries.
+The package executes a real capital-project stage-gate slice inside a one-PBC app shell:
 
-## Constraints Kept
-
-- Eventing remains AppGen-X only.
-- `stream_engine_picker_visible` remains `False`.
-- `shared_table_access` remains `False`.
-- All changes stay inside `src/pyAppGen/pbcs/capital_projects_delivery`.
+- create a governed capital project in `idea`,
+- record gate checklist evidence,
+- approve or reject stage transitions with approver-role controls,
+- require a rebaseline reason on backward moves,
+- expose lifecycle state in detail, workbench, workflows, and assistant planning,
+- bootstrap and render the slice as a standalone package-local app surface,
+- keep all eventing AppGen-X only and all writes inside owned `capital_projects_delivery_*` tables.
 
 ## Validation
 
-Validated with package-local executable tests and smoke checks recorded in
-`implementation-status.md`.
+Focused package-local validation is captured in `tests/test_contract.py`, `tests/test_lifecycle_app_slice.py`, `tests/test_standalone.py`, `implementation-status.md`, and `RELEASE_EVIDENCE.md`.

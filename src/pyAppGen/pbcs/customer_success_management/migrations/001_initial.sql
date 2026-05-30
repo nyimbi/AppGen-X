@@ -66,6 +66,28 @@ CREATE TABLE IF NOT EXISTS customer_success_management_onboarding_milestone (
   updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS customer_success_management_customer_touchpoint (
+  id TEXT PRIMARY KEY NOT NULL,
+  tenant TEXT NOT NULL,
+  code TEXT NOT NULL,
+  title TEXT,
+  owner TEXT,
+  status TEXT NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  success_account_id TEXT REFERENCES customer_success_management_customer_success_account(id),
+  score REAL,
+  due_on TEXT,
+  event_type TEXT,
+  topic TEXT,
+  idempotency_key TEXT,
+  attempts INTEGER DEFAULT 0,
+  last_error TEXT,
+  payload TEXT,
+  effective_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS customer_success_management_adoption_signal (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,

@@ -58,7 +58,7 @@ PBC_MANIFEST = {'advanced_capabilities': ('media_rights_content_monetization_eve
  'datastore_backend': 'postgresql',
  'description': 'Rights, licensing, distribution windows, royalties, usage tracking, revenue '
                 'share, and content monetization',
- 'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md'),
+ 'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md', 'implementation-plan.md'),
  'emits': ('MediaRightsContentMonetizationCreated',
            'MediaRightsContentMonetizationUpdated',
            'MediaRightsContentMonetizationApproved',
@@ -104,7 +104,7 @@ PBC_MANIFEST = {'advanced_capabilities': ('media_rights_content_monetization_eve
             'media_rights_content_monetization_control_assertion',
             'media_rights_content_monetization_governed_model'),
  'template': 'crm',
- 'tests': ('tests/test_contract.py',),
+ 'tests': ('tests/test_contract.py', 'tests/test_standalone_surface.py'),
  'ui_fragments': ('MediaRightsContentMonetizationWorkbench',
                   'MediaRightsContentMonetizationDetail',
                   'MediaRightsContentMonetizationAssistantPanel'),

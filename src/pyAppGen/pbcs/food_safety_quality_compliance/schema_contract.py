@@ -1,1 +1,1 @@
-from .runtime import food_safety_quality_compliance_build_schema_contract as build_schema_contract
+from .slice_app import build_schema_contract

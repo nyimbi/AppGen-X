@@ -79,7 +79,8 @@ PBC_MANIFEST = {
     "advanced_capabilities": COMPOSITION_ENGINE_RUNTIME_CAPABILITY_KEYS,
     "migrations": ("migrations/001_initial.sql",),
     "seed_data": ("seed_data.py",),
-    "tests": ("tests/test_contract.py", "tests/test_runtime_capabilities.py", "tests/test_orchestration_app.py"),
+    "tests": ("tests/test_contract.py", "tests/test_runtime_capabilities.py", "tests/test_orchestration_app.py", "tests/test_repository.py", "tests/test_standalone.py"),
+    "standalone": ("repository.py", "standalone.py"),
     "docs": (
         "SPECIFICATION.md",
         "RELEASE_EVIDENCE.md",

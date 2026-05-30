@@ -168,3 +168,45 @@ def smoke_test():
         'result': result,
         'side_effects': (),
     }
+
+
+def treasury_cash_execution_service_manifest():
+    """Return the standalone treasury execution workflow surface."""
+    operation_contracts = service_operation_contracts()
+    execution_operations = (
+        "register_bank_account",
+        "capture_bank_balance",
+        "ingest_bank_statement",
+        "reconcile_statement",
+        "build_cash_position",
+        "forecast_cash",
+        "optimize_liquidity",
+        "route_payment_rail",
+        "place_investment",
+        "draw_debt_facility",
+        "recommend_hedge",
+        "run_control_tests",
+    )
+    route_map = {
+        "register_bank_account": "command_treasury_bank_accounts",
+        "capture_bank_balance": "command_treasury_balances",
+        "ingest_bank_statement": "command_treasury_statements",
+        "reconcile_statement": "command_treasury_statements_id_reconcile",
+        "build_cash_position": "query_treasury_cash_position",
+        "forecast_cash": "command_treasury_forecasts",
+        "optimize_liquidity": "command_treasury_liquidity_optimize",
+        "route_payment_rail": "command_treasury_payment_rails_route",
+        "place_investment": "command_treasury_investments",
+        "draw_debt_facility": "command_treasury_debt_draws",
+        "recommend_hedge": "command_treasury_fx_hedge_recommendations",
+        "run_control_tests": "query_treasury_workbench",
+    }
+    return {
+        'ok': operation_contracts['ok'] and set(route_map.values()) <= set(operation_contracts['operations']),
+        'pbc': 'treasury_cash',
+        'operations': execution_operations,
+        'route_map': route_map,
+        'event_contract': 'AppGen-X',
+        'transaction_boundary': 'owned_datastore_plus_outbox',
+        'side_effects': (),
+    }

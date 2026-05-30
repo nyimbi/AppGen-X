@@ -16,7 +16,7 @@ def agent_skill_manifest() -> dict[str, Any]:
             "name": f"{PBC_KEY}_guide_user",
             "scope": PBC_KEY,
             "description": "Explain intake, adjudication, denial, and appeal workflows.",
-            "requires_confirmation_for_mutation": False,
+            "requires_confirmation_for_mutation": True,
             "uses_appgen_event_contract": True,
             "stream_engine_picker_visible": False,
         },
@@ -24,7 +24,7 @@ def agent_skill_manifest() -> dict[str, Any]:
             "name": f"{PBC_KEY}_parse_document_instruction",
             "scope": PBC_KEY,
             "description": "Parse coverage memos and appeal packets into governed CRUD previews.",
-            "requires_confirmation_for_mutation": False,
+            "requires_confirmation_for_mutation": True,
             "uses_appgen_event_contract": True,
             "stream_engine_picker_visible": False,
         },
@@ -40,7 +40,7 @@ def agent_skill_manifest() -> dict[str, Any]:
             "name": f"{PBC_KEY}_review_release_evidence",
             "scope": PBC_KEY,
             "description": "Summarize runtime, test, and release evidence for the adjudication slice.",
-            "requires_confirmation_for_mutation": False,
+            "requires_confirmation_for_mutation": True,
             "uses_appgen_event_contract": True,
             "stream_engine_picker_visible": False,
         },
@@ -127,12 +127,15 @@ def document_instruction_crud_support(document: str, instruction: str) -> dict[s
 
 
 def composed_agent_contribution() -> dict[str, Any]:
+    from .standalone import single_pbc_app_contract
     namespace = f"{PBC_KEY}_skills"
+    app = single_pbc_app_contract()
     return {
-        "ok": True,
+        "ok": True and app["ok"],
         "pbc": PBC_KEY,
         "single_agent_skill_namespace": namespace,
         "dsl_tools": (namespace, f"{PBC_KEY}_crud", f"{PBC_KEY}_documents"),
+        "standalone_app": app["dsl_exposure"],
         "side_effects": (),
     }
 

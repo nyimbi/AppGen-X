@@ -25,3 +25,10 @@
 - Run targeted Python import/execution checks with `PYTHONPATH=src`.
 - Run the package-local runtime/contract tests and the new implementation test with `uv run pytest`.
 - Re-check changed files for boundary, eventing, and contract mismatches.
+
+## Completed Standalone Workbench Pass
+
+1. Bind form definitions to executable service operations and owned datastore tables.
+2. Add guided wizards that block unsafe route publication until service, route, and identity context exists.
+3. Add an operator control center that combines release evidence, safety-case checks, route collision checks, and owned-boundary proofs.
+4. Prove database-backed standalone behavior through repository smoke tests and focused pytest coverage.

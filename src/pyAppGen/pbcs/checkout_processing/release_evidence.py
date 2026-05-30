@@ -121,3 +121,54 @@ def smoke_test() -> dict:
         "evidence": evidence,
         "side_effects": (),
     }
+
+
+
+def _standalone_documentation_evidence() -> dict:
+    docs = {
+        "README.md": PACKAGE_DIR.joinpath("README.md").exists(),
+        "SPECIFICATION.md": PACKAGE_DIR.joinpath("SPECIFICATION.md").exists(),
+        "RELEASE_EVIDENCE.md": PACKAGE_DIR.joinpath("RELEASE_EVIDENCE.md").exists(),
+        "repository.py": PACKAGE_DIR.joinpath("repository.py").exists(),
+        "standalone.py": PACKAGE_DIR.joinpath("standalone.py").exists(),
+    }
+    return {"ok": all(docs.values()), "pbc": PBC_KEY, "artifacts": docs, "side_effects": ()}
+
+
+_BASE_BUILD_RELEASE_EVIDENCE = build_release_evidence
+
+
+def build_release_evidence() -> dict:
+    """Return release evidence with standalone one-PBC app proof."""
+    evidence = _BASE_BUILD_RELEASE_EVIDENCE()
+    from . import standalone
+    from .repository import standalone_repository_contract
+    from .services import standalone_service_operation_contracts
+    from .routes import standalone_route_contracts
+
+    standalone_app = standalone.checkout_processing_standalone_app_contract()
+    standalone_repo = standalone_repository_contract()
+    standalone_services = standalone_service_operation_contracts()
+    standalone_routes = standalone_route_contracts()
+    docs = _standalone_documentation_evidence()
+    ok = (
+        evidence.get("ok") is True
+        and standalone_app["ok"]
+        and standalone_repo["ok"]
+        and standalone_services["ok"]
+        and standalone_routes["ok"]
+        and docs["ok"]
+    )
+    return {
+        **evidence,
+        "ok": ok,
+        "standalone_app": standalone_app,
+        "standalone_repository": standalone_repo,
+        "standalone_services": standalone_services,
+        "standalone_routes": standalone_routes,
+        "documentation": docs,
+        "docs_present": {**evidence.get("docs_present", {}), **docs["artifacts"]},
+    }
+
+
+RELEASE_EVIDENCE = build_release_evidence()

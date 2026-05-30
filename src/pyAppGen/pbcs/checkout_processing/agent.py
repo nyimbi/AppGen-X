@@ -273,3 +273,88 @@ def smoke_test() -> dict:
         "contribution": contribution,
         "side_effects": (),
     }
+
+
+
+def _standalone_operations() -> tuple[str, ...]:
+    from .services import standalone_service_operation_contracts
+
+    return standalone_service_operation_contracts()["operations"]
+
+
+def standalone_agent_workspace_contract() -> dict:
+    """Return the checkout-only app assistant workspace contract."""
+    from .routes import standalone_route_contracts
+    from .ui import checkout_processing_standalone_workbench_blueprint
+
+    routes = standalone_route_contracts()
+    workbench = checkout_processing_standalone_workbench_blueprint()
+    return {
+        "format": "appgen.checkout-processing-agent-workspace.v1",
+        "ok": routes["ok"] and workbench["ok"],
+        "pbc": PBC_KEY,
+        "agent": AGENT_NAME,
+        "entrypoint": "/app/checkout-processing/assistant/sessions",
+        "skill_namespace": f"{PBC_KEY}_skills",
+        "dsl_tools": (f"{PBC_KEY}_skills", f"{PBC_KEY}_documents", f"{PBC_KEY}_crud", f"{PBC_KEY}_workflows"),
+        "standalone_operations": _standalone_operations(),
+        "standalone_routes": routes["routes"],
+        "forms": tuple(form["form_id"] for form in workbench["forms"]),
+        "wizards": tuple(wizard["wizard_id"] for wizard in workbench["wizards"]),
+        "controls": tuple(control["control_id"] for control in workbench["controls"]),
+        "professional_controls": chatbot_interface_contract()["professional_controls"],
+        "side_effects": (),
+    }
+
+
+_BASE_DOCUMENT_INSTRUCTION_PLAN = document_instruction_plan
+_BASE_DATASTORE_CRUD_PLAN = datastore_crud_plan
+
+
+def document_instruction_plan(document=None, instructions=None, *, target_entity: str | None = None, requested_action: str | None = None) -> dict:
+    """Plan document/instruction handling with standalone route and wizard context."""
+    plan = _BASE_DOCUMENT_INSTRUCTION_PLAN(
+        document,
+        instructions,
+        target_entity=target_entity,
+        requested_action=requested_action,
+    )
+    try:
+        from .wizards import checkout_processing_wizard_catalog
+        from .routes import standalone_route_contracts
+
+        wizards = checkout_processing_wizard_catalog()["wizard_ids"]
+        routes = standalone_route_contracts()["routes"]
+    except Exception:
+        wizards = ()
+        routes = ()
+    return {
+        **plan,
+        "wizard_candidates": wizards,
+        "standalone_routes": routes,
+        "workspace": "checkout_processing_standalone_app",
+    }
+
+
+def datastore_crud_plan(action="read", table=None, payload=None) -> dict:
+    """Plan governed CRUD with package-owned standalone tables included."""
+    base = _BASE_DATASTORE_CRUD_PLAN(action, table, payload)
+    standalone_tables = (
+        "checkout_processing_runtime_state",
+        "checkout_processing_form_submission",
+        "checkout_processing_workflow_run",
+        "checkout_processing_control_execution",
+        "checkout_processing_agent_session",
+        "checkout_processing_workbench_read_model",
+    )
+    selected_table = base.get("table") or table
+    allowed = base.get("ok") is True or (str(action).lower() in _CRUD_ACTIONS and selected_table in standalone_tables)
+    return {
+        **base,
+        "ok": allowed,
+        "owned_tables": tuple(dict.fromkeys(tuple(base.get("owned_tables", ())) + standalone_tables)),
+        "standalone_tables": standalone_tables,
+        "standalone_operations": _standalone_operations(),
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+    }

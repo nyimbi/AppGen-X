@@ -1,6 +1,12 @@
 """UI fragments for the contract_lifecycle PBC."""
 
 from .application import PBC_KEY, render_workbench, ui_contract
+from .app_surface import (
+    contract_lifecycle_controls_contract,
+    contract_lifecycle_forms_contract,
+    contract_lifecycle_wizards_contract,
+    single_pbc_contract_lifecycle_app_contract,
+)
 from .domain_depth import domain_capability_surface_contract, ui_capability_surface_contract
 
 
@@ -21,6 +27,10 @@ def contract_lifecycle_ui_contract():
         "edge_case_queues": capability["edge_case_queues"],
         "table_browsers": capability["table_browsers"],
         "navigation_sections": capability["navigation_sections"],
+        "forms_contract": contract_lifecycle_forms_contract(),
+        "wizards_contract": contract_lifecycle_wizards_contract(),
+        "controls_contract": contract_lifecycle_controls_contract(),
+        "single_pbc_app": single_pbc_contract_lifecycle_app_contract(),
     }
 
 
@@ -38,4 +48,5 @@ def contract_lifecycle_render_workbench(state=None):
 def smoke_test():
     contract = contract_lifecycle_ui_contract()
     workbench = contract_lifecycle_render_workbench()
-    return {"ok": contract["ok"] and workbench["ok"], "contract": contract, "workbench": workbench}
+    app = single_pbc_contract_lifecycle_app_contract()
+    return {"ok": contract["ok"] and workbench["ok"] and app["ok"], "contract": contract, "workbench": workbench, "single_pbc_app": app}

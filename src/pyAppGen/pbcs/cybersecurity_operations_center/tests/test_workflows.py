@@ -114,8 +114,11 @@ class WorkflowSuite(unittest.TestCase):
         )
         self.assertTrue(triage["ok"])
         self.assertTrue(workbench["ok"])
+        self.assertEqual(triage["operation_contract"]["operation"], "transition_alert")
+        self.assertEqual(workbench["required_permission"], "cybersecurity_operations_center.read")
         self.assertTrue(workbench["result"]["result"]["route"].endswith("cybersecurity_operations_center"))
 
 
 if __name__ == "__main__":
     unittest.main()
+

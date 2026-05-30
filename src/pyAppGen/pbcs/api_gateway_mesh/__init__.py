@@ -113,3 +113,10 @@ def smoke_test() -> dict:
         "discovery": discovery,
         "side_effects": (),
     }
+from .forms import api_gateway_mesh_form_catalog
+from .forms import api_gateway_mesh_validate_form_payload
+from .wizards import api_gateway_mesh_plan_wizard
+from .wizards import api_gateway_mesh_wizard_catalog
+from .controls import api_gateway_mesh_control_catalog
+from .controls import api_gateway_mesh_control_center
+from .controls import api_gateway_mesh_mutation_preview

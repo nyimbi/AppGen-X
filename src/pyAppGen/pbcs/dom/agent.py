@@ -66,9 +66,9 @@ def _owned_tables() -> tuple[str, ...]:
         "dom_cancellation_request",
         "dom_shipment_projection",
         "dom_order_exception",
-        "dom_dom_appgen_outbox_event",
-        "dom_dom_appgen_inbox_event",
-        "dom_dom_dead_letter_event",
+        "dom_appgen_outbox_event",
+        "dom_appgen_inbox_event",
+        "dom_dead_letter_event",
     )
 
 
@@ -81,7 +81,9 @@ def _query_operations() -> tuple[str, ...]:
 def _command_operations() -> tuple[str, ...]:
     from . import services
 
-    return services.standalone_service_manifest().get("service_methods", ())
+    manifest = services.standalone_service_manifest()
+    query_methods = set(manifest.get("query_methods", ()))
+    return tuple(method for method in manifest.get("service_methods", ()) if method not in query_methods)
 
 
 def _first_match(pattern: str, text: str) -> str | None:

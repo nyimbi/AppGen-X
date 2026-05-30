@@ -81,7 +81,8 @@ PBC_MANIFEST = {'advanced_capabilities': ('banking_core_accounts_event_sourced_o
                  'banking_core_accounts.create',
                  'banking_core_accounts.update',
                  'banking_core_accounts.approve',
-                 'banking_core_accounts.admin'),
+                 'banking_core_accounts.admin',
+                 'banking_core_accounts.operate'),
  'seed_data': ('seed_data.py',),
  'standard_features': ('deposit_account_management',
                        'banking_core_accounts_workflow',
@@ -124,5 +125,5 @@ PBC_MANIFEST = {'advanced_capabilities': ('banking_core_accounts_event_sourced_o
                   'BankingCoreAccountsAssistantPanel'),
  'version': '1.0.0',
  'workflows': ('banking_core_accounts_create_deposit_account_workflow',
-               'banking_core_accounts_record_account_balance_workflow',
-               'banking_core_accounts_deposit_account_lifecycle_wizard')}
+               'banking_core_accounts_deposit_account_lifecycle_workflow',
+               'banking_core_accounts_document_instruction_workflow')}

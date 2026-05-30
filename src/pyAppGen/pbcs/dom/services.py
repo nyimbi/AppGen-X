@@ -396,6 +396,15 @@ class DomStandaloneService:
     def workbench(self, *, tenant: str | None = None, permissions: tuple[str, ...] | None = None) -> dict[str, Any]:
         return self.app.workbench(tenant=tenant, permissions=permissions)
 
+    def repository_manifest(self) -> dict[str, Any]:
+        return self.app.repository_manifest()
+
+    def read_model_snapshot(self) -> dict[str, Any]:
+        return self.app.read_model_snapshot()
+
+    def load_demo_workspace(self, seed_bundle: dict[str, Any] | None = None) -> dict[str, Any]:
+        return self.app.load_demo_workspace(seed_bundle=seed_bundle)
+
     def get_order_snapshot(self, order_id: str) -> dict[str, Any]:
         order = self.app.snapshot().get("orders", {}).get(order_id)
         return {"ok": order is not None, "order": order, "state": self.state}
@@ -408,7 +417,7 @@ def standalone_service_manifest() -> dict[str, Any]:
         "pbc": "dom",
         "service_class": "DomStandaloneService",
         "service_methods": manifest["service_methods"],
-        "query_methods": ("workbench", "get_order_snapshot", "crud_mutation_plan"),
+        "query_methods": ("workbench", "repository_manifest", "read_model_snapshot", "get_order_snapshot", "crud_mutation_plan"),
         "event_contract": "AppGen-X",
         "event_topic": DOM_REQUIRED_EVENT_TOPIC,
         "stream_engine_picker_visible": False,

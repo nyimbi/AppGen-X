@@ -116,4 +116,5 @@ The package does not need all fifty backlog items to become credible. This imple
 - `README.md`
 - `implementation-status.md`
 - `RELEASE_EVIDENCE.md`
+- `standalone.py`
 - focused test suite and validation evidence

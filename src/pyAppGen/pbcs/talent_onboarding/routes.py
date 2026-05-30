@@ -125,3 +125,25 @@ def smoke_test():
         'dispatch': dispatched,
         'side_effects': (),
     }
+
+
+STANDALONE_ROUTES=({'method':'POST','path':'/app/talent-onboarding/demo-workspace','handler':'seed_demo_workspace'},{'method':'GET','path':'/app/talent-onboarding/workbench','handler':'build_workbench'},{'method':'POST','path':'/app/talent-onboarding/candidates','handler':'create_candidate'},{'method':'POST','path':'/app/talent-onboarding/provision','handler':'provision_employee'},{'method':'POST','path':'/app/talent-onboarding/proofs','handler':'generate_candidate_proof'})
+def standalone_route_contracts():
+    from .services import standalone_service_operation_contracts
+    ops={i['operation']:i for i in standalone_service_operation_contracts()['contracts']}; contracts=tuple({**r,'operation':r['handler'],'service_operation':ops.get(r['handler'])} for r in STANDALONE_ROUTES)
+    return {'format':'appgen.talent-onboarding-standalone-routes.v1','ok':all(i['service_operation'] for i in contracts),'pbc':'talent_onboarding','routes':tuple(f"{i['method']} {i['path']}" for i in contracts),'contracts':contracts,'side_effects':()}
+def dispatch_standalone_route(method,path,payload=None,*,service=None):
+    from .services import TalentOnboardingStandaloneService
+    route=next((i for i in STANDALONE_ROUTES if i['method']==method and i['path']==path),None)
+    if route is None: return {'ok':False,'handled':False,'reason':'route_not_found','side_effects':()}
+    own=service is None; service=service or TalentOnboardingStandaloneService(); data=dict(payload or {})
+    try:
+        if route['handler']=='seed_demo_workspace': result=service.seed_demo_workspace(tenant=data.get('tenant','tenant_demo'))
+        elif route['handler']=='build_workbench': result=service.build_workbench(tenant=data.get('tenant','tenant_demo'))
+        elif route['handler']=='create_candidate': result=service.create_candidate(data.get('tenant','tenant_demo'),data)
+        elif route['handler']=='provision_employee': result=service.provision_employee(data.get('tenant','tenant_demo'),data['candidate_id'],data.get('provisioned_by','hr_ops'))
+        elif route['handler']=='generate_candidate_proof': result=service.generate_candidate_proof(data.get('tenant','tenant_demo'),data['candidate_id'],tuple(data.get('disclosure',('candidate_id','requisition_id','stage'))))
+        else: result={'ok':False,'reason':'handler_not_implemented'}
+        return {'ok':result.get('ok') is True,'handled':True,'route':route,'result':{'ok':result.get('ok') is True,'result':result},'side_effects':()}
+    finally:
+        if own: service.close()

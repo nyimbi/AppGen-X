@@ -1,4 +1,7 @@
-from .runtime import environment_health_safety_build_schema_contract
+"""Model contracts for the environment_health_safety PBC."""
+
+from .standalone import build_schema_contract
+
 
 def model_contracts():
-    return environment_health_safety_build_schema_contract()['models']
+    return build_schema_contract()["models"]

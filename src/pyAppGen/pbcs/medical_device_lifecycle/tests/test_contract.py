@@ -7,7 +7,10 @@ from pyAppGen.pbcs.medical_device_lifecycle.handlers import dispatch_event, hand
 from pyAppGen.pbcs.medical_device_lifecycle.services import service_operation_contracts
 from pyAppGen.pbcs.medical_device_lifecycle.routes import api_route_contracts, validate_api_route_contracts
 from pyAppGen.pbcs.medical_device_lifecycle.config import governance_smoke_test
-from pyAppGen.pbcs.medical_device_lifecycle.agent import agent_skill_manifest, chatbot_interface_contract, document_instruction_plan, datastore_crud_plan
+from pyAppGen.pbcs.medical_device_lifecycle.agent import agent_skill_manifest, chatbot_interface_contract, document_instruction_plan, datastore_crud_plan, standalone_agent_workspace_contract
+from pyAppGen.pbcs.medical_device_lifecycle.forms import medical_device_lifecycle_form_catalog
+from pyAppGen.pbcs.medical_device_lifecycle.wizards import medical_device_lifecycle_wizard_catalog
+from pyAppGen.pbcs.medical_device_lifecycle.controls import medical_device_lifecycle_control_catalog
 
 
 def test_generated_schema_service_and_release_evidence():
@@ -30,6 +33,13 @@ def test_agent_chatbot_skills_are_executable():
     assert document_instruction_plan('doc', 'create')['ok'] is True
     assert datastore_crud_plan('create')['ok'] is True
     assert datastore_crud_plan('update', table='foreign_table')['ok'] is False
+    assert standalone_agent_workspace_contract()['ok'] is True
+
+
+def test_package_local_forms_wizards_and_controls_are_registered():
+    assert medical_device_lifecycle_form_catalog()['ok'] is True
+    assert medical_device_lifecycle_wizard_catalog()['ok'] is True
+    assert medical_device_lifecycle_control_catalog()['ok'] is True
 
 
 def test_registration_plan_is_side_effect_free():

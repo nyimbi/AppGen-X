@@ -151,7 +151,7 @@ def oil_gas_field_operations_build_schema_contract():
     return {'format': 'appgen.oil-gas-field-operations-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/oil_gas_field_operations/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': OIL_GAS_FIELD_OPERATIONS_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': OIL_GAS_FIELD_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'database_backends': OIL_GAS_FIELD_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': OIL_GAS_FIELD_OPERATIONS_OWNED_TABLES}
 
 def oil_gas_field_operations_build_service_contract():
-    return {'format': 'appgen.oil-gas-field-operations-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_well','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
+    return {'format': 'appgen.oil-gas-field-operations-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_well','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view','query_oil_gas_field_operations_controls','query_oil_gas_field_operations_assistant_preview','query_oil_gas_field_operations_standalone_app'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
 
 def oil_gas_field_operations_build_api_contract():
     return {'format': 'appgen.oil-gas-field-operations-api-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'routes': ('POST /wells',
@@ -159,7 +159,10 @@ def oil_gas_field_operations_build_api_contract():
  'POST /field-tickets',
  'POST /workover-plans',
  'POST /hse-events',
- 'GET /oil-gas-field-operations-workbench'), 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'owned_tables': OIL_GAS_FIELD_OPERATIONS_OWNED_TABLES}
+ 'GET /oil-gas-field-operations-workbench',
+ 'GET /oil-gas-field-operations/controls',
+ 'POST /oil-gas-field-operations/assistant/document-preview',
+ 'GET /oil-gas-field-operations/standalone-contract'), 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'owned_tables': OIL_GAS_FIELD_OPERATIONS_OWNED_TABLES}
 
 def oil_gas_field_operations_build_release_evidence():
     checks = ({'id': 'schema_models_migrations', 'ok': True}, {'id': 'service_api_events', 'ok': True}, {'id': 'agent_ui_governance', 'ok': True}, {'id': 'retry_dead_letter', 'ok': True})

@@ -1,6 +1,10 @@
 """API route contracts for the order_routing_optimization PBC."""
 
 from .services import OrderRoutingOptimizationService, service_operation_contracts
+from .app_surface import single_pbc_routing_app_contract
+from .app_surface import routing_forms_contract
+from .app_surface import routing_wizards_contract
+from .app_surface import routing_controls_contract
 
 
 ROUTES = (
@@ -107,9 +111,58 @@ def smoke_test():
         return {'ok': False, 'reason': 'no_routes'}
     first = ROUTES[0]
     dispatched = dispatch_route(first['method'], first['path'], {'smoke': True})
+    app_routes = standalone_app_route_contracts()
     return {
-        'ok': validation['ok'] and dispatched['ok'],
+        'ok': validation['ok'] and dispatched['ok'] and app_routes['ok'],
         'validation': validation,
         'dispatch': dispatched,
+        'standalone_app_routes': app_routes,
+        'side_effects': (),
+    }
+
+
+STANDALONE_APP_ROUTES = (
+    {
+        'method': 'GET',
+        'path': '/api/pbc/order_routing_optimization/app-shell',
+        'handler': 'single_pbc_routing_app_contract',
+        'permission': 'order_routing_optimization.read',
+        'read_tables': single_pbc_routing_app_contract()['owned_tables'],
+    },
+    {
+        'method': 'GET',
+        'path': '/api/pbc/order_routing_optimization/forms',
+        'handler': 'routing_forms_contract',
+        'permission': 'order_routing_optimization.read',
+        'read_tables': tuple(form['writes_table'] for form in routing_forms_contract()['forms']),
+    },
+    {
+        'method': 'GET',
+        'path': '/api/pbc/order_routing_optimization/wizards',
+        'handler': 'routing_wizards_contract',
+        'permission': 'order_routing_optimization.read',
+        'read_tables': (),
+    },
+    {
+        'method': 'GET',
+        'path': '/api/pbc/order_routing_optimization/controls',
+        'handler': 'routing_controls_contract',
+        'permission': 'order_routing_optimization.audit',
+        'read_tables': tuple(dict.fromkeys(table for control in routing_controls_contract()['controls'] for table in control['table_scope'])),
+    },
+)
+
+
+def standalone_app_route_contracts():
+    """Return side-effect-free app shell route metadata for generated apps."""
+    return {
+        'ok': all(
+            all(table.startswith('order_routing_optimization_') for table in route['read_tables'])
+            for route in STANDALONE_APP_ROUTES
+        ),
+        'pbc': 'order_routing_optimization',
+        'routes': STANDALONE_APP_ROUTES,
+        'event_contract': 'AppGen-X',
+        'stream_engine_picker_visible': False,
         'side_effects': (),
     }

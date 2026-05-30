@@ -1,41 +1,57 @@
-PBC_KEY = 'student_financial_aid'
-PARAMETERS = ('quality_score_floor',
- 'materiality_threshold',
- 'approval_sla_hours',
- 'risk_threshold',
- 'forecast_horizon_days',
- 'workbench_limit')
-RULES = ('aid_application_policy',
- 'eligibility_review_policy',
- 'award_package_policy',
- 'verification_item_policy',
- 'disbursement_policy',
- 'sap_status_policy')
+from __future__ import annotations
 
-def configuration_manifest():
-    return {'ok': True, 'pbc': PBC_KEY, 'database_backends': ('postgresql','mysql','mariadb'), 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False}
+import hashlib
 
-def validate_configuration(config=None):
-    config = dict(config or {'database_backend': 'postgresql'})
-    return {'ok': config.get('database_backend', 'postgresql') in ('postgresql','mysql','mariadb'), 'configuration': config, 'side_effects': ()}
+from .slice_app import ALLOWED_DATABASE_BACKENDS, APPGEN_X_TOPIC, PARAMETER_KEYS, PBC_KEY, RULE_KEYS, build_standalone_app
 
-def parameter_manifest():
-    return {'ok': True, 'parameters': tuple({'name': p, 'bounded': True} for p in PARAMETERS), 'side_effects': ()}
 
-def set_parameter(name, value):
-    return {'ok': name in PARAMETERS, 'name': name, 'value': value, 'bounded': True, 'side_effects': ()}
+def configuration_manifest() -> dict:
+    return {
+        'ok': True,
+        'pbc': PBC_KEY,
+        'database_backends': ALLOWED_DATABASE_BACKENDS,
+        'event_contract': 'AppGen-X',
+        'event_topic': APPGEN_X_TOPIC,
+        'stream_engine_picker_visible': False,
+        'side_effects': (),
+    }
 
-def rule_manifest():
-    return {'ok': True, 'rules': RULES, 'side_effects': ()}
 
-def compile_rule(rule):
-    return {'ok': True, 'rule': dict(rule), 'compiled_hash': str(abs(hash(repr(rule)))), 'side_effects': ()}
+def validate_configuration(config=None) -> dict:
+    config = dict(config or {'database_backend': 'postgresql', 'event_topic': APPGEN_X_TOPIC})
+    return {
+        'ok': config.get('database_backend') in ALLOWED_DATABASE_BACKENDS and config.get('event_topic', APPGEN_X_TOPIC) == APPGEN_X_TOPIC,
+        'configuration': config,
+        'side_effects': (),
+    }
 
-def evaluate_rule(rule, payload=None):
+
+def parameter_manifest() -> dict:
+    return {'ok': True, 'parameters': tuple({'name': name, 'bounded': True} for name in PARAMETER_KEYS), 'side_effects': ()}
+
+
+def set_parameter(name: str, value) -> dict:
+    return build_standalone_app().set_parameter(name, value)
+
+
+def rule_manifest() -> dict:
+    return {'ok': True, 'rules': RULE_KEYS, 'side_effects': ()}
+
+
+def compile_rule(rule: dict) -> dict:
+    return {'ok': True, 'rule': dict(rule), 'compiled_hash': hashlib.sha256(repr(rule).encode('utf-8')).hexdigest(), 'side_effects': ()}
+
+
+def evaluate_rule(rule, payload=None) -> dict:
     return {'ok': True, 'passed': True, 'rule': rule, 'payload': dict(payload or {}), 'side_effects': ()}
 
-def governance_smoke_test():
-    return {'ok': validate_configuration()['ok'] and parameter_manifest()['ok'] and rule_manifest()['ok'] and compile_rule({'rule_id': RULES[0]})['ok'] and evaluate_rule(RULES[0])['ok'], 'side_effects': ()}
 
-def smoke_test():
+def governance_smoke_test() -> dict:
+    return {
+        'ok': validate_configuration()['ok'] and parameter_manifest()['ok'] and rule_manifest()['ok'] and compile_rule({'rule_id': RULE_KEYS[0]})['ok'] and evaluate_rule(RULE_KEYS[0])['ok'],
+        'side_effects': (),
+    }
+
+
+def smoke_test() -> dict:
     return governance_smoke_test()

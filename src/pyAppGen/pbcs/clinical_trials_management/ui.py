@@ -229,3 +229,31 @@ def smoke_test() -> dict:
         "rendered": rendered,
         "side_effects": (),
     }
+
+
+def clinical_trials_management_standalone_app_contract() -> dict:
+    contract = clinical_trials_management_ui_contract()
+    return {
+        "ok": contract["ok"] and len(contract["forms"]) >= 10 and len(contract["wizards"]) >= 4 and len(contract["controls"]) >= 5,
+        "pbc": "clinical_trials_management",
+        "app_id": "clinical_trials_management_one_pbc_app",
+        "fragments": contract["fragments"],
+        "routes": contract["routes"],
+        "forms": contract["forms"],
+        "wizards": contract["wizards"],
+        "controls": contract["controls"],
+        "workbench_sections": (
+            "protocol_governance",
+            "site_activation",
+            "subject_screening",
+            "consent_and_visits",
+            "safety_reporting",
+            "monitoring_findings",
+            "data_lock_readiness",
+            "assistant_preview",
+        ),
+        "agent_skill_namespace": "clinical_trials_management_skills",
+        "configuration_editor": contract["configuration_editor"],
+        "stream_engine_picker_visible": False,
+        "side_effects": (),
+    }

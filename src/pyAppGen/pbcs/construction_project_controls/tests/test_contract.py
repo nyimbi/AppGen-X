@@ -17,6 +17,12 @@ from pyAppGen.pbcs.construction_project_controls.events import (
     validate_event_contract,
 )
 from pyAppGen.pbcs.construction_project_controls.handlers import dispatch_event, handler_manifest
+from pyAppGen.pbcs.construction_project_controls.models import (
+    instantiate_model,
+    model_catalog,
+    model_manifest,
+    smoke_test as model_smoke_test,
+)
 from pyAppGen.pbcs.construction_project_controls.release_evidence import (
     build_release_evidence,
     release_readiness_manifest,
@@ -110,3 +116,25 @@ def test_event_handlers_are_idempotent_and_retryable():
     assert first["ok"] is True
     assert duplicate["duplicate"] is True
     assert failed["dead_letter_table"].endswith("dead_letter_event")
+
+
+def test_model_manifest_aligns_owned_tables_and_supports_instantiation():
+    manifest = model_manifest()
+    catalog = model_catalog()
+    instance = instantiate_model(
+        "construction_project_controls_construction_project",
+        {
+            "id": "CP-001",
+            "tenant": "tenant-smoke",
+            "code": "CP-001",
+            "name": "Smoke Tower",
+        },
+    )
+    assert manifest["ok"] is True
+    assert not manifest["missing_models"]
+    assert not manifest["external_models"]
+    assert catalog["ok"] is True
+    assert len(catalog["models"]) == len(manifest["model_tables"])
+    assert instance["ok"] is True
+    assert instance["instance"]["code"] == "CP-001"
+    assert model_smoke_test()["ok"] is True

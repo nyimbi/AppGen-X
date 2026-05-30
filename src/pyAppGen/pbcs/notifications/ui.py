@@ -10,6 +10,7 @@ from .runtime import NOTIFICATIONS_REQUIRED_EVENT_TOPIC
 from .runtime import NOTIFICATIONS_RUNTIME_TABLES
 from .runtime import notifications_build_workbench_view
 from .runtime import notifications_permissions_contract
+from .app_surface import single_pbc_notifications_app_contract
 
 
 NOTIFICATIONS_UI_FRAGMENT_KEYS = (
@@ -37,6 +38,27 @@ NOTIFICATIONS_UI_FRAGMENT_KEYS = (
     "NotificationAuditTrail",
     "DeliverabilityAnalyticsBoard",
 )
+
+
+def notifications_forms_contract() -> dict:
+    """Return one-PBC app forms for notification operations."""
+    from .app_surface import notifications_forms_contract as _forms
+
+    return _forms()
+
+
+def notifications_wizards_contract() -> dict:
+    """Return one-PBC app wizards for notification operations."""
+    from .app_surface import notifications_wizards_contract as _wizards
+
+    return _wizards()
+
+
+def notifications_controls_contract() -> dict:
+    """Return one-PBC app controls for notification operations."""
+    from .app_surface import notifications_controls_contract as _controls
+
+    return _controls()
 
 
 def notifications_ui_contract() -> dict:
@@ -204,6 +226,10 @@ def notifications_ui_contract() -> dict:
             "inbox_status": "visible",
             "dead_letter_status": "visible",
         },
+        "forms": notifications_forms_contract()["forms"],
+        "wizards": notifications_wizards_contract()["wizards"],
+        "controls": notifications_controls_contract()["controls"],
+        "single_pbc_app": single_pbc_notifications_app_contract(),
         "workbench_binding_evidence": {
             "owned_tables": NOTIFICATIONS_OWNED_TABLES,
             "runtime_tables": NOTIFICATIONS_RUNTIME_TABLES,
@@ -263,6 +289,10 @@ def notifications_render_workbench(
         "event_inbox_count": view["inbox_count"],
         "dead_letter_count": view["dead_letter_count"],
         "binding_evidence": contract["workbench_binding_evidence"],
+        "forms": contract["forms"],
+        "wizards": contract["wizards"],
+        "controls": contract["controls"],
+        "single_pbc_app": contract["single_pbc_app"],
     }
 
 class _AppGenSmokeState(dict):
@@ -312,6 +342,7 @@ def smoke_test():
         "event_surfaces": event_surfaces,
         "binding_evidence": binding_evidence,
     }
+    standalone_app = contract.get("single_pbc_app", {})
     return {
         "format": "appgen.pbc-ui-smoke-test.v1",
         "ok": contract.get("ok") is True
@@ -320,6 +351,11 @@ def smoke_test():
         and bool(contract.get("routes"))
         and bool(cards)
         and bool(contract.get("action_permissions"))
+        and bool(contract.get("forms"))
+        and bool(contract.get("wizards"))
+        and bool(contract.get("controls"))
+        and standalone_app.get("ok") is True
+        and standalone_app.get("database_backed") is True
         and bool(configuration_editor)
         and configuration_editor.get("stream_engine_picker_visible", configuration_editor.get("user_facing_stream_engine_picker", False)) is False
         and bool(contract.get("parameter_editor"))

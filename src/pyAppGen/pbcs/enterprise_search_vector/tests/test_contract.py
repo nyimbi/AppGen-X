@@ -262,3 +262,130 @@ def test_advanced_search_runtime_operations_are_executable():
     assert api["stream_engine_picker_visible"] is False
     assert api["shared_table_access"] is False
     assert set(permissions["action_permissions"]) >= required_commands
+
+
+def test_agent_and_standalone_application_surfaces_are_executable():
+    from .. import agent, standalone
+
+    agent_smoke = agent.smoke_test()
+    standalone_manifest = standalone.standalone_application_manifest()
+    standalone_validation = standalone.validate_standalone_application()
+    standalone_smoke = standalone.smoke_test()
+
+    assert agent_smoke["ok"] is True
+    assert standalone_manifest["ok"] is True
+    assert standalone_validation["ok"] is True
+    assert standalone_smoke["ok"] is True
+    assert standalone_manifest["mode"] == "standalone_one_pbc_app"
+    assert standalone_manifest["bootstrap"]["query_result_count"] >= 1
+    assert standalone_manifest["ui"]["forms"]
+    assert standalone_manifest["ui"]["wizards"]
+    assert standalone_manifest["agent"]["skills"]
+    assert not standalone_validation["missing_workflows"]
+    assert not standalone_validation["missing_sections"]
+    assert not agent_smoke["side_effects"]
+    assert not standalone_smoke["side_effects"]
+
+
+def test_release_evidence_covers_migration_and_docs():
+    from .. import release_evidence
+
+    evidence = release_evidence.build_release_evidence()
+    validation = release_evidence.validate_release_evidence()
+
+    assert evidence["ok"] is True
+    assert validation["ok"] is True
+    assert evidence["migration_artifact"]["path"] == "migrations/001_initial.sql"
+    assert evidence["migration_artifact"]["table_count"] >= len(evidence["schema"]["tables"])
+    assert not evidence["documentation"]["missing"]
+    assert not validation["failed_checks"]
+    assert not validation["boundary_gaps"]
+    assert not validation["side_effects"]
+
+
+def test_runtime_governance_records_and_deleted_documents_are_executable():
+    from .. import standalone
+    from ..runtime import enterprise_search_vector_forecast_index_freshness
+    from ..runtime import enterprise_search_vector_generate_index_proof
+    from ..runtime import enterprise_search_vector_query
+    from ..runtime import enterprise_search_vector_record_retention_deletion
+    from ..runtime import enterprise_search_vector_run_relevance_controls
+    from ..runtime import enterprise_search_vector_score_query_intent_risk
+    from ..runtime import enterprise_search_vector_screen_search_policy
+
+    state = standalone.bootstrap_standalone_state()
+    queried = enterprise_search_vector_query(
+        state,
+        {
+            "query_id": "query_sensitive_alpha",
+            "tenant": "tenant_alpha",
+            "text": "private camera password",
+            "principal_permissions": ("search.read",),
+            "locale": "en-US",
+        },
+    )
+    state = queried["state"]
+    risk = enterprise_search_vector_score_query_intent_risk(
+        state,
+        {"risk_id": "risk_sensitive_alpha", "tenant": "tenant_alpha", "query_id": "query_sensitive_alpha"},
+    )
+    controls = enterprise_search_vector_run_relevance_controls(
+        risk["state"],
+        {"assertion_id": "ctl_sensitive_alpha", "tenant": "tenant_alpha", "query_id": "query_sensitive_alpha"},
+    )
+    screened = enterprise_search_vector_screen_search_policy(
+        controls["state"],
+        {
+            "screening_id": "screen_alpha",
+            "tenant": "tenant_alpha",
+            "source": "product",
+            "locale": "en-US",
+            "principal_permissions": ("search.read",),
+        },
+    )
+    retained = enterprise_search_vector_record_retention_deletion(
+        screened["state"],
+        {
+            "record_id": "ret_delete_alpha",
+            "tenant": "tenant_alpha",
+            "document_id": "doc_product_alpha",
+            "reason": "retention_expired",
+            "status": "deleted",
+        },
+    )
+    proof = enterprise_search_vector_generate_index_proof(
+        retained["state"],
+        {"proof_id": "proof_idx_product", "tenant": "tenant_alpha", "index_id": "idx_product"},
+    )
+    forecast = enterprise_search_vector_forecast_index_freshness(
+        proof["state"],
+        {
+            "forecast_id": "forecast_idx_product",
+            "tenant": "tenant_alpha",
+            "index_id": "idx_product",
+            "horizon_days": 30,
+        },
+    )
+    requery = enterprise_search_vector_query(
+        forecast["state"],
+        {
+            "query_id": "query_after_delete_alpha",
+            "tenant": "tenant_alpha",
+            "text": "camera",
+            "principal_permissions": ("search.read",),
+            "locale": "en-US",
+        },
+    )
+
+    assert risk["ok"] is True
+    assert risk["risk"]["review_required"] is True
+    assert risk["risk"]["policy_action"] == "require_manual_review"
+    assert controls["assertion"]["control_name"] == "minimum_relevance_threshold"
+    assert controls["assertion"]["control_status"] in {"passed", "failed"}
+    assert screened["screening"]["decision_reason"]
+    assert retained["record"]["disposition_status"] == "deleted"
+    assert retained["record"]["retention_basis"] == "default_enterprise_retention"
+    assert proof["proof"]["proof_algorithm"] == "sha256-merkleish"
+    assert forecast["forecast"]["forecast_method"] == "linear_decay"
+    assert forecast["forecast"]["confidence_score"] >= 0.55
+    assert all(result["document_id"] != "doc_product_alpha" for result in requery["results"])

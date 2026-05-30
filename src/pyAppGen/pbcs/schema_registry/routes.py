@@ -1,16 +1,21 @@
-"""API route contracts for the schema_registry PBC."""
+"""API route contracts for the schema_registry standalone PBC."""
 
-from .services import SchemaRegistryService, service_operation_contracts
+from __future__ import annotations
+
+from .services import SchemaRegistryService
+from .services import service_operation_contracts
 
 
-ROUTES = (
-    {'method': 'POST', 'path': '/api/pbc/schema_registry/schemas', 'handler': 'command_schemas', 'permission': 'schema_registry.command.1'},
-    {'method': 'POST', 'path': '/api/pbc/schema_registry/compatibility-checks', 'handler': 'command_compatibility_checks', 'permission': 'schema_registry.command.2'},
-    {'method': 'GET', 'path': '/api/pbc/schema_registry/subjects', 'handler': 'query_subjects', 'permission': 'schema_registry.query.3'},
+PBC_KEY = "schema_registry"
+ROUTES = tuple(
+    {
+        "method": contract["method"],
+        "path": contract["path"],
+        "handler": contract["operation"],
+        "permission": contract["permission"],
+    }
+    for contract in service_operation_contracts()["contracts"]
 )
-
-
-API_ROUTE_CONTRACTS = ({'method': 'POST', 'path': '/api/pbc/schema_registry/schemas', 'handler': 'command_schemas', 'permission': 'schema_registry.command.1', 'operation': 'command_schemas', 'operation_kind': 'command', 'owned_tables': ('schema_registry_schema_subject', 'schema_registry_schema_version', 'schema_registry_compatibility_rule', 'schema_registry_contract_violation'), 'read_tables': (), 'emitted_event': 'SchemaAccepted', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'schema_registry:command_schemas:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'POST', 'path': '/api/pbc/schema_registry/compatibility-checks', 'handler': 'command_compatibility_checks', 'permission': 'schema_registry.command.2', 'operation': 'command_compatibility_checks', 'operation_kind': 'command', 'owned_tables': ('schema_registry_schema_subject', 'schema_registry_schema_version', 'schema_registry_compatibility_rule', 'schema_registry_contract_violation'), 'read_tables': (), 'emitted_event': 'BreakingSchemaBlocked', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'schema_registry:command_compatibility_checks:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'GET', 'path': '/api/pbc/schema_registry/subjects', 'handler': 'query_subjects', 'permission': 'schema_registry.query.3', 'operation': 'query_subjects', 'operation_kind': 'query', 'owned_tables': (), 'read_tables': ('schema_registry_schema_subject', 'schema_registry_schema_version', 'schema_registry_compatibility_rule', 'schema_registry_contract_violation'), 'emitted_event': None, 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': False, 'idempotency_key': None, 'shared_table_access': False, 'stream_engine_picker_visible': False})
 
 
 def register_routes(app=None):
@@ -18,98 +23,106 @@ def register_routes(app=None):
     return ROUTES
 
 
-def api_route_contracts():
+def api_route_contracts() -> dict:
     """Return executable API route contracts with policy and boundary evidence."""
-    service_contracts = service_operation_contracts()['contracts']
-    operation_index = {item['operation']: item for item in service_contracts}
+    service_contracts = service_operation_contracts()["contracts"]
+    operation_index = {item["operation"]: item for item in service_contracts}
     contracts = tuple(
         {
-            **contract,
-            'service_operation': operation_index.get(contract['operation']),
-            'route_id': f"{contract['method']} {contract['path']}",
+            **operation_index[route["handler"]],
+            "handler": route["handler"],
+            "service_operation": operation_index[route["handler"]],
+            "route_id": f"{route['method']} {route['path']}",
         }
-        for contract in API_ROUTE_CONTRACTS
+        for route in ROUTES
     )
     return {
-        'ok': bool(contracts)
-        and all(item['event_contract'] == 'AppGen-X' for item in contracts)
-        and all(item['transaction_boundary'] == 'owned_datastore_plus_outbox' for item in contracts)
-        and all(item['stream_engine_picker_visible'] is False for item in contracts)
-        and all(item['shared_table_access'] is False for item in contracts),
-        'pbc': 'schema_registry',
-        'contracts': contracts,
-        'routes': tuple(item['route_id'] for item in contracts),
-        'side_effects': (),
+        "ok": bool(contracts)
+        and all(item["event_contract"] == "AppGen-X" for item in contracts)
+        and all(item["transaction_boundary"] == "owned_datastore_plus_outbox" for item in contracts)
+        and all(item["stream_engine_picker_visible"] is False for item in contracts)
+        and all(item["shared_table_access"] is False for item in contracts),
+        "pbc": PBC_KEY,
+        "contracts": contracts,
+        "routes": tuple(item["route_id"] for item in contracts),
+        "side_effects": (),
     }
 
 
-def validate_api_route_contracts():
+def validate_api_route_contracts() -> dict:
     """Validate routes against service operations, permissions, idempotency, and table boundaries."""
     manifest = api_route_contracts()
-    contracts = manifest['contracts']
+    contracts = manifest["contracts"]
     service_mismatches = tuple(
-        item['route_id']
+        item["route_id"]
         for item in contracts
-        if not item['service_operation']
-        or item['service_operation']['method'] != item['method']
-        or item['service_operation']['path'] != item['path']
-        or item['service_operation']['permission'] != item['permission']
+        if item["service_operation"]["method"] != item["method"]
+        or item["service_operation"]["path"] != item["path"]
+        or item["service_operation"]["permission"] != item["permission"]
     )
     missing_idempotency = tuple(
-        item['route_id']
+        item["route_id"]
         for item in contracts
-        if item['idempotency_required'] and not item['idempotency_key']
+        if item["idempotency_required"] and not item["idempotency_key"]
     )
     invalid_table_scope = tuple(
-        item['route_id']
+        item["route_id"]
         for item in contracts
-        for table in item['owned_tables'] + item['read_tables']
-        if not table.startswith('schema_registry_')
+        for table in item["owned_tables"] + item["read_tables"]
+        if not table.startswith("schema_registry_")
     )
     return {
-        'ok': manifest['ok']
-        and not service_mismatches
-        and not missing_idempotency
-        and not invalid_table_scope,
-        'pbc': 'schema_registry',
-        'contracts': contracts,
-        'service_mismatches': service_mismatches,
-        'missing_idempotency': missing_idempotency,
-        'invalid_table_scope': invalid_table_scope,
-        'side_effects': (),
+        "ok": manifest["ok"] and not service_mismatches and not missing_idempotency and not invalid_table_scope,
+        "pbc": PBC_KEY,
+        "contracts": contracts,
+        "service_mismatches": service_mismatches,
+        "missing_idempotency": missing_idempotency,
+        "invalid_table_scope": invalid_table_scope,
+        "side_effects": (),
     }
 
 
-def dispatch_route(method, path, payload=None):
-    """Dispatch a route contract to its service command without side effects."""
-    route = next(
-        (item for item in ROUTES if item['method'] == method and item['path'] == path),
-        None,
-    )
+def dispatch_route(method: str, path: str, payload: dict | None = None, *, service: SchemaRegistryService | None = None) -> dict:
+    """Dispatch a route contract to its service handler."""
+    route = next((item for item in ROUTES if item["method"] == method and item["path"] == path), None)
     if route is None:
-        return {'ok': False, 'handled': False, 'reason': 'route_not_found'}
-    service = SchemaRegistryService()
-    handler = getattr(service, route['handler'])
-    result = handler(payload or {})
+        return {"ok": False, "handled": False, "reason": "route_not_found", "side_effects": ()}
+    active_service = service or SchemaRegistryService()
+    result = getattr(active_service, route["handler"])(payload or {})
     return {
-        'ok': result.get('ok') is True,
-        'handled': True,
-        'route': route,
-        'result': result,
-        'side_effects': (),
+        "ok": result.get("ok") is True,
+        "handled": True,
+        "route": route,
+        "result": result,
+        "side_effects": (),
     }
 
 
-def smoke_test():
+def smoke_test() -> dict:
     """Execute the first route and validate the API contract surface."""
+    service = SchemaRegistryService()
+    first = ROUTES[0] if ROUTES else None
+    dispatched = dispatch_route(
+        first["method"],
+        first["path"],
+        {
+            "configuration": {
+                "database_backend": "postgresql",
+                "event_topic": "appgen.schema.events",
+                "retry_limit": 3,
+                "allowed_formats": ("json", "avro", "event"),
+                "default_compatibility": "backward_forward",
+                "namespace_policy": "tenant_scoped",
+                "default_timezone": "UTC",
+                "workbench_limit": 100,
+            }
+        },
+        service=service,
+    ) if first else {"ok": False}
     validation = validate_api_route_contracts()
-    if not ROUTES:
-        return {'ok': False, 'reason': 'no_routes'}
-    first = ROUTES[0]
-    dispatched = dispatch_route(first['method'], first['path'], {'smoke': True})
     return {
-        'ok': validation['ok'] and dispatched['ok'],
-        'validation': validation,
-        'dispatch': dispatched,
-        'side_effects': (),
+        "ok": validation["ok"] and dispatched["ok"],
+        "validation": validation,
+        "dispatch": dispatched,
+        "side_effects": (),
     }

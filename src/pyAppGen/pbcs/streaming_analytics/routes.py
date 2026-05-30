@@ -2,71 +2,44 @@
 
 from __future__ import annotations
 
-from .runtime import streaming_analytics_build_api_contract
 from .services import StreamingAnalyticsService
 from .services import service_operation_contracts
 
-PBC_KEY = "streaming_analytics"
-
-
-def _method_path(route: str) -> tuple[str, str]:
-    method, path = route.split(" ", 1)
-    return method, path
-
-
-def _route_rows() -> tuple[dict, ...]:
-    rows = []
-    for route in streaming_analytics_build_api_contract()["routes"]:
-        operation = route.get("command") or route.get("query")
-        if not operation:
-            continue
-        method, path = _method_path(route["route"])
-        rows.append(
-            {
-                "method": method,
-                "path": f"/api/pbc/{PBC_KEY}{path}",
-                "handler": operation,
-                "permission": route["requires_permission"],
-            }
-        )
-    return tuple(rows)
-
-
-ROUTES = _route_rows()
-
 
 def _route_contracts() -> tuple[dict, ...]:
-    contracts = []
-    for route in ROUTES:
-        service_operation = next(
-            item
-            for item in service_operation_contracts()["contracts"]
-            if item["operation"] == route["handler"]
-            and item["method"] == route["method"]
-            and f"/api/pbc/{PBC_KEY}{item['path']}" == route["path"]
-        )
-        idempotency_required = service_operation["operation_kind"] == "command"
-        contracts.append(
-            {
-                **route,
-                "operation": route["handler"],
-                "operation_kind": service_operation["operation_kind"],
-                "owned_tables": service_operation["owned_tables"],
-                "read_tables": service_operation["read_tables"],
-                "emitted_event": service_operation["emitted_event"],
-                "consumed_event": service_operation["consumed_event"],
-                "event_contract": "AppGen-X",
-                "transaction_boundary": "owned_datastore_plus_outbox",
-                "idempotency_required": idempotency_required,
-                "idempotency_key": f"{PBC_KEY}:{route['handler']}:idempotency_key" if idempotency_required else None,
-                "shared_table_access": False,
-                "stream_engine_picker_visible": False,
-            }
-        )
-    return tuple(contracts)
+    return tuple(
+        {
+            "method": contract["method"],
+            "path": contract["path"],
+            "handler": contract["operation"],
+            "permission": contract["permission"],
+            "operation": contract["operation"],
+            "operation_kind": contract["operation_kind"],
+            "owned_tables": contract["owned_tables"],
+            "read_tables": contract["read_tables"],
+            "emitted_event": contract["emitted_event"],
+            "consumed_event": contract["consumed_event"],
+            "event_contract": contract["event_contract"],
+            "transaction_boundary": contract["transaction_boundary"],
+            "idempotency_required": contract["operation_kind"] == "command",
+            "idempotency_key": contract["idempotency_key"],
+            "shared_table_access": False,
+            "stream_engine_picker_visible": False,
+        }
+        for contract in service_operation_contracts()["contracts"]
+    )
 
 
 API_ROUTE_CONTRACTS = _route_contracts()
+ROUTES = tuple(
+    {
+        "method": contract["method"],
+        "path": contract["path"],
+        "handler": contract["handler"],
+        "permission": contract["permission"],
+    }
+    for contract in API_ROUTE_CONTRACTS
+)
 
 
 def register_routes(app=None):
@@ -76,20 +49,9 @@ def register_routes(app=None):
 
 def api_route_contracts() -> dict:
     """Return executable API route contracts with policy and boundary evidence."""
-    service_contracts = service_operation_contracts()["contracts"]
     contracts = tuple(
         {
             **contract,
-            "service_operation": next(
-                (
-                    item
-                    for item in service_contracts
-                    if item["operation"] == contract["operation"]
-                    and item["method"] == contract["method"]
-                    and f"/api/pbc/{PBC_KEY}{item['path']}" == contract["path"]
-                ),
-                None,
-            ),
             "route_id": f"{contract['method']} {contract['path']}",
         }
         for contract in API_ROUTE_CONTRACTS
@@ -100,7 +62,7 @@ def api_route_contracts() -> dict:
         and all(item["transaction_boundary"] == "owned_datastore_plus_outbox" for item in contracts)
         and all(item["stream_engine_picker_visible"] is False for item in contracts)
         and all(item["shared_table_access"] is False for item in contracts),
-        "pbc": PBC_KEY,
+        "pbc": "streaming_analytics",
         "contracts": contracts,
         "routes": tuple(item["route_id"] for item in contracts),
         "side_effects": (),
@@ -111,13 +73,14 @@ def validate_api_route_contracts() -> dict:
     """Validate routes against service operations, permissions, idempotency, and table boundaries."""
     manifest = api_route_contracts()
     contracts = manifest["contracts"]
+    operation_index = {item["operation"]: item for item in service_operation_contracts()["contracts"]}
     service_mismatches = tuple(
         item["route_id"]
         for item in contracts
-        if not item["service_operation"]
-        or item["service_operation"]["method"] != item["method"]
-        or f"/api/pbc/{PBC_KEY}{item['service_operation']['path']}" != item["path"]
-        or item["service_operation"]["permission"] != item["permission"]
+        if item["operation"] not in operation_index
+        or operation_index[item["operation"]]["method"] != item["method"]
+        or operation_index[item["operation"]]["path"] != item["path"]
+        or operation_index[item["operation"]]["permission"] != item["permission"]
     )
     missing_idempotency = tuple(
         item["route_id"]
@@ -128,11 +91,11 @@ def validate_api_route_contracts() -> dict:
         item["route_id"]
         for item in contracts
         for table in item["owned_tables"] + item["read_tables"]
-        if not table.startswith(f"{PBC_KEY}_")
+        if not table.startswith("streaming_analytics_")
     )
     return {
         "ok": manifest["ok"] and not service_mismatches and not missing_idempotency and not invalid_table_scope,
-        "pbc": PBC_KEY,
+        "pbc": "streaming_analytics",
         "contracts": contracts,
         "service_mismatches": service_mismatches,
         "missing_idempotency": missing_idempotency,
@@ -141,13 +104,14 @@ def validate_api_route_contracts() -> dict:
     }
 
 
-def dispatch_route(method: str, path: str, payload: dict | None = None) -> dict:
-    """Dispatch a route contract to its service command without side effects."""
+def dispatch_route(method: str, path: str, payload: dict | None = None, *, service: StreamingAnalyticsService | None = None) -> dict:
+    """Dispatch a route contract to its service command without external side effects."""
     route = next((item for item in ROUTES if item["method"] == method and item["path"] == path), None)
     if route is None:
-        return {"ok": False, "handled": False, "reason": "route_not_found"}
-    service = StreamingAnalyticsService()
-    result = service.execute_operation(route["handler"], payload or {})
+        return {"ok": False, "handled": False, "reason": "route_not_found", "side_effects": ()}
+    service = service or StreamingAnalyticsService()
+    handler = getattr(service, route["handler"])
+    result = handler(payload or {})
     return {
         "ok": result.get("ok") is True,
         "handled": True,
@@ -158,12 +122,44 @@ def dispatch_route(method: str, path: str, payload: dict | None = None) -> dict:
 
 
 def smoke_test() -> dict:
-    """Execute the first route and validate the API contract surface."""
+    """Execute configuration, one route, and validate the API contract surface."""
+    service = StreamingAnalyticsService()
+    from . import runtime
+
+    service.state = runtime.streaming_analytics_configure_runtime(
+        service.state,
+        {
+            "database_backend": "postgresql",
+            "event_topic": runtime.STREAMING_ANALYTICS_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 3,
+            "default_timezone": "UTC",
+            "supported_event_types": ("audit", "order", "payment", "operational"),
+            "supported_regions": ("US",),
+            "retention_days": 90,
+            "watermark_seconds": 120,
+            "aggregation_mode": "policy",
+            "workbench_limit": 100,
+        },
+    )["state"]
+    service.state = runtime.streaming_analytics_set_parameter(service.state, "quality_score_threshold", 0.9)["state"]
+    dispatched = dispatch_route(
+        "POST",
+        "/api/pbc/streaming_analytics/metric-streams",
+        {
+            "stream": {
+                "stream_id": "stream_route_smoke",
+                "tenant": "tenant_route_smoke",
+                "name": "Route Smoke Stream",
+                "event_type": "operational",
+                "metric_field": "latency_ms",
+                "aggregation": "avg",
+                "region": "US",
+                "status": "active",
+            }
+        },
+        service=service,
+    )
     validation = validate_api_route_contracts()
-    if not ROUTES:
-        return {"ok": False, "reason": "no_routes"}
-    first = ROUTES[0]
-    dispatched = dispatch_route(first["method"], first["path"], {"smoke": True})
     return {
         "ok": validation["ok"] and dispatched["ok"],
         "validation": validation,

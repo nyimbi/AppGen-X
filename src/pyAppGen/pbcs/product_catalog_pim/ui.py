@@ -288,3 +288,50 @@ def smoke_test():
         "cards": cards,
         "side_effects": (),
     }
+
+
+
+def product_catalog_pim_form_contracts() -> dict:
+    contracts=(
+        {'key':'ProductConfigurationForm','operation':'configure_runtime','table':'product_catalog_pim_product_configuration','fields':PRODUCT_CATALOG_PIM_REQUIRED_CONFIGURATION_FIELDS,'permission':'product_catalog_pim.configure','keywords':('configure','channel','locale','media','region')},
+        {'key':'ProductFamilyForm','operation':'create_product_family','table':'product_catalog_pim_product_family','fields':('family_id','tenant','name','taxonomy','variant_axes'),'permission':'product_catalog_pim.product','keywords':('family','taxonomy','variant')},
+        {'key':'ProductMasterForm','operation':'register_product','table':'product_catalog_pim_product','fields':('product_id','tenant','family_id','sku','name','owner'),'permission':'product_catalog_pim.product','keywords':('product','sku','master')},
+        {'key':'AttributeSchemaForm','operation':'define_attribute_schema','table':'product_catalog_pim_product_attribute_schema','fields':('schema_id','tenant','family_id','attributes','version','status'),'permission':'product_catalog_pim.product','keywords':('attribute','schema','required')},
+        {'key':'EnrichmentForm','operation':'set_product_attribute','table':'product_catalog_pim_product_attribute','fields':('product_id','name','value'),'permission':'product_catalog_pim.enrich','keywords':('attribute','enrich','value')},
+        {'key':'LocalizedContentForm','operation':'add_localized_content','table':'product_catalog_pim_product_locale_content','fields':('content_id','tenant','product_id','locale','title','description','seo_slug'),'permission':'product_catalog_pim.enrich','keywords':('content','locale','seo')},
+        {'key':'ProductMediaForm','operation':'attach_product_media','table':'product_catalog_pim_product_media','fields':('media_id','tenant','product_id','role','asset_ref','rights_status'),'permission':'product_catalog_pim.enrich','keywords':('media','asset','image')},
+        {'key':'ProductPriceForm','operation':'add_price_metadata','table':'product_catalog_pim_product_price','fields':('price_id','tenant','product_id','currency','list_price','cost'),'permission':'product_catalog_pim.publish','keywords':('price','margin','currency')},
+        {'key':'ComplianceClaimForm','operation':'add_compliance_claim','table':'product_catalog_pim_product_compliance_claim','fields':('claim_id','tenant','product_id','region','claim_type','status'),'permission':'product_catalog_pim.enrich','keywords':('compliance','claim','region')},
+    )
+    return {'format':'appgen.product-catalog-pim-standalone-forms.v1','ok':all(i['table'].startswith('product_catalog_pim_') for i in contracts),'pbc':'product_catalog_pim','contracts':contracts,'side_effects':()}
+
+def product_catalog_pim_wizard_contracts() -> dict:
+    contracts=(
+        {'key':'ProductLaunchIntakeWizard','steps':('parse_supplier_packet','create_family','register_sku','define_schema','preview_catalog_record'),'forms':('ProductFamilyForm','ProductMasterForm','AttributeSchemaForm'),'keywords':('document','supplier','launch','sku')},
+        {'key':'ProductEnrichmentWizard','steps':('complete_attributes','localize_content','attach_media','score_quality'),'forms':('EnrichmentForm','LocalizedContentForm','ProductMediaForm'),'keywords':('enrich','content','media','attribute')},
+        {'key':'SellabilityReadinessWizard','steps':('price_margin_check','compliance_screening','rule_validation','readiness_preview'),'forms':('ProductPriceForm','ComplianceClaimForm'),'keywords':('sellable','price','compliance','margin')},
+        {'key':'CatalogPublicationWizard','steps':('simulate_publication','publish_product','fan_out_appgen_events','generate_publication_proof'),'forms':('ProductMasterForm','ProductPriceForm'),'keywords':('publish','publication','channel','proof')},
+    )
+    return {'format':'appgen.product-catalog-pim-standalone-wizards.v1','ok':all(i['steps'] for i in contracts),'pbc':'product_catalog_pim','contracts':contracts,'side_effects':()}
+
+def product_catalog_pim_control_catalog() -> dict:
+    contracts=(
+        {'key':'catalog_backend_event_contract','operation':'run_control_tests','table':'product_catalog_pim_product_control_assertion','permission':'product_catalog_pim.audit'},
+        {'key':'sellability_release_control','operation':'run_control_tests','table':'product_catalog_pim_catalog_publication','permission':'product_catalog_pim.audit'},
+        {'key':'publication_proof_control','operation':'generate_publication_proof','table':'product_catalog_pim_product_publication_proof','permission':'product_catalog_pim.audit'},
+    )
+    return {'format':'appgen.product-catalog-pim-standalone-controls.v1','ok':all(i['table'].startswith('product_catalog_pim_') for i in contracts),'pbc':'product_catalog_pim','contracts':contracts,'side_effects':()}
+
+def product_catalog_pim_standalone_workbench_blueprint() -> dict:
+    forms=product_catalog_pim_form_contracts(); wizards=product_catalog_pim_wizard_contracts(); controls=product_catalog_pim_control_catalog()
+    return {'format':'appgen.product-catalog-pim-standalone-workbench.v1','ok':forms['ok'] and wizards['ok'] and controls['ok'],'pbc':'product_catalog_pim','forms':forms['contracts'],'wizards':wizards['contracts'],'controls':controls['contracts'],'panels':product_catalog_pim_ui_contract()['panels'],'side_effects':()}
+
+def product_catalog_pim_render_standalone_workbench(workbench: dict) -> dict:
+    bp=product_catalog_pim_standalone_workbench_blueprint(); cards=(
+        {'key':'families','value':workbench.get('family_count',0),'fragment':'ProductFamilyModeler'},
+        {'key':'products','value':workbench.get('product_count',0),'fragment':'ProductMasterConsole'},
+        {'key':'published_products','value':workbench.get('published_product_count',0),'fragment':'PublicationConsole'},
+        {'key':'publications','value':workbench.get('publication_count',0),'fragment':'ChannelProjectionDashboard'},
+        {'key':'media','value':workbench.get('media_count',0),'fragment':'MediaReferencePanel'},
+        {'key':'average_completeness','value':workbench.get('average_completeness',0),'fragment':'DataQualityBoard'},)
+    return {'format':'appgen.product-catalog-pim-standalone-render.v1','ok':bp['ok'] and bool(cards),'pbc':'product_catalog_pim','tenant':workbench.get('tenant'),'cards':cards,'forms':tuple(i['key'] for i in bp['forms']),'wizards':tuple(i['key'] for i in bp['wizards']),'controls':tuple(i['key'] for i in bp['controls']),'side_effects':()}

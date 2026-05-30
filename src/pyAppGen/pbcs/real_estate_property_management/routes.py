@@ -1,22 +1,24 @@
-from .services import service_operation_manifest, service_operation_contracts
-PBC_KEY = 'real_estate_property_management'
-ROUTES = ('POST /propertys',
- 'POST /tenants',
- 'POST /leases',
- 'POST /rent-charges',
- 'POST /maintenance-requests',
- 'GET /real-estate-property-management-workbench')
+"""API route contracts for real estate property management."""
+from .standalone import api_route_contracts as _api_route_contracts
+from .standalone import validate_api_route_contracts as _validate_api_route_contracts
+from .standalone import dispatch_route as _dispatch_route
+
 
 def api_route_contracts():
-    contracts = tuple({'route': route, 'method': route.split()[0], 'path': route.split()[1], 'pbc': PBC_KEY, 'idempotency_key': f'{PBC_KEY}:{route}', 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False, 'required_permission': f'{PBC_KEY}.operate'} for route in ROUTES)
-    return {'ok': True, 'pbc': PBC_KEY, 'contracts': contracts, 'routes': ROUTES, 'side_effects': ()}
+    return _api_route_contracts()
+
 
 def validate_api_route_contracts():
-    contracts = api_route_contracts()['contracts']
-    return {'ok': True, 'pbc': PBC_KEY, 'service_mismatches': (), 'missing_idempotency': tuple(c for c in contracts if not c['idempotency_key']), 'invalid_table_scope': (), 'side_effects': ()}
+    return _validate_api_route_contracts()
 
-def dispatch_route(route, payload=None):
-    return {'ok': route in ROUTES, 'route': route, 'payload': dict(payload or {}), 'operation_contract': service_operation_contracts()['operation_contract'], 'side_effects': ()}
+
+def dispatch_route(route, payload=None, state=None, idempotency_key=None):
+    result = _dispatch_route(route, payload, state=state)
+    if idempotency_key is not None and isinstance(result, dict):
+        result['idempotency_key'] = idempotency_key
+    return result
+
 
 def smoke_test():
-    return {'ok': api_route_contracts()['ok'] and validate_api_route_contracts()['ok'] and dispatch_route(ROUTES[0])['ok'], 'side_effects': ()}
+    probe = dispatch_route('GET /real-estate-property-management-workbench', idempotency_key='route-smoke')
+    return {'ok': api_route_contracts()['ok'] and validate_api_route_contracts()['ok'] and probe['ok'], 'stream_engine_picker_visible': False, 'side_effects': ()}

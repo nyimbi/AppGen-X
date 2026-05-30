@@ -1,21 +1,40 @@
 # Bank Payments Clearing Implementation Plan
 
-## Improvement Focus
+## Objective
 
-`improve1.md` calls out a broad payments-operations backlog: stateful payment instructions, rail profiles, participant-bank governance, validation and screening evidence, limits, clearing batches, cutoffs, settlement files, acknowledgements, returns, exception taxonomy, repair, cancellation, liquidity checks, and reconciliation. This slice implements the core execution spine those capabilities depend on.
+Upgrade `src/pyAppGen/pbcs/bank_payments_clearing` into a coherent standalone one-PBC AppGen-X package without touching shared generator code, DSL layers, or progress ledgers.
 
-## Plan
+## Package-Local Workstreams
 
-1. Add a package-local payment operations runtime that owns only `bank_payments_clearing_*` concepts and uses AppGen-X event evidence.
-2. Implement participant-bank registration and payment instruction validation with rail-specific limits, party data checks, screening freshness, duplicate detection, and exception creation.
-3. Implement maker-checker release with liquidity evidence, then batch assembly with cutoff handling and finalization locks.
-4. Implement settlement-file generation with reproducible control totals, checksums, and signatures, plus acknowledgement handling for accepted, rejected, duplicate, and partial outcomes.
-5. Implement return-item processing and bank-statement reconciliation with fee, one-to-one, variance, and unmatched-line evidence.
-6. Wire the new operations into runtime capability lists, service manifests, UI action surfaces, agent contributions, and release evidence.
-7. Add package-local tests and perform a code-review pass focused on boundary safety, idempotent behavior, and whether the runtime exposes enough evidence for operators.
+1. Standalone execution spine
+   - Keep payment-clearing behavior package-local and side-effect-free.
+   - Expose an executable one-PBC app surface that boots configuration, rules, parameters, participant-bank setup, payment workflows, and workbench rendering inside this package.
 
-## Non-Goals
+2. Contract convergence
+   - Replace thin aliases with executable package-local schema, model, service, route, permission, event, and release contracts.
+   - Ensure every surfaced table, route, permission, and emitted event stays within `bank_payments_clearing_*` ownership boundaries.
 
-- Do not own customer accounts, sanctions master data, fraud case management, general ledger, FX rates, or billing tables.
-- Do not expose stream-engine pickers or alternate eventing choices.
-- Do not add external dependencies or change files outside this PBC directory.
+3. Workflow depth from `improve1.md`
+   - Cover the highest-value backlog items now: rail-aware validation, participant-bank governance, duplicate prevention, maker-checker release, liquidity checks, batch assembly, settlement-file integrity, acknowledgement handling, returns, reconciliation, and operator workbench evidence.
+   - Keep cancellation/recall, chargebacks, cross-border chains, and richer repair queues as later-slice work.
+
+4. UI and assistant surface
+   - Provide forms, wizards, controls, workflow metadata, and workbench navigation for a standalone app surface.
+   - Strengthen document-instruction and governed CRUD planning with route, permission, idempotency, and event previews.
+
+5. Release evidence and focused validation
+   - Refresh README, implementation status, and release evidence to describe the standalone slice.
+   - Add focused tests for contracts, payment flow execution, route dispatch, standalone bootstrap, and repo-style release gates.
+
+## Deliverables
+
+- Executable package-local contracts in `schema_contract.py`, `models.py`, `services.py`, `service_contract.py`, `routes.py`, `events.py`, `handlers.py`, `permissions.py`, `config.py`, `agent.py`, and `release_evidence.py`
+- Standalone one-PBC app bootstrapping in `standalone.py`
+- Refreshed `README.md`, `implementation-status.md`, `implementation-plan.md`, and `RELEASE_EVIDENCE.md`
+- Focused tests in `tests/test_contract.py`, `tests/test_payment_operations.py`, and `tests/test_standalone.py`
+
+## Validation Plan
+
+- Compile the package with `python3 -m compileall`.
+- Run focused package tests through a lightweight in-repo test harness if `pytest` is unavailable.
+- Run package-local smoke and audit surfaces: runtime, routes, UI, standalone app, capability assurance, and release evidence.

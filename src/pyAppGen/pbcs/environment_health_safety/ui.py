@@ -1,19 +1,30 @@
-from .domain_depth import domain_capability_surface_contract, DOMAIN_OPERATIONS, DOMAIN_RULES, DOMAIN_PARAMETERS, DOMAIN_ADVANCED_CAPABILITIES, DOMAIN_OWNED_TABLES, DOMAIN_EDGE_CASES
-PBC_KEY = 'environment_health_safety'
+from __future__ import annotations
+
+from .standalone import UI_FRAGMENT_KEYS, build_ui_contract, query_workbench, seed_state
+from .domain_depth import domain_capability_surface_contract
+
+PBC_KEY = "environment_health_safety"
+
 
 def environment_health_safety_ui_contract():
     surface = domain_capability_surface_contract()
-    return {'ok': True, 'pbc': PBC_KEY, 'fragments': ('EnvironmentHealthSafetyWorkbench',
- 'EnvironmentHealthSafetyDetail',
- 'EnvironmentHealthSafetyAssistantPanel'), 'configuration_editor': True, 'stream_engine_picker_visible': False, 'action_permissions': ('environment_health_safety.read',
- 'environment_health_safety.create',
- 'environment_health_safety.update',
- 'environment_health_safety.approve',
- 'environment_health_safety.admin'), 'full_capability_surface': {'operation_actions': DOMAIN_OPERATIONS, 'rule_editors': DOMAIN_RULES, 'parameter_editors': DOMAIN_PARAMETERS, 'advanced_panels': DOMAIN_ADVANCED_CAPABILITIES, 'table_browsers': DOMAIN_OWNED_TABLES, 'edge_case_queues': DOMAIN_EDGE_CASES, 'agent_tools': tuple(f'{PBC_KEY}_skills.{op}' for op in DOMAIN_OPERATIONS), 'navigation_sections': ('overview','operations','edge_case_triage','advanced_intelligence','release_evidence'), 'coverage': surface['coverage']}, 'side_effects': ()}
+    contract = build_ui_contract()
+    contract["full_capability_surface"] = {
+        "operation_actions": tuple(item["operation"] for item in surface["operation_surfaces"]),
+        "rule_editors": tuple(item["rule"] for item in surface["rule_surfaces"]),
+        "parameter_editors": tuple(item["parameter"] for item in surface["parameter_surfaces"]),
+        "advanced_panels": tuple(item["capability"] for item in surface["advanced_surfaces"]),
+        "table_browsers": tuple(item["owned_table"] for item in surface["table_surfaces"]),
+        "navigation_sections": contract["navigation_sections"],
+        "coverage": surface["coverage"],
+    }
+    return contract
 
-def environment_health_safety_render_workbench():
-    ui = environment_health_safety_ui_contract(); full = ui['full_capability_surface']
-    return {'ok': True, 'pbc': PBC_KEY, 'route': f'/workbench/pbcs/{PBC_KEY}', 'operation_actions': full['operation_actions'], 'table_browsers': full['table_browsers'], 'side_effects': ()}
+
+def environment_health_safety_render_workbench(state=None, tenant="tenant-seed"):
+    workbench = query_workbench(state or seed_state(), {"tenant": tenant})
+    return {"ok": True, "pbc": PBC_KEY, "route": f"/workbench/pbcs/{PBC_KEY}", "fragments": UI_FRAGMENT_KEYS, "queues": workbench["queues"], "metrics": workbench["metrics"], "side_effects": ()}
+
 
 def smoke_test():
-    return {'ok': environment_health_safety_ui_contract()['ok'] and environment_health_safety_render_workbench()['ok'], 'side_effects': ()}
+    return {"ok": environment_health_safety_ui_contract()["ok"] and environment_health_safety_render_workbench()["ok"], "side_effects": ()}

@@ -7,6 +7,7 @@ from .runtime import PREDICTIVE_DEMAND_EVENT_CONTRACT
 from .runtime import PREDICTIVE_DEMAND_OWNED_TABLES
 from .runtime import PREDICTIVE_DEMAND_REQUIRED_EVENT_TOPIC
 from .runtime import PREDICTIVE_DEMAND_RUNTIME_TABLES
+from .app_surface import single_pbc_predictive_demand_app_contract
 
 
 PREDICTIVE_DEMAND_UI_FRAGMENT_KEYS = (
@@ -25,6 +26,27 @@ PREDICTIVE_DEMAND_UI_FRAGMENT_KEYS = (
     "DemandEventOutbox",
     "DemandDeadLetterQueue",
 )
+
+
+def predictive_demand_forms_contract() -> dict:
+    """Return one-PBC app forms for predictive demand planning."""
+    from .app_surface import predictive_demand_forms_contract as _forms
+
+    return _forms()
+
+
+def predictive_demand_wizards_contract() -> dict:
+    """Return one-PBC app wizards for predictive demand planning."""
+    from .app_surface import predictive_demand_wizards_contract as _wizards
+
+    return _wizards()
+
+
+def predictive_demand_controls_contract() -> dict:
+    """Return one-PBC app controls for predictive demand planning."""
+    from .app_surface import predictive_demand_controls_contract as _controls
+
+    return _controls()
 
 
 def predictive_demand_ui_contract() -> dict:
@@ -104,6 +126,10 @@ def predictive_demand_ui_contract() -> dict:
             "outbox_status": "visible",
             "dead_letter_status": "visible",
         },
+        "forms": predictive_demand_forms_contract()["forms"],
+        "wizards": predictive_demand_wizards_contract()["wizards"],
+        "controls": predictive_demand_controls_contract()["controls"],
+        "single_pbc_app": single_pbc_predictive_demand_app_contract(),
         "binding_evidence": {
             "owned_tables": PREDICTIVE_DEMAND_OWNED_TABLES,
             "runtime_tables": PREDICTIVE_DEMAND_RUNTIME_TABLES,
@@ -175,6 +201,10 @@ def predictive_demand_render_workbench(
         "event_outbox_count": len(state.get("outbox", ())),
         "dead_letter_count": len(state.get("dead_letter", ())),
         "binding_evidence": view["binding_evidence"],
+        "forms": contract["forms"],
+        "wizards": contract["wizards"],
+        "controls": contract["controls"],
+        "single_pbc_app": contract["single_pbc_app"],
     }
 
 
@@ -202,6 +232,10 @@ def _view_counts(state: dict, tenant: str) -> dict:
             tuple(result for result in results if float(result["shortage_quantity"]) > 0.0)
         ),
         "dead_letter_count": len(state.get("dead_letter", ())),
+        "forms": predictive_demand_forms_contract()["forms"],
+        "wizards": predictive_demand_wizards_contract()["wizards"],
+        "controls": predictive_demand_controls_contract()["controls"],
+        "single_pbc_app": single_pbc_predictive_demand_app_contract(),
         "binding_evidence": {
             "configuration": bool(state.get("configuration", {}).get("ok")),
             "rules": tuple(sorted(state.get("rules", {}))),
@@ -260,6 +294,7 @@ def smoke_test():
         "event_surfaces": event_surfaces,
         "binding_evidence": binding_evidence,
     }
+    standalone_app = contract.get("single_pbc_app", {})
     return {
         "format": "appgen.pbc-ui-smoke-test.v1",
         "ok": contract.get("ok") is True
@@ -268,6 +303,11 @@ def smoke_test():
         and bool(contract.get("routes"))
         and bool(cards)
         and bool(contract.get("action_permissions"))
+        and bool(contract.get("forms"))
+        and bool(contract.get("wizards"))
+        and bool(contract.get("controls"))
+        and standalone_app.get("ok") is True
+        and standalone_app.get("database_backed") is True
         and bool(configuration_editor)
         and configuration_editor.get("stream_engine_picker_visible", configuration_editor.get("user_facing_stream_engine_picker", False)) is False
         and bool(contract.get("parameter_editor"))

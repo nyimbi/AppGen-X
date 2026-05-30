@@ -1,40 +1,14 @@
-## Scope
+# Healthcare Claims Adjudication Implementation Plan
 
-Implement the `claims_adjudication_healthcare` PBC as a package-local, executable one-PBC adjudication app without touching shared AppGen-X infrastructure or other PBCs.
+## Objective
 
-## Constraints
+Make `claims_adjudication_healthcare` usable as a standalone one-PBC payer adjudication app covering claim intake, line adjudication, eligibility/provider projection boundaries, benefit rules, medical necessity, prior authorization, coding validation, COB, cost share, pricing, denials, appeals, payment integrity, attachment evidence, corrections, recoveries, controls, UI, and governed assistant planning.
 
-- Only modify files under `src/pyAppGen/pbcs/claims_adjudication_healthcare`.
-- Keep shared package entrypoints stable so existing imports and package discovery keep working.
-- Use owned tables, AppGen-X events, and declared projections only; no foreign table reads or writes.
-- Prefer a cohesive in-memory reference implementation over scaffold metadata.
+## Plan
 
-## Delivery Plan
-
-1. Replace scaffold contracts with a domain-specific adjudication core:
-   - claim intake normalization
-   - line-level adjudication
-   - benefit rule and parameter governance
-   - denial, appeal, and payment-integrity workflows
-   - AppGen-X outbox/inbox/dead-letter handling
-2. Rebuild package adapters around that core:
-   - schema/model contracts
-   - services and route dispatch
-   - UI/workbench, forms, wizards, and controls
-   - RBAC, rules, runtime configuration, and seed data
-   - agent/chatbot document-instruction CRUD and governed datastore plans
-3. Refresh package-local evidence:
-   - `README.md`
-   - `implementation-status.md`
-   - `RELEASE_EVIDENCE.md`
-   - focused migration DDL
-4. Add focused package-local tests for:
-   - claim adjudication outcomes
-   - event idempotency and dead-letter behavior
-   - route and agent/document-instruction flows
-   - metadata/release evidence integrity
-5. Validate with import/compile checks and focused pytest runs if the environment supports them.
-
-## Intended Outcome
-
-The PBC should be executable as a self-contained healthcare claims adjudication slice with meaningful domain behavior rather than generic generated stubs.
+1. Preserve the existing executable runtime and add a package-local standalone app surface rather than replacing working adjudication code.
+2. Map all 50 `improve1.md` backlog items to concrete forms, wizards, controls, route contracts, DSL exposure, declared dependencies, and release simulation evidence.
+3. Keep member enrollment, provider master, prior authorization, accumulator, fee schedule, and audit inputs as declared AppGen-X projections; reject shared table references.
+4. Add executable helpers for canonicalization, mixed line outcomes, duplicate scoring, overlap guardrails, scenario library, and full claims adjudication simulation.
+5. Wire standalone evidence through package exports, UI, routes, agent contribution, and release evidence.
+6. Add focused tests and run compile, tests, diff checks, and available PBC audits.

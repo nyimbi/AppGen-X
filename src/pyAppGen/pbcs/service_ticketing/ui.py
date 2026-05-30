@@ -8,6 +8,7 @@ from .runtime import SERVICE_TICKETING_EMITTED_EVENT_TYPES
 from .runtime import SERVICE_TICKETING_OWNED_TABLES
 from .runtime import SERVICE_TICKETING_REQUIRED_EVENT_TOPIC
 from .runtime import SERVICE_TICKETING_RUNTIME_TABLES
+from .app_surface import single_pbc_service_ticketing_app_contract
 
 
 SERVICE_TICKETING_UI_FRAGMENT_KEYS = (
@@ -36,6 +37,27 @@ SERVICE_TICKETING_UI_FRAGMENT_KEYS = (
 )
 
 
+def service_ticketing_forms_contract() -> dict:
+    """Return standalone database-backed form metadata for generated apps."""
+    from .app_surface import service_ticketing_forms_contract as _forms
+
+    return _forms()
+
+
+def service_ticketing_wizards_contract() -> dict:
+    """Return standalone guided workflow metadata for generated apps."""
+    from .app_surface import service_ticketing_wizards_contract as _wizards
+
+    return _wizards()
+
+
+def service_ticketing_controls_contract() -> dict:
+    """Return standalone control metadata for generated apps."""
+    from .app_surface import service_ticketing_controls_contract as _controls
+
+    return _controls()
+
+
 def service_ticketing_ui_contract() -> dict:
     return {
         "format": "appgen.service-ticketing-ui-contract.v1",
@@ -43,6 +65,10 @@ def service_ticketing_ui_contract() -> dict:
         "pbc": "service_ticketing",
         "implementation_directory": "src/pyAppGen/pbcs/service_ticketing",
         "fragments": SERVICE_TICKETING_UI_FRAGMENT_KEYS,
+        "forms": service_ticketing_forms_contract()["forms"],
+        "wizards": service_ticketing_wizards_contract()["wizards"],
+        "controls": service_ticketing_controls_contract()["controls"],
+        "single_pbc_app": single_pbc_service_ticketing_app_contract(),
         "routes": (
             "/workbench/pbcs/service_ticketing",
             "/workbench/pbcs/service_ticketing/tickets",
@@ -211,6 +237,10 @@ def service_ticketing_render_workbench(
         "route": "/workbench/pbcs/service_ticketing",
         "fragments": contract["fragments"],
         "cards": cards,
+        "forms": contract["forms"],
+        "wizards": contract["wizards"],
+        "controls": contract["controls"],
+        "single_pbc_app": contract["single_pbc_app"],
         "visible_actions": visible_actions,
         "locked_actions": tuple(action for action in action_permissions if action not in visible_actions),
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
@@ -308,6 +338,10 @@ def smoke_test():
         and bool(contract.get("fragments"))
         and bool(contract.get("routes"))
         and bool(cards)
+        and bool(contract.get("forms"))
+        and bool(contract.get("wizards"))
+        and bool(contract.get("controls"))
+        and contract.get("single_pbc_app", {}).get("ok") is True
         and bool(contract.get("action_permissions"))
         and bool(configuration_editor)
         and configuration_editor.get("stream_engine_picker_visible", configuration_editor.get("user_facing_stream_engine_picker", False)) is False

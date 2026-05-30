@@ -1,1 +1,1 @@
-from .runtime import environment_health_safety_build_schema_contract as build_schema_contract
+from .standalone import build_schema_contract

@@ -218,3 +218,31 @@ def smoke_test():
         "cards": cards,
         "side_effects": (),
     }
+
+
+
+def talent_onboarding_form_contracts() -> dict:
+    contracts=(
+        {'key':'TalentConfigurationForm','operation':'configure_runtime','table':'talent_onboarding_talent_configuration','fields':('database_backend','event_topic','retry_limit','allowed_countries','allowed_candidate_sources'),'permission':'talent_onboarding.configure','keywords':('configure','country','source')},
+        {'key':'RequisitionForm','operation':'create_job_requisition','table':'talent_onboarding_job_requisition','fields':('requisition_id','tenant','title','department','manager_employee_id','country','location','worker_type','headcount','budget'),'permission':'talent_onboarding.requisition','keywords':('requisition','job','budget')},
+        {'key':'CandidateForm','operation':'create_candidate','table':'talent_onboarding_candidate','fields':('candidate_id','tenant','requisition_id','name','source','country','skills','match_score','consents','identity'),'permission':'talent_onboarding.candidate','keywords':('candidate','source','consent')},
+        {'key':'BackgroundCheckForm','operation':'record_background_check','table':'talent_onboarding_background_check','fields':('check_id','tenant','candidate_id','provider','check_type','confidence','result'),'permission':'talent_onboarding.candidate','keywords':('background','screening','adjudication')},
+        {'key':'OfferForm','operation':'extend_offer','table':'talent_onboarding_offer','fields':('offer_id','salary','currency','start_date','expires_in_days'),'permission':'talent_onboarding.offer','keywords':('offer','salary','acceptance')},
+        {'key':'OnboardingTaskForm','operation':'create_onboarding_task','table':'talent_onboarding_onboarding_task','fields':('task_id','task_type','assignee','due_in_days'),'permission':'talent_onboarding.onboard','keywords':('task','equipment','identity','training')},)
+    return {'format':'appgen.talent-onboarding-standalone-forms.v1','ok':all(i['table'].startswith('talent_onboarding_') for i in contracts),'pbc':'talent_onboarding','contracts':contracts,'side_effects':()}
+def talent_onboarding_wizard_contracts() -> dict:
+    contracts=(
+        {'key':'CandidatePacketIntakeWizard','steps':('parse_packet','create_requisition','create_candidate','preview_crud_plan'),'forms':('RequisitionForm','CandidateForm'),'keywords':('document','packet','candidate')},
+        {'key':'CandidatePipelineWizard','steps':('screen_candidate','schedule_interview','advance_stage','capture_evidence'),'forms':('CandidateForm','BackgroundCheckForm'),'keywords':('pipeline','interview','stage')},
+        {'key':'OfferAcceptanceWizard','steps':('extend_offer','approve_offer','accept_offer'),'forms':('OfferForm',),'keywords':('offer','accept')},
+        {'key':'EmployeeProvisioningWizard','steps':('create_tasks','complete_tasks','provision_employee','publish_events'),'forms':('OnboardingTaskForm',),'keywords':('onboard','provision','identity','access')},)
+    return {'format':'appgen.talent-onboarding-standalone-wizards.v1','ok':all(i['steps'] for i in contracts),'pbc':'talent_onboarding','contracts':contracts,'side_effects':()}
+def talent_onboarding_control_catalog() -> dict:
+    contracts=({'key':'talent_backend_event_contract','operation':'run_control_tests','table':'talent_onboarding_talent_control_assertion','permission':'talent_onboarding.audit'},{'key':'candidate_provisioning_control','operation':'run_control_tests','table':'talent_onboarding_talent_control_assertion','permission':'talent_onboarding.audit'},{'key':'candidate_proof_control','operation':'generate_candidate_proof','table':'talent_onboarding_talent_candidate_proof','permission':'talent_onboarding.audit'})
+    return {'format':'appgen.talent-onboarding-standalone-controls.v1','ok':all(i['table'].startswith('talent_onboarding_') for i in contracts),'pbc':'talent_onboarding','contracts':contracts,'side_effects':()}
+def talent_onboarding_standalone_workbench_blueprint() -> dict:
+    forms=talent_onboarding_form_contracts(); wizards=talent_onboarding_wizard_contracts(); controls=talent_onboarding_control_catalog()
+    return {'format':'appgen.talent-onboarding-standalone-workbench.v1','ok':forms['ok'] and wizards['ok'] and controls['ok'],'pbc':'talent_onboarding','forms':forms['contracts'],'wizards':wizards['contracts'],'controls':controls['contracts'],'panels':talent_onboarding_ui_contract()['panels'],'side_effects':()}
+def talent_onboarding_render_standalone_workbench(workbench: dict) -> dict:
+    bp=talent_onboarding_standalone_workbench_blueprint(); cards=({'key':'requisitions','value':workbench.get('requisition_count',0),'fragment':'RequisitionConsole'},{'key':'candidates','value':workbench.get('candidate_count',0),'fragment':'CandidatePipelineBoard'},{'key':'hired','value':workbench.get('hired_count',0),'fragment':'CandidatePipelineBoard'},{'key':'provisioned','value':workbench.get('provisioned_count',0),'fragment':'OnboardingTaskBoard'},{'key':'completed_tasks','value':workbench.get('completed_task_count',0),'fragment':'OnboardingTaskBoard'})
+    return {'format':'appgen.talent-onboarding-standalone-render.v1','ok':bp['ok'] and bool(cards),'pbc':'talent_onboarding','tenant':workbench.get('tenant'),'cards':cards,'forms':tuple(i['key'] for i in bp['forms']),'wizards':tuple(i['key'] for i in bp['wizards']),'controls':tuple(i['key'] for i in bp['controls']),'side_effects':()}

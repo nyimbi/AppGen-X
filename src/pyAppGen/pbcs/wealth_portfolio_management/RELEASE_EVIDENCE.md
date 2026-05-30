@@ -2,11 +2,18 @@
 
 Package directory: `pbcs/wealth_portfolio_management`.
 
-This PBC includes owned schema, migration DDL, models, services, routes, events, handlers, UI workbench surfaces, agent skills, permissions, configuration, seed data, package metadata, side-effect-free registration, and focused package tests.
+This package now includes:
+
+- source-owned schema, migration DDL, model contracts, service contracts, API routes, AppGen-X events, handlers, permissions, configuration, seed hooks, and package metadata
+- a standalone one-PBC sqlite execution harness for household onboarding, IPS, suitability, rebalancing, performance, advisor review, document readiness, and compliance surveillance
+- governed assistant planning with confirmation-gated mutation skills and `governed_datastore_crud`
+- hand-crafted package-local `README.md`, `implementation-plan.md`, `implementation-status.md`, and `SPECIFICATION.md`
 
 ## Evidence
 
-- Release Evidence: schema, service, route, event, handler, UI, agent, and governance contracts are materialized.
-- Owned datastore boundary: every owned table starts with `wealth_portfolio_management_` and cross-PBC collaboration uses AppGen-X events or declared APIs.
-- Event contract: AppGen-X outbox/inbox with retry and dead-letter evidence.
-- Package tests: `tests/test_contract.py` validates schema/service/release, event contracts, side-effect-free registration, routes, governance, and idempotent handlers.
+- Source package boundary: all deployment-facing owned tables stay under the `wealth_portfolio_management_` prefix and no foreign table writes are introduced.
+- Datastore policy: deployment-facing contracts remain on PostgreSQL, MySQL, and MariaDB; sqlite is used only as a package-local standalone harness.
+- Event policy: AppGen-X is the only event contract, with inbox, outbox, dead-letter, idempotency, and retry evidence.
+- Standalone workbench: executable service, route, UI, and agent surfaces cover portfolio onboarding, investment policy capture, suitability, fee projection, document intake, tax-aware trade proposals, performance snapshots, advisor review, and compliance surveillance.
+- Documentation: package-local implementation plan, implementation status, specification, and README are materialized for audit traceability.
+- Focused tests: contract tests and standalone workflow tests exercise the source package evidence and the standalone wealth flow.

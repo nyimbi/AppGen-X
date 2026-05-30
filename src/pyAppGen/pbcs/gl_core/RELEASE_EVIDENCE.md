@@ -1,29 +1,39 @@
 # General Ledger Core Release Evidence
 
-Directory: `pbcs/gl_core`
+Directory: `src/pyAppGen/pbcs/gl_core`
 
-Generated checks:
-- stable_manifest
-- source_package_directory
-- owned_schema_only
-- migration_artifact
-- model_artifact
-- domain_capability_depth
-- workflow_coverage
-- policy_control_coverage
-- automation_loop_coverage
-- analytics_coverage
-- advanced_domain_blueprint
-- service_commands
-- api_routes
-- event_outbox_inbox
-- typed_emitted_events
-- typed_consumed_events
-- idempotent_handlers
-- retry_dead_letter_policy
-- ui_fragments
-- permissions
-- configuration_schema
-- seed_data
-- self_registration_metadata
-- contract_tests
+## Package Additions
+
+- `repository.py` provides package-local database write plans and stateful row
+  persistence for chart accounts, periods, journal drafts, semantic source
+  documents, reconciliation cases, and close snapshots.
+- `standalone.py` bootstraps a one-PBC GL app surface, loads demo finance
+  workspace state, dispatches package routes, and renders the workbench shell.
+- `ui.py` now exposes explicit forms, wizards, controls, and standalone shell
+  metadata for operator workflows.
+- Package docs now include `README.md`, `implementation-plan.md`,
+  `implementation-status.md`, `SPECIFICATION.md`, and this release evidence
+  file.
+
+## Repo Gate Proxies
+
+### `pbc_source_artifact_contract`
+
+- Verified through package artifact existence plus schema/model/repository
+  evidence.
+
+### `pbc_implementation_release_audit`
+
+- Verified through runtime release evidence, executable service/route/event/UI
+  contracts, agent contribution, and repository coverage.
+
+### `pbc_generation_smoke_audit`
+
+- Verified through runtime smoke, repository smoke, and standalone app smoke.
+
+## Focused Evidence Files
+
+- `tests/test_contract.py`
+- `tests/test_standalone.py`
+- `implementation-status.md`
+- `release_evidence.py`

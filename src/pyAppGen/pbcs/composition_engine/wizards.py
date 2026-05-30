@@ -13,9 +13,9 @@ COMPOSITION_ENGINE_WIZARDS = (
         "steps": (
             {"step_id": "workspace", "label": "Create workspace", "form_id": "workspace_intake", "operation": "create_workspace"},
             {"step_id": "select_pbc", "label": "Select capability", "form_id": "pbc_selection", "operation": "select_pbc"},
-            {"step_id": "register_component", "label": "Register component", "form_id": "component_fragment_registration", "operation": "register_component"},
+            {"step_id": "register_component", "label": "Register component and fragment", "form_id": "component_fragment_registration", "operation": "register_component"},
             {"step_id": "bind_layout", "label": "Bind layout", "form_id": "layout_binding", "operation": "bind_layout"},
-            {"step_id": "validate", "label": "Validate plan", "form_id": "assistant_document_intake", "operation": "release_rehearsal"},
+            {"step_id": "validate", "label": "Run governance review", "form_id": "workspace_governance_review", "operation": "release_rehearsal"},
         ),
     },
     {
@@ -24,8 +24,8 @@ COMPOSITION_ENGINE_WIZARDS = (
         "goal": "Turn a requirements document into a bounded composition preview and impact assessment.",
         "steps": (
             {"step_id": "capture_document", "label": "Capture document", "form_id": "assistant_document_intake", "operation": "assistant_document_preview"},
-            {"step_id": "preview_impact", "label": "Preview selection impact", "form_id": "assistant_document_intake", "operation": "preview_selection_impact"},
-            {"step_id": "review_routeing", "label": "Review assistant routing", "form_id": "assistant_document_intake", "operation": "route_agent_intent"},
+            {"step_id": "preview_impact", "label": "Preview selection impact", "form_id": "selection_impact_preview_request", "operation": "preview_selection_impact"},
+            {"step_id": "review_routing", "label": "Review assistant routing", "form_id": "agent_intent_request", "operation": "route_agent_intent"},
         ),
     },
     {
@@ -33,9 +33,9 @@ COMPOSITION_ENGINE_WIZARDS = (
         "title": "Release gate",
         "goal": "Rehearse publication and inspect package-local evidence before publishing.",
         "steps": (
-            {"step_id": "inspect_controls", "label": "Inspect controls", "form_id": "assistant_document_intake", "operation": "build_control_center"},
-            {"step_id": "rehearse_release", "label": "Run rehearsal", "form_id": "assistant_document_intake", "operation": "release_rehearsal"},
-            {"step_id": "review_release_notes", "label": "Review notes", "form_id": "assistant_document_intake", "operation": "build_release_notes"},
+            {"step_id": "inspect_controls", "label": "Inspect controls", "form_id": "control_center_request", "operation": "build_control_center"},
+            {"step_id": "rehearse_release", "label": "Run rehearsal", "form_id": "workspace_governance_review", "operation": "release_rehearsal"},
+            {"step_id": "review_release_notes", "label": "Review notes", "form_id": "release_notes_request", "operation": "build_release_notes"},
         ),
     },
 )
@@ -70,10 +70,14 @@ def composition_engine_plan_wizard(wizard_id: str, context: dict | None = None) 
     planned_steps = []
     for position, step in enumerate(wizard["steps"], start=1):
         blocked_by = ()
-        if step["step_id"] != "workspace" and wizard_id == "bootstrap_composition" and not supplied.get("workspace_id"):
+        if wizard_id == "bootstrap_composition" and step["step_id"] != "workspace" and not supplied.get("workspace_id"):
             blocked_by = ("workspace_id",)
-        if step["step_id"] in {"preview_impact", "review_routeing"} and not supplied.get("document_text"):
+        if wizard_id == "document_driven_intake" and step["step_id"] == "preview_impact" and not supplied.get("workspace_id"):
+            blocked_by = ("workspace_id",)
+        if wizard_id == "document_driven_intake" and step["step_id"] in {"capture_document", "review_routing"} and not supplied.get("document_text"):
             blocked_by = ("document_text",)
+        if wizard_id == "release_gate" and not supplied.get("workspace_id"):
+            blocked_by = ("workspace_id",)
         planned_steps.append(
             {
                 **step,
@@ -93,15 +97,20 @@ def composition_engine_plan_wizard(wizard_id: str, context: dict | None = None) 
 
 
 def smoke_test() -> dict:
-    """Exercise wizard catalog and a plan."""
+    """Exercise wizard catalog and plans for bootstrap and release gating."""
     catalog = composition_engine_wizard_catalog()
-    plan = composition_engine_plan_wizard(
-        "document_driven_intake",
-        {"workspace_id": "ws_100", "document_text": "Need a customer onboarding composition."},
+    bootstrap = composition_engine_plan_wizard(
+        "bootstrap_composition",
+        {"workspace_id": "ws_100"},
+    )
+    release_gate = composition_engine_plan_wizard(
+        "release_gate",
+        {"workspace_id": "ws_100"},
     )
     return {
-        "ok": catalog["ok"] and plan["ok"] and bool(plan["steps"]),
+        "ok": catalog["ok"] and bootstrap["ok"] and release_gate["ok"] and bool(bootstrap["steps"]) and bool(release_gate["steps"]),
         "catalog": catalog,
-        "plan": plan,
+        "bootstrap": bootstrap,
+        "release_gate": release_gate,
         "side_effects": (),
     }

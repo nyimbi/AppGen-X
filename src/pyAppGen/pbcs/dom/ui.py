@@ -32,10 +32,20 @@ DOM_UI_FRAGMENT_KEYS = (
 )
 
 DOM_FORM_KEYS = {
+    "customer_projection_form": {
+        "title": "Customer Projection",
+        "fields": ("customer_id", "status", "risk", "identity"),
+        "submit_action": "upsert_customer_projection",
+    },
     "order_capture_form": {
         "title": "Order Capture",
         "fields": ("order_id", "customer_id", "channel", "destination", "service_level", "currency", "lines"),
         "submit_action": "capture_order",
+    },
+    "allocation_form": {
+        "title": "Allocation Projection",
+        "fields": ("order_id", "allocations"),
+        "submit_action": "apply_inventory_allocation",
     },
     "hold_release_form": {
         "title": "Hold Release",
@@ -52,19 +62,43 @@ DOM_FORM_KEYS = {
         "fields": ("order_id", "line_id", "substitute_item_id", "reason"),
         "submit_action": "apply_substitution",
     },
+    "exception_resolution_form": {
+        "title": "Exception Resolution",
+        "fields": ("order_id", "exception_type", "reason", "severity"),
+        "submit_action": "record_exception",
+    },
 }
 
 DOM_WIZARD_KEYS = {
     "order_intake_wizard": {
         "steps": ("capture", "tax", "fraud", "verify", "price"),
+        "step_actions": {
+            "capture": "capture_order",
+            "tax": "apply_tax_projection",
+            "fraud": "screen_fraud",
+            "verify": "verify_order",
+            "price": "price_order",
+        },
         "completion_action": "price_order",
     },
     "fulfillment_wizard": {
         "steps": ("allocation", "plan", "route", "ship"),
+        "step_actions": {
+            "allocation": "apply_inventory_allocation",
+            "plan": "create_fulfillment_plan",
+            "route": "route_fulfillment",
+            "ship": "confirm_order_shipped",
+        },
         "completion_action": "confirm_order_shipped",
     },
     "exception_resolution_wizard": {
         "steps": ("triage", "hold_or_release", "reroute_or_backorder", "close"),
+        "step_actions": {
+            "triage": "record_exception",
+            "hold_or_release": "release_hold",
+            "reroute_or_backorder": "create_backorder",
+            "close": "request_cancellation",
+        },
         "completion_action": "record_exception",
     },
 }
@@ -75,6 +109,9 @@ DOM_CONTROL_KEYS = {
     "apply_substitution": {"permission": "dom.plan", "action": "apply_substitution"},
     "create_backorder": {"permission": "dom.plan", "action": "create_backorder"},
     "receive_event": {"permission": "dom.event", "action": "receive_event"},
+    "screen_order_policy": {"permission": "dom.audit", "action": "screen_order_policy"},
+    "generate_order_verification_proof": {"permission": "dom.audit", "action": "generate_order_verification_proof"},
+    "run_control_tests": {"permission": "dom.audit", "action": "run_control_tests"},
 }
 
 

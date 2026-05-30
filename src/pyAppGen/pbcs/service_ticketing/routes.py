@@ -5,6 +5,10 @@ from __future__ import annotations
 from .runtime import service_ticketing_build_api_contract
 from .services import ServiceTicketingService
 from .services import service_operation_contracts
+from .app_surface import service_ticketing_controls_contract
+from .app_surface import service_ticketing_forms_contract
+from .app_surface import service_ticketing_wizards_contract
+from .app_surface import single_pbc_service_ticketing_app_contract
 
 
 def _method_path(route: str) -> tuple[str, str]:
@@ -149,9 +153,31 @@ def smoke_test() -> dict:
         return {"ok": False, "reason": "no_routes"}
     first = ROUTES[0]
     dispatched = dispatch_route(first["method"], first["path"], {"smoke": True})
+    app_routes = standalone_app_route_contracts()
     return {
-        "ok": validation["ok"] and dispatched["ok"],
+        "ok": validation["ok"] and dispatched["ok"] and app_routes["ok"],
         "validation": validation,
         "dispatch": dispatched,
+        "standalone_app_routes": app_routes,
         "side_effects": (),
+    }
+
+
+STANDALONE_APP_ROUTES = (
+    {'method': 'GET', 'path': '/api/pbc/service_ticketing/app-shell', 'handler': 'single_pbc_service_ticketing_app_contract', 'permission': 'service_ticketing.audit', 'read_tables': single_pbc_service_ticketing_app_contract()['owned_tables']},
+    {'method': 'GET', 'path': '/api/pbc/service_ticketing/forms', 'handler': 'service_ticketing_forms_contract', 'permission': 'service_ticketing.audit', 'read_tables': tuple(form['writes_table'] for form in service_ticketing_forms_contract()['forms'])},
+    {'method': 'GET', 'path': '/api/pbc/service_ticketing/wizards', 'handler': 'service_ticketing_wizards_contract', 'permission': 'service_ticketing.audit', 'read_tables': ()},
+    {'method': 'GET', 'path': '/api/pbc/service_ticketing/controls', 'handler': 'service_ticketing_controls_contract', 'permission': 'service_ticketing.audit', 'read_tables': tuple(dict.fromkeys(table for control in service_ticketing_controls_contract()['controls'] for table in control['table_scope']))},
+)
+
+
+def standalone_app_route_contracts() -> dict:
+    """Return side-effect-free app shell route metadata for generated apps."""
+    return {
+        'ok': all(all(table.startswith('service_ticketing_') for table in route['read_tables']) for route in STANDALONE_APP_ROUTES),
+        'pbc': 'service_ticketing',
+        'routes': STANDALONE_APP_ROUTES,
+        'event_contract': 'AppGen-X',
+        'stream_engine_picker_visible': False,
+        'side_effects': (),
     }

@@ -139,3 +139,34 @@ def smoke_test():
         "dispatch": dispatched,
         "side_effects": (),
     }
+
+
+STANDALONE_ROUTES=(
+    {'method':'POST','path':'/app/asset-lifecycle/demo-workspace','handler':'seed_demo_workspace'},
+    {'method':'GET','path':'/app/asset-lifecycle/workbench','handler':'build_workbench'},
+    {'method':'POST','path':'/app/asset-lifecycle/assets','handler':'register_asset'},
+    {'method':'POST','path':'/app/asset-lifecycle/depreciation-runs','handler':'run_depreciation'},
+    {'method':'POST','path':'/app/asset-lifecycle/transfers','handler':'transfer_asset'},
+    {'method':'POST','path':'/app/asset-lifecycle/audit-proofs','handler':'generate_asset_audit_proof'},)
+
+def standalone_route_contracts():
+    from .services import standalone_service_operation_contracts
+    ops={i['operation']:i for i in standalone_service_operation_contracts()['contracts']}; contracts=tuple({**r,'operation':r['handler'],'service_operation':ops.get(r['handler'])} for r in STANDALONE_ROUTES)
+    return {'format':'appgen.asset-lifecycle-standalone-routes.v1','ok':all(i['service_operation'] for i in contracts),'pbc':'asset_lifecycle','routes':tuple(f"{i['method']} {i['path']}" for i in contracts),'contracts':contracts,'side_effects':()}
+
+def dispatch_standalone_route(method,path,payload=None,*,service=None):
+    from .services import AssetLifecycleStandaloneService
+    route=next((i for i in STANDALONE_ROUTES if i['method']==method and i['path']==path),None)
+    if route is None: return {'ok':False,'handled':False,'reason':'route_not_found','side_effects':()}
+    own=service is None; service=service or AssetLifecycleStandaloneService(); data=dict(payload or {})
+    try:
+        if route['handler']=='seed_demo_workspace': result=service.seed_demo_workspace(tenant=data.get('tenant','tenant_demo'))
+        elif route['handler']=='build_workbench': result=service.build_workbench(tenant=data.get('tenant','tenant_demo'))
+        elif route['handler']=='register_asset': result=service.register_asset(data.get('tenant','tenant_demo'),data)
+        elif route['handler']=='run_depreciation': result=service.run_depreciation(data.get('tenant','tenant_demo'),data['run_id'],data['period'])
+        elif route['handler']=='transfer_asset': result=service.transfer_asset(data.get('tenant','tenant_demo'),data['asset_id'],data['location'],data['cost_center'],data.get('approved_by','asset_controller'))
+        elif route['handler']=='generate_asset_audit_proof': result=service.generate_asset_audit_proof(data.get('tenant','tenant_demo'),data['asset_id'],tuple(data.get('disclosure',('asset_id','status','book_value','location'))))
+        else: result={'ok':False,'reason':'handler_not_implemented'}
+        return {'ok':result.get('ok') is True,'handled':True,'route':route,'result':{'ok':result.get('ok') is True,'result':result},'side_effects':()}
+    finally:
+        if own: service.close()

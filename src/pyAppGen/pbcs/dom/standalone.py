@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from datetime import UTC
+from datetime import datetime
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import Any
 
 from . import agent
+from . import permissions
 from . import runtime
+from . import seed_data
 from . import ui
+from .repository import DomStandaloneRepository
 
 
 DEFAULT_CONFIGURATION = {
@@ -242,9 +248,19 @@ def standalone_manifest() -> dict[str, Any]:
             "receive_event",
             "document_intake",
             "crud_mutation_plan",
+            "submit_form",
+            "run_wizard",
+            "execute_control",
+            "run_agent_skill",
+            "repository_manifest",
+            "read_model_snapshot",
+            "load_demo_workspace",
             "workbench",
         ),
-        "ui_surfaces": ("forms", "wizards", "controls", "workbench"),
+        "ui_surfaces": ("forms", "wizards", "controls", "assistant", "workbench"),
+        "repository_class": "DomStandaloneRepository",
+        "database_backed_ui": True,
+        "local_harness_backend": "sqlite3",
         "docs": (
             "README.md",
             "implementation-plan.md",
@@ -261,12 +277,325 @@ def standalone_manifest() -> dict[str, Any]:
 class DomStandaloneApplication:
     """Mutable, package-local DOM application shell for one-PBC usage."""
 
-    def __init__(self, *, tenant: str = "default", state: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        tenant: str = "default",
+        state: dict[str, Any] | None = None,
+        repository: DomStandaloneRepository | None = None,
+        database_path: str = ":memory:",
+    ) -> None:
         self.tenant = tenant
-        self.state = _ensure_state(state or runtime.dom_empty_state())
+        self.repository = repository or DomStandaloneRepository(database_path=database_path)
+        persisted = self.repository.load_state(tenant) if state is None else None
+        self.state = _ensure_state(state or persisted or runtime.dom_empty_state())
+        self._persist_state()
+
+    def close(self) -> None:
+        self.repository.close()
+
+    def _timestamp(self) -> str:
+        return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+    def _persist_state(self) -> None:
+        timestamp = self._timestamp()
+        self.repository.save_state(self.tenant, self.state, updated_at=timestamp)
+        self.repository.sync_read_models(self.tenant, self.state, updated_at=timestamp)
 
     def snapshot(self) -> dict[str, Any]:
+        self._persist_state()
         return deepcopy(self.state)
+
+    def repository_manifest(self) -> dict[str, Any]:
+        dashboard = self.repository.activity_dashboard(self.tenant)
+        return {**self.repository.repository_manifest(), "dashboard": dashboard}
+
+    def read_model_snapshot(self) -> dict[str, Any]:
+        return {
+            "ok": True,
+            "tenant": self.tenant,
+            "orders": self.repository.list_order_read_models(self.tenant, limit=100),
+            "exceptions": self.repository.list_exception_read_models(self.tenant, limit=100),
+            "dashboard": self.repository.activity_dashboard(self.tenant, limit=10),
+        }
+
+    def _effective_permissions(self, granted_permissions: tuple[str, ...] | None) -> tuple[str, ...]:
+        if granted_permissions:
+            return tuple(granted_permissions)
+        return tuple(ui.dom_ui_contract()["binding_evidence"]["rbac_permissions"])
+
+    def _audit_action(self, action: str, payload: dict[str, Any]) -> dict[str, Any]:
+        if action == "screen_order_policy":
+            return runtime.dom_screen_order_policy(
+                self.state,
+                payload["order_id"],
+                restricted_destinations=tuple(payload.get("restricted_destinations", ("embargoed_zone",))),
+            )
+        if action == "generate_order_verification_proof":
+            return runtime.dom_generate_order_verification_proof(
+                self.state,
+                payload["order_id"],
+                disclosure=tuple(payload.get("disclosure", ("order_id", "status", "total"))),
+            )
+        if action == "run_control_tests":
+            return runtime.dom_run_control_tests(self.state)
+        return {"ok": False, "reason": "unknown_audit_action", "action": action}
+
+    def _dispatch_action(self, action: str, payload: dict[str, Any]) -> dict[str, Any]:
+        data = _copy_payload(payload)
+        if action == "capture_order":
+            return self.capture_order(data)
+        if action == "upsert_customer_projection":
+            return self.upsert_customer_projection(data)
+        if action == "apply_tax_projection":
+            projection = _copy_payload(data.get("tax_projection")) or data
+            return self.apply_tax_projection(data["order_id"], projection)
+        if action == "screen_fraud":
+            return self.screen_fraud(data["order_id"], signals=_copy_payload(data.get("signals")))
+        if action == "verify_order":
+            return self.verify_order(data["order_id"])
+        if action == "price_order":
+            return self.price_order(data["order_id"])
+        if action == "apply_inventory_allocation":
+            return self.apply_inventory_allocation(data["order_id"], data.get("allocations") or data.get("allocation") or ())
+        if action == "create_fulfillment_plan":
+            return self.create_fulfillment_plan(data["order_id"])
+        if action == "route_fulfillment":
+            return self.route_fulfillment(data["order_id"], rails=tuple(data.get("rails", ())) or None)
+        if action == "confirm_order_shipped":
+            return self.confirm_order_shipped(data["order_id"], shipment_id=data["shipment_id"])
+        if action == "release_hold":
+            return self.release_hold(
+                order_id=data["order_id"],
+                hold_id=data["hold_id"],
+                released_by=data.get("released_by", "workflow"),
+                note=data.get("note", ""),
+            )
+        if action == "request_cancellation":
+            return self.request_cancellation(order_id=data["order_id"], reason=data["reason"], actor=data.get("actor", "user"))
+        if action == "create_backorder":
+            return self.create_backorder(
+                order_id=data["order_id"],
+                line_id=data["line_id"],
+                quantity=float(data["quantity"]),
+                reason=data["reason"],
+            )
+        if action == "apply_substitution":
+            return self.apply_substitution(
+                order_id=data["order_id"],
+                line_id=data["line_id"],
+                substitute_item_id=data["substitute_item_id"],
+                reason=data.get("reason", "equivalent_inventory"),
+            )
+        if action == "record_exception":
+            return self.record_exception(
+                order_id=data["order_id"],
+                exception_type=data.get("exception_type", "manual_review"),
+                reason=data.get("reason", "manual review required"),
+                severity=data.get("severity", "medium"),
+            )
+        if action in {"screen_order_policy", "generate_order_verification_proof", "run_control_tests"}:
+            return self._audit_action(action, data)
+        return {"ok": False, "reason": "unknown_action", "action": action}
+
+    def submit_form(
+        self,
+        form_key: str,
+        payload: dict[str, Any],
+        *,
+        principal_permissions: tuple[str, ...] | None = None,
+    ) -> dict[str, Any]:
+        contract = ui.dom_ui_contract()["forms"].get(form_key)
+        if contract is None:
+            return {"ok": False, "reason": "unknown_form", "form_key": form_key}
+        granted = self._effective_permissions(principal_permissions)
+        authorization = permissions.authorize(contract["submit_action"], granted)
+        if not authorization["allowed"]:
+            result = {"ok": False, "reason": "forbidden", "authorization": authorization}
+        else:
+            result = self._dispatch_action(contract["submit_action"], payload)
+        submission_id = _sequence_id("form", self.repository.list_form_submissions(self.tenant, limit=1000))
+        self.repository.record_form_submission(
+            submission_id=submission_id,
+            tenant=self.tenant,
+            form_key=form_key,
+            action=contract["submit_action"],
+            order_id=payload.get("order_id"),
+            payload=payload,
+            result=result,
+            created_at=self._timestamp(),
+        )
+        return {
+            "ok": result.get("ok") is True,
+            "form_key": form_key,
+            "action": contract["submit_action"],
+            "authorization": authorization,
+            "result": result,
+            "repository": self.repository.activity_dashboard(self.tenant, limit=5),
+        }
+
+    def run_wizard(
+        self,
+        wizard_key: str,
+        payload: dict[str, Any],
+        *,
+        principal_permissions: tuple[str, ...] | None = None,
+    ) -> dict[str, Any]:
+        contract = ui.dom_ui_contract()["wizards"].get(wizard_key)
+        if contract is None:
+            return {"ok": False, "reason": "unknown_wizard", "wizard_key": wizard_key}
+        granted = set(self._effective_permissions(principal_permissions))
+        required_actions = tuple(dict.fromkeys(contract.get("step_actions", {}).values()))
+        missing_permissions = tuple(
+            action
+            for action in required_actions
+            if not permissions.authorize(action, tuple(granted))["allowed"]
+        )
+        steps = []
+        order_id = payload.get("order_id") or payload.get("order", {}).get("order_id")
+        if missing_permissions:
+            result = {"ok": False, "reason": "forbidden", "missing_permissions": missing_permissions}
+        elif wizard_key == "order_intake_wizard":
+            steps.append({"step": "capture", "action": "capture_order", "result": self.capture_order(_copy_payload(payload["order"]))})
+            if steps[-1]["result"].get("ok") and payload.get("tax_projection"):
+                steps.append({"step": "tax", "action": "apply_tax_projection", "result": self.apply_tax_projection(order_id, _copy_payload(payload["tax_projection"]))})
+            if steps[-1]["result"].get("ok") and payload.get("fraud_signals") is not None:
+                steps.append({"step": "fraud", "action": "screen_fraud", "result": self.screen_fraud(order_id, signals=_copy_payload(payload.get("fraud_signals")))})
+            if all(step["result"].get("ok") is True for step in steps):
+                steps.append({"step": "verify", "action": "verify_order", "result": self.verify_order(order_id)})
+            if all(step["result"].get("ok") is True for step in steps):
+                steps.append({"step": "price", "action": "price_order", "result": self.price_order(order_id)})
+            result = {"ok": all(step["result"].get("ok") is True for step in steps), "order_id": order_id}
+        elif wizard_key == "fulfillment_wizard":
+            steps.append({"step": "allocation", "action": "apply_inventory_allocation", "result": self.apply_inventory_allocation(order_id, payload.get("allocations") or ())})
+            if steps[-1]["result"].get("ok") is True:
+                steps.append({"step": "plan", "action": "create_fulfillment_plan", "result": self.create_fulfillment_plan(order_id)})
+            if all(step["result"].get("ok") is True for step in steps):
+                steps.append({"step": "route", "action": "route_fulfillment", "result": self.route_fulfillment(order_id, rails=tuple(payload.get("rails", ())) or None)})
+            if all(step["result"].get("ok") is True for step in steps) and payload.get("shipment_id"):
+                steps.append({"step": "ship", "action": "confirm_order_shipped", "result": self.confirm_order_shipped(order_id, shipment_id=payload["shipment_id"])})
+            result = {"ok": all(step["result"].get("ok") is True for step in steps), "order_id": order_id}
+        else:
+            steps.append({"step": "triage", "action": "record_exception", "result": self.record_exception(order_id=payload["order_id"], exception_type=payload.get("exception_type", "manual_review"), reason=payload.get("reason", "wizard triage"), severity=payload.get("severity", "medium"))})
+            if payload.get("hold_id"):
+                steps.append({"step": "release", "action": "release_hold", "result": self.release_hold(order_id=payload["order_id"], hold_id=payload["hold_id"], released_by=payload.get("released_by", "workflow"), note=payload.get("note", ""))})
+            if payload.get("backorder"):
+                steps.append({"step": "backorder", "action": "create_backorder", "result": self.create_backorder(order_id=payload["order_id"], line_id=payload["backorder"]["line_id"], quantity=float(payload["backorder"]["quantity"]), reason=payload["backorder"].get("reason", "manual_review"))})
+            result = {"ok": all(step["result"].get("ok") is True for step in steps), "order_id": payload["order_id"]}
+        workflow_run_id = _sequence_id("workflow", self.repository.list_workflow_runs(self.tenant, limit=1000))
+        self.repository.record_workflow_run(
+            workflow_run_id=workflow_run_id,
+            tenant=self.tenant,
+            wizard_key=wizard_key,
+            order_id=order_id,
+            status="completed" if result.get("ok") else "blocked",
+            context=payload,
+            steps=tuple(steps),
+            result=result,
+            created_at=self._timestamp(),
+        )
+        return {
+            "ok": result.get("ok") is True,
+            "wizard_key": wizard_key,
+            "required_actions": required_actions,
+            "steps": tuple(steps),
+            "result": result,
+            "repository": self.repository.activity_dashboard(self.tenant, limit=5),
+        }
+
+    def execute_control(
+        self,
+        control_key: str,
+        payload: dict[str, Any],
+        *,
+        principal_permissions: tuple[str, ...] | None = None,
+    ) -> dict[str, Any]:
+        contract = ui.dom_ui_contract()["controls"].get(control_key)
+        if contract is None:
+            return {"ok": False, "reason": "unknown_control", "control_key": control_key}
+        granted = self._effective_permissions(principal_permissions)
+        authorization = permissions.authorize(contract["action"], granted)
+        result = self._dispatch_action(contract["action"], payload) if authorization["allowed"] else {"ok": False, "reason": "forbidden", "authorization": authorization}
+        control_run_id = _sequence_id("control", self.repository.list_control_executions(self.tenant, limit=1000))
+        self.repository.record_control_execution(
+            control_run_id=control_run_id,
+            tenant=self.tenant,
+            control_key=control_key,
+            action=contract["action"],
+            order_id=payload.get("order_id"),
+            allowed=authorization["allowed"],
+            payload=payload,
+            result=result,
+            created_at=self._timestamp(),
+        )
+        return {
+            "ok": result.get("ok") is True,
+            "control_key": control_key,
+            "authorization": authorization,
+            "result": result,
+            "repository": self.repository.activity_dashboard(self.tenant, limit=5),
+        }
+
+    def run_agent_skill(
+        self,
+        skill_name: str,
+        payload: dict[str, Any] | None = None,
+        *,
+        principal_permissions: tuple[str, ...] | None = None,
+    ) -> dict[str, Any]:
+        requested = _copy_payload(payload)
+        manifest = agent.agent_skill_manifest()
+        available = {item["name"] for item in manifest["skills"]}
+        if skill_name not in available:
+            return {"ok": False, "reason": "unknown_skill", "skill_name": skill_name}
+        granted = self._effective_permissions(principal_permissions)
+        authorization = permissions.authorize("build_workbench_view", granted)
+        if skill_name.endswith("document_instruction_intake"):
+            result = agent.document_instruction_plan(requested.get("document"), requested.get("instructions", ""))
+        elif skill_name.endswith("governed_create"):
+            result = agent.datastore_crud_plan("create", table=requested.get("table", "dom_sales_order"), payload=requested.get("payload"))
+        elif skill_name.endswith("governed_update"):
+            result = agent.datastore_crud_plan("update", table=requested.get("table", "dom_sales_order"), payload=requested.get("payload"))
+        elif skill_name.endswith("governed_delete"):
+            result = agent.datastore_crud_plan("delete", table=requested.get("table", "dom_sales_order"), payload=requested.get("payload"))
+        elif skill_name.endswith("governed_read"):
+            result = agent.datastore_crud_plan("read", table=requested.get("table", "dom_sales_order"), payload=requested.get("payload"))
+        elif skill_name.endswith("policy_explanation"):
+            result = {
+                "ok": True,
+                "authorization": permissions.authorize(requested.get("action", "verify_order"), granted),
+                "rule_manifest": tuple(config["rule_id"] for config in DEFAULT_RULES),
+            }
+        elif skill_name.endswith("workbench_navigation"):
+            result = self.workbench(tenant=requested.get("tenant", self.tenant), permissions=granted)
+        else:
+            order_id = requested.get("order_id")
+            result = {
+                "ok": True,
+                "task_guidance": {
+                    "order_id": order_id,
+                    "available_actions": tuple(ui.dom_ui_contract()["action_permissions"]),
+                    "current_order": self.state.get("orders", {}).get(order_id),
+                },
+            }
+        session_id = _sequence_id("agent", self.repository.list_agent_sessions(self.tenant, limit=1000))
+        self.repository.record_agent_session(
+            session_id=session_id,
+            tenant=self.tenant,
+            skill_name=skill_name,
+            scope=requested.get("scope", "preview"),
+            requires_confirmation=result.get("requires_confirmation", requested.get("requires_confirmation", True)),
+            payload=requested,
+            result={"authorization": authorization, "result": result},
+            created_at=self._timestamp(),
+        )
+        return {
+            "ok": result.get("ok") is True,
+            "skill_name": skill_name,
+            "authorization": authorization,
+            "result": result,
+            "repository": self.repository.activity_dashboard(self.tenant, limit=5),
+        }
 
     def configure(self, configuration: dict[str, Any] | None = None) -> dict[str, Any]:
         candidate = {**DEFAULT_CONFIGURATION, **_copy_payload(configuration)}
@@ -754,67 +1083,194 @@ class DomStandaloneApplication:
             "substitutions": tuple(item for item in self.state.get("substitutions", {}).values() if self.state["orders"].get(item["order_id"], {}).get("tenant") == active_tenant),
             "audit_traces": tuple(item for item in self.state.get("audit_traces", ()) if item.get("order_id") is None or self.state["orders"].get(item["order_id"], {}).get("tenant") == active_tenant),
         }
+        rendered["repository"] = self.repository.activity_dashboard(active_tenant, limit=10)
+        rendered["read_models"] = {
+            "orders": self.repository.list_order_read_models(active_tenant, limit=50),
+            "exceptions": self.repository.list_exception_read_models(active_tenant, limit=50),
+        }
         return rendered
 
 
-def standalone_smoke_test() -> dict[str, Any]:
-    app = DomStandaloneApplication(tenant="tenant_alpha")
-    app.configure()
-    app.register_defaults()
-    app.upsert_customer_projection(
-        {
-            "tenant": "tenant_alpha",
-            "customer_id": "cust_100",
-            "status": "active",
-            "risk": 0.08,
+    def load_demo_workspace(self, seed_bundle: dict[str, Any] | None = None) -> dict[str, Any]:
+        bundle = _copy_payload(seed_bundle) if seed_bundle is not None else seed_data.standalone_seed_bundle()
+        active_tenant = bundle.get("tenant", self.tenant)
+        if active_tenant != self.tenant:
+            self.tenant = active_tenant
+            self.state = _ensure_state(self.repository.load_state(active_tenant) or runtime.dom_empty_state())
+            self._persist_state()
+        granted = tuple(ui.dom_ui_contract()["binding_evidence"]["rbac_permissions"])
+        configured = self.configure(bundle.get("configuration"))
+        defaults = self.register_defaults(tenant=active_tenant)
+        customer_submissions = tuple(
+            self.submit_form(
+                "customer_projection_form",
+                {**customer, "tenant": active_tenant},
+                principal_permissions=granted,
+            )
+            for customer in bundle.get("customers", ())
+        )
+        order_results = []
+        for index, order_bundle in enumerate(bundle.get("orders", ()), start=1):
+            order_payload = {**_copy_payload(order_bundle.get("order")), "tenant": active_tenant}
+            order_id = order_payload["order_id"]
+            if index == 1:
+                intake = self.run_wizard(
+                    "order_intake_wizard",
+                    {
+                        "order": order_payload,
+                        "tax_projection": _copy_payload(order_bundle.get("tax_projection")),
+                        "fraud_signals": _copy_payload(order_bundle.get("fraud_signals")),
+                    },
+                    principal_permissions=granted,
+                )
+                fulfillment = self.run_wizard(
+                    "fulfillment_wizard",
+                    {
+                        "order_id": order_id,
+                        "allocations": tuple(_copy_payload(item) for item in order_bundle.get("allocations", ())),
+                        "rails": tuple(_copy_payload(item) for item in order_bundle.get("rails", ())),
+                        "shipment_id": order_bundle.get("shipment_id"),
+                    },
+                    principal_permissions=granted,
+                )
+                controls = tuple(
+                    self.execute_control(
+                        control["control_key"],
+                        _copy_payload(control.get("payload")),
+                        principal_permissions=granted,
+                    )
+                    for control in order_bundle.get("controls", ())
+                )
+                agent_result = self.run_agent_skill(
+                    "dom.document_instruction_intake",
+                    {
+                        "document": order_bundle.get("document", ""),
+                        "instructions": order_bundle.get("instructions", ""),
+                        "scope": "demo_workspace",
+                    },
+                    principal_permissions=granted,
+                )
+                order_results.append(
+                    {
+                        "order_id": order_id,
+                        "mode": "wizard",
+                        "intake": intake,
+                        "fulfillment": fulfillment,
+                        "controls": controls,
+                        "agent": agent_result,
+                    }
+                )
+                continue
+            capture = self.submit_form(
+                "order_capture_form",
+                order_payload,
+                principal_permissions=granted,
+            )
+            tax_result = self.apply_tax_projection(order_id, _copy_payload(order_bundle.get("tax_projection")))
+            fraud_result = self.screen_fraud(order_id, signals=_copy_payload(order_bundle.get("fraud_signals")))
+            exception_result = None
+            if order_bundle.get("exception"):
+                exception_result = self.submit_form(
+                    "exception_resolution_form",
+                    {"order_id": order_id, **_copy_payload(order_bundle["exception"])},
+                    principal_permissions=granted,
+                )
+            cancellation_result = None
+            if order_bundle.get("cancellation"):
+                cancellation_result = self.submit_form(
+                    "cancellation_form",
+                    {"order_id": order_id, **_copy_payload(order_bundle["cancellation"])},
+                    principal_permissions=granted,
+                )
+            order_results.append(
+                {
+                    "order_id": order_id,
+                    "mode": "form",
+                    "capture": capture,
+                    "tax": tax_result,
+                    "fraud": fraud_result,
+                    "exception": exception_result,
+                    "cancellation": cancellation_result,
+                }
+            )
+        workbench = self.workbench(tenant=active_tenant, permissions=granted)
+        read_models = self.read_model_snapshot()
+        repository = self.repository.activity_dashboard(active_tenant, limit=10)
+        order_checks = []
+        for item in order_results:
+            if item["mode"] == "wizard":
+                order_checks.append(item["intake"]["ok"] and item["fulfillment"]["ok"] and all(control["ok"] for control in item["controls"]) and item["agent"]["ok"])
+            else:
+                order_checks.append(
+                    item["capture"]["ok"]
+                    and item["tax"]["ok"]
+                    and item["fraud"]["ok"]
+                    and (item["exception"] is None or item["exception"]["ok"])
+                    and (item["cancellation"] is None or item["cancellation"]["ok"])
+                )
+        return {
+            "ok": configured["ok"]
+            and defaults["ok"]
+            and all(item["ok"] for item in customer_submissions)
+            and all(order_checks)
+            and workbench["ok"]
+            and repository["counts"]["forms"] >= 3
+            and repository["counts"]["workflows"] >= 2
+            and repository["counts"]["controls"] >= 2
+            and repository["counts"]["agent_sessions"] >= 1
+            and repository["counts"]["orders"] >= 2,
+            "tenant": active_tenant,
+            "configured": configured,
+            "defaults": defaults,
+            "customer_submissions": customer_submissions,
+            "orders": tuple(order_results),
+            "workbench": workbench,
+            "repository": repository,
+            "read_models": read_models,
         }
-    )
-    app.capture_order(
-        {
-            "tenant": "tenant_alpha",
-            "order_id": "order_100",
-            "customer_id": "cust_100",
-            "channel": "web",
-            "destination": "BOS",
-            "service_level": "standard",
-            "currency": "USD",
-            "lines": (
-                {"line_id": "line_1", "item_id": "sku_100", "quantity": 2, "unit_price": 125},
-                {"line_id": "line_2", "item_id": "sku_200", "quantity": 1, "unit_price": 80},
-            ),
-        }
-    )
-    app.apply_tax_projection("order_100", {"calculation_id": "tax_100", "tax_total": 33.0, "status": "calculated"})
-    app.screen_fraud("order_100", signals={"ip_risk": 0.05, "velocity": 0.08, "customer_risk": 0.08})
-    verification = app.verify_order("order_100")
-    app.price_order("order_100")
-    allocation = app.apply_inventory_allocation(
-        "order_100",
-        (
-            {"allocation_id": "alloc_100", "item_id": "sku_100", "quantity": 2, "node_id": "node_east", "confidence": 0.93},
-            {"allocation_id": "alloc_101", "item_id": "sku_200", "quantity": 1, "node_id": "node_west", "confidence": 0.88},
-        ),
-    )
-    plan = app.create_fulfillment_plan("order_100")
-    route = app.route_fulfillment("order_100")
-    shipped = app.confirm_order_shipped("order_100", shipment_id="ship_100")
-    workbench = app.workbench(tenant="tenant_alpha")
-    document = app.document_intake(
-        "Order order_100 customer cust_100 channel web amount 330 lines sku_100 x2 @125 and sku_200 x1 @80",
-        "create the order and prepare the verification workbench",
-    )
+
+
+def standalone_release_snapshot(seed_bundle: dict[str, Any] | None = None) -> dict[str, Any]:
+    bundle = _copy_payload(seed_bundle) if seed_bundle is not None else seed_data.standalone_seed_bundle()
+    tenant = bundle.get("tenant", "tenant_demo")
+    with NamedTemporaryFile(suffix=".sqlite3") as handle:
+        app = DomStandaloneApplication(tenant=tenant, database_path=handle.name)
+        loaded = app.load_demo_workspace(seed_bundle=bundle)
+        snapshot = app.snapshot()
+        read_models = app.read_model_snapshot()
+        repository = app.repository_manifest()
+        workbench = loaded["workbench"]
+        docs = documentation_presence()
+        app.close()
     return {
-        "ok": verification["ok"]
-        and allocation["ok"]
-        and plan["ok"]
-        and route["ok"]
-        and shipped["ok"]
-        and workbench["ok"]
-        and document["ok"],
-        "manifest": standalone_manifest(),
-        "state": app.snapshot(),
+        "ok": loaded["ok"]
+        and docs["ok"]
+        and len(read_models["orders"]) >= 2
+        and repository["dashboard"]["counts"]["orders"] >= 2
+        and bool(workbench["forms"])
+        and bool(workbench["wizards"])
+        and bool(workbench["controls"]),
+        "tenant": tenant,
+        "loaded": loaded,
+        "state": snapshot,
+        "read_models": read_models,
+        "repository": repository,
         "workbench": workbench,
-        "document": document["plan"],
+        "docs": docs,
+    }
+
+
+def standalone_smoke_test() -> dict[str, Any]:
+    snapshot = standalone_release_snapshot()
+    first_agent_session = (snapshot["repository"]["dashboard"].get("recent_agent_sessions") or [{}])[0]
+    return {
+        "ok": snapshot["ok"],
+        "manifest": standalone_manifest(),
+        "state": snapshot["state"],
+        "workbench": snapshot["workbench"],
+        "document": first_agent_session.get("result", {}),
+        "repository": snapshot["repository"],
+        "read_models": snapshot["read_models"],
     }
 
 

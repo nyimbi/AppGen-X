@@ -1,49 +1,70 @@
-"""API route contracts for the master_data_governance PBC."""
-PBC_KEY = 'master_data_governance'
-ROUTES = tuple({'method': api.split()[0], 'path': api.split(maxsplit=1)[1], 'operation': api.lower().replace(' ', '_').replace('/', '_'), 'idempotency_key': f'{PBC_KEY}:{api}'} for api in ('POST /master-records', 'POST /match-candidates', 'POST /merge-decisions', 'POST /stewardship-tasks', 'GET /master-data-workbench'))
+"""API route contracts for the standalone master_data_governance slice."""
+from __future__ import annotations
+
+from .standalone import MasterDataGovernanceStandaloneService
+from .standalone import ROUTE_DEFINITIONS
+from .standalone import dispatch_standalone_route
+from .standalone import standalone_route_contracts
+from .standalone import standalone_route_smoke_test
+from .standalone import standalone_service_operation_contracts
+
+PBC_KEY = "master_data_governance"
+ROUTES = tuple({"method": item["method"], "path": item["path"], "operation": item["operation"]} for item in ROUTE_DEFINITIONS)
+
 
 
 def api_route_contracts():
-    contracts = tuple({
-        **route,
-        'pbc': PBC_KEY,
-        'event_contract': 'AppGen-X',
-        'stream_engine_picker_visible': False,
-        'shared_table_access': False,
-        'required_permission': f'{PBC_KEY}.operate',
-    } for route in ROUTES)
+    manifest = standalone_route_contracts()
+    contracts = tuple(
+        {
+            **item,
+            "route_id": f"{item['method']} {item['path']}",
+            "required_permission": item["permission"],
+            "idempotency_key": f"{PBC_KEY}:{item['operation']}:{item['table']}",
+        }
+        for item in manifest["contracts"]
+    )
     return {
-        'ok': True,
-        'pbc': PBC_KEY,
-        'contracts': contracts,
-        'routes': ROUTES,
-        'stream_engine_picker_visible': False,
-        'side_effects': (),
+        "ok": manifest["ok"] and all(item["shared_table_access"] is False for item in contracts),
+        "pbc": PBC_KEY,
+        "contracts": contracts,
+        "routes": tuple(item["route_id"] for item in contracts),
+        "side_effects": (),
     }
+
 
 
 def validate_api_route_contracts():
     route_contract = api_route_contracts()
-    contracts = route_contract['contracts']
-    missing_idempotency = tuple(item for item in contracts if not item.get('idempotency_key'))
-    invalid_table_scope = tuple(item for item in contracts if item.get('shared_table_access') is not False)
-    service_mismatches = ()
+    service_contract = standalone_service_operation_contracts()
+    operation_index = {item["operation"]: item for item in service_contract["contracts"]}
+    contracts = route_contract["contracts"]
+    service_mismatches = tuple(
+        item["route_id"]
+        for item in contracts
+        if item["operation"] not in operation_index
+        or operation_index[item["operation"]]["path"] != item["path"]
+    )
+    missing_idempotency = tuple(item["route_id"] for item in contracts if not item.get("idempotency_key"))
+    invalid_table_scope = tuple(item["route_id"] for item in contracts if not str(item.get("table", "")).startswith(f"{PBC_KEY}_"))
     return {
-        'ok': route_contract['ok'] and not missing_idempotency and not invalid_table_scope,
-        'pbc': PBC_KEY,
-        'contracts': route_contract,
-        'service_mismatches': service_mismatches,
-        'missing_idempotency': missing_idempotency,
-        'invalid_table_scope': invalid_table_scope,
-        'side_effects': (),
+        "ok": route_contract["ok"] and not service_mismatches and not missing_idempotency and not invalid_table_scope,
+        "pbc": PBC_KEY,
+        "contracts": route_contract,
+        "service_mismatches": service_mismatches,
+        "missing_idempotency": missing_idempotency,
+        "invalid_table_scope": invalid_table_scope,
+        "side_effects": (),
     }
 
-def dispatch_route(path, payload=None):
-    route = next((item for item in ROUTES if item['path'] == path), None)
-    return {'ok': route is not None, 'route': route, 'payload': dict(payload or {}), 'side_effects': ()}
+
+
+def dispatch_route(method, path, payload=None, *, service: MasterDataGovernanceStandaloneService | None = None):
+    return dispatch_standalone_route(method, path, payload, service=service)
+
 
 
 def smoke_test():
-    first = ROUTES[0]
-    dispatched = dispatch_route(first['path'], {'tenant': 'tenant-smoke'})
-    return {'ok': validate_api_route_contracts()['ok'] and dispatched['ok'], 'side_effects': ()}
+    smoke = standalone_route_smoke_test()
+    validation = validate_api_route_contracts()
+    return {"ok": smoke["ok"] and validation["ok"], "smoke": smoke, "validation": validation, "side_effects": ()}
