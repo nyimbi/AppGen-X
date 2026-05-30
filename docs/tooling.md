@@ -1249,6 +1249,13 @@ View renames produce scoped candidate edits for view declarations and menu item
 navigation targets while preserving same-named fields, operation targets,
 comments, and string literals; if the surrounding migration/safety preview is
 ambiguous, the candidate remains visible but blocked.
+Field renames are table-scoped: they update the owning table declaration,
+calculated-field expressions in that table, and database-backed view bindings or
+component placements for views over that table. They preserve same-named fields
+on other tables, handler targets, lookup-path leaf names, operation names,
+comments, and string literals. Field rename candidates are still routed through
+the migration safety gate, so inferred rename candidates that need an explicit
+hint remain visible but blocked.
 
 ### Capabilities
 

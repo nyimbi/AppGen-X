@@ -16,6 +16,7 @@ import tempfile
 import tomllib
 from collections import Counter
 from pathlib import Path
+from typing import Callable
 from typing import Iterable
 from urllib.parse import quote
 
@@ -8709,6 +8710,70 @@ audit RenameAudit { evidence: "InvoiceForm" }
         and any(item.get("code") == "AGX1101" for item in view_rename.get("blockers", ()))
     )
 
+    field_source = """
+app RenameFields { targets: web }
+table Invoice {
+  id: int pk
+  total: decimal
+  tax: decimal
+  customer_id: int -> Customer.id
+  balance: decimal = total + tax
+}
+table Customer { id: int pk; total: decimal }
+view InvoiceForm for Invoice {
+  Main: total, balance
+  @ total NumberEdit 0 0 4 1
+  on Save -> total
+  Extra: customer.total
+}
+operation total { draft -> done }
+audit RenameAudit { evidence: "total" }
+// total remains in this comment
+"""
+    field_path = tmp / "lsp-rename-field.appgen"
+    field_path.write_text(field_source, encoding="utf-8")
+    field_position = _tooling_lsp_position(field_source, "total: decimal")
+    field_position_arg = f"{field_position['line']}:{field_position['character']}"
+    field_output = io.StringIO()
+    with contextlib.redirect_stdout(field_output):
+        field_exit = dsl_tooling_cli(
+            (
+                "lsp",
+                str(field_path),
+                "--position",
+                field_position_arg,
+                "--rename",
+                "amount",
+                "--json",
+            )
+        )
+    try:
+        field_payload = json.loads(field_output.getvalue())
+    except json.JSONDecodeError:
+        field_payload = {}
+    field_rename = field_payload.get("rename", {})
+    field_changes = field_rename.get("workspace_edit", {}).get("changes", {}).get(str(field_path), ())
+    field_patched_text = field_changes[0].get("newText", "") if field_changes else ""
+    field_scope_ok = (
+        field_exit == 0
+        and field_payload.get("format") == "appgen.lsp-service.v1"
+        and field_rename.get("format") == "appgen.lsp-rename.v1"
+        and field_rename.get("blocked") is True
+        and field_rename.get("lexical_scope") == "field_declarations_and_bindings"
+        and field_rename.get("occurrence_count") == 4
+        and "amount: decimal" in field_patched_text
+        and "balance: decimal = amount + tax" in field_patched_text
+        and "Main: amount, balance" in field_patched_text
+        and "@ amount NumberEdit" in field_patched_text
+        and "table Customer { id: int pk; total: decimal }" in field_patched_text
+        and "on Save -> total" in field_patched_text
+        and "Extra: customer.total" in field_patched_text
+        and "operation total" in field_patched_text
+        and 'evidence: "total"' in field_patched_text
+        and "// total remains in this comment" in field_patched_text
+        and any(item.get("code") == "AGX1101" for item in field_rename.get("blockers", ()))
+    )
+
     risk_source = """
 app RenameRisk { targets: web }
 
@@ -8792,10 +8857,12 @@ view InvoiceForm for Invoice {
 
     return {
         "format": "appgen.lsp-rename-cli-audit.v1",
-        "ok": safe_ok and lexical_scope_ok and table_scope_ok and view_scope_ok and blocked_ok and blocked_text_ok,
-        "scenario_count": 6,
+        "ok": safe_ok and lexical_scope_ok and table_scope_ok and view_scope_ok and field_scope_ok and blocked_ok and blocked_text_ok,
+        "scenario_count": 7,
         "passing_scenario_count": sum(
-            1 for ok in (safe_ok, lexical_scope_ok, table_scope_ok, view_scope_ok, blocked_ok, blocked_text_ok) if ok
+            1
+            for ok in (safe_ok, lexical_scope_ok, table_scope_ok, view_scope_ok, field_scope_ok, blocked_ok, blocked_text_ok)
+            if ok
         ),
         "blocked_code_count": len(blocked_codes),
         "blocked_fix_count": len(blocked_fixes),
@@ -8831,6 +8898,16 @@ view InvoiceForm for Invoice {
         "view_operation_preserved": "operation InvoiceForm" in view_patched_text,
         "view_string_preserved": 'evidence: "InvoiceForm"' in view_patched_text,
         "view_comment_preserved": "// InvoiceForm remains in this comment" in view_patched_text,
+        "field_scope_ok": field_scope_ok,
+        "field_scope": field_rename.get("lexical_scope"),
+        "field_occurrence_count": field_rename.get("occurrence_count"),
+        "field_blocked": field_rename.get("blocked"),
+        "field_other_table_preserved": "table Customer { id: int pk; total: decimal }" in field_patched_text,
+        "field_handler_target_preserved": "on Save -> total" in field_patched_text,
+        "field_lookup_path_preserved": "Extra: customer.total" in field_patched_text,
+        "field_operation_preserved": "operation total" in field_patched_text,
+        "field_string_preserved": 'evidence: "total"' in field_patched_text,
+        "field_comment_preserved": "// total remains in this comment" in field_patched_text,
         "blocked_ok": blocked_ok,
         "blocked_exit_code": risk_exit,
         "blocked_payload_format": risk_payload.get("format"),
@@ -13222,7 +13299,7 @@ def lsp_rename_dsl(
                 _spec_diagnostic(source, "AGX0100", "error", f"Rename target is a reserved keyword: {new_name}"),
             ),
         }
-    symbol = _lsp_symbol_for_token(source, token, source_name=source_name)
+    symbol = _lsp_symbol_for_token(source, token, source_name=source_name, position=position)
     if not symbol:
         return {
             "format": "appgen.lsp-rename.v1",
@@ -13302,6 +13379,11 @@ def lsp_rename_dsl_documents(
 
 def _replace_symbol_identifier_occurrences(source: str, token: str, new_name: str, symbol: dict | None) -> tuple[str, int, str]:
     symbol_kind = (symbol or {}).get("kind")
+    if symbol_kind == "field":
+        table_name = _field_symbol_table(symbol)
+        if table_name:
+            text, count = _replace_field_identifier_occurrences(source, token, new_name, table_name)
+            return text, count, "field_declarations_and_bindings"
     if symbol_kind in {"operation", "flow", "table", "view"}:
         return (*_replace_identifier_occurrences_scoped(source, token, new_name, scope=symbol_kind), f"{symbol_kind}_declarations_and_targets")
     text, count = _replace_identifier_occurrences(source, token, new_name)
@@ -13313,7 +13395,14 @@ def _replace_identifier_occurrences(source: str, token: str, new_name: str) -> t
     return _replace_identifier_occurrences_scoped(source, token, new_name, scope=None)
 
 
-def _replace_identifier_occurrences_scoped(source: str, token: str, new_name: str, *, scope: str | None) -> tuple[str, int]:
+def _replace_identifier_occurrences_scoped(
+    source: str,
+    token: str,
+    new_name: str,
+    *,
+    scope: str | None,
+    occurrence_predicate: Callable[[str, int, int], bool] | None = None,
+) -> tuple[str, int]:
     """Replace identifier tokens in code while preserving comments and strings."""
     if not token:
         return source or "", 0
@@ -13370,7 +13459,9 @@ def _replace_identifier_occurrences_scoped(source: str, token: str, new_name: st
             while index < len(text) and (text[index] == "_" or text[index].isalnum()):
                 index += 1
             word = text[start:index]
-            if word == token and _rename_occurrence_in_scope(text, start, index, scope):
+            if word == token and _rename_occurrence_in_scope(text, start, index, scope) and (
+                occurrence_predicate is None or occurrence_predicate(text, start, index)
+            ):
                 pieces.append(new_name)
                 count += 1
             else:
@@ -13379,6 +13470,70 @@ def _replace_identifier_occurrences_scoped(source: str, token: str, new_name: st
         pieces.append(char)
         index += 1
     return "".join(pieces), count
+
+
+def _field_symbol_table(symbol: dict | None) -> str | None:
+    parent = str((symbol or {}).get("parent") or "")
+    if parent.startswith("table."):
+        return parent.split(".", 1)[1]
+    return None
+
+
+def _replace_field_identifier_occurrences(source: str, token: str, new_name: str, table_name: str) -> tuple[str, int]:
+    table_span = _source_block_span(source, "table", table_name)
+    view_spans = tuple(
+        span
+        for view_name in _view_names_for_table(source, table_name)
+        if (span := _source_block_span(source, "view", view_name)) is not None
+    )
+    regions = tuple(span for span in (table_span, *view_spans) if span is not None)
+
+    def in_field_region(text: str, start: int, end: int) -> bool:
+        if not any(region_start <= start < region_end for region_start, region_end in regions):
+            return False
+        before = text[:start]
+        after = text[end:]
+        if re.search(r"\.\s*$", before[-20:]):
+            return False
+        if re.search(r"->\s*$", before[-40:]) and not re.match(r"\s*\.", after):
+            return False
+        return True
+
+    return _replace_identifier_occurrences_scoped(source, token, new_name, scope=None, occurrence_predicate=in_field_region)
+
+
+def _view_names_for_table(source: str, table_name: str) -> tuple[str, ...]:
+    return tuple(
+        match.group(1)
+        for match in re.finditer(
+            rf"\bview\s+([A-Za-z_][A-Za-z0-9_]*)\s+for\s+{re.escape(table_name)}\b",
+            source or "",
+        )
+    )
+
+
+def _source_block_span(source: str, kind: str, name: str) -> tuple[int, int] | None:
+    pattern = re.compile(rf"\b{re.escape(kind)}\s+{re.escape(name)}\b[^\{{]*\{{")
+    match = pattern.search(source or "")
+    if not match:
+        return None
+    depth = 1
+    for index in range(match.end(), len(source)):
+        if source[index] == "{":
+            depth += 1
+        elif source[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return match.end(), index
+    return None
+
+
+def _source_enclosing_block_name(source: str, kind: str, index: int) -> str | None:
+    for match in re.finditer(rf"\b{re.escape(kind)}\s+([A-Za-z_][A-Za-z0-9_]*)\b[^\{{]*\{{", source or ""):
+        end = _closing_index_for_block(source, kind, match.group(1))
+        if end is not None and match.end() <= index < end:
+            return match.group(1)
+    return None
 
 
 def _rename_occurrence_in_scope(source: str, start: int, end: int, scope: str | None) -> bool:
@@ -13418,7 +13573,7 @@ def _lsp_full_document_range(source: str) -> dict:
 
 
 def _lsp_rename_blocking_diagnostics(source: str, migration: dict) -> tuple[dict, ...]:
-    if not migration.get("requires_approval"):
+    if not migration.get("requires_approval") and not any(change.get("requires_approval") for change in migration.get("changes", ())):
         return ()
     destructive_kinds = tuple(
         change.get("kind")
@@ -13592,7 +13747,13 @@ def _lsp_token_range(source: str, position: dict | None, token: str) -> dict:
     return _lsp_range(_semantic_range(line, column, token))
 
 
-def _lsp_symbol_for_token(source: str, token: str, *, source_name: str | None = None) -> dict | None:
+def _lsp_symbol_for_token(
+    source: str,
+    token: str,
+    *,
+    source_name: str | None = None,
+    position: dict | None = None,
+) -> dict | None:
     if not token:
         return None
     semantic = semantic_model_dsl(source, source_name=source_name)
@@ -13601,9 +13762,54 @@ def _lsp_symbol_for_token(source: str, token: str, *, source_name: str | None = 
         for symbol in semantic.get("symbols", {}).values()
         if symbol.get("name") == token or symbol.get("id") == token
     ]
+    positional_symbol = _lsp_positional_symbol(source, token, position, exact_candidates)
+    if positional_symbol:
+        return positional_symbol
     if exact_candidates:
         return sorted(exact_candidates, key=lambda item: 0 if item["kind"] in {"table", "view", "flow", "operation"} else 1)[0]
     return semantic.get("symbols", {}).get(_symbol_query_to_id(token))
+
+
+def _lsp_positional_symbol(source: str, token: str, position: dict | None, candidates: list[dict]) -> dict | None:
+    index = _lsp_position_to_index(source, position)
+    if index is None:
+        return None
+    prefix = source[:index]
+    line_start = prefix.rfind("\n") + 1
+    line_end = source.find("\n", index)
+    line = source[line_start : len(source) if line_end < 0 else line_end]
+    line_prefix = source[line_start:index]
+
+    def candidate(kind: str, parent: str | None = None) -> dict | None:
+        for item in candidates:
+            if item.get("kind") == kind and (parent is None or item.get("parent") == parent):
+                return item
+        return None
+
+    if re.search(r"\btable\s+$", line_prefix):
+        return candidate("table")
+    if re.search(r"\bview\s+$", line_prefix):
+        return candidate("view")
+    if re.search(r"\bflow\s+$", line_prefix):
+        return candidate("flow")
+    if re.search(r"\boperation\s+$", line_prefix):
+        return candidate("operation")
+    if re.search(rf"^\s*{re.escape(token)}\s*:", line):
+        table_name = _source_enclosing_block_name(source, "table", index)
+        if table_name:
+            return candidate("field", f"table.{table_name}")
+    return None
+
+
+def _lsp_position_to_index(source: str, position: dict | None) -> int | None:
+    if position is None:
+        return None
+    line_index = int(position.get("line", 0))
+    character = int(position.get("character", 0))
+    lines = (source or "").splitlines(keepends=True)
+    if line_index < 0 or line_index >= len(lines):
+        return None
+    return sum(len(line) for line in lines[:line_index]) + min(max(character, 0), len(lines[line_index]))
 
 
 def _lsp_diagnostic_for_token(source: str, token: str, *, source_name: str | None = None) -> dict | None:

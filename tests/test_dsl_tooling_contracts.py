@@ -1736,6 +1736,54 @@ audit RenameAudit { evidence: "InvoiceForm" }
     assert any(item["code"] == "AGX1101" for item in rename["blockers"])
 
 
+def test_lsp_field_rename_candidate_scopes_table_and_views() -> None:
+    source = """
+app RenameFields { targets: web }
+table Invoice {
+  id: int pk
+  total: decimal
+  tax: decimal
+  customer_id: int -> Customer.id
+  balance: decimal = total + tax
+}
+table Customer { id: int pk; total: decimal }
+view InvoiceForm for Invoice {
+  Main: total, balance
+  @ total NumberEdit 0 0 4 1
+  on Save -> total
+  Extra: customer.total
+}
+operation total { draft -> done }
+audit RenameAudit { evidence: "total" }
+// total remains in this comment
+"""
+
+    report = lsp_service_dsl(
+        source,
+        source_name="field-rename.appgen",
+        position=_position_of(source, "total: decimal"),
+        rename_to="amount",
+    )
+    rename = report["rename"]
+    change = rename["workspace_edit"]["changes"]["field-rename.appgen"][0]["newText"]
+
+    assert rename["ok"] is False
+    assert rename["blocked"] is True
+    assert rename["lexical_scope"] == "field_declarations_and_bindings"
+    assert rename["occurrence_count"] == 4
+    assert "amount: decimal" in change
+    assert "balance: decimal = amount + tax" in change
+    assert "Main: amount, balance" in change
+    assert "@ amount NumberEdit" in change
+    assert "table Customer { id: int pk; total: decimal }" in change
+    assert "on Save -> total" in change
+    assert "Extra: customer.total" in change
+    assert "operation total" in change
+    assert 'evidence: "total"' in change
+    assert "// total remains in this comment" in change
+    assert any(item["code"] == "AGX1101" for item in rename["blockers"])
+
+
 def test_lsp_service_exposes_code_action_for_missing_handler_target() -> None:
     source = """
     app Bad { targets: web }
@@ -2107,8 +2155,8 @@ def test_lsp_rename_cli_audit_covers_safe_and_blocked_renames(tmp_path: Path) ->
 
     assert report["format"] == "appgen.lsp-rename-cli-audit.v1"
     assert report["ok"] is True
-    assert report["scenario_count"] == 6
-    assert report["passing_scenario_count"] == 6
+    assert report["scenario_count"] == 7
+    assert report["passing_scenario_count"] == 7
     assert report["blocked_code_count"] >= 1
     assert report["blocked_fix_count"] >= 1
     assert report["safe_ok"] is True
@@ -2140,6 +2188,16 @@ def test_lsp_rename_cli_audit_covers_safe_and_blocked_renames(tmp_path: Path) ->
     assert report["view_operation_preserved"] is True
     assert report["view_string_preserved"] is True
     assert report["view_comment_preserved"] is True
+    assert report["field_scope_ok"] is True
+    assert report["field_scope"] == "field_declarations_and_bindings"
+    assert report["field_occurrence_count"] == 4
+    assert report["field_blocked"] is True
+    assert report["field_other_table_preserved"] is True
+    assert report["field_handler_target_preserved"] is True
+    assert report["field_lookup_path_preserved"] is True
+    assert report["field_operation_preserved"] is True
+    assert report["field_string_preserved"] is True
+    assert report["field_comment_preserved"] is True
     assert report["blocked_ok"] is True
     assert report["blocked_exit_code"] == 0
     assert report["blocked_rename_format"] == "appgen.lsp-rename.v1"
@@ -4713,6 +4771,11 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert lsp_check["detail"]["rename_cli"]["view_occurrence_count"] == 2
     assert lsp_check["detail"]["rename_cli"]["view_field_preserved"] is True
     assert lsp_check["detail"]["rename_cli"]["view_operation_preserved"] is True
+    assert lsp_check["detail"]["rename_cli"]["field_scope_ok"] is True
+    assert lsp_check["detail"]["rename_cli"]["field_scope"] == "field_declarations_and_bindings"
+    assert lsp_check["detail"]["rename_cli"]["field_occurrence_count"] == 4
+    assert lsp_check["detail"]["rename_cli"]["field_other_table_preserved"] is True
+    assert lsp_check["detail"]["rename_cli"]["field_operation_preserved"] is True
     assert lsp_check["detail"]["rename_cli"]["changed"] is True
     assert lsp_check["detail"]["rename_cli"]["migration_format"] == "appgen.migration-plan.v1"
     assert lsp_check["detail"]["rename_cli"]["safe_ok"] is True
