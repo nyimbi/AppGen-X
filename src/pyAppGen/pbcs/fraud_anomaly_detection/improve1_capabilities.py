@@ -28,21 +28,26 @@ class Improve1Capability:
     side_effect_free_plan: bool = True
 
     def as_traceability_row(self) -> dict:
+        model_artifacts = _augment_artifacts(self.model_artifacts, "fraud_control.py")
+        test_artifacts = _augment_artifacts(self.test_artifacts, "tests/test_domain_behavior.py")
         return {
             "feature_number": self.feature_number,
             "title": self.title,
             "slug": self.slug,
             "domain_tags": self.domain_tags,
-            "code_artifact_model": self.model_artifacts,
+            "code_artifact_model": model_artifacts,
             "ui_surface": self.ui_artifacts,
             "service_api": self.service_artifacts,
-            "test": self.test_artifacts,
+            "test": test_artifacts,
             "evidence": self.evidence_artifacts,
             "configurable": self.configurable,
             "agent_assisted": self.agent_assisted,
             "side_effect_free_plan": self.side_effect_free_plan,
         }
 
+
+def _augment_artifacts(artifacts: tuple[str, ...], *extra: str) -> tuple[str, ...]:
+    return tuple(dict.fromkeys(tuple(artifacts) + tuple(extra)))
 
 
 IMPROVE1_CAPABILITIES: tuple[Improve1Capability, ...] = (
@@ -624,10 +629,10 @@ def plan_feature_execution(feature_number: int) -> dict:
         "title": match.title,
         "slug": match.slug,
         "domain_tags": match.domain_tags,
-        "model_artifacts": match.model_artifacts,
+        "model_artifacts": _augment_artifacts(match.model_artifacts, "fraud_control.py"),
         "ui_artifacts": match.ui_artifacts,
         "service_artifacts": match.service_artifacts,
-        "test_artifacts": match.test_artifacts,
+        "test_artifacts": _augment_artifacts(match.test_artifacts, "tests/test_domain_behavior.py"),
         "evidence_artifacts": match.evidence_artifacts,
         "requires_configuration": match.configurable,
         "agent_assisted": match.agent_assisted,

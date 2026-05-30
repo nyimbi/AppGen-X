@@ -273,3 +273,23 @@ def smoke_test():
         "cards": cards,
         "side_effects": (),
     }
+
+
+from .fraud_control import improve1_fraud_control_contract
+
+_fraud_anomaly_detection_base_ui_contract = fraud_anomaly_detection_ui_contract
+_fraud_anomaly_detection_base_render_workbench = fraud_anomaly_detection_render_workbench
+
+def fraud_anomaly_detection_ui_contract() -> dict:
+    ui = _fraud_anomaly_detection_base_ui_contract()
+    control = improve1_fraud_control_contract()
+    surface = dict(ui.get('full_capability_surface', {}))
+    surface['fraud_control_panels'] = tuple(item['evidence']['ui_surface'] for item in control['capabilities'])
+    surface['fraud_control_service_actions'] = tuple(item['evidence']['service_api'] for item in control['capabilities'])
+    surface['fraud_control_tables'] = control['owned_tables']
+    return {**ui, 'ok': ui.get('ok') is True and control['ok'], 'full_capability_surface': surface, 'fraud_control_contract': control, 'side_effects': ()}
+
+def fraud_anomaly_detection_render_workbench(state: dict, *, tenant: str, principal_permissions: tuple[str, ...]) -> dict:
+    workbench = _fraud_anomaly_detection_base_render_workbench(state, tenant=tenant, principal_permissions=principal_permissions)
+    control = improve1_fraud_control_contract()
+    return {**workbench, 'ok': workbench.get('ok') is True and control['ok'], 'fraud_control_panels': tuple(item['evidence']['ui_surface'] for item in control['capabilities']), 'fraud_control_service_actions': tuple(item['evidence']['service_api'] for item in control['capabilities']), 'side_effects': ()}
