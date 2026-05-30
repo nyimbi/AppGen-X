@@ -1492,6 +1492,11 @@ detected-family, missing-family, change, safe-alternative, and diagnostic
 markers visible without JSON parsing.
 The renderer contract reports fragment and marker counts across coverage,
 detected/missing families, changes, safe-alternatives, and diagnostics.
+It also reports summary-line, coverage-line, detected-family-line,
+missing-family-line, change-line, safe-alternative-line, diagnostic-line,
+warning-line, error-line, approval-line, and destructive-summary-line counts so
+migration release logs prove safety posture, coverage breadth, destructive
+change count, and mitigation guidance remain visible.
 `appgen.migration-cli-audit.v1` reports case, passing-case, allowed-backend,
 and change-kind counts so supported database profiles and rename-hint behavior
 are visible in release evidence.

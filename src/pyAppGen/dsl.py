@@ -2799,6 +2799,14 @@ def _migration_plan_text_renderer_contract() -> dict:
         "warning AGX1101: Destructive migration changes require approval.",
     )
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    lines = tuple(line for line in text.splitlines() if line.strip())
+    summary_lines = tuple(line for line in lines if line.startswith("migration-plan "))
+    coverage_lines = tuple(line for line in lines if line.startswith("migration-coverage "))
+    detected_lines = tuple(line for line in lines if line.startswith("migration-detected "))
+    missing_family_lines = tuple(line for line in lines if line.startswith("migration-missing "))
+    change_lines = tuple(line for line in lines if line.startswith("change "))
+    safe_alternative_lines = tuple(line for line in lines if line.startswith("safe-alternative "))
+    diagnostic_lines = tuple(line for line in lines if line.startswith(("warning ", "error ")))
     return {
         "format": "appgen.migration-plan-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
@@ -2809,6 +2817,17 @@ def _migration_plan_text_renderer_contract() -> dict:
         ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
+        "summary_line_count": len(summary_lines),
+        "coverage_line_count": len(coverage_lines),
+        "detected_family_line_count": len(detected_lines),
+        "missing_family_line_count": len(missing_family_lines),
+        "change_line_count": len(change_lines),
+        "safe_alternative_line_count": len(safe_alternative_lines),
+        "diagnostic_line_count": len(diagnostic_lines),
+        "warning_line_count": sum(1 for line in diagnostic_lines if line.startswith("warning ")),
+        "error_line_count": sum(1 for line in diagnostic_lines if line.startswith("error ")),
+        "approval_line_count": sum(1 for line in summary_lines if "requires_approval=True" in line),
+        "destructive_summary_line_count": sum(1 for line in summary_lines if "destructive=2" in line),
         "json_fallback": text.lstrip().startswith("{"),
         "text_prefix": text[:240],
     }
