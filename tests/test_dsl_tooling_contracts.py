@@ -6101,17 +6101,50 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert graph_rendering_check["detail"]["suite_cli"]["format"] == "appgen.graph-suite-cli-audit.v1"
     assert graph_rendering_check["detail"]["suite_cli"]["missing_required_kind_count"] == 0
+    assert graph_rendering_check["detail"]["suite_cli"]["present_rendering_count"] == (
+        graph_rendering_check["detail"]["suite_cli"]["expected_rendering_count"]
+    )
+    assert graph_rendering_check["detail"]["suite_cli"]["complete_rendering_kind_count"] == len(
+        appgen_dsl.REQUIRED_GRAPH_KINDS
+    )
     assert graph_rendering_check["detail"]["suite_cli"]["missing_rendering_count"] == 0
+    assert graph_rendering_check["detail"]["suite_cli"]["missing_format_count"] == 0
     assert graph_rendering_check["detail"]["suite_cli"]["missing_text_fragment_count"] == 0
+    assert graph_rendering_check["detail"]["suite_cli"]["text_fragment_ids"] == (
+        "summary_format",
+        "graph_kinds",
+        "graph_formats",
+    )
     assert graph_rendering_check["detail"]["suite_cli"]["rendering_kind_count"] == len(appgen_dsl.REQUIRED_GRAPH_KINDS)
     explain_contract_check = next(check for check in report["checks"] if check["id"] == "explain_cli_contracts")
     assert explain_contract_check["detail"]["format"] == "appgen.explain-cli-audit.v1"
     assert explain_contract_check["detail"]["case_count"] == 6
     assert explain_contract_check["detail"]["passing_case_count"] == 6
+    assert explain_contract_check["detail"]["failing_case_count"] == 0
+    assert explain_contract_check["detail"]["failing_cases"] == ()
+    assert explain_contract_check["detail"]["case_ids"] == (
+        "field_symbol_text",
+        "field_symbol_json",
+        "diagnostic_text",
+        "diagnostic_json",
+        "qualified_handler_text",
+        "qualified_handler_json",
+    )
     assert explain_contract_check["detail"]["exit_failure_count"] == 0
     assert explain_contract_check["detail"]["text_case_count"] == 3
     assert explain_contract_check["detail"]["json_case_count"] == 3
     assert explain_contract_check["detail"]["missing_report_format_count"] == 0
+    assert explain_contract_check["detail"]["text_report_format_case_count"] == 3
+    assert explain_contract_check["detail"]["json_report_format_case_count"] == 3
+    assert explain_contract_check["detail"]["navigation_detail_case_count"] == 3
+    assert explain_contract_check["detail"]["navigation_detail_cases"] == (
+        "field_symbol_json",
+        "diagnostic_json",
+        "qualified_handler_json",
+    )
+    assert explain_contract_check["detail"]["symbol_navigation_detail_count"] == 1
+    assert explain_contract_check["detail"]["diagnostic_navigation_detail_count"] == 1
+    assert explain_contract_check["detail"]["handler_navigation_detail_count"] == 1
     assert explain_contract_check["detail"]["symbol_case_count"] == 2
     assert explain_contract_check["detail"]["diagnostic_case_count"] == 2
     assert explain_contract_check["detail"]["handler_case_count"] == 2
@@ -7242,14 +7275,28 @@ def test_explain_cli_audit_covers_text_and_json_modes(tmp_path: Path) -> None:
     assert audit["case_count"] == len(audit["cases"])
     assert audit["case_count"] == 6
     assert audit["passing_case_count"] == audit["case_count"]
+    assert audit["failing_case_count"] == 0
+    assert audit["failing_cases"] == ()
+    assert audit["case_ids"] == tuple(case["case"] for case in audit["cases"])
     assert audit["exit_failure_count"] == 0
     assert audit["text_case_count"] == 3
     assert audit["json_case_count"] == 3
     assert audit["report_format_case_count"] == audit["case_count"]
     assert audit["missing_report_format_count"] == 0
+    assert audit["text_report_format_case_count"] == audit["text_case_count"]
+    assert audit["json_report_format_case_count"] == audit["json_case_count"]
     assert audit["symbol_case_count"] == 2
     assert audit["diagnostic_case_count"] == 2
     assert audit["handler_case_count"] == 2
+    assert audit["navigation_detail_case_count"] == 3
+    assert audit["navigation_detail_cases"] == (
+        "field_symbol_json",
+        "diagnostic_json",
+        "qualified_handler_json",
+    )
+    assert audit["symbol_navigation_detail_count"] == 1
+    assert audit["diagnostic_navigation_detail_count"] == 1
+    assert audit["handler_navigation_detail_count"] == 1
     assert {
         "field_symbol_text",
         "field_symbol_json",
@@ -7341,7 +7388,12 @@ def test_graph_suite_cli_audit_proves_all_required_renderings(tmp_path: Path) ->
     assert audit["missing_required_kind_count"] == 0
     assert audit["missing_required_kinds"] == ()
     assert audit["output_format_count"] == len(audit["formats"])
+    assert audit["expected_rendering_count"] == len(appgen_dsl.REQUIRED_GRAPH_KINDS) * len(appgen_dsl.GRAPH_TEXT_FORMATS)
+    assert audit["present_rendering_count"] == audit["expected_rendering_count"]
+    assert audit["complete_rendering_kind_count"] == len(appgen_dsl.REQUIRED_GRAPH_KINDS)
+    assert set(audit["complete_rendering_kinds"]) == set(appgen_dsl.REQUIRED_GRAPH_KINDS)
     assert audit["missing_rendering_count"] == 0
+    assert audit["missing_format_count"] == 0
     assert set(audit["required_kinds"]) == set(appgen_dsl.REQUIRED_GRAPH_KINDS)
     assert tuple(audit["formats"]) == ("json", "mermaid", "dot")
     assert audit["missing_renderings"] == ()
@@ -7350,6 +7402,7 @@ def test_graph_suite_cli_audit_proves_all_required_renderings(tmp_path: Path) ->
         for formats in audit["rendering_formats_by_kind"].values()
     )
     assert audit["text_fragment_count"] == 3
+    assert audit["text_fragment_ids"] == ("summary_format", "graph_kinds", "graph_formats")
     assert audit["missing_text_fragment_count"] == 0
     assert audit["missing_text_fragments"] == ()
     assert audit["text_has_report_format"] is True

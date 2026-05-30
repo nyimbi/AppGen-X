@@ -5298,6 +5298,9 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and graph_suite_cli["ok"]
             and graph_suite_cli.get("missing_required_kind_count") == 0
             and graph_suite_cli.get("missing_rendering_count") == 0
+            and graph_suite_cli.get("missing_format_count") == 0
+            and graph_suite_cli.get("present_rendering_count") == graph_suite_cli.get("expected_rendering_count")
+            and graph_suite_cli.get("complete_rendering_kind_count") == graph_suite_cli.get("required_kind_count")
             and graph_suite_cli.get("missing_text_fragment_count") == 0,
             "Graph tooling renders every required graph kind through JSON, Mermaid, and DOT release contracts with reviewable text markers.",
             "docs/tooling.md#graph-tooling",
@@ -5326,9 +5329,14 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "required_kind_count": graph_suite_cli.get("required_kind_count"),
                     "missing_required_kind_count": graph_suite_cli.get("missing_required_kind_count"),
                     "output_format_count": graph_suite_cli.get("output_format_count"),
+                    "expected_rendering_count": graph_suite_cli.get("expected_rendering_count"),
+                    "present_rendering_count": graph_suite_cli.get("present_rendering_count"),
+                    "complete_rendering_kind_count": graph_suite_cli.get("complete_rendering_kind_count"),
                     "missing_rendering_count": graph_suite_cli.get("missing_rendering_count"),
+                    "missing_format_count": graph_suite_cli.get("missing_format_count"),
                     "missing_text_fragment_count": graph_suite_cli.get("missing_text_fragment_count"),
                     "rendering_kind_count": graph_suite_cli.get("rendering_kind_count"),
+                    "text_fragment_ids": graph_suite_cli.get("text_fragment_ids"),
                 },
             },
         ),
@@ -5337,13 +5345,20 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             explain_cli["ok"]
             and explain_cli.get("case_count") == 6
             and explain_cli.get("passing_case_count") == explain_cli.get("case_count")
+            and explain_cli.get("failing_case_count") == 0
             and explain_cli.get("exit_failure_count") == 0
             and explain_cli.get("text_case_count") == 3
             and explain_cli.get("json_case_count") == 3
             and explain_cli.get("missing_report_format_count") == 0
+            and explain_cli.get("text_report_format_case_count") == explain_cli.get("text_case_count")
+            and explain_cli.get("json_report_format_case_count") == explain_cli.get("json_case_count")
             and explain_cli.get("symbol_case_count") == 2
             and explain_cli.get("diagnostic_case_count") == 2
             and explain_cli.get("handler_case_count") == 2
+            and explain_cli.get("navigation_detail_case_count") == 3
+            and explain_cli.get("symbol_navigation_detail_count") == 1
+            and explain_cli.get("diagnostic_navigation_detail_count") == 1
+            and explain_cli.get("handler_navigation_detail_count") == 1
             and graph_explain_text_renderer["ok"],
             "Explain CLI covers symbol, diagnostic, and handler text/JSON modes with format markers and navigation details.",
             "docs/tooling.md#appgen-explain",
@@ -5351,10 +5366,20 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "format": explain_cli.get("format"),
                 "case_count": explain_cli.get("case_count"),
                 "passing_case_count": explain_cli.get("passing_case_count"),
+                "failing_case_count": explain_cli.get("failing_case_count"),
+                "failing_cases": explain_cli.get("failing_cases"),
+                "case_ids": explain_cli.get("case_ids"),
                 "exit_failure_count": explain_cli.get("exit_failure_count"),
                 "text_case_count": explain_cli.get("text_case_count"),
                 "json_case_count": explain_cli.get("json_case_count"),
                 "missing_report_format_count": explain_cli.get("missing_report_format_count"),
+                "text_report_format_case_count": explain_cli.get("text_report_format_case_count"),
+                "json_report_format_case_count": explain_cli.get("json_report_format_case_count"),
+                "navigation_detail_case_count": explain_cli.get("navigation_detail_case_count"),
+                "navigation_detail_cases": explain_cli.get("navigation_detail_cases"),
+                "symbol_navigation_detail_count": explain_cli.get("symbol_navigation_detail_count"),
+                "diagnostic_navigation_detail_count": explain_cli.get("diagnostic_navigation_detail_count"),
+                "handler_navigation_detail_count": explain_cli.get("handler_navigation_detail_count"),
                 "symbol_case_count": explain_cli.get("symbol_case_count"),
                 "diagnostic_case_count": explain_cli.get("diagnostic_case_count"),
                 "handler_case_count": explain_cli.get("handler_case_count"),
@@ -11463,7 +11488,19 @@ def _tooling_audit_graph_suite_cli(tmp: Path, source: str) -> dict:
         "graph-kinds ",
         "graph-formats json, mermaid, dot",
     )
+    text_fragment_ids = ("summary_format", "graph_kinds", "graph_formats")
     missing_text_fragments = tuple(fragment for fragment in text_fragments if fragment not in text_stdout)
+    expected_rendering_count = len(required_kinds) * len(GRAPH_TEXT_FORMATS)
+    present_rendering_count = sum(
+        1
+        for kind in required_kinds
+        for output_format in GRAPH_TEXT_FORMATS
+        if output_format in rendering_formats_by_kind.get(kind, ())
+    )
+    complete_rendering_kinds = tuple(
+        kind for kind, formats in rendering_formats_by_kind.items() if set(GRAPH_TEXT_FORMATS) <= set(formats)
+    )
+    missing_format_count = sum(len(item["missing_formats"]) for item in missing_renderings)
     return {
         "format": "appgen.graph-suite-cli-audit.v1",
         "ok": json_exit_code == 0
@@ -11478,7 +11515,12 @@ def _tooling_audit_graph_suite_cli(tmp: Path, source: str) -> dict:
         "required_kind_count": len(required_kinds),
         "missing_required_kind_count": len(missing_required_kinds),
         "output_format_count": len(output_formats),
+        "expected_rendering_count": expected_rendering_count,
+        "present_rendering_count": present_rendering_count,
+        "complete_rendering_kind_count": len(complete_rendering_kinds),
+        "complete_rendering_kinds": complete_rendering_kinds,
         "missing_rendering_count": len(missing_renderings),
+        "missing_format_count": missing_format_count,
         "json_exit_code": json_exit_code,
         "text_exit_code": text_exit_code,
         "payload_format": json_payload.get("format"),
@@ -11489,6 +11531,7 @@ def _tooling_audit_graph_suite_cli(tmp: Path, source: str) -> dict:
         "rendering_formats_by_kind": rendering_formats_by_kind,
         "missing_renderings": missing_renderings,
         "text_fragment_count": len(text_fragments),
+        "text_fragment_ids": text_fragment_ids,
         "missing_text_fragment_count": len(missing_text_fragments),
         "missing_text_fragments": missing_text_fragments,
         "text_has_report_format": text_stdout.startswith("graph-suite ok: format=appgen.graph-suite-report.v1"),
@@ -11583,19 +11626,48 @@ def _tooling_audit_explain_cli_formats(tmp: Path, source: str) -> dict:
                 "stdout_prefix": stdout[:120],
             }
         )
+    failing_cases = tuple(result["case"] for result in results if not result["ok"])
+    case_ids = tuple(result["case"] for result in results)
+    text_report_format_cases = tuple(
+        result["case"] for result in results if result["case"].endswith("_text") and result["has_report_format"]
+    )
+    json_report_format_cases = tuple(
+        result["case"] for result in results if result["case"].endswith("_json") and result["has_report_format"]
+    )
+    navigation_detail_cases = tuple(
+        result["case"]
+        for result in results
+        if result["symbol_id"]
+        or result["diagnostic_docs_url"]
+        or result["handler_match_count"]
+    )
     return {
         "format": "appgen.explain-cli-audit.v1",
         "ok": all(result["ok"] for result in results),
         "case_count": len(results),
         "passing_case_count": sum(1 for result in results if result["ok"]),
+        "failing_case_count": len(failing_cases),
+        "failing_cases": failing_cases,
+        "case_ids": case_ids,
         "exit_failure_count": sum(1 for result in results if result["exit_code"] != 0),
         "text_case_count": sum(1 for result in results if result["case"].endswith("_text")),
         "json_case_count": sum(1 for result in results if result["case"].endswith("_json")),
         "report_format_case_count": sum(1 for result in results if result["has_report_format"]),
         "missing_report_format_count": sum(1 for result in results if not result["has_report_format"]),
+        "text_report_format_case_count": len(text_report_format_cases),
+        "json_report_format_case_count": len(json_report_format_cases),
+        "text_report_format_cases": text_report_format_cases,
+        "json_report_format_cases": json_report_format_cases,
         "symbol_case_count": sum(1 for result in results if "symbol" in result["case"]),
         "diagnostic_case_count": sum(1 for result in results if "diagnostic" in result["case"]),
         "handler_case_count": sum(1 for result in results if "handler" in result["case"]),
+        "navigation_detail_case_count": len(navigation_detail_cases),
+        "navigation_detail_cases": navigation_detail_cases,
+        "symbol_navigation_detail_count": sum(1 for result in results if result["symbol_id"] and result["symbol_parent"]),
+        "diagnostic_navigation_detail_count": sum(
+            1 for result in results if result["diagnostic_title"] and result["diagnostic_docs_url"]
+        ),
+        "handler_navigation_detail_count": sum(1 for result in results if result["handler_match_count"]),
         "cases": tuple(results),
     }
 

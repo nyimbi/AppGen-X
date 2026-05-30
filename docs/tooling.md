@@ -869,7 +869,11 @@ the supported output format names, plus the `appgen.graph-suite-report.v1`
 envelope format, so release logs remain reviewable without parsing JSON.
 `appgen.graph-suite-cli-audit.v1` reports `rendering_formats_by_kind` and
 `missing_renderings` so CI can prove every required graph kind has JSON,
-Mermaid, and DOT renderings rather than relying on a count alone.
+Mermaid, and DOT renderings rather than relying on a count alone. It also
+reports expected rendering count, present rendering count, complete rendering
+kind count, missing format count, and named text-fragment ids so graph-suite
+regressions reveal whether the JSON rendering matrix or human release markers
+failed.
 `appgen.graph-cli-format-audit.v1` reports case, passing-case, failing-case,
 case-id, failing-case, covered-kind, missing-required-kind, covered-format,
 JSON-case, Mermaid-case, DOT-case, payload-format, and text-marker counts
@@ -925,7 +929,10 @@ without parsing prose. The audit also reports total, text, JSON, and
 report-format-covered case counts plus passing-case, exit-failure,
 missing-report-format, symbol-case, diagnostic-case, and handler-case counts so
 release evidence can prove all six explain modes remain covered. It also
-reports `symbol_id`, `symbol_kind`,
+reports failing-case names, case ids, text and JSON report-format counts,
+navigation-detail case names, and symbol, diagnostic, and handler navigation
+detail counts so explain regressions identify the exact missing mode or
+navigational payload. JSON mode also reports `symbol_id`, `symbol_kind`,
 `symbol_parent`, `symbol_reference_count`, `diagnostic_title`,
 `diagnostic_docs_url`, `handler_match_count`, and `handler_edges` from JSON
 mode so CLI release evidence carries the same navigational details as IDE
