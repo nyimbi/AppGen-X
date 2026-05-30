@@ -5175,6 +5175,21 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "component_publish_catalog_contracts",
         "pbc_publish_side_effect_contracts",
     } <= {check["id"] for check in report["checks"]}
+    tooling_text_check = next(check for check in report["checks"] if check["id"] == "tooling_audit_text_renderer")
+    assert tooling_text_check["detail"]["format"] == "appgen.tooling-audit-text-renderer.v1"
+    assert tooling_text_check["detail"]["ok"] is True
+    assert tooling_text_check["detail"]["missing_check_id_count"] == 0
+    assert tooling_text_check["detail"]["missing_check_ids"] == ()
+    assert tooling_text_check["detail"]["missing_section_count"] == 0
+    assert tooling_text_check["detail"]["missing_sections"] == ()
+    assert tooling_text_check["detail"]["missing_detail_format_count"] == 0
+    assert tooling_text_check["detail"]["missing_detail_formats"] == ()
+    assert tooling_text_check["detail"]["missing_blocking_gap_id_count"] == 0
+    assert tooling_text_check["detail"]["missing_blocking_gap_ids"] == ()
+    assert "tooling_doc_anchor_integrity" in tooling_text_check["detail"]["emitted_check_ids"]
+    assert "docs/tooling.md#appgen-tooling-audit" in tooling_text_check["detail"]["emitted_sections"]
+    assert "appgen.tooling-doc-anchor-audit.v1" in tooling_text_check["detail"]["emitted_detail_formats"]
+    assert "studio_semantic_service" in tooling_text_check["detail"]["emitted_blocking_gap_ids"]
     semantic_check = next(check for check in report["checks"] if check["id"] == "shared_semantic_model")
     assert semantic_check["detail"]["contract_counts"]["required_top_level_field_count"] == 20
     assert semantic_check["detail"]["contract_counts"]["missing_top_level_field_count"] == 0
@@ -6700,6 +6715,22 @@ def test_tooling_audit_text_renderer_contract_proves_human_log_markers() -> None
     assert report["blocking_gap_line_count"] == 1
     assert report["implementation_phase_line_count"] == 2
     assert report["missing_fragments"] == ()
+    assert report["missing_check_id_count"] == 0
+    assert report["missing_check_ids"] == ()
+    assert set(report["required_check_ids"]) <= set(report["emitted_check_ids"])
+    assert "tooling_doc_anchor_integrity" in report["emitted_check_ids"]
+    assert report["missing_section_count"] == 0
+    assert report["missing_sections"] == ()
+    assert set(report["required_sections"]) <= set(report["emitted_sections"])
+    assert "docs/tooling.md#appgen-tooling-audit" in report["emitted_sections"]
+    assert report["missing_detail_format_count"] == 0
+    assert report["missing_detail_formats"] == ()
+    assert set(report["required_detail_formats"]) <= set(report["emitted_detail_formats"])
+    assert "appgen.tooling-doc-anchor-audit.v1" in report["emitted_detail_formats"]
+    assert report["missing_blocking_gap_id_count"] == 0
+    assert report["missing_blocking_gap_ids"] == ()
+    assert report["required_blocking_gap_ids"] == ("studio_semantic_service",)
+    assert "studio_semantic_service" in report["emitted_blocking_gap_ids"]
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith("tooling-audit ok: format=appgen.tooling-audit.v1")
     assert {

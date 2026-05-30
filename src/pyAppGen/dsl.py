@@ -6497,7 +6497,11 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     checks = checks + (
         _tooling_audit_check(
             "tooling_audit_text_renderer",
-            text_renderer["ok"],
+            text_renderer["ok"]
+            and text_renderer.get("missing_check_id_count") == 0
+            and text_renderer.get("missing_section_count") == 0
+            and text_renderer.get("missing_detail_format_count") == 0
+            and text_renderer.get("missing_blocking_gap_id_count") == 0,
             "Tooling-audit text mode exposes the top-level envelope, sections, embedded report formats, and implementation-phase marker.",
             "docs/tooling.md#appgen-tooling-audit",
             text_renderer,
@@ -6643,9 +6647,51 @@ def _tooling_audit_text_renderer_contract() -> dict:
     section_lines = tuple(line for line in lines if line.startswith("section docs/tooling.md#"))
     blocking_gap_lines = tuple(line for line in lines if line.startswith("blocking-gap "))
     implementation_phase_lines = tuple(line for line in lines if line.startswith("implementation-phases "))
+    emitted_check_ids = tuple(dict.fromkeys(line.split()[1] for line in check_lines if len(line.split()) >= 2))
+    emitted_sections = tuple(dict.fromkeys(line.split()[1] for line in section_lines if len(line.split()) >= 2))
+    emitted_blocking_gap_ids = tuple(
+        dict.fromkeys(line.split()[1] for line in blocking_gap_lines if len(line.split()) >= 2)
+    )
+    emitted_detail_formats = tuple(
+        dict.fromkeys(
+            format_name
+            for line in detail_format_lines
+            for match in re.findall(r"formats=([^: ]+)", line)
+            for format_name in match.split(",")
+        )
+    )
+    required_check_ids = tuple(check["id"] for check in payload.get("checks", ()))
+    required_sections = tuple(payload.get("sections", ()))
+    required_detail_formats = tuple(
+        dict.fromkeys(
+            format_name
+            for check in payload.get("checks", ())
+            for format_name in _tooling_text_detail_formats(check.get("detail", {}))
+        )
+    )
+    required_blocking_gap_ids = tuple(
+        dict.fromkeys(
+            str(gap.get("id"))
+            for gap in failed_payload.get("blocking_gaps", ())
+            if isinstance(gap, dict) and gap.get("id")
+        )
+    )
+    missing_check_ids = tuple(check_id for check_id in required_check_ids if check_id not in emitted_check_ids)
+    missing_sections = tuple(section for section in required_sections if section not in emitted_sections)
+    missing_detail_formats = tuple(
+        format_name for format_name in required_detail_formats if format_name not in emitted_detail_formats
+    )
+    missing_blocking_gap_ids = tuple(
+        gap_id for gap_id in required_blocking_gap_ids if gap_id not in emitted_blocking_gap_ids
+    )
     return {
         "format": "appgen.tooling-audit-text-renderer.v1",
-        "ok": not missing and not text.lstrip().startswith("{"),
+        "ok": not missing
+        and not missing_check_ids
+        and not missing_sections
+        and not missing_detail_formats
+        and not missing_blocking_gap_ids
+        and not text.lstrip().startswith("{"),
         **_text_renderer_contract_counts(
             text,
             required_fragments,
@@ -6666,6 +6712,22 @@ def _tooling_audit_text_renderer_contract() -> dict:
         "passing_check_line_count": sum(1 for line in check_lines if line.startswith("ok ")),
         "failing_check_line_count": sum(1 for line in check_lines if line.startswith("fail ")),
         "detail_format_line_count": len(detail_format_lines),
+        "required_check_ids": required_check_ids,
+        "emitted_check_ids": emitted_check_ids,
+        "missing_check_ids": missing_check_ids,
+        "missing_check_id_count": len(missing_check_ids),
+        "required_sections": required_sections,
+        "emitted_sections": emitted_sections,
+        "missing_sections": missing_sections,
+        "missing_section_count": len(missing_sections),
+        "required_detail_formats": required_detail_formats,
+        "emitted_detail_formats": emitted_detail_formats,
+        "missing_detail_formats": missing_detail_formats,
+        "missing_detail_format_count": len(missing_detail_formats),
+        "required_blocking_gap_ids": required_blocking_gap_ids,
+        "emitted_blocking_gap_ids": emitted_blocking_gap_ids,
+        "missing_blocking_gap_ids": missing_blocking_gap_ids,
+        "missing_blocking_gap_id_count": len(missing_blocking_gap_ids),
         "section_line_count": len(section_lines),
         "blocking_gap_line_count": len(blocking_gap_lines),
         "implementation_phase_line_count": len(implementation_phase_lines),

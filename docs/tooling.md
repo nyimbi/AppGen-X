@@ -1018,7 +1018,10 @@ and implementation-phase evidence. It also reports check-line,
 passing-check-line, failing-check-line, detail-format-line, section-line,
 blocking-gap-line, and implementation-phase-line counts so release triage can
 see whether a human log lost checks, sections, embedded audit formats, or
-failure markers.
+failure markers. The same renderer contract publishes required, emitted, and
+missing check ids, section anchors, embedded detail formats, and blocking-gap ids,
+and the aggregate `tooling_audit_text_renderer` gate fails if any named release
+log marker is missing.
 When implementation-phase evidence is present, the text output also reports the
 number of audited phases, missing phase count, passing/total exit-criterion
 counts, missing exit-criterion count, and the
