@@ -530,3 +530,34 @@ def smoke_test() -> dict:
         "standalone": standalone,
         "side_effects": (),
     }
+
+# Improve1 policy control UI extension.
+from .policy_control import improve1_policy_control_contract as _improve1_policy_control_contract
+
+_POLICY_CONTROL_BASE_UI_CONTRACT = policy_administration_insurance_ui_contract
+_POLICY_CONTROL_BASE_RENDER_WORKBENCH = policy_administration_insurance_render_workbench
+
+
+def policy_administration_insurance_ui_contract() -> dict:
+    ui = dict(_POLICY_CONTROL_BASE_UI_CONTRACT())
+    control = _improve1_policy_control_contract()
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "policy_control_contract": control,
+        "policy_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "policy_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def policy_administration_insurance_render_workbench() -> dict:
+    workbench = dict(_POLICY_CONTROL_BASE_RENDER_WORKBENCH())
+    control = _improve1_policy_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "policy_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "policy_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "policy_control_agent_tools": tuple(f"policy_administration_insurance.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench
