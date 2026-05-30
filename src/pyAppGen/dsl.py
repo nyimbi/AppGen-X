@@ -8270,7 +8270,9 @@ table Invoice {
 }
 view InvoiceForm for Invoice {
   Main: customer.name, customer_id
+  on Save -> SubmitInvoice
 }
+operation SubmitInvoice { draft -> posted }
 """
 
     def hover_depth_position(marker: str, offset: int = 0) -> dict:
@@ -8319,6 +8321,18 @@ view InvoiceForm for Invoice {
         },
         documents,
     )
+    handler_hover_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 43,
+            "method": "textDocument/hover",
+            "params": {
+                "textDocument": {"uri": hover_depth_uri},
+                "position": hover_depth_position("SubmitInvoice\n}"),
+            },
+        },
+        documents,
+    )
     relationship_hover_text = (
         relationship_hover_responses[0].get("result", {}).get("contents", {}).get("value", "")
         if relationship_hover_responses
@@ -8327,6 +8341,11 @@ view InvoiceForm for Invoice {
     lookup_hover_text = (
         lookup_hover_responses[0].get("result", {}).get("contents", {}).get("value", "")
         if lookup_hover_responses
+        else ""
+    )
+    handler_hover_text = (
+        handler_hover_responses[0].get("result", {}).get("contents", {}).get("value", "")
+        if handler_hover_responses
         else ""
     )
     checks.append(
@@ -8339,6 +8358,15 @@ view InvoiceForm for Invoice {
             and "lookup `customer.name`" in lookup_hover_text
             and "Invoice.customer_id" in lookup_hover_text
             and "Customer.name" in lookup_hover_text,
+        )
+    )
+    checks.append(
+        _release_check(
+            "hover_handler_target_depth",
+            "appgen.lsp-handler-target-hover.v1" in handler_hover_text
+            and "handler `InvoiceForm.Save` targets `SubmitInvoice` (operation)" in handler_hover_text
+            and '"owner_kind": "view"' in handler_hover_text
+            and '"target_kind": "operation"' in handler_hover_text,
         )
     )
 
@@ -13362,6 +13390,13 @@ def lsp_hover_dsl(text: str, *, source_name: str | None = None, position: dict |
     if lookup_hover:
         contents.append(f"lookup `{lookup_hover['path']}` from `{lookup_hover['table']}`")
         contents.append(json.dumps(lookup_hover, sort_keys=True, default=list))
+    handler_hover = _lsp_handler_target_hover_at_position(text, position, source_name=source_name)
+    if handler_hover:
+        contents.append(
+            f"handler `{handler_hover['source']}` targets `{handler_hover['target']}`"
+            f" ({handler_hover['target_kind']})"
+        )
+        contents.append(json.dumps(handler_hover, sort_keys=True, default=list))
     pbc_metadata = _lsp_pbc_catalog_metadata_for_token(token)
     if pbc_metadata:
         contents.append(f"PBC `{token}`: {pbc_metadata['label']}")
@@ -13446,6 +13481,91 @@ def _lsp_dotted_path_at_index(source: str, index: int) -> str | None:
     if "." not in candidate or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+$", candidate):
         return None
     return candidate
+
+
+def _lsp_handler_target_hover_at_position(
+    source: str,
+    position: dict | None,
+    *,
+    source_name: str | None = None,
+) -> dict | None:
+    index = _lsp_position_to_index(source, position)
+    if index is None:
+        return None
+    token = _lsp_token_at_position(source, position)
+    if not token:
+        return None
+    line_start = source.rfind("\n", 0, index) + 1
+    line_end = source.find("\n", index)
+    if line_end < 0:
+        line_end = len(source)
+    line = source[line_start:line_end]
+    handler_match = None
+    for match in re.finditer(
+        r"\bon\s+(?P<event>[A-Za-z_][A-Za-z0-9_]*)\s*->\s*(?P<target>[A-Za-z_][A-Za-z0-9_]*)\b",
+        line,
+    ):
+        target_start = line_start + match.start("target")
+        target_end = line_start + match.end("target")
+        if target_start <= index <= target_end and match.group("target") == token:
+            handler_match = match
+            break
+    if handler_match is None:
+        return None
+    owner = _lsp_enclosing_handler_owner(source, index)
+    if not owner:
+        return None
+    semantic = semantic_model_dsl(source, source_name=source_name)
+    target_symbol = _lsp_handler_target_symbol(semantic, token)
+    target_kind = target_symbol.get("kind") if target_symbol else "unresolved"
+    target_id = target_symbol.get("id") if target_symbol else None
+    event = handler_match.group("event")
+    source_id = f"{owner['name']}.{event}"
+    edge = next(
+        (
+            item
+            for item in semantic.get("graphs", {}).get("handler", {}).get("edges", ())
+            if item.get("from") == source_id and item.get("to") == token
+        ),
+        None,
+    )
+    return {
+        "format": "appgen.lsp-handler-target-hover.v1",
+        "source": source_id,
+        "owner_kind": owner["kind"],
+        "owner": owner["name"],
+        "event": event,
+        "target": token,
+        "target_kind": target_kind,
+        "target_id": target_id,
+        "resolved": target_symbol is not None,
+        "graph_edge": edge or {},
+    }
+
+
+def _lsp_enclosing_handler_owner(source: str, index: int) -> dict | None:
+    candidates = []
+    for kind in ("view", "api", "event", "component", "menu", "agent", "operation", "pbc"):
+        for match in re.finditer(rf"\b{re.escape(kind)}\s+([A-Za-z_][A-Za-z0-9_]*)\b[^\{{]*\{{", source or ""):
+            end = _closing_index_for_block(source, kind, match.group(1))
+            if end is not None and match.end() <= index < end:
+                candidates.append({"kind": kind, "name": match.group(1), "start": match.start(), "end": end})
+    if not candidates:
+        return None
+    return max(candidates, key=lambda item: item["start"])
+
+
+def _lsp_handler_target_symbol(semantic: dict, target: str) -> dict | None:
+    priority = {"operation": 0, "flow": 1, "agent": 2, "api": 3, "event": 4, "component": 5, "pbc": 6}
+    candidates = [
+        symbol
+        for symbol in semantic.get("symbols", {}).values()
+        if symbol.get("name") == target
+        and symbol.get("kind") in {"operation", "flow", "agent", "api", "event", "component", "pbc"}
+    ]
+    if not candidates:
+        return None
+    return sorted(candidates, key=lambda item: priority.get(str(item.get("kind")), 99))[0]
 
 
 def _lsp_pbc_catalog_metadata_for_token(token: str) -> dict | None:

@@ -1386,7 +1386,9 @@ table Invoice {
 }
 view InvoiceForm for Invoice {
   Main: customer.name, customer_id
+  on Save -> SubmitInvoice
 }
+operation SubmitInvoice { draft -> posted }
 """
 
     relationship_hover = appgen_dsl.lsp_hover_dsl(
@@ -1399,6 +1401,11 @@ view InvoiceForm for Invoice {
         source_name="hover-details.appgen",
         position=_position_of(source, "customer.name, customer_id"),
     )
+    handler_hover = appgen_dsl.lsp_hover_dsl(
+        source,
+        source_name="hover-details.appgen",
+        position=_position_of(source, "SubmitInvoice\n}"),
+    )
 
     assert relationship_hover["format"] == "appgen.lsp-hover.v1"
     assert relationship_hover["ok"] is True
@@ -1409,6 +1416,10 @@ view InvoiceForm for Invoice {
     assert any("lookup `customer.name`" in item for item in lookup_hover["contents"])
     assert any('"format": "appgen.lsp-lookup-hover.v1"' in item for item in lookup_hover["contents"])
     assert any('"chain": ["Invoice.customer_id", "Customer.name"]' in item for item in lookup_hover["contents"])
+    assert handler_hover["ok"] is True
+    assert any("handler `InvoiceForm.Save` targets `SubmitInvoice` (operation)" in item for item in handler_hover["contents"])
+    assert any('"format": "appgen.lsp-handler-target-hover.v1"' in item for item in handler_hover["contents"])
+    assert any('"owner_kind": "view"' in item and '"target_kind": "operation"' in item for item in handler_hover["contents"])
 
 
 def test_lsp_workspace_symbols_include_pbc_catalog_metadata_and_contracts() -> None:
@@ -1655,6 +1666,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     assert "lexical_reference_scope" in {check["check"] for check in audit["checks"]}
     assert "completion_context_filtering" in {check["check"] for check in audit["checks"]}
     assert "hover_relationship_lookup_depth" in {check["check"] for check in audit["checks"]}
+    assert "hover_handler_target_depth" in {check["check"] for check in audit["checks"]}
     assert capabilities["completionProvider"]["triggerCharacters"]
     assert capabilities["hoverProvider"] is True
     assert capabilities["definitionProvider"] is True
@@ -5147,6 +5159,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "did_change_diagnostics",
         "completion_context_filtering",
         "hover_relationship_lookup_depth",
+        "hover_handler_target_depth",
         "enterprise_definition_context",
         "lexical_reference_scope",
         "code_action_request",

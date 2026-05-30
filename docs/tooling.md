@@ -1306,7 +1306,10 @@ target without duplicating diagnostic registries. Relationship fields expose
 `appgen.lsp-relationship-hover.v1` target-table metadata, and database-backed
 lookup paths expose `appgen.lsp-lookup-hover.v1` resolution chains. The JSON-RPC
 audit checks this as `hover_relationship_lookup_depth`, so field relationship
-and lookup hover regressions fail the tooling release gate.
+and lookup hover regressions fail the tooling release gate. Handler target
+hover emits `appgen.lsp-handler-target-hover.v1` with owner, event, target,
+target kind, target symbol id, and handler-graph edge metadata; the JSON-RPC
+audit checks this as `hover_handler_target_depth`.
 
 Workspace symbol search includes catalog-backed results. In addition to open
 DSL declarations, `workspace/symbol` returns `catalog://pbc/...` locations for
