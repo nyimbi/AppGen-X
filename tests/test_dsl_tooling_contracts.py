@@ -3250,6 +3250,22 @@ def test_package_cli_audit_proves_all_target_handoff_contracts(tmp_path: Path) -
 
     assert report["format"] == "appgen.package-verify-cli-audit.v1"
     assert report["ok"] is True
+    assert report["failing_case_count"] == 0
+    assert report["failing_cases"] == ()
+    assert report["case_ids"] == ("verify_all_targets", "package_writes_target_manifests")
+    assert report["expected_targets"] == ("web", "mobile", "desktop", "pbc", "deployment")
+    assert report["manifest_target_count"] == 5
+    assert report["manifest_targets"] == report["expected_targets"]
+    assert report["missing_manifest_target_count"] == 0
+    assert report["missing_manifest_targets"] == ()
+    assert report["release_evidence_report_count"] == 5
+    assert set(report["release_evidence_reports"]) == set(report["expected_targets"])
+    assert report["missing_release_report_count"] == 0
+    assert report["missing_release_reports"] == ()
+    assert report["missing_release_graph_kind_count"] == 0
+    assert report["missing_release_graph_kinds"] == ()
+    assert report["missing_release_graph_format_count"] == 0
+    assert report["missing_release_graph_formats"] == ()
     assert set(manifest_case["release_evidence_reports"]) == {"web", "mobile", "desktop", "pbc", "deployment"}
     assert manifest_case["web_artifact_class"] == "web_application"
     assert manifest_case["release_graph_suite_format"] == "appgen.graph-suite-report.v1"
@@ -4860,9 +4876,14 @@ def test_package_verify_cli_audit_exposes_web_manifest_readiness_metadata(tmp_pa
     assert report["ok"] is True
     assert report["case_count"] == len(report["cases"])
     assert report["passing_case_count"] == report["case_count"]
+    assert report["failing_case_count"] == 0
     assert report["target_count"] == 5
+    assert report["manifest_target_count"] == 5
+    assert report["missing_manifest_target_count"] == 0
     assert report["manifest_count"] == 5
     assert report["handoff_artifact_count"] >= 25
+    assert report["handoff_counts_by_target"]["web"] >= 4
+    assert report["manifest_formats"]["web"] == "appgen.package-manifest.v1"
     assert manifest_case["web_artifact_class"] == "web_application"
     assert {"routes", "forms", "handlers", "smoke_tests"} <= set(manifest_case["web_handoff_artifacts"])
     assert manifest_case["web_app_build_contract"] is True
@@ -5879,6 +5900,9 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     }
     assert package_check["detail"]["cli"]["case_count"] == 2
     assert package_check["detail"]["cli"]["passing_case_count"] == 2
+    assert package_check["detail"]["cli"]["failing_case_count"] == 0
+    assert package_check["detail"]["cli"]["missing_manifest_target_count"] == 0
+    assert package_check["detail"]["cli"]["missing_release_report_count"] == 0
     assert package_check["detail"]["cli"]["target_count"] == 5
     assert package_check["detail"]["cli"]["manifest_count"] == 5
     assert package_check["detail"]["cli"]["handoff_artifact_count"] >= 25
@@ -5922,8 +5946,21 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     package_manifest_check = next(check for check in report["checks"] if check["id"] == "package_manifest_handoff_contracts")
     assert package_manifest_check["detail"]["format"] == "appgen.package-verify-cli-audit.v1"
     assert package_manifest_check["detail"]["target_count"] == 5
+    assert package_manifest_check["detail"]["expected_targets"] == ("web", "mobile", "desktop", "pbc", "deployment")
+    assert package_manifest_check["detail"]["failing_case_count"] == 0
+    assert package_manifest_check["detail"]["failing_cases"] == ()
+    assert package_manifest_check["detail"]["case_ids"] == ("verify_all_targets", "package_writes_target_manifests")
     assert package_manifest_check["detail"]["manifest_count"] == 5
+    assert package_manifest_check["detail"]["manifest_target_count"] == 5
+    assert package_manifest_check["detail"]["manifest_targets"] == ("web", "mobile", "desktop", "pbc", "deployment")
+    assert package_manifest_check["detail"]["missing_manifest_target_count"] == 0
+    assert package_manifest_check["detail"]["missing_manifest_targets"] == ()
+    assert package_manifest_check["detail"]["manifest_formats"]["web"] == "appgen.package-manifest.v1"
     assert package_manifest_check["detail"]["handoff_artifact_count"] >= 25
+    assert package_manifest_check["detail"]["handoff_counts_by_target"]["mobile"] >= 6
+    assert package_manifest_check["detail"]["release_evidence_report_count"] == 5
+    assert package_manifest_check["detail"]["missing_release_report_count"] == 0
+    assert package_manifest_check["detail"]["missing_release_reports"] == ()
     assert set(package_manifest_check["detail"]["release_evidence_reports"]) == {
         "web",
         "mobile",
@@ -5932,6 +5969,12 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "deployment",
     }
     assert package_manifest_check["detail"]["release_graph_suite_format"] == "appgen.graph-suite-report.v1"
+    assert package_manifest_check["detail"]["release_graph_kind_count"] == len(appgen_dsl.REQUIRED_GRAPH_KINDS)
+    assert package_manifest_check["detail"]["missing_release_graph_kind_count"] == 0
+    assert package_manifest_check["detail"]["missing_release_graph_kinds"] == ()
+    assert package_manifest_check["detail"]["release_graph_format_count"] == len(appgen_dsl.GRAPH_TEXT_FORMATS)
+    assert package_manifest_check["detail"]["missing_release_graph_format_count"] == 0
+    assert package_manifest_check["detail"]["missing_release_graph_formats"] == ()
     assert set(package_manifest_check["detail"]["release_graph_formats"]) == {"json", "mermaid", "dot"}
     assert package_manifest_check["detail"]["web"]["artifact_class"] == "web_application"
     assert package_manifest_check["detail"]["web"]["app_build_contract"] is True

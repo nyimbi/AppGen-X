@@ -5875,9 +5875,16 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         _tooling_audit_check(
             "package_manifest_handoff_contracts",
             package_verify_cli["ok"]
+            and package_verify_cli.get("failing_case_count") == 0
             and package_verify_cli.get("target_count") == 5
             and package_verify_cli.get("manifest_count") == 5
+            and package_verify_cli.get("manifest_target_count") == 5
+            and package_verify_cli.get("missing_manifest_target_count") == 0
             and package_verify_cli.get("handoff_artifact_count", 0) >= 25
+            and package_verify_cli.get("release_evidence_report_count") == 5
+            and package_verify_cli.get("missing_release_report_count") == 0
+            and package_verify_cli.get("missing_release_graph_kind_count") == 0
+            and package_verify_cli.get("missing_release_graph_format_count") == 0
             and set(package_manifest_case.get("release_evidence_reports", ())) == {"web", "mobile", "desktop", "pbc", "deployment"}
             and package_manifest_case.get("release_graph_suite_format") == "appgen.graph-suite-report.v1"
             and set(package_manifest_case.get("release_graph_formats", ())) == set(GRAPH_TEXT_FORMATS)
@@ -5911,11 +5918,30 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             {
                 "format": package_verify_cli.get("format"),
                 "target_count": package_verify_cli.get("target_count"),
+                "expected_targets": package_verify_cli.get("expected_targets"),
+                "failing_case_count": package_verify_cli.get("failing_case_count"),
+                "failing_cases": package_verify_cli.get("failing_cases"),
+                "case_ids": package_verify_cli.get("case_ids"),
                 "manifest_count": package_verify_cli.get("manifest_count"),
+                "manifest_target_count": package_verify_cli.get("manifest_target_count"),
+                "manifest_targets": package_verify_cli.get("manifest_targets"),
+                "missing_manifest_target_count": package_verify_cli.get("missing_manifest_target_count"),
+                "missing_manifest_targets": package_verify_cli.get("missing_manifest_targets"),
+                "manifest_formats": package_verify_cli.get("manifest_formats"),
                 "handoff_artifact_count": package_verify_cli.get("handoff_artifact_count"),
+                "handoff_counts_by_target": package_verify_cli.get("handoff_counts_by_target"),
+                "release_evidence_report_count": package_verify_cli.get("release_evidence_report_count"),
                 "release_evidence_reports": package_manifest_case.get("release_evidence_reports"),
+                "missing_release_report_count": package_verify_cli.get("missing_release_report_count"),
+                "missing_release_reports": package_verify_cli.get("missing_release_reports"),
                 "release_graph_suite_format": package_manifest_case.get("release_graph_suite_format"),
                 "release_graph_formats": package_manifest_case.get("release_graph_formats"),
+                "release_graph_kind_count": package_verify_cli.get("release_graph_kind_count"),
+                "missing_release_graph_kind_count": package_verify_cli.get("missing_release_graph_kind_count"),
+                "missing_release_graph_kinds": package_verify_cli.get("missing_release_graph_kinds"),
+                "release_graph_format_count": package_verify_cli.get("release_graph_format_count"),
+                "missing_release_graph_format_count": package_verify_cli.get("missing_release_graph_format_count"),
+                "missing_release_graph_formats": package_verify_cli.get("missing_release_graph_formats"),
                 "web": {
                     "artifact_class": package_manifest_case.get("web_artifact_class"),
                     "handoff_artifacts": package_manifest_case.get("web_handoff_artifacts"),
@@ -12144,21 +12170,78 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
             "deployment_topology_declared": deployment_manifest.get("topology_declared"),
         },
     )
+    failing_cases = tuple(case["case"] for case in cases if not case["ok"])
+    case_ids = tuple(case["case"] for case in cases)
+    manifest_by_target = {
+        "web": web_manifest,
+        "mobile": mobile_manifest,
+        "desktop": desktop_manifest,
+        "pbc": pbc_manifest,
+        "deployment": deployment_manifest,
+    }
+    manifest_targets = tuple(
+        target
+        for target in expected_targets
+        if manifest_by_target[target].get("format") == "appgen.package-manifest.v1"
+        and manifest_by_target[target].get("target") == target
+    )
+    missing_manifest_targets = tuple(target for target in expected_targets if target not in manifest_targets)
+    handoff_counts_by_target = {
+        "web": len(web_handoff),
+        "mobile": len(mobile_handoff),
+        "desktop": len(desktop_handoff),
+        "pbc": len(pbc_handoff),
+        "deployment": len(deployment_handoff),
+    }
+    manifest_formats = {
+        target: manifest_by_target[target].get("format")
+        for target in expected_targets
+    }
+    release_reports = tuple(evidence_payload.get("reports", {}).keys())
+    missing_release_reports = tuple(target for target in expected_targets if target not in release_reports)
+    release_graph_kinds = tuple(evidence_graph_suite.get("required_kinds", ()))
+    release_graph_formats = tuple(evidence_graph_suite.get("formats", ()))
+    missing_release_graph_kinds = tuple(kind for kind in REQUIRED_GRAPH_KINDS if kind not in release_graph_kinds)
+    missing_release_graph_formats = tuple(output_format for output_format in GRAPH_TEXT_FORMATS if output_format not in release_graph_formats)
     return {
         "format": "appgen.package-verify-cli-audit.v1",
-        "ok": all(case["ok"] for case in cases),
+        "ok": all(case["ok"] for case in cases)
+        and not missing_manifest_targets
+        and not missing_release_reports
+        and not missing_release_graph_kinds
+        and not missing_release_graph_formats,
         "case_count": len(cases),
         "passing_case_count": sum(1 for case in cases if case["ok"]),
+        "failing_case_count": len(failing_cases),
+        "failing_cases": failing_cases,
+        "case_ids": case_ids,
         "target_count": len(expected_targets),
+        "expected_targets": expected_targets,
+        "manifest_target_count": len(manifest_targets),
+        "manifest_targets": manifest_targets,
+        "missing_manifest_target_count": len(missing_manifest_targets),
+        "missing_manifest_targets": missing_manifest_targets,
         "manifest_count": sum(
             1
             for manifest in (web_manifest, mobile_manifest, desktop_manifest, pbc_manifest, deployment_manifest)
             if manifest.get("format") == "appgen.package-manifest.v1"
         ),
+        "manifest_formats": manifest_formats,
         "handoff_artifact_count": sum(
             len(items)
             for items in (web_handoff, mobile_handoff, desktop_handoff, pbc_handoff, deployment_handoff)
         ),
+        "handoff_counts_by_target": handoff_counts_by_target,
+        "release_evidence_report_count": len(release_reports),
+        "release_evidence_reports": release_reports,
+        "missing_release_report_count": len(missing_release_reports),
+        "missing_release_reports": missing_release_reports,
+        "release_graph_kind_count": len(release_graph_kinds),
+        "missing_release_graph_kind_count": len(missing_release_graph_kinds),
+        "missing_release_graph_kinds": missing_release_graph_kinds,
+        "release_graph_format_count": len(release_graph_formats),
+        "missing_release_graph_format_count": len(missing_release_graph_formats),
+        "missing_release_graph_formats": missing_release_graph_formats,
         "cases": cases,
     }
 

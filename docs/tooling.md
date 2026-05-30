@@ -1060,7 +1060,11 @@ for routes/forms/handlers, mobile signing/offline launch, desktop installer and
 startup assets, PBC publication, and deployment topology verification.
 It reports case, passing-case, target, manifest, and handoff-artifact counts so
 release evidence captures breadth across all package targets instead of only a
-single success boolean.
+single success boolean. It also reports failing-case names, case ids, expected
+targets, manifest target coverage, missing manifest targets, manifest formats,
+handoff counts by target, release-evidence report counts, missing release
+reports, and release graph kind/format gaps so package failures identify the
+missing target handoff directly.
 The default text output for both `appgen verify` and `appgen package` summarizes
 the release verifier report format, selected targets, written artifacts,
 the `appgen.release-evidence-bundle.v1` bundle format and
