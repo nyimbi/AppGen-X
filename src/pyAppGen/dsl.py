@@ -2882,6 +2882,12 @@ def _release_verifier_text_renderer_contract() -> dict:
         "artifact mobile_package_manifest: dist/appgen-package-mobile.json",
     )
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    lines = tuple(line for line in text.splitlines() if line.strip())
+    release_lines = tuple(line for line in lines if line.startswith(("release-verify ", "release-evidence ")))
+    graph_lines = tuple(line for line in lines if line.startswith(("graph-suite ", "graph-kinds ", "graph-formats ")))
+    target_status_lines = tuple(line for line in lines if line.startswith(("ok ", "fail ")))
+    failing_target_lines = tuple(line for line in target_status_lines if line.startswith("fail "))
+    artifact_lines = tuple(line for line in lines if line.startswith("artifact "))
     return {
         "format": "appgen.release-verifier-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
@@ -2892,6 +2898,13 @@ def _release_verifier_text_renderer_contract() -> dict:
         ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
+        "release_line_count": len(release_lines),
+        "graph_line_count": len(graph_lines),
+        "target_status_line_count": len(target_status_lines),
+        "passing_target_line_count": sum(1 for line in target_status_lines if line.startswith("ok ")),
+        "failing_target_line_count": len(failing_target_lines),
+        "blocking_gap_line_count": sum(1 for line in failing_target_lines if "gaps=" in line),
+        "artifact_line_count": len(artifact_lines),
         "json_fallback": text.lstrip().startswith("{"),
         "text_prefix": text[:240],
     }

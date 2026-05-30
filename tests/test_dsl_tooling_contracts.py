@@ -4583,6 +4583,13 @@ def test_release_verifier_text_renderer_contract_proves_handoff_log_markers() ->
     assert report["required_fragment_count"] == len(report["required_fragments"])
     assert report["missing_fragment_count"] == 0
     assert report["marker_line_count"] >= 9
+    assert report["release_line_count"] == 2
+    assert report["graph_line_count"] == 3
+    assert report["target_status_line_count"] == 2
+    assert report["passing_target_line_count"] == 1
+    assert report["failing_target_line_count"] == 1
+    assert report["blocking_gap_line_count"] == 1
+    assert report["artifact_line_count"] == 2
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(

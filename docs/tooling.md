@@ -973,7 +973,11 @@ prove those human-readable handoff logs keep the envelope, evidence bundle,
 graph-suite kind/format, per-target status, blocking-gap, and artifact markers
 without depending on JSON parsing.
 The renderer contract reports fragment and marker counts for release, graph,
-verifier, blocking-gap, and artifact lines.
+verifier, blocking-gap, and artifact lines. It also reports release-line,
+graph-line, target-status-line, passing-target-line, failing-target-line,
+blocking-gap-line, and artifact-line counts so release logs can prove package
+handoff evidence did not lose target status, graph-suite context, or written
+artifact paths.
 
 ### `appgen component-publish`
 
