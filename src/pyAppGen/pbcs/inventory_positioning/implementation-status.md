@@ -43,3 +43,10 @@ Issues found and fixed during review:
 - `runtime.py` still contains the original broad synthetic runtime smoke logic;
   package-level contracts now wrap it coherently, but future cleanup could make
   the runtime internals less synthetic.
+
+## 2026-05-30 Domain Behavior Traceability Slice
+
+- Expanded `tests/test_domain_behavior.py` with route, standalone app, assistant document/CRUD planning, owned-boundary, UI, and release-evidence checks.
+- Updated `IMPROVE1_TRACEABILITY.md` so all 50 improve1 rows cite `tests/test_domain_behavior.py` as direct inventory positioning behavior evidence.
+- Updated `improve1_capabilities.py` so every feature execution plan carries the domain behavior test artifact.
+- Validation: `/Volumes/Media/src/pjs/appgen/.venv/bin/pytest src/pyAppGen/pbcs/inventory_positioning/tests`.

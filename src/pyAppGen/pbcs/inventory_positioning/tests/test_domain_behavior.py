@@ -4,10 +4,16 @@ from __future__ import annotations
 
 import pytest
 
+from .. import agent
+from .. import release_evidence
+from .. import routes
 from .. import runtime
 from .. import ui
 from ..permissions import permission_manifest
 from ..services import InventoryPositioningService
+from ..standalone import InventoryPositioningStandaloneApp
+from ..standalone import smoke_test as standalone_smoke_test
+from ..standalone import standalone_app_contract
 from ..services import service_operation_manifest
 
 
@@ -269,6 +275,111 @@ def test_inventory_advanced_stock_intelligence_and_governance_are_executable() -
     assert stochastic["tail_risk"] > stochastic["expected_exposure"]
     assert invariants["ok"] is True
     assert model["ok"] is True and model["governance"]["explainability_required"] is True
+
+
+
+def test_inventory_agent_routes_standalone_and_release_surfaces_are_executable() -> None:
+    service = _prepared_service()
+    route_validation = routes.validate_api_route_contracts()
+    route_dispatch = routes.dispatch_route(
+        "POST",
+        "/inventory/allocations",
+        {
+            "allocation_id": "alloc-surface-001",
+            "tenant": TENANT,
+            "order_id": "order-surface-001",
+            "item_id": ITEM_ID,
+            "quantity": 25.0,
+            "demand_class": "standard",
+        },
+        service=service,
+    )
+    release_dispatch = routes.dispatch_route(
+        "POST",
+        "/inventory/allocations/alloc-surface-001/release",
+        {"reason": "customer_request"},
+        service=service,
+    )
+    workbench_dispatch = routes.dispatch_route(
+        "GET",
+        "/inventory/workbench",
+        {"tenant": TENANT},
+        service=service,
+    )
+    skills = agent.agent_skill_manifest()
+    chatbot = agent.chatbot_interface_contract()
+    document_plan = agent.document_instruction_plan(
+        "Receipt document rcpt-002 for SKU-100 at node-east with cycle-count variance.",
+        "Draft a governed receive, adjustment, ATP, allocation, and release plan.",
+    )
+    crud_plan = agent.datastore_crud_plan(
+        "create",
+        table="inventory_positioning_adjustment",
+        payload={"adjustment_id": "adj-agent", "reason": "cycle_count"},
+    )
+    blocked_crud = agent.datastore_crud_plan("update", table="asset_lifecycle_fixed_asset", payload={"asset_id": "bad"})
+    contribution = agent.composed_agent_contribution()
+
+    app = InventoryPositioningStandaloneApp()
+    bootstrap = app.bootstrap()
+    standalone_availability = app.dispatch(
+        "GET",
+        "/inventory/availability",
+        {"tenant": "tenant_alpha", "item_id": "sku_100", "demand_class": "standard"},
+    )
+    standalone_allocation = app.dispatch(
+        "POST",
+        "/inventory/allocations",
+        {
+            "allocation_id": "alloc-agent-001",
+            "tenant": "tenant_alpha",
+            "order_id": "order-agent-001",
+            "item_id": "sku_100",
+            "quantity": 10.0,
+            "demand_class": "standard",
+        },
+    )
+    standalone_release = app.dispatch(
+        "POST",
+        "/inventory/allocations/alloc-agent-001/release",
+        {"reason": "agent_release"},
+    )
+    standalone_rendered = app.render_workbench("tenant_alpha", permission_manifest()["permissions"])
+    standalone_contract = standalone_app_contract()
+    standalone_smoke = standalone_smoke_test()
+    release_validation = release_evidence.validate_release_evidence()
+    release_smoke = release_evidence.smoke_test()
+
+    assert route_validation["ok"] is True
+    assert all(contract["event_contract"] == "AppGen-X" for contract in route_validation["contracts"])
+    assert all(contract["stream_engine_picker_visible"] is False for contract in route_validation["contracts"])
+    assert all(contract["shared_table_access"] is False for contract in route_validation["contracts"])
+    assert route_dispatch["ok"] is True
+    assert route_dispatch["result"]["allocation"]["status"] == "allocated"
+    assert release_dispatch["ok"] is True
+    assert release_dispatch["result"]["allocation"]["status"] == "released"
+    assert workbench_dispatch["ok"] is True
+    assert workbench_dispatch["result"]["tenant"] == TENANT
+    assert skills["ok"] is True
+    assert chatbot["ok"] is True
+    assert document_plan["ok"] is True
+    assert {"allocate_inventory", "release_allocation", "calculate_availability"} <= set(document_plan["candidate_operations"])
+    assert crud_plan["ok"] is True
+    assert crud_plan["requires_confirmation"] is True
+    assert crud_plan["event_contract"] == "AppGen-X"
+    assert blocked_crud["ok"] is False
+    assert contribution["ok"] is True
+    assert "inventory_positioning_crud" in contribution["dsl_tools"]
+    assert bootstrap["ok"] is True
+    assert standalone_availability["ok"] is True
+    assert standalone_allocation["ok"] is True
+    assert standalone_release["ok"] is True
+    assert standalone_rendered["ok"] is True
+    assert standalone_contract["ok"] is True
+    assert standalone_contract["runtime"] == "in_memory_single_pbc"
+    assert standalone_smoke["ok"] is True
+    assert release_validation["ok"] is True
+    assert release_smoke["ok"] is True
 
 
 def test_inventory_event_handlers_retry_dead_letter_and_boundary_guards() -> None:
