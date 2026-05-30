@@ -4395,6 +4395,19 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "phase_6_migration_natural_language_and_release_verifiers",
     }
     assert all(phase["missing_exit_criteria"] == () for phase in phase_check["detail"]["phases"])
+    phase_doc_check = next(
+        check for check in report["checks"] if check["id"] == "implementation_phase_doc_alignment_contracts"
+    )
+    assert phase_doc_check["detail"]["format"] == "appgen.implementation-phase-doc-alignment.v1"
+    assert phase_doc_check["detail"]["ok"] is True
+    assert phase_doc_check["detail"]["phase_heading_count"] == phase_check["detail"]["phase_count"]
+    assert phase_doc_check["detail"]["runtime_phase_count"] == phase_check["detail"]["phase_count"]
+    assert phase_doc_check["detail"]["documented_phase_ids"] == phase_check["detail"]["phase_ids"]
+    assert phase_doc_check["detail"]["missing_phase_heading_count"] == 0
+    assert phase_doc_check["detail"]["extra_phase_heading_count"] == 0
+    assert phase_doc_check["detail"]["title_mismatch_count"] == 0
+    assert phase_doc_check["detail"]["exit_criteria_label_count"] == phase_check["detail"]["phase_count"]
+    assert phase_doc_check["detail"]["missing_exit_phrase_count"] == 0
     vscode_check = next(check for check in report["checks"] if check["id"] == "vscode_extension_surface")
     assert vscode_check["detail"]["checks"]["diagnostics_collection"] is True
     assert vscode_check["detail"]["checks"]["cli_command_contracts"] is True

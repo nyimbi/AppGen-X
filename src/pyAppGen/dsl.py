@@ -4486,6 +4486,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         doctor=doctor,
         doctor_text_renderer=doctor_text_renderer,
     )
+    implementation_phase_doc_alignment = _tooling_audit_phase_doc_alignment(root, implementation_phases)
 
     checks = (
         _tooling_audit_check(
@@ -6005,6 +6006,18 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "docs/tooling.md#implementation-phases",
             implementation_phases,
         ),
+        _tooling_audit_check(
+            "implementation_phase_doc_alignment_contracts",
+            implementation_phase_doc_alignment["ok"]
+            and implementation_phase_doc_alignment.get("phase_heading_count") == implementation_phases.get("phase_count")
+            and implementation_phase_doc_alignment.get("missing_phase_heading_count") == 0
+            and implementation_phase_doc_alignment.get("extra_phase_heading_count") == 0
+            and implementation_phase_doc_alignment.get("missing_exit_phrase_count") == 0
+            and implementation_phase_doc_alignment.get("exit_criteria_label_count") == implementation_phases.get("phase_count"),
+            "Implementation phase documentation headings and exit criteria remain aligned with the executable phase audit.",
+            "docs/tooling.md#implementation-phases",
+            implementation_phase_doc_alignment,
+        ),
     )
     text_renderer = _tooling_audit_text_renderer_contract()
     checks = checks + (
@@ -6512,6 +6525,74 @@ def _tooling_audit_test_family_contracts(**evidence: dict) -> dict:
         "families": families,
         "family_names": tuple(family["family"] for family in families),
     }
+
+
+def _tooling_audit_phase_doc_alignment(root: Path, implementation_phases: dict) -> dict:
+    docs_text = (root / "docs" / "tooling.md").read_text(encoding="utf-8")
+    phase_heading_matches = tuple(
+        re.finditer(r"^### Phase (\d+): ([^\n]+)$", docs_text, flags=re.M)
+    )
+    documented = tuple(
+        {
+            "number": int(match.group(1)),
+            "title": match.group(2).strip(),
+            "id": f"phase_{match.group(1)}_{_slug_identifier(match.group(2).strip())}",
+        }
+        for match in phase_heading_matches
+    )
+    runtime_phases = tuple(implementation_phases.get("phases", ()))
+    runtime_by_id = {phase.get("id"): phase for phase in runtime_phases}
+    documented_ids = tuple(item["id"] for item in documented)
+    runtime_ids = tuple(implementation_phases.get("phase_ids", ()))
+    missing_headings = tuple(phase_id for phase_id in runtime_ids if phase_id not in documented_ids)
+    extra_headings = tuple(phase_id for phase_id in documented_ids if phase_id not in runtime_ids)
+    title_mismatches = tuple(
+        {
+            "id": item["id"],
+            "documented": item["title"],
+            "runtime": runtime_by_id.get(item["id"], {}).get("title"),
+        }
+        for item in documented
+        if item["id"] in runtime_by_id and runtime_by_id[item["id"]].get("title") != item["title"]
+    )
+    expected_exit_phrases = (
+        "Current behavior documented.",
+        "CLI and tests can load the same semantic model.",
+        "All required diagnostic families have fixtures.",
+        "CI can use command outputs without parsing prose.",
+        "VS Code can edit `.appgen` with live diagnostics and completion.",
+        "Visual edits generate DSL patches.",
+        "Natural-language changes produce linted DSL diffs.",
+    )
+    missing_exit_phrases = tuple(phrase for phrase in expected_exit_phrases if phrase not in docs_text)
+    exit_criteria_label_count = len(re.findall(r"^Exit criteria:$", docs_text, flags=re.M))
+    return {
+        "format": "appgen.implementation-phase-doc-alignment.v1",
+        "ok": not missing_headings
+        and not extra_headings
+        and not title_mismatches
+        and not missing_exit_phrases
+        and exit_criteria_label_count == implementation_phases.get("phase_count"),
+        "phase_heading_count": len(documented),
+        "runtime_phase_count": implementation_phases.get("phase_count"),
+        "phase_ids": runtime_ids,
+        "documented_phase_ids": documented_ids,
+        "missing_phase_heading_count": len(missing_headings),
+        "missing_phase_headings": missing_headings,
+        "extra_phase_heading_count": len(extra_headings),
+        "extra_phase_headings": extra_headings,
+        "title_mismatch_count": len(title_mismatches),
+        "title_mismatches": title_mismatches,
+        "exit_criteria_label_count": exit_criteria_label_count,
+        "expected_exit_phrase_count": len(expected_exit_phrases),
+        "missing_exit_phrase_count": len(missing_exit_phrases),
+        "missing_exit_phrases": missing_exit_phrases,
+        "source_of_truth": "docs/tooling.md#implementation-phases",
+    }
+
+
+def _slug_identifier(title: str) -> str:
+    return re.sub(r"_+", "_", re.sub(r"[^a-z0-9]+", "_", title.lower())).strip("_")
 
 
 def _markdown_heading_anchors(markdown: str) -> tuple[str, ...]:

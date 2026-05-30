@@ -1861,6 +1861,11 @@ evidence. A phase is counted as complete only when every listed exit criterion
 has a current machine-readable proof from the CLI, semantic model, LSP, designer
 sync, migration planner, natural-language planner, release verifier, or fixture
 audit surfaces.
+`appgen.implementation-phase-doc-alignment.v1` is embedded beside it through
+the `implementation_phase_doc_alignment_contracts` gate. It proves the seven
+documented phase headings, titles, and representative exit criteria remain
+aligned with the executable phase IDs and that each phase keeps an `Exit
+criteria:` block in this document.
 
 ### Phase 0: Inventory And Stabilization
 
