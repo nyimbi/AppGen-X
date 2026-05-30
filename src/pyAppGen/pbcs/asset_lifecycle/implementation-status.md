@@ -78,3 +78,10 @@ Not implemented in this slice:
 - Multi-book divergence handling and tax-book-specific schedule policy.
 
 Those can build on the new versioned schedule and idempotent run foundation without changing the AppGen-X event boundary.
+
+## 2026-05-30 Domain Behavior Traceability Slice
+
+- Expanded `tests/test_domain_behavior.py` with route, standalone repository/app, assistant document/CRUD planning, owned-boundary, depreciation preview, and release-evidence checks.
+- Updated `IMPROVE1_TRACEABILITY.md` so all 50 improve1 rows cite `tests/test_domain_behavior.py` as direct asset lifecycle behavior evidence.
+- Updated `improve1_capabilities.py` so every feature execution plan carries the domain behavior test artifact.
+- Validation: `/Volumes/Media/src/pjs/appgen/.venv/bin/pytest src/pyAppGen/pbcs/asset_lifecycle/tests`.

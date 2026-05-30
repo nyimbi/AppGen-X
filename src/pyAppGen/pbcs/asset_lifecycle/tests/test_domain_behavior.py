@@ -4,13 +4,20 @@ from __future__ import annotations
 
 import pytest
 
+from .. import agent
+from .. import release_evidence
+from .. import routes
 from .. import runtime
+from ..repository import AssetLifecycleStandaloneRepository
+from ..repository import standalone_repository_smoke_test
 from ..services import AssetLifecycleService
 from ..services import service_operation_manifest
 from ..ui import asset_lifecycle_form_contracts
 from ..ui import asset_lifecycle_render_workbench
 from ..ui import asset_lifecycle_standalone_workbench_blueprint
 from ..ui import asset_lifecycle_ui_contract
+from ..standalone import asset_lifecycle_standalone_app_smoke
+from ..standalone import standalone_release_snapshot
 from ..ui import asset_lifecycle_wizard_contracts
 
 
@@ -239,6 +246,136 @@ def test_asset_advanced_controls_federation_identity_ui_and_portfolio_are_execut
     assert wizards["ok"] is True
     assert "DepreciationRunWizard" in tuple(wizard["key"] for wizard in wizards["contracts"])
     assert blueprint["ok"] is True
+
+
+
+def test_asset_routes_repository_agent_standalone_and_release_surfaces_are_executable():
+    service = asset_service()
+    register_service_and_schedule(service)
+    service.command_depreciation_runs({"run_id": "dep-run-surface", "period": "2026-02"})
+
+    route_validation = routes.validate_api_route_contracts()
+    route_dispatch = routes.dispatch_route(
+        "POST",
+        "/api/pbc/asset_lifecycle/assets",
+        {"asset": asset_payload("asset-route-001", cost=9000.0)},
+    )
+    standalone_routes = routes.standalone_route_contracts()
+    standalone_seed = routes.dispatch_standalone_route(
+        "POST",
+        "/app/asset-lifecycle/demo-workspace",
+        {"tenant": "tenant_demo"},
+    )
+    skills = agent.agent_skill_manifest()
+    workspace = agent.standalone_agent_workspace_contract()
+    document_plan = agent.document_instruction_plan(
+        "Capitalization packet for CNC equipment with maintenance overhaul evidence.",
+        "Create asset, place in service, revise depreciation schedule, and generate audit proof.",
+    )
+    crud_plan = agent.datastore_crud_plan(
+        "create",
+        table="asset_lifecycle_fixed_asset",
+        payload={"asset_id": "asset-agent", "cost": 12000.0},
+    )
+    blocked_crud = agent.datastore_crud_plan("update", table="gl_core_journal_entry", payload={"journal_id": "bad"})
+    contribution = agent.composed_agent_contribution()
+    depreciation_preview = agent.depreciation_revision_preview(
+        {
+            "asset": {
+                "asset_id": "asset-preview-surface",
+                "cost": 10000.0,
+                "book_value": 10000.0,
+                "residual_value": 1000.0,
+                "useful_life_months": 36,
+                "service_date": "2026-01-01",
+            },
+            "method": "straight_line",
+        }
+    )
+
+    repository = AssetLifecycleStandaloneRepository()
+    try:
+        migrations = repository.apply_migrations()
+        repository.configure_runtime("tenant_asset", CONFIGURATION)
+        for key, value in (
+            ("capitalization_threshold", 2500),
+            ("impairment_indicator_threshold", 0.65),
+            ("physical_verification_interval_days", 365),
+            ("depreciation_batch_size", 500),
+            ("retirement_approval_limit", 10000),
+            ("workbench_limit", 100),
+        ):
+            repository.set_parameter("tenant_asset", key, value)
+        repository.register_rule(
+            "tenant_asset",
+            {
+                "rule_id": "asset-capitalization-policy",
+                "tenant": "tenant_asset",
+                "scope": "capitalization",
+                "threshold": 2500,
+                "controlled_classes": ("manufacturing_equipment",),
+                "status": "active",
+            },
+        )
+        registered = repository.register_asset("tenant_asset", asset_payload("asset-repo-001"))
+        placed = repository.place_asset_in_service("tenant_asset", "asset-repo-001", "2026-01-01")
+        scheduled = repository.build_depreciation_schedule("tenant_asset", "asset-repo-001")
+        dep_run = repository.run_depreciation("tenant_asset", "dep-repo-001", "2026-01")
+        proof = repository.generate_asset_audit_proof("tenant_asset", "asset-repo-001", ("asset_id", "status", "book_value"))
+        agent_run = repository.run_agent_skill(
+            "tenant_asset",
+            "asset_lifecycle.document_instruction_intake",
+            {"document": "capitalization packet", "instructions": "revise depreciation", "scope": "asset"},
+        )
+        workbench = repository.build_workbench("tenant_asset")
+        read_model = repository.read_model("tenant_asset")
+        counts = repository.activity_counts("tenant_asset")
+    finally:
+        repository.close()
+
+    repo_smoke = standalone_repository_smoke_test()
+    standalone_smoke = asset_lifecycle_standalone_app_smoke()
+    release_snapshot = standalone_release_snapshot()
+    release_validation = release_evidence.validate_release_evidence()
+    release_smoke = release_evidence.smoke_test()
+
+    assert route_validation["ok"] is True
+    assert all(contract["event_contract"] == "AppGen-X" for contract in route_validation["contracts"])
+    assert all(contract["stream_engine_picker_visible"] is False for contract in route_validation["contracts"])
+    assert all(contract["shared_table_access"] is False for contract in route_validation["contracts"])
+    assert route_dispatch["ok"] is True
+    assert route_dispatch["result"]["asset"]["status"] == "registered"
+    assert route_dispatch["side_effects"] == ()
+    assert standalone_routes["ok"] is True
+    assert standalone_seed["ok"] is True
+    assert skills["ok"] is True
+    assert workspace["ok"] is True
+    assert document_plan["ok"] is True
+    assert "AssetCapitalizationWizard" in document_plan["wizard_candidates"]
+    assert crud_plan["ok"] is True
+    assert crud_plan["requires_confirmation"] is True
+    assert crud_plan["event_contract"] == "AppGen-X"
+    assert blocked_crud["ok"] is False
+    assert contribution["ok"] is True
+    assert "asset_lifecycle_crud" in contribution["dsl_tools"]
+    assert depreciation_preview["ok"] is True
+    assert set(migrations) >= {"asset_lifecycle_runtime_state", "asset_lifecycle_workbench_read_model"}
+    assert registered["asset"]["asset_id"] == "asset-repo-001"
+    assert placed["asset"]["status"] == "in_service"
+    assert scheduled["schedule"]["version"] == 1
+    assert dep_run["run"]["status"] == "posted"
+    assert proof["ok"] is True
+    assert agent_run["ok"] is True
+    assert workbench["ok"] is True
+    assert read_model["ok"] is True
+    assert counts["forms"] >= 4
+    assert counts["workflows"] >= 3
+    assert counts["agent_sessions"] == 1
+    assert repo_smoke["ok"] is True
+    assert standalone_smoke["ok"] is True
+    assert release_snapshot["ok"] is True
+    assert release_validation["ok"] is True
+    assert release_smoke["ok"] is True
 
 
 def test_asset_events_retry_dead_letter_manifest_and_configuration_guards():
