@@ -3511,6 +3511,24 @@ def _lsp_service_text_renderer_contract() -> dict:
         "hover field total",
     )
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    lines = tuple(line for line in text.splitlines() if line.strip())
+    summary_lines = tuple(line for line in lines if line.startswith("lsp "))
+    source_lines = tuple(line for line in lines if line.startswith("source_of_truth="))
+    completion_lines = tuple(
+        line
+        for line in lines
+        if line.startswith(("completion_coverage ", "completion-missing "))
+    )
+    navigation_lines = tuple(
+        line for line in lines if line.startswith(("definition ", "references "))
+    )
+    formatting_lines = tuple(line for line in lines if line.startswith("formatting "))
+    rename_lines = tuple(line for line in lines if line.startswith("rename "))
+    rename_blocker_lines = tuple(
+        line for line in lines if line.startswith("rename-blocker ")
+    )
+    hover_summary_lines = tuple(line for line in lines if line.startswith("hover_items="))
+    hover_lines = tuple(line for line in lines if line.startswith("hover "))
     return {
         "format": "appgen.lsp-service-text-renderer.v1",
         "ok": not missing and not text.lstrip().startswith("{"),
@@ -3522,6 +3540,18 @@ def _lsp_service_text_renderer_contract() -> dict:
         "required_fragments": required_fragments,
         "missing_fragments": missing,
         "json_fallback": text.lstrip().startswith("{"),
+        "summary_line_count": len(summary_lines),
+        "source_line_count": len(source_lines),
+        "completion_line_count": len(completion_lines),
+        "completion_missing_line_count": sum(
+            1 for line in completion_lines if line.startswith("completion-missing ")
+        ),
+        "navigation_line_count": len(navigation_lines),
+        "formatting_line_count": len(formatting_lines),
+        "rename_line_count": len(rename_lines),
+        "rename_blocker_line_count": len(rename_blocker_lines),
+        "hover_summary_line_count": len(hover_summary_lines),
+        "hover_line_count": len(hover_lines),
         "text_prefix": text[:240],
     }
 

@@ -1117,7 +1117,11 @@ contract format/edit count, and rename status when a rename is requested.
 those editor-service summaries keep diagnostics, completions, actions, symbols,
 source-of-truth, navigation, formatting, hover content as `hover ...`,
 completion coverage gaps as `completion-missing ...`, and rename safety markers
-visible without JSON parsing.
+visible without JSON parsing. The contract also reports summary-line,
+source-line, completion-line, completion-missing-line, navigation-line,
+formatting-line, rename-line, rename-blocker-line, hover-summary-line, and
+hover-line counts so text-mode regressions identify the missing service surface
+directly.
 The JSON service payload also carries `service_counts` with diagnostic,
 completion, required/detected/missing completion-source, hover-content,
 reference, document-symbol, LSP symbol-coverage, code-action, formatting-edit,

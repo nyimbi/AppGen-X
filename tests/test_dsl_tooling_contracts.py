@@ -4905,6 +4905,16 @@ def test_lsp_service_text_renderer_contract_proves_editor_log_markers() -> None:
     assert report["marker_line_count"] >= 11
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
+    assert report["summary_line_count"] == 1
+    assert report["source_line_count"] == 1
+    assert report["completion_line_count"] == 2
+    assert report["completion_missing_line_count"] == 1
+    assert report["navigation_line_count"] == 2
+    assert report["formatting_line_count"] == 1
+    assert report["rename_line_count"] == 1
+    assert report["rename_blocker_line_count"] == 1
+    assert report["hover_summary_line_count"] == 1
+    assert report["hover_line_count"] == 2
     assert report["text_prefix"].startswith(
         "lsp ok: format=appgen.lsp-service.v1 semantic_format=appgen.semantic-model.v1"
     )
