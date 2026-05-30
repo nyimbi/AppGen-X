@@ -26,3 +26,31 @@ def humanitarian_relief_operations_standalone_ui_contract():
 def smoke_test():
     standalone = humanitarian_relief_operations_standalone_ui_contract()
     return {'ok': humanitarian_relief_operations_ui_contract()['ok'] and humanitarian_relief_operations_render_workbench()['ok'] and standalone['ok'], 'side_effects': ()}
+
+
+# Improve1 humanitarian relief UI control extension.
+from .relief_control import improve1_relief_control_contract as humanitarian_relief_operations_improve1_relief_control_contract
+
+_HUMANITARIAN_RELIEF_OPERATIONS_BASE_UI_CONTRACT = humanitarian_relief_operations_ui_contract
+_HUMANITARIAN_RELIEF_OPERATIONS_BASE_RENDER_WORKBENCH = humanitarian_relief_operations_render_workbench
+
+
+def humanitarian_relief_operations_ui_contract():
+    base = dict(_HUMANITARIAN_RELIEF_OPERATIONS_BASE_UI_CONTRACT())
+    relief_control = humanitarian_relief_operations_improve1_relief_control_contract()
+    control_panels = tuple(item['evidence']['ui_surface'] for item in relief_control['capabilities'])
+    service_actions = tuple(item['evidence']['service_api'] for item in relief_control['capabilities'])
+    full_surface = dict(base.get('full_capability_surface', {}))
+    full_surface.update({
+        'relief_control_panels': control_panels,
+        'relief_control_service_actions': service_actions,
+        'relief_control_tables': relief_control['owned_tables'],
+        'relief_control_agent_tools': tuple(f"humanitarian_relief_operations.agent.{item['slug']}" for item in relief_control['capabilities']),
+    })
+    return {**base, 'ok': base.get('ok') is True and relief_control['ok'], 'full_capability_surface': full_surface, 'relief_control_contract': relief_control, 'relief_control_panels': control_panels, 'relief_control_service_actions': service_actions, 'side_effects': ()}
+
+
+def humanitarian_relief_operations_render_workbench():
+    base = dict(_HUMANITARIAN_RELIEF_OPERATIONS_BASE_RENDER_WORKBENCH())
+    relief_control = humanitarian_relief_operations_improve1_relief_control_contract()
+    return {**base, 'ok': base.get('ok') is True and relief_control['ok'], 'relief_control_panels': tuple(item['evidence']['ui_surface'] for item in relief_control['capabilities']), 'relief_control_service_actions': tuple(item['evidence']['service_api'] for item in relief_control['capabilities']), 'agent_tools': tuple(f"humanitarian_relief_operations.agent.{item['slug']}" for item in relief_control['capabilities']), 'side_effects': ()}

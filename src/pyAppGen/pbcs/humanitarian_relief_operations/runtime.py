@@ -267,3 +267,38 @@ def humanitarian_relief_operations_runtime_smoke():
     }
 
 humanitarian_relief_operations_execute_domain_operation = execute_domain_operation
+
+
+# Improve1 humanitarian relief control extension.
+from .relief_control import improve1_relief_control_contract as humanitarian_relief_operations_improve1_relief_control_contract
+
+_HUMANITARIAN_RELIEF_OPERATIONS_BASE_RUNTIME_CAPABILITIES = humanitarian_relief_operations_runtime_capabilities
+_HUMANITARIAN_RELIEF_OPERATIONS_BASE_RELEASE_EVIDENCE = humanitarian_relief_operations_build_release_evidence
+
+
+def humanitarian_relief_operations_build_release_evidence():
+    evidence = dict(_HUMANITARIAN_RELIEF_OPERATIONS_BASE_RELEASE_EVIDENCE())
+    relief_control = humanitarian_relief_operations_improve1_relief_control_contract()
+    checks = tuple(evidence.get('checks', ())) + (
+        {'id': 'improve1_relief_control', 'ok': relief_control['ok']},
+        {'id': 'humanitarian_readiness_release', 'ok': relief_control['capability_count'] == 50 and relief_control['event_contract'] == 'AppGen-X'},
+    )
+    return {**evidence, 'ok': evidence.get('ok') is True and all(check['ok'] for check in checks), 'checks': checks, 'relief_control': relief_control, 'blocking_gaps': tuple(check for check in checks if not check['ok'])}
+
+
+def humanitarian_relief_operations_runtime_capabilities():
+    runtime = dict(_HUMANITARIAN_RELIEF_OPERATIONS_BASE_RUNTIME_CAPABILITIES())
+    relief_control = humanitarian_relief_operations_improve1_relief_control_contract()
+    return {
+        **runtime,
+        'ok': runtime.get('ok') is True and relief_control['ok'],
+        'relief_control': relief_control,
+        'improve1_capabilities': relief_control['capabilities'],
+        'operations': tuple(dict.fromkeys(tuple(runtime.get('operations', ())) + ('improve1_relief_control_contract', 'evaluate_relief_control'))),
+        'owned_tables': tuple(dict.fromkeys(tuple(runtime.get('owned_tables', ())) + tuple(relief_control['owned_tables']))),
+        'allowed_database_backends': relief_control['allowed_database_backends'],
+        'event_contract': relief_control['event_contract'],
+        'required_event_topic': relief_control['required_event_topic'],
+        'stream_engine_picker_visible': False,
+        'side_effects': (),
+    }

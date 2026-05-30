@@ -16,3 +16,10 @@ Implemented as a standalone package-local PBC slice with assessment-to-donor-pac
 ## Known Gaps
 
 - Live mobile sync, payout providers, GIS maps, and donor export systems are represented as side-effect-free contracts, not external integrations.
+
+## Improve1 humanitarian relief control implementation
+
+- Added executable `relief_control.py` covering all 50 improve1 humanitarian relief capabilities with owned-table evidence, required evidence fields, AppGen-X event contract, and PostgreSQL/MySQL/MariaDB datastore boundaries.
+- Exposed the control contract through runtime release evidence, runtime capabilities, release readiness, validation, UI contract, and workbench rendering.
+- Added `tests/test_domain_behavior.py` to prove all 50 capabilities plus negative behavior for assessment verification, duplicate registration, warehouse lot quarantine, distribution reconciliation, referral confidentiality, AI guardrails, validation-only APIs, idempotent field posting, cross-boundary events, and dual-control assistance approvals.
+- Regenerated `IMPROVE1_TRACEABILITY.md` so each row maps feature 1-50 to `relief_control.py`, UI, service/API, package tests, and release evidence.
