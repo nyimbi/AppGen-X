@@ -705,9 +705,10 @@ calculated fields, audit fields, and directives are ordered inside each table
 without reordering top-level declarations. The format write audit reports this
 as `organize_table_body_order` so the release evidence names the applied
 categories instead of only recording byte offsets. It also reports total and
-passing scenario counts, write-mode counts, check-mode counts, and organize
-category counts across dirty-check, clean-check, organize, JSON-write, and
-text-write scenarios.
+passing scenario counts, failing scenario counts, scenario ids, failing
+scenario ids, blocking-gap counts, write-mode counts, check-mode counts, and
+organize category counts across dirty-check, clean-check, organize, JSON-write,
+and text-write scenarios.
 
 ### `appgen validate`
 

@@ -6211,46 +6211,68 @@ table Customer {
         and f"write_path {text_path}" in text_stdout
     )
     scenario_results = (
-        check_exit == 1
-        and check_payload.get("format") == "appgen.format-result.v1"
-        and check_payload.get("changed") is True
-        and check_payload.get("write_requested") is False
-        and check_payload.get("written") is False,
-        clean_check_exit == 0
-        and clean_check_payload.get("format") == "appgen.format-result.v1"
-        and clean_check_payload.get("changed") is False,
-        organize_exit == 0
-        and organize_payload.get("format") == "appgen.format-result.v1"
-        and organize_payload.get("organize") is True
-        and organize_payload.get("idempotent") is True
-        and -1 not in organized_table_index_order
-        and organized_table_index_order == tuple(sorted(organized_table_index_order))
-        and organized_table_body_order
-        == (
-            "identity:id",
-            "business_key:invoice_number",
-            "relationship:customer_id",
-            "editable:subtotal",
-            "calculated:total",
-            "audit:updated_at",
-            "directive:index",
+        (
+            "dirty_check_json",
+            check_exit == 1
+            and check_payload.get("format") == "appgen.format-result.v1"
+            and check_payload.get("changed") is True
+            and check_payload.get("write_requested") is False
+            and check_payload.get("written") is False,
         ),
-        exit_code == 0
-        and payload.get("format") == "appgen.format-result.v1"
-        and payload.get("write_requested") is True
-        and payload.get("written") is True
-        and after == payload.get("text")
-        and after != source,
-        text_exit_code == 0
-        and text_has_report_format
-        and text_has_write_metadata
-        and text_after != source,
+        (
+            "clean_check_json",
+            clean_check_exit == 0
+            and clean_check_payload.get("format") == "appgen.format-result.v1"
+            and clean_check_payload.get("changed") is False,
+        ),
+        (
+            "organize_json",
+            organize_exit == 0
+            and organize_payload.get("format") == "appgen.format-result.v1"
+            and organize_payload.get("organize") is True
+            and organize_payload.get("idempotent") is True
+            and -1 not in organized_table_index_order
+            and organized_table_index_order == tuple(sorted(organized_table_index_order))
+            and organized_table_body_order
+            == (
+                "identity:id",
+                "business_key:invoice_number",
+                "relationship:customer_id",
+                "editable:subtotal",
+                "calculated:total",
+                "audit:updated_at",
+                "directive:index",
+            ),
+        ),
+        (
+            "write_json",
+            exit_code == 0
+            and payload.get("format") == "appgen.format-result.v1"
+            and payload.get("write_requested") is True
+            and payload.get("written") is True
+            and after == payload.get("text")
+            and after != source,
+        ),
+        (
+            "write_text",
+            text_exit_code == 0
+            and text_has_report_format
+            and text_has_write_metadata
+            and text_after != source,
+        ),
     )
+    scenario_ids = tuple(name for name, _ in scenario_results)
+    failing_scenarios = tuple(name for name, ok in scenario_results if not ok)
     return {
         "format": "appgen.format-write-audit.v1",
-        "ok": all(scenario_results),
+        "ok": not failing_scenarios,
         "scenario_count": len(scenario_results),
-        "passing_scenario_count": sum(1 for ok in scenario_results if ok),
+        "passing_scenario_count": sum(1 for _, ok in scenario_results if ok),
+        "failing_scenario_count": len(failing_scenarios),
+        "scenario_ids": scenario_ids,
+        "failing_scenarios": failing_scenarios,
+        "blocking_gap_count": len(failing_scenarios),
+        "blocking_gaps": failing_scenarios,
         "write_mode_count": 2,
         "check_mode_count": 2,
         "organize_category_count": len(organized_table_body_order),

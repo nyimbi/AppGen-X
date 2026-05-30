@@ -5409,6 +5409,17 @@ def test_format_write_audit_covers_json_check_and_text_write_contracts(tmp_path:
     assert audit["ok"] is True
     assert audit["scenario_count"] == 5
     assert audit["passing_scenario_count"] == audit["scenario_count"]
+    assert audit["failing_scenario_count"] == 0
+    assert audit["scenario_ids"] == (
+        "dirty_check_json",
+        "clean_check_json",
+        "organize_json",
+        "write_json",
+        "write_text",
+    )
+    assert audit["failing_scenarios"] == ()
+    assert audit["blocking_gap_count"] == 0
+    assert audit["blocking_gaps"] == ()
     assert audit["write_mode_count"] == 2
     assert audit["check_mode_count"] == 2
     assert audit["organize_category_count"] == 7
