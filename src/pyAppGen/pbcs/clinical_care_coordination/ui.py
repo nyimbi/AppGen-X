@@ -14,6 +14,8 @@ from .domain_depth import DOMAIN_OPERATIONS
 from .domain_depth import DOMAIN_OWNED_TABLES
 from .domain_depth import DOMAIN_PARAMETERS
 from .domain_depth import DOMAIN_RULES
+from .clinical_control import CLINICAL_CONTROL_CAPABILITIES
+from .clinical_control import improve1_clinical_control_contract
 from .domain_depth import domain_capability_surface_contract
 
 
@@ -85,7 +87,7 @@ def clinical_care_coordination_ui_contract() -> dict:
             "operation_actions": DOMAIN_OPERATIONS,
             "rule_editors": DOMAIN_RULES,
             "parameter_editors": DOMAIN_PARAMETERS,
-            "advanced_panels": DOMAIN_ADVANCED_CAPABILITIES,
+            "advanced_panels": DOMAIN_ADVANCED_CAPABILITIES + CLINICAL_CONTROL_CAPABILITIES,
             "table_browsers": DOMAIN_OWNED_TABLES,
             "edge_case_queues": DOMAIN_EDGE_CASES,
             "agent_tools": tuple(f"{PBC_KEY}_skills.{op}" for op in DOMAIN_OPERATIONS),
@@ -96,6 +98,8 @@ def clinical_care_coordination_ui_contract() -> dict:
                 "advanced_intelligence",
                 "release_evidence",
             ),
+            "clinical_control_panels": tuple(f"clinical_control_{capability}" for capability in CLINICAL_CONTROL_CAPABILITIES),
+            "clinical_control_contract": improve1_clinical_control_contract(),
             "coverage": surface["coverage"],
         },
         "side_effects": (),
