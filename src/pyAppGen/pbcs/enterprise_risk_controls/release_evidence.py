@@ -16,6 +16,7 @@ from .events import event_contract_manifest
 from .permissions import permission_manifest
 from .runtime import enterprise_risk_controls_build_schema_contract
 from .runtime import enterprise_risk_controls_build_release_evidence
+from .risk_control import improve1_risk_control_contract
 from .service_contract import build_service_contract
 
 PBC_KEY = "enterprise_risk_controls"
@@ -24,6 +25,7 @@ PACKAGE_DIR = Path(__file__).parent
 
 def build_release_evidence() -> dict:
     runtime_evidence = enterprise_risk_controls_build_release_evidence()
+    risk_control = improve1_risk_control_contract()
     return {
         **runtime_evidence,
         "pbc": PBC_KEY,
@@ -39,6 +41,7 @@ def build_release_evidence() -> dict:
         "wizards": wizards.enterprise_risk_controls_wizard_catalog(),
         "controls": controls.enterprise_risk_controls_control_catalog(),
         "assistant": agent.composed_agent_contribution(),
+        "risk_control": risk_control,
         "docs_present": {
             "README.md": PACKAGE_DIR.joinpath("README.md").exists(),
             "implementation-plan.md": PACKAGE_DIR.joinpath("implementation-plan.md").exists(),
@@ -68,6 +71,7 @@ def release_readiness_manifest() -> dict:
             "wizards",
             "controls",
             "assistant",
+            "risk_control",
         )
         if isinstance(evidence.get(name), dict)
     )
@@ -94,6 +98,7 @@ def release_readiness_manifest() -> dict:
             "wizards",
             "controls",
             "assistant",
+            "risk_control",
         ),
         "docs_present": docs_present,
         "side_effects": (),

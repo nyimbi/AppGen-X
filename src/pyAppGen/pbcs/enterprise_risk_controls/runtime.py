@@ -221,6 +221,8 @@ def enterprise_risk_controls_runtime_capabilities():
 from .domain_depth import domain_depth_contract as enterprise_risk_controls_domain_depth_contract
 from .domain_depth import domain_depth_smoke_test as enterprise_risk_controls_domain_depth_smoke_test
 from .domain_depth import execute_domain_operation as enterprise_risk_controls_execute_domain_operation
+from .risk_control import RISK_CONTROL_CAPABILITIES
+from .risk_control import improve1_risk_control_contract
 
 _ENTERPRISE_RISK_CONTROLS_BASE_BUILD_RELEASE_EVIDENCE = enterprise_risk_controls_build_release_evidence
 _ENTERPRISE_RISK_CONTROLS_BASE_RUNTIME_CAPABILITIES = enterprise_risk_controls_runtime_capabilities
@@ -229,28 +231,33 @@ _ENTERPRISE_RISK_CONTROLS_BASE_RUNTIME_CAPABILITIES = enterprise_risk_controls_r
 def enterprise_risk_controls_build_release_evidence():
     evidence = dict(_ENTERPRISE_RISK_CONTROLS_BASE_BUILD_RELEASE_EVIDENCE())
     domain = enterprise_risk_controls_domain_depth_contract()
+    risk_control = improve1_risk_control_contract()
     checks = tuple(evidence.get('checks', ())) + (
         {'id': 'world_class_domain_depth', 'ok': domain['ok']},
         {'id': 'owned_domain_table_depth', 'ok': len(domain['owned_tables']) >= domain['minimum_owned_domain_tables']},
         {'id': 'domain_operation_depth', 'ok': domain['operation_count'] >= domain['minimum_domain_operations']},
         {'id': 'rules_parameters_configuration_depth', 'ok': len(domain['rules']) >= 6 and len(domain['parameters']) >= 6},
         {'id': 'appgen_x_boundary', 'ok': domain['event_contract'] == 'AppGen-X' and domain['shared_table_access'] is False},
+        {'id': 'improve1_risk_control_contract', 'ok': risk_control['ok']},
     )
-    return {**evidence, 'ok': evidence.get('ok') is True and all(check['ok'] for check in checks), 'checks': checks, 'world_class_domain_depth': domain, 'blocking_gaps': tuple(check for check in checks if not check['ok'])}
+    return {**evidence, 'ok': evidence.get('ok') is True and all(check['ok'] for check in checks), 'checks': checks, 'world_class_domain_depth': domain, 'risk_control': risk_control, 'blocking_gaps': tuple(check for check in checks if not check['ok'])}
 
 
 def enterprise_risk_controls_runtime_capabilities():
     runtime = dict(_ENTERPRISE_RISK_CONTROLS_BASE_RUNTIME_CAPABILITIES())
     domain = enterprise_risk_controls_domain_depth_contract()
     smoke = enterprise_risk_controls_domain_depth_smoke_test()
+    risk_control = improve1_risk_control_contract()
     return {
         **runtime,
-        'ok': runtime.get('ok') is True and smoke['ok'],
+        'ok': runtime.get('ok') is True and smoke['ok'] and risk_control['ok'],
         'world_class_domain_depth': domain,
         'domain_depth_smoke': smoke,
-        'operations': tuple(runtime.get('operations', ())) + tuple(domain['operations']) + ('domain_depth_contract', 'execute_domain_operation'),
+        'risk_control': risk_control,
+        'operations': tuple(runtime.get('operations', ())) + tuple(domain['operations']) + ('domain_depth_contract', 'execute_domain_operation', 'improve1_risk_control_contract'),
         'owned_tables': tuple(dict.fromkeys(tuple(runtime.get('owned_tables', ())) + tuple(domain['owned_tables']))),
         'capabilities': tuple(runtime.get('capabilities', ())),
         'domain_advanced_capabilities': tuple(domain['advanced_capabilities']),
+        'improve1_risk_control_capabilities': tuple(capability.slug for capability in RISK_CONTROL_CAPABILITIES),
         'side_effects': (),
     }

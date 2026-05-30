@@ -10,6 +10,7 @@ from .runtime import ENTERPRISE_RISK_CONTROLS_ALLOWED_DATABASE_BACKENDS
 from .runtime import ENTERPRISE_RISK_CONTROLS_OWNED_TABLES
 from .runtime import ENTERPRISE_RISK_CONTROLS_REQUIRED_EVENT_TOPIC
 from .runtime import ENTERPRISE_RISK_CONTROLS_RUNTIME_TABLES
+from .risk_control import improve1_risk_control_contract
 from .wizards import enterprise_risk_controls_wizard_catalog
 
 ENTERPRISE_RISK_CONTROLS_UI_FRAGMENT_KEYS = (
@@ -161,6 +162,10 @@ def enterprise_risk_controls_ui_contract() -> dict:
             "outbox_status": "visible",
             "inbox_status": "visible",
             "dead_letter_status": "visible",
+        },
+        "risk_control_contract": improve1_risk_control_contract(),
+        "full_capability_surface": {
+            "risk_control_panels": tuple(item["evidence"]["ui_surface"] for item in improve1_risk_control_contract()["capabilities"]),
         },
         "workbench_binding_evidence": {
             "owned_tables": ENTERPRISE_RISK_CONTROLS_OWNED_TABLES,
