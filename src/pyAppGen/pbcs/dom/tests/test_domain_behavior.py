@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import pytest
 
+from .. import agent
+from .. import release_evidence
+from .. import routes
 from .. import runtime
+from .. import standalone
 from .. import ui
 from ..services import DomStandaloneService
 from ..services import service_operation_manifest
@@ -252,3 +256,71 @@ def test_dom_rejects_nonstandard_backends_and_user_eventing_pickers():
                 "stream_engine": "user_selected_engine",
             },
         )
+
+
+def test_dom_routes_repository_agent_standalone_and_release_surfaces_are_executable():
+    route_validation = routes.validate_api_route_contracts()
+    descriptor_dispatch = routes.dispatch_route(
+        "POST",
+        "/dom/orders",
+        {"tenant": TENANT, "order_id": "order_route_001"},
+    )
+    standalone_service = _service()
+    standalone_dispatch = routes.dispatch_standalone_route(
+        standalone_service,
+        "POST",
+        "/dom/orders",
+        _order_payload("order_route_standalone_001"),
+    )
+    workbench_dispatch = routes.dispatch_standalone_route(
+        standalone_service,
+        "GET",
+        "/dom/workbench",
+        {"tenant": TENANT},
+    )
+
+    assert route_validation["ok"] is True
+    assert all(contract["event_contract"] == "AppGen-X" for contract in route_validation["contracts"])
+    assert all(contract["stream_engine_picker_visible"] is False for contract in route_validation["contracts"])
+    assert all(contract["shared_table_access"] is False for contract in route_validation["contracts"])
+    assert descriptor_dispatch["ok"] is True
+    assert descriptor_dispatch["result"]["outbox_table"] == "dom_appgen_outbox_event"
+    assert standalone_dispatch["ok"] is True
+    assert workbench_dispatch["ok"] is True
+
+    skills = agent.agent_skill_manifest()
+    chatbot = agent.chatbot_interface_contract()
+    document_plan = agent.document_instruction_plan(
+        "Order order_agent_001 customer cust_dom_001 channel web destination NBO amount 330 sku_dom_1 x2 @120",
+        "create the order, validate it, and prepare fulfillment planning",
+    )
+    create_plan = agent.datastore_crud_plan(
+        "create",
+        "dom_sales_order",
+        {"order_id": "order_agent_001", "customer_id": CUSTOMER_ID},
+    )
+    blocked_plan = agent.datastore_crud_plan("delete", "inventory_positioning_stock_balance", {})
+    contribution = agent.composed_agent_contribution()
+
+    assert skills["ok"] is True
+    assert chatbot["ok"] is True
+    assert document_plan["ok"] is True
+    assert document_plan["mutation_plan"]["ok"] is True
+    assert create_plan["ok"] is True and create_plan["requires_confirmation"] is True
+    assert blocked_plan["ok"] is False
+    assert contribution["ok"] is True
+    assert "dom_crud" in contribution["dsl_tools"]
+
+    smoke = standalone.standalone_smoke_test()
+    manifest = standalone.standalone_manifest()
+    release_validation = release_evidence.validate_release_evidence()
+    release_smoke = release_evidence.smoke_test()
+
+    assert manifest["ok"] is True
+    assert manifest["app_class"] == "DomStandaloneApplication"
+    assert smoke["ok"] is True
+    assert smoke["repository"]["dashboard"]["counts"]["orders"] >= 2
+    assert smoke["read_models"]["orders"]
+    assert release_validation["ok"] is True
+    assert release_smoke["ok"] is True
+    assert release_smoke["evidence"]["service"]["shared_table_access"] is False
