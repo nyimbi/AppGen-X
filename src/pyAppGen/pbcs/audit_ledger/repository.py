@@ -521,7 +521,7 @@ class AuditLedgerRepository:
     def _replace_rows(self, table: str, columns: tuple[str, ...], rows: list[dict]) -> None:
         self.connection.execute(f"DELETE FROM {table}")
         placeholders = ", ".join("?" for _ in columns)
-        sql = f"INSERT INTO {table} ({', '.join(columns)}) VALUES ({placeholders})"
+        sql = f"INSERT OR REPLACE INTO {table} ({', '.join(columns)}) VALUES ({placeholders})"
         for row in rows:
             self.connection.execute(sql, tuple(row[column] for column in columns))
 
@@ -890,7 +890,7 @@ class AuditLedgerRepository:
                     "event_type": item["event_type"],
                     "idempotency_key": item["idempotency_key"],
                     "attempts": int(item["attempts"]),
-                    "status": item["status"],
+                    "status": state.get("handled_events", {}).get(item["idempotency_key"], {}).get("status", item["status"]),
                     "received_at": item["received_at"],
                     "payload_json": _json_dump(item.get("payload", {})),
                 }
