@@ -8543,7 +8543,60 @@ def _tooling_audit_lsp_rename_cli(tmp: Path, source: str) -> dict:
         and rename.get("token") == "SubmitInvoice"
         and rename.get("new_name") == "PostInvoice"
         and "PostInvoice" in patched_text
+        and rename.get("occurrence_count", 0) >= 2
+        and rename.get("lexical_scope") == "code_identifiers"
         and rename.get("migration_preview", {}).get("format") == "appgen.migration-plan.v1"
+    )
+
+    lexical_source = """
+app RenameScope { targets: web }
+table Invoice { id: int pk }
+view InvoiceForm for Invoice {
+  Main: id
+  on Save -> SubmitInvoice
+}
+operation SubmitInvoice {
+  draft -> done
+}
+audit RenameAudit {
+  evidence: "SubmitInvoice"
+}
+// SubmitInvoice should remain in this comment
+"""
+    lexical_path = tmp / "lsp-rename-lexical.appgen"
+    lexical_path.write_text(lexical_source, encoding="utf-8")
+    lexical_position = _tooling_lsp_position(lexical_source, "SubmitInvoice {\n")
+    lexical_position_arg = f"{lexical_position['line']}:{lexical_position['character']}"
+    lexical_output = io.StringIO()
+    with contextlib.redirect_stdout(lexical_output):
+        lexical_exit = dsl_tooling_cli(
+            (
+                "lsp",
+                str(lexical_path),
+                "--position",
+                lexical_position_arg,
+                "--rename",
+                "PostInvoice",
+                "--json",
+            )
+        )
+    try:
+        lexical_payload = json.loads(lexical_output.getvalue())
+    except json.JSONDecodeError:
+        lexical_payload = {}
+    lexical_rename = lexical_payload.get("rename", {})
+    lexical_changes = lexical_rename.get("workspace_edit", {}).get("changes", {}).get(str(lexical_path), ())
+    lexical_patched_text = lexical_changes[0].get("newText", "") if lexical_changes else ""
+    lexical_scope_ok = (
+        lexical_exit == 0
+        and lexical_payload.get("format") == "appgen.lsp-service.v1"
+        and lexical_rename.get("format") == "appgen.lsp-rename.v1"
+        and lexical_rename.get("ok") is True
+        and lexical_rename.get("occurrence_count") == 2
+        and "on Save -> PostInvoice" in lexical_patched_text
+        and "operation PostInvoice" in lexical_patched_text
+        and 'evidence: "SubmitInvoice"' in lexical_patched_text
+        and "// SubmitInvoice should remain in this comment" in lexical_patched_text
     )
 
     risk_source = """
@@ -8629,9 +8682,9 @@ view InvoiceForm for Invoice {
 
     return {
         "format": "appgen.lsp-rename-cli-audit.v1",
-        "ok": safe_ok and blocked_ok and blocked_text_ok,
-        "scenario_count": 3,
-        "passing_scenario_count": sum(1 for ok in (safe_ok, blocked_ok, blocked_text_ok) if ok),
+        "ok": safe_ok and lexical_scope_ok and blocked_ok and blocked_text_ok,
+        "scenario_count": 4,
+        "passing_scenario_count": sum(1 for ok in (safe_ok, lexical_scope_ok, blocked_ok, blocked_text_ok) if ok),
         "blocked_code_count": len(blocked_codes),
         "blocked_fix_count": len(blocked_fixes),
         "exit_code": exit_code,
@@ -8639,10 +8692,16 @@ view InvoiceForm for Invoice {
         "rename_format": rename.get("format"),
         "token": rename.get("token"),
         "new_name": rename.get("new_name"),
+        "occurrence_count": rename.get("occurrence_count"),
+        "lexical_scope": rename.get("lexical_scope"),
         "position": position_arg,
         "changed": bool(file_changes),
         "migration_format": rename.get("migration_preview", {}).get("format"),
         "safe_ok": safe_ok,
+        "lexical_scope_ok": lexical_scope_ok,
+        "lexical_occurrence_count": lexical_rename.get("occurrence_count"),
+        "lexical_string_preserved": 'evidence: "SubmitInvoice"' in lexical_patched_text,
+        "lexical_comment_preserved": "// SubmitInvoice should remain in this comment" in lexical_patched_text,
         "blocked_ok": blocked_ok,
         "blocked_exit_code": risk_exit,
         "blocked_payload_format": risk_payload.get("format"),
@@ -13024,6 +13083,16 @@ def lsp_rename_dsl(
                 _spec_diagnostic(source, "AGX0100", "error", "Rename requires a valid identifier."),
             ),
         }
+    if new_name in CORE_KEYWORDS:
+        return {
+            "format": "appgen.lsp-rename.v1",
+            "ok": False,
+            "token": token,
+            "new_name": new_name,
+            "diagnostics": (
+                _spec_diagnostic(source, "AGX0100", "error", f"Rename target is a reserved keyword: {new_name}"),
+            ),
+        }
     symbol = _lsp_symbol_for_token(source, token, source_name=source_name)
     if not symbol:
         return {
@@ -13034,7 +13103,7 @@ def lsp_rename_dsl(
                 _spec_diagnostic(source, "AGX0100", "error", f"Cannot rename unknown symbol: {token}"),
             ),
         }
-    new_text = re.sub(rf"\b{re.escape(token)}\b", new_name, source)
+    new_text, occurrence_count = _replace_identifier_occurrences(source, token, new_name)
     lint = lint_report_dsl(new_text, source_name=source_name)
     migration = migration_plan_dsl(source, new_text, previous_name=source_name, current_name=source_name)
     blockers = _lsp_rename_blocking_diagnostics(source, migration)
@@ -13046,6 +13115,8 @@ def lsp_rename_dsl(
         "symbol": symbol,
         "blocked": bool(blockers),
         "blockers": blockers,
+        "occurrence_count": occurrence_count,
+        "lexical_scope": "code_identifiers",
         "workspace_edit": {
             "changes": {
                 source_name or "memory://appgen": (
@@ -13080,10 +13151,13 @@ def lsp_rename_dsl_documents(
     for uri, document_source in documents.items():
         if not re.search(rf"\b{re.escape(token)}\b", document_source):
             continue
+        document_new_text, _ = _replace_identifier_occurrences(document_source, token, str(new_name))
+        if document_new_text == document_source:
+            continue
         changes[uri] = (
             {
                 "range": _lsp_full_document_range(document_source),
-                "newText": re.sub(rf"\b{re.escape(token)}\b", str(new_name), document_source),
+                "newText": document_new_text,
             },
         )
     if not changes:
@@ -13095,6 +13169,74 @@ def lsp_rename_dsl_documents(
         "workspace_documents_considered": tuple(documents),
         "workspace_documents_changed": tuple(changes),
     }
+
+
+def _replace_identifier_occurrences(source: str, token: str, new_name: str) -> tuple[str, int]:
+    """Replace identifier tokens in code while preserving comments and strings."""
+    if not token:
+        return source or "", 0
+    text = source or ""
+    pieces: list[str] = []
+    count = 0
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if text.startswith("//", index):
+            end = text.find("\n", index)
+            if end < 0:
+                pieces.append(text[index:])
+                break
+            pieces.append(text[index:end])
+            index = end
+            continue
+        if char == "#":
+            end = text.find("\n", index)
+            if end < 0:
+                pieces.append(text[index:])
+                break
+            pieces.append(text[index:end])
+            index = end
+            continue
+        if text.startswith("/*", index):
+            end = text.find("*/", index + 2)
+            if end < 0:
+                pieces.append(text[index:])
+                break
+            pieces.append(text[index : end + 2])
+            index = end + 2
+            continue
+        if char in {"'", '"'}:
+            quote = char
+            start = index
+            index += 1
+            escaped = False
+            while index < len(text):
+                current = text[index]
+                if escaped:
+                    escaped = False
+                elif current == "\\":
+                    escaped = True
+                elif current == quote:
+                    index += 1
+                    break
+                index += 1
+            pieces.append(text[start:index])
+            continue
+        if char == "_" or char.isalpha():
+            start = index
+            index += 1
+            while index < len(text) and (text[index] == "_" or text[index].isalnum()):
+                index += 1
+            word = text[start:index]
+            if word == token:
+                pieces.append(new_name)
+                count += 1
+            else:
+                pieces.append(word)
+            continue
+        pieces.append(char)
+        index += 1
+    return "".join(pieces), count
 
 
 def _lsp_full_document_range(source: str) -> dict:

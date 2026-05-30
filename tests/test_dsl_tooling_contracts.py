@@ -1625,6 +1625,40 @@ view InvoiceForm for Invoice {
     assert "add_rename_hint" in {fix["id"] for item in report["rename"]["blockers"] for fix in item["fixes"]}
 
 
+def test_lsp_rename_preserves_comments_and_string_literals() -> None:
+    source = """
+app RenameScope { targets: web }
+table Invoice { id: int pk }
+view InvoiceForm for Invoice {
+  Main: id
+  on Save -> SubmitInvoice
+}
+operation SubmitInvoice {
+  draft -> done
+}
+audit RenameAudit {
+  evidence: "SubmitInvoice"
+}
+// SubmitInvoice should remain in this comment
+"""
+
+    report = lsp_service_dsl(
+        source,
+        source_name="rename-scope.appgen",
+        position=_position_of(source, "SubmitInvoice {\n"),
+        rename_to="PostInvoice",
+    )
+    change = report["rename"]["workspace_edit"]["changes"]["rename-scope.appgen"][0]["newText"]
+
+    assert report["rename"]["ok"] is True
+    assert report["rename"]["lexical_scope"] == "code_identifiers"
+    assert report["rename"]["occurrence_count"] == 2
+    assert "on Save -> PostInvoice" in change
+    assert "operation PostInvoice" in change
+    assert 'evidence: "SubmitInvoice"' in change
+    assert "// SubmitInvoice should remain in this comment" in change
+
+
 def test_lsp_service_exposes_code_action_for_missing_handler_target() -> None:
     source = """
     app Bad { targets: web }
@@ -1996,16 +2030,22 @@ def test_lsp_rename_cli_audit_covers_safe_and_blocked_renames(tmp_path: Path) ->
 
     assert report["format"] == "appgen.lsp-rename-cli-audit.v1"
     assert report["ok"] is True
-    assert report["scenario_count"] == 3
-    assert report["passing_scenario_count"] == 3
+    assert report["scenario_count"] == 4
+    assert report["passing_scenario_count"] == 4
     assert report["blocked_code_count"] >= 1
     assert report["blocked_fix_count"] >= 1
     assert report["safe_ok"] is True
     assert report["rename_format"] == "appgen.lsp-rename.v1"
     assert report["token"] == "SubmitInvoice"
     assert report["new_name"] == "PostInvoice"
+    assert report["lexical_scope"] == "code_identifiers"
+    assert report["occurrence_count"] >= 2
     assert report["changed"] is True
     assert report["migration_format"] == "appgen.migration-plan.v1"
+    assert report["lexical_scope_ok"] is True
+    assert report["lexical_occurrence_count"] == 2
+    assert report["lexical_string_preserved"] is True
+    assert report["lexical_comment_preserved"] is True
     assert report["blocked_ok"] is True
     assert report["blocked_exit_code"] == 0
     assert report["blocked_rename_format"] == "appgen.lsp-rename.v1"
@@ -4563,6 +4603,10 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert lsp_check["detail"]["rename_cli"]["rename_format"] == "appgen.lsp-rename.v1"
     assert lsp_check["detail"]["rename_cli"]["token"] == "SubmitInvoice"
     assert lsp_check["detail"]["rename_cli"]["new_name"] == "PostInvoice"
+    assert lsp_check["detail"]["rename_cli"]["lexical_scope"] == "code_identifiers"
+    assert lsp_check["detail"]["rename_cli"]["lexical_scope_ok"] is True
+    assert lsp_check["detail"]["rename_cli"]["lexical_string_preserved"] is True
+    assert lsp_check["detail"]["rename_cli"]["lexical_comment_preserved"] is True
     assert lsp_check["detail"]["rename_cli"]["changed"] is True
     assert lsp_check["detail"]["rename_cli"]["migration_format"] == "appgen.migration-plan.v1"
     assert lsp_check["detail"]["rename_cli"]["safe_ok"] is True

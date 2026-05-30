@@ -1234,7 +1234,10 @@ migration-preview as `migration_format=...`, and whether that migration preview
 requires explicit approval. When a rename is blocked, text output also prints
 each blocker code and available fix id, including `AGX1101` and
 `add_rename_hint`, so agents and editor logs can surface the exact safe next
-step without parsing JSON.
+step without parsing JSON. Rename edits operate on code identifiers, not raw
+text: comments and string literals must remain unchanged, and the rename report
+must expose the lexical scope plus occurrence counts so editors and agents can
+distinguish a symbol refactor from a broad textual replacement.
 
 ### Capabilities
 
@@ -1291,7 +1294,10 @@ candidate workspace edit and migration preview, but `textDocument/rename`
 returns `ok: false` with an `AGX1101` blocker when the preview requires
 explicit migration approval, such as destructive relationship changes. The
 blocker includes an `add_rename_hint` fix suggestion so agents and IDEs can ask
-for an explicit migration decision before applying the edit.
+for an explicit migration decision before applying the edit. The
+`appgen.lsp-rename-cli-audit.v1` gate also exercises lexical-scope safety by
+renaming a handler target while proving matching names in comments and string
+literals are preserved.
 
 ### Completion Sources
 
