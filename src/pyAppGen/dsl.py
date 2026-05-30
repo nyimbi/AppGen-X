@@ -8114,6 +8114,153 @@ def _tooling_audit_lsp_json_rpc(source: str, *, broken_handler_source: str) -> d
         result = responses[0].get("result") if responses else None
         checks.append(_release_check(name, bool(responses) and predicate(result)))
 
+    customer_workspace_uri = "memory://workspace-customer.appgen"
+    invoice_workspace_uri = "memory://workspace-invoice.appgen"
+    operation_workspace_uri = "memory://workspace-operation.appgen"
+    form_workspace_uri = "memory://workspace-form.appgen"
+    customer_workspace_source = """
+app CustomerWorkspace { targets: web }
+table WorkspaceCustomer { id: int pk; name: string }
+"""
+    invoice_workspace_source = """
+app InvoiceWorkspace { targets: web }
+table Invoice { id: int pk; customer_id: int -> WorkspaceCustomer.id }
+"""
+    operation_workspace_source = """
+app OperationWorkspace { targets: web }
+table Invoice { id: int pk }
+operation SubmitInvoice { draft -> done }
+"""
+    form_workspace_source = """
+app FormWorkspace { targets: web }
+table Invoice { id: int pk }
+view InvoiceForm for Invoice {
+  Main: id
+  on Save -> SubmitInvoice
+}
+"""
+
+    def workspace_position(source_text: str, marker: str, offset: int = 0) -> dict:
+        index = source_text.index(marker) + offset
+        return {
+            "line": source_text.count("\n", 0, index),
+            "character": index - source_text.rfind("\n", 0, index) - 1,
+        }
+
+    for workspace_uri, workspace_source in (
+        (customer_workspace_uri, customer_workspace_source),
+        (invoice_workspace_uri, invoice_workspace_source),
+        (operation_workspace_uri, operation_workspace_source),
+        (form_workspace_uri, form_workspace_source),
+    ):
+        lsp_server_handle_message(
+            {
+                "jsonrpc": "2.0",
+                "method": "textDocument/didOpen",
+                "params": {
+                    "textDocument": {
+                        "uri": workspace_uri,
+                        "languageId": "appgen",
+                        "version": 1,
+                        "text": workspace_source,
+                    }
+                },
+            },
+            documents,
+        )
+    workspace_definition_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 51,
+            "method": "textDocument/definition",
+            "params": {
+                "textDocument": {"uri": invoice_workspace_uri},
+                "position": workspace_position(invoice_workspace_source, "WorkspaceCustomer.id"),
+            },
+        },
+        documents,
+    )
+    workspace_reference_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 52,
+            "method": "textDocument/references",
+            "params": {
+                "textDocument": {"uri": invoice_workspace_uri},
+                "position": workspace_position(invoice_workspace_source, "WorkspaceCustomer.id"),
+            },
+        },
+        documents,
+    )
+    workspace_completion_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 53,
+            "method": "textDocument/completion",
+            "params": {
+                "textDocument": {"uri": invoice_workspace_uri},
+                "position": workspace_position(invoice_workspace_source, "WorkspaceCustomer.id"),
+            },
+        },
+        documents,
+    )
+    workspace_symbol_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 54,
+            "method": "workspace/symbol",
+            "params": {"query": "WorkspaceCustomer"},
+        },
+        documents,
+    )
+    workspace_rename_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 55,
+            "method": "textDocument/rename",
+            "params": {
+                "textDocument": {"uri": operation_workspace_uri},
+                "position": workspace_position(operation_workspace_source, "SubmitInvoice"),
+                "newName": "PostInvoice",
+            },
+        },
+        documents,
+    )
+    workspace_definition_result = (
+        workspace_definition_responses[0].get("result", {}) if workspace_definition_responses else {}
+    )
+    workspace_reference_uris = {
+        item.get("uri") for item in (workspace_reference_responses[0].get("result", ()) if workspace_reference_responses else ())
+    }
+    workspace_completion_items = (
+        workspace_completion_responses[0].get("result", {}).get("items", ())
+        if workspace_completion_responses
+        else ()
+    )
+    workspace_symbol_items = workspace_symbol_responses[0].get("result", ()) if workspace_symbol_responses else ()
+    workspace_rename_changes = (
+        workspace_rename_responses[0].get("result", {}).get("changes", {}) if workspace_rename_responses else {}
+    )
+    checks.append(
+        _release_check(
+            "workspace_document_scan_and_rename",
+            workspace_definition_result.get("uri") == customer_workspace_uri
+            and {customer_workspace_uri, invoice_workspace_uri} <= workspace_reference_uris
+            and any(
+                item.get("label") == "WorkspaceCustomer" and item.get("data", {}).get("source") == "workspace_symbols"
+                for item in workspace_completion_items
+            )
+            and any(
+                item.get("name") == "WorkspaceCustomer"
+                and item.get("location", {}).get("uri") == customer_workspace_uri
+                for item in workspace_symbol_items
+            )
+            and {operation_workspace_uri, form_workspace_uri} <= set(workspace_rename_changes)
+            and "operation PostInvoice" in workspace_rename_changes[operation_workspace_uri][0].get("newText", "")
+            and "on Save -> PostInvoice" in workspace_rename_changes[form_workspace_uri][0].get("newText", ""),
+        )
+    )
+
     completion_context_uri = "memory://completion-context.appgen"
     completion_context_source = """
 app CompletionContext { targets: web, mobile, desktop }

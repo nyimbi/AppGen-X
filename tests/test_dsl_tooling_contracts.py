@@ -1667,6 +1667,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     assert "completion_context_filtering" in {check["check"] for check in audit["checks"]}
     assert "hover_relationship_lookup_depth" in {check["check"] for check in audit["checks"]}
     assert "hover_handler_target_depth" in {check["check"] for check in audit["checks"]}
+    assert "workspace_document_scan_and_rename" in {check["check"] for check in audit["checks"]}
     assert capabilities["completionProvider"]["triggerCharacters"]
     assert capabilities["hoverProvider"] is True
     assert capabilities["definitionProvider"] is True
@@ -5160,6 +5161,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "completion_context_filtering",
         "hover_relationship_lookup_depth",
         "hover_handler_target_depth",
+        "workspace_document_scan_and_rename",
         "enterprise_definition_context",
         "lexical_reference_scope",
         "code_action_request",

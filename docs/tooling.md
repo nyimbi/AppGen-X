@@ -1186,7 +1186,10 @@ missing-provider, request-check, passing-request-check, code-action,
 formatting-edit, and blocking-gap counts plus provider names, missing provider
 names, and request-check ids so release evidence proves the language server
 surface is broad enough for editor and agent workflows rather than merely
-returning an initialize response.
+returning an initialize response. The audit also checks
+`workspace_document_scan_and_rename`, which opens multiple DSL buffers and
+proves definition, references, completion, workspace symbol, and rename
+requests resolve across open documents without concatenating source files.
 The stdio audit reports request-message, response, id-response, notification,
 method, diagnostic-publication, total-message, notification-message,
 expected-id, missing-response-id, completion-response, workspace-symbol-response,
