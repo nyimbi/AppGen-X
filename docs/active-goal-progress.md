@@ -4025,3 +4025,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   aggregate tooling audit (`1 passed`, with the known active-PBC
   `datetime.utcnow()` warnings only), scoped diff whitespace check, and
   restricted-name scan outside archive, Git internals, and active PBC paths.
+- Current lint text audit hardening pass replaces generic lint text line-count
+  acceptance with named evidence for lint release logs. `appgen.lint-text-
+  renderer.v1` now proves required and emitted source files, text surfaces,
+  embedded lint/migration contract formats, source modes, migration backends,
+  approval markers, exact stage-count markers, stage names, migration families,
+  diagnostic codes, and diagnostic severities. The release text aggregate gate
+  was also tightened to use the named release fields from the prior slice.
+  Verification passed: Python compile for the touched DSL and tests, focused
+  lint text renderer test (`1 passed`), focused release text renderer test
+  (`1 passed`), aggregate tooling audit (`1 passed`, with the known active-PBC
+  `datetime.utcnow()` warnings only), scoped diff whitespace check, and
+  restricted-name scan outside archive, Git internals, and active PBC paths.

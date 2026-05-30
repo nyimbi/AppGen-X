@@ -6797,6 +6797,36 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert lint_contract_check["detail"]["text_renderer"]["missing_source_file_count"] == 0
     assert lint_contract_check["detail"]["text_renderer"]["missing_source_files"] == ()
+    assert lint_contract_check["detail"]["text_renderer"]["emitted_text_surfaces"] == (
+        lint_contract_check["detail"]["text_renderer"]["required_text_surfaces"]
+    )
+    assert lint_contract_check["detail"]["text_renderer"]["missing_text_surface_count"] == 0
+    assert lint_contract_check["detail"]["text_renderer"]["missing_text_surfaces"] == ()
+    assert lint_contract_check["detail"]["text_renderer"]["emitted_contract_formats"] == (
+        lint_contract_check["detail"]["text_renderer"]["required_contract_formats"]
+    )
+    assert lint_contract_check["detail"]["text_renderer"]["missing_contract_format_count"] == 0
+    assert lint_contract_check["detail"]["text_renderer"]["missing_contract_formats"] == ()
+    assert lint_contract_check["detail"]["text_renderer"]["emitted_source_modes"] == (
+        lint_contract_check["detail"]["text_renderer"]["required_source_modes"]
+    )
+    assert lint_contract_check["detail"]["text_renderer"]["missing_source_mode_count"] == 0
+    assert lint_contract_check["detail"]["text_renderer"]["missing_source_modes"] == ()
+    assert lint_contract_check["detail"]["text_renderer"]["emitted_migration_backends"] == (
+        lint_contract_check["detail"]["text_renderer"]["required_migration_backends"]
+    )
+    assert lint_contract_check["detail"]["text_renderer"]["missing_migration_backend_count"] == 0
+    assert lint_contract_check["detail"]["text_renderer"]["missing_migration_backends"] == ()
+    assert lint_contract_check["detail"]["text_renderer"]["emitted_approval_values"] == (
+        lint_contract_check["detail"]["text_renderer"]["required_approval_values"]
+    )
+    assert lint_contract_check["detail"]["text_renderer"]["missing_approval_value_count"] == 0
+    assert lint_contract_check["detail"]["text_renderer"]["missing_approval_values"] == ()
+    assert lint_contract_check["detail"]["text_renderer"]["emitted_stage_counts"] == (
+        lint_contract_check["detail"]["text_renderer"]["required_stage_counts"]
+    )
+    assert lint_contract_check["detail"]["text_renderer"]["missing_stage_count_count"] == 0
+    assert lint_contract_check["detail"]["text_renderer"]["missing_stage_counts"] == ()
     assert lint_contract_check["detail"]["text_renderer"]["emitted_stage_names"] == (
         lint_contract_check["detail"]["text_renderer"]["required_stage_names"]
     )
@@ -8050,6 +8080,37 @@ def test_lint_text_renderer_contract_proves_stage_and_migration_log_markers() ->
     assert report["emitted_source_files"] == report["required_source_files"]
     assert report["missing_source_file_count"] == 0
     assert report["missing_source_files"] == ()
+    assert report["required_text_surfaces"] == (
+        "source_summary",
+        "source_files",
+        "stage_counts",
+        "migration_preview",
+        "migration_detected",
+        "diagnostics",
+    )
+    assert report["emitted_text_surfaces"] == report["required_text_surfaces"]
+    assert report["missing_text_surface_count"] == 0
+    assert report["missing_text_surfaces"] == ()
+    assert report["required_contract_formats"] == ("appgen.lint-report.v1", "appgen.migration-plan.v1")
+    assert report["emitted_contract_formats"] == report["required_contract_formats"]
+    assert report["missing_contract_format_count"] == 0
+    assert report["missing_contract_formats"] == ()
+    assert report["required_source_modes"] == ("directory",)
+    assert report["emitted_source_modes"] == report["required_source_modes"]
+    assert report["missing_source_mode_count"] == 0
+    assert report["missing_source_modes"] == ()
+    assert report["required_migration_backends"] == ("postgresql",)
+    assert report["emitted_migration_backends"] == report["required_migration_backends"]
+    assert report["missing_migration_backend_count"] == 0
+    assert report["missing_migration_backends"] == ()
+    assert report["required_approval_values"] == ("requires_approval=True",)
+    assert report["emitted_approval_values"] == report["required_approval_values"]
+    assert report["missing_approval_value_count"] == 0
+    assert report["missing_approval_values"] == ()
+    assert report["required_stage_counts"] == ("syntax=0", "semantic=1", "policy=1")
+    assert report["emitted_stage_counts"] == report["required_stage_counts"]
+    assert report["missing_stage_count_count"] == 0
+    assert report["missing_stage_counts"] == ()
     assert report["required_stage_names"] == ("syntax", "semantic", "policy")
     assert report["emitted_stage_names"] == report["required_stage_names"]
     assert report["missing_stage_name_count"] == 0

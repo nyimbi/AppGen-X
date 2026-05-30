@@ -2417,6 +2417,7 @@ def _lint_text_renderer_contract() -> dict:
     )
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
     lines = tuple(line for line in text.splitlines() if line.strip())
+    source_summary_lines = tuple(line for line in lines if line.startswith("source "))
     source_file_lines = tuple(line for line in lines if line.startswith("source-file "))
     stage_lines = tuple(line for line in lines if line.startswith("stages "))
     migration_lines = tuple(line for line in lines if line.startswith("migration-"))
@@ -2436,6 +2437,67 @@ def _lint_text_renderer_contract() -> dict:
     required_migration_families = tuple(sorted(payload["migration_preview"]["coverage"]["detected"]))
     required_diagnostic_codes = tuple(diagnostic["code"] for diagnostic in payload["diagnostics"])
     required_diagnostic_severities = tuple(diagnostic["severity"] for diagnostic in payload["diagnostics"])
+    required_text_surfaces = (
+        "source_summary",
+        "source_files",
+        "stage_counts",
+        "migration_preview",
+        "migration_detected",
+        "diagnostics",
+    )
+    emitted_text_surfaces = tuple(
+        surface
+        for surface, present in (
+            ("source_summary", bool(source_summary_lines)),
+            ("source_files", bool(source_file_lines)),
+            ("stage_counts", bool(stage_lines)),
+            ("migration_preview", any(line.startswith("migration-preview ") for line in migration_lines)),
+            ("migration_detected", any(line.startswith("migration-detected ") for line in migration_lines)),
+            ("diagnostics", bool(diagnostic_lines)),
+        )
+        if present
+    )
+    missing_text_surfaces = tuple(
+        surface for surface in required_text_surfaces if surface not in emitted_text_surfaces
+    )
+    required_contract_formats = ("appgen.lint-report.v1", "appgen.migration-plan.v1")
+    emitted_contract_formats = tuple(
+        contract_format for contract_format in required_contract_formats if contract_format in text
+    )
+    missing_contract_formats = tuple(
+        contract_format for contract_format in required_contract_formats if contract_format not in emitted_contract_formats
+    )
+    required_source_modes = ("directory",)
+    emitted_source_modes = tuple(
+        line.split()[1].rstrip(":")
+        for line in source_summary_lines
+        if len(line.split()) >= 2
+    )
+    missing_source_modes = tuple(mode for mode in required_source_modes if mode not in emitted_source_modes)
+    required_migration_backends = ("postgresql",)
+    emitted_migration_backends = tuple(
+        line.split("backend=", 1)[1].split(":", 1)[0].split()[0]
+        for line in migration_lines
+        if line.startswith("migration-preview ") and "backend=" in line
+    )
+    missing_migration_backends = tuple(
+        backend for backend in required_migration_backends if backend not in emitted_migration_backends
+    )
+    required_approval_values = ("requires_approval=True",)
+    emitted_approval_values = tuple(value for value in required_approval_values if value in text)
+    missing_approval_values = tuple(
+        value for value in required_approval_values if value not in emitted_approval_values
+    )
+    required_stage_counts = ("syntax=0", "semantic=1", "policy=1")
+    emitted_stage_counts = tuple(
+        part
+        for line in stage_lines
+        for part in line.removeprefix("stages ").split()
+        if "=" in part
+    )
+    missing_stage_counts = tuple(
+        stage_count for stage_count in required_stage_counts if stage_count not in emitted_stage_counts
+    )
     missing_source_files = tuple(path for path in required_source_files if path not in emitted_source_files)
     missing_stage_names = tuple(stage for stage in required_stage_names if stage not in emitted_stage_names)
     missing_migration_families = tuple(
@@ -2453,6 +2515,12 @@ def _lint_text_renderer_contract() -> dict:
         and not missing_migration_families
         and not missing_diagnostic_codes
         and not missing_diagnostic_severities
+        and not missing_text_surfaces
+        and not missing_contract_formats
+        and not missing_source_modes
+        and not missing_migration_backends
+        and not missing_approval_values
+        and not missing_stage_counts
         and not text.lstrip().startswith("{"),
         **_text_renderer_contract_counts(
             text,
@@ -2473,6 +2541,30 @@ def _lint_text_renderer_contract() -> dict:
         "emitted_source_files": emitted_source_files,
         "missing_source_file_count": len(missing_source_files),
         "missing_source_files": missing_source_files,
+        "required_text_surfaces": required_text_surfaces,
+        "emitted_text_surfaces": emitted_text_surfaces,
+        "missing_text_surfaces": missing_text_surfaces,
+        "missing_text_surface_count": len(missing_text_surfaces),
+        "required_contract_formats": required_contract_formats,
+        "emitted_contract_formats": emitted_contract_formats,
+        "missing_contract_formats": missing_contract_formats,
+        "missing_contract_format_count": len(missing_contract_formats),
+        "required_source_modes": required_source_modes,
+        "emitted_source_modes": emitted_source_modes,
+        "missing_source_modes": missing_source_modes,
+        "missing_source_mode_count": len(missing_source_modes),
+        "required_migration_backends": required_migration_backends,
+        "emitted_migration_backends": emitted_migration_backends,
+        "missing_migration_backends": missing_migration_backends,
+        "missing_migration_backend_count": len(missing_migration_backends),
+        "required_approval_values": required_approval_values,
+        "emitted_approval_values": emitted_approval_values,
+        "missing_approval_values": missing_approval_values,
+        "missing_approval_value_count": len(missing_approval_values),
+        "required_stage_counts": required_stage_counts,
+        "emitted_stage_counts": emitted_stage_counts,
+        "missing_stage_counts": missing_stage_counts,
+        "missing_stage_count_count": len(missing_stage_counts),
         "required_stage_names": required_stage_names,
         "emitted_stage_names": emitted_stage_names,
         "missing_stage_name_count": len(missing_stage_names),
@@ -5941,11 +6033,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and lint_directory_cli.get("previous_semantic_migration_preview", {}).get("ok") is True
             and lint_directory_cli.get("stage_separation", {}).get("ok") is True
             and lint_text_renderer["ok"]
-            and lint_text_renderer.get("source_file_line_count", 0) >= 1
-            and lint_text_renderer.get("stage_line_count", 0) >= 1
-            and lint_text_renderer.get("migration_preview_line_count", 0) >= 1
-            and lint_text_renderer.get("diagnostic_line_count", 0) >= 1
             and lint_text_renderer.get("missing_source_file_count") == 0
+            and lint_text_renderer.get("missing_text_surface_count") == 0
+            and lint_text_renderer.get("missing_contract_format_count") == 0
+            and lint_text_renderer.get("missing_source_mode_count") == 0
+            and lint_text_renderer.get("missing_migration_backend_count") == 0
+            and lint_text_renderer.get("missing_approval_value_count") == 0
+            and lint_text_renderer.get("missing_stage_count_count") == 0
             and lint_text_renderer.get("missing_stage_name_count") == 0
             and lint_text_renderer.get("missing_migration_family_count") == 0
             and lint_text_renderer.get("missing_diagnostic_code_count") == 0
@@ -5996,6 +6090,30 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "emitted_source_files": lint_text_renderer.get("emitted_source_files"),
                     "missing_source_file_count": lint_text_renderer.get("missing_source_file_count"),
                     "missing_source_files": lint_text_renderer.get("missing_source_files"),
+                    "required_text_surfaces": lint_text_renderer.get("required_text_surfaces"),
+                    "emitted_text_surfaces": lint_text_renderer.get("emitted_text_surfaces"),
+                    "missing_text_surfaces": lint_text_renderer.get("missing_text_surfaces"),
+                    "missing_text_surface_count": lint_text_renderer.get("missing_text_surface_count"),
+                    "required_contract_formats": lint_text_renderer.get("required_contract_formats"),
+                    "emitted_contract_formats": lint_text_renderer.get("emitted_contract_formats"),
+                    "missing_contract_formats": lint_text_renderer.get("missing_contract_formats"),
+                    "missing_contract_format_count": lint_text_renderer.get("missing_contract_format_count"),
+                    "required_source_modes": lint_text_renderer.get("required_source_modes"),
+                    "emitted_source_modes": lint_text_renderer.get("emitted_source_modes"),
+                    "missing_source_modes": lint_text_renderer.get("missing_source_modes"),
+                    "missing_source_mode_count": lint_text_renderer.get("missing_source_mode_count"),
+                    "required_migration_backends": lint_text_renderer.get("required_migration_backends"),
+                    "emitted_migration_backends": lint_text_renderer.get("emitted_migration_backends"),
+                    "missing_migration_backends": lint_text_renderer.get("missing_migration_backends"),
+                    "missing_migration_backend_count": lint_text_renderer.get("missing_migration_backend_count"),
+                    "required_approval_values": lint_text_renderer.get("required_approval_values"),
+                    "emitted_approval_values": lint_text_renderer.get("emitted_approval_values"),
+                    "missing_approval_values": lint_text_renderer.get("missing_approval_values"),
+                    "missing_approval_value_count": lint_text_renderer.get("missing_approval_value_count"),
+                    "required_stage_counts": lint_text_renderer.get("required_stage_counts"),
+                    "emitted_stage_counts": lint_text_renderer.get("emitted_stage_counts"),
+                    "missing_stage_counts": lint_text_renderer.get("missing_stage_counts"),
+                    "missing_stage_count_count": lint_text_renderer.get("missing_stage_count_count"),
                     "required_stage_names": lint_text_renderer.get("required_stage_names"),
                     "emitted_stage_names": lint_text_renderer.get("emitted_stage_names"),
                     "missing_stage_name_count": lint_text_renderer.get("missing_stage_name_count"),
@@ -7796,16 +7914,17 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         _tooling_audit_check(
             "release_text_evidence_contracts",
             release_text_renderer["ok"]
-            and release_text_renderer.get("release_line_count", 0) >= 2
-            and release_text_renderer.get("graph_line_count", 0) >= 3
-            and release_text_renderer.get("target_status_line_count", 0) >= 2
-            and release_text_renderer.get("blocking_gap_line_count", 0) >= 1
-            and release_text_renderer.get("artifact_line_count", 0) >= 2
             and release_text_renderer.get("missing_release_marker_count") == 0
             and release_text_renderer.get("missing_graph_marker_count") == 0
             and release_text_renderer.get("missing_target_status_count") == 0
             and release_text_renderer.get("missing_blocking_gap_count") == 0
             and release_text_renderer.get("missing_artifact_marker_count") == 0
+            and release_text_renderer.get("missing_text_surface_count") == 0
+            and release_text_renderer.get("missing_contract_format_count") == 0
+            and release_text_renderer.get("missing_graph_kind_count") == 0
+            and release_text_renderer.get("missing_graph_format_count") == 0
+            and release_text_renderer.get("missing_target_outcome_count") == 0
+            and release_text_renderer.get("missing_artifact_path_count") == 0
             and release_text_renderer.get("json_fallback") is False,
             "Release verifier text evidence preserves release, graph-suite, target status, blocking-gap, and artifact markers without JSON parsing.",
             "docs/tooling.md#appgen-package",

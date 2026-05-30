@@ -716,6 +716,12 @@ also publishes required and emitted source files, stage names, detected
 migration families, diagnostic codes, and diagnostic severities with named
 missing lists for each family, so a partially rendered lint summary fails by the
 exact hidden source, stage, migration family, code, or severity.
+The same text-renderer contract publishes required, emitted, missing, and
+missing-count evidence for text surfaces, embedded contract formats, source
+modes, migration backends, approval markers, and exact stage-count markers.
+The aggregate lint CLI gate requires zero named missing entries, so a generic
+`source-file`, `stages`, `migration-preview`, or diagnostic line cannot mask a
+lost directory mode, backend, approval posture, or stage separation summary.
 `appgen diagnostics`
 text output summarizes the `appgen.diagnostic-catalog.v1` format in the header,
 registry coverage, required registry codes as `required-code ...`, covered
