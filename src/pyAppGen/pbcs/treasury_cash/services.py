@@ -1,5 +1,7 @@
 """Command service layer for the treasury_cash PBC."""
 
+from . import runtime as treasury_runtime
+
 EVENT_CONTRACT = {'contract': 'appgen_event_contract', 'runtime_profile_visibility': 'read_only_platform_metadata', 'adapter': 'appgen_event_adapter', 'topic': 'pbc.treasury_cash.events', 'inbox_topic': 'pbc.treasury_cash.inbox', 'outbox_table': 'treasury_cash_appgen_outbox_event', 'inbox_table': 'treasury_cash_appgen_inbox_event', 'dead_letter_table': 'treasury_cash_dead_letter_event', 'emitted': ({'event_type': 'BankAccountRegistered', 'schema': 'treasury_cash.bank_account_registered.emitted.v1', 'topic': 'pbc.treasury_cash.events', 'outbox_table': 'treasury_cash_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'BankBalanceCaptured', 'schema': 'treasury_cash.bank_balance_captured.emitted.v1', 'topic': 'pbc.treasury_cash.events', 'outbox_table': 'treasury_cash_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'BankStatementIngested', 'schema': 'treasury_cash.bank_statement_ingested.emitted.v1', 'topic': 'pbc.treasury_cash.events', 'outbox_table': 'treasury_cash_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'CashPositionBuilt', 'schema': 'treasury_cash.cash_position_built.emitted.v1', 'topic': 'pbc.treasury_cash.events', 'outbox_table': 'treasury_cash_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'PaymentFunded', 'schema': 'treasury_cash.payment_funded.emitted.v1', 'topic': 'pbc.treasury_cash.events', 'outbox_table': 'treasury_cash_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'InvestmentPlaced', 'schema': 'treasury_cash.investment_placed.emitted.v1', 'topic': 'pbc.treasury_cash.events', 'outbox_table': 'treasury_cash_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}, {'event_type': 'DebtFacilityDrawn', 'schema': 'treasury_cash.debt_facility_drawn.emitted.v1', 'topic': 'pbc.treasury_cash.events', 'outbox_table': 'treasury_cash_appgen_outbox_event', 'payload_fields': ('event_id', 'occurred_at', 'pbc', 'data')}), 'consumed': ({'event_type': 'PaymentFundingRequested', 'schema': 'treasury_cash.payment_funding_requested.consumed.v1', 'topic': 'pbc.treasury_cash.inbox', 'inbox_table': 'treasury_cash_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'ReceivableCashForecasted', 'schema': 'treasury_cash.receivable_cash_forecasted.consumed.v1', 'topic': 'pbc.treasury_cash.inbox', 'inbox_table': 'treasury_cash_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'PayablePaymentScheduled', 'schema': 'treasury_cash.payable_payment_scheduled.consumed.v1', 'topic': 'pbc.treasury_cash.inbox', 'inbox_table': 'treasury_cash_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'PayrollFundingRequested', 'schema': 'treasury_cash.payroll_funding_requested.consumed.v1', 'topic': 'pbc.treasury_cash.inbox', 'inbox_table': 'treasury_cash_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'TaxPaymentScheduled', 'schema': 'treasury_cash.tax_payment_scheduled.consumed.v1', 'topic': 'pbc.treasury_cash.inbox', 'inbox_table': 'treasury_cash_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'FxRateChanged', 'schema': 'treasury_cash.fx_rate_changed.consumed.v1', 'topic': 'pbc.treasury_cash.inbox', 'inbox_table': 'treasury_cash_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}, {'event_type': 'AccessPolicyChanged', 'schema': 'treasury_cash.access_policy_changed.consumed.v1', 'topic': 'pbc.treasury_cash.inbox', 'inbox_table': 'treasury_cash_appgen_inbox_event', 'payload_fields': ('event_id', 'occurred_at', 'source_pbc', 'data')}), 'retry_policy': {'name': 'treasury_cash_default_retry', 'max_attempts': 5, 'backoff': 'exponential'}, 'idempotency': {'key_fields': ('event_type', 'event_id', 'handler'), 'storage': 'treasury_cash_appgen_inbox_event'}}
 
 
@@ -53,7 +55,10 @@ def operation_plan(operation_name, payload=None):
 
 
 class TreasuryCashService:
-    """Side-effect-free generated command facade."""
+    """Runtime-backed generated command facade for treasury operations."""
+
+    def __init__(self, state=None):
+        self.state = state or treasury_runtime.treasury_cash_empty_state()
 
     def _execute(self, operation_name, payload):
         plan = operation_plan(operation_name, payload)
@@ -86,9 +91,77 @@ class TreasuryCashService:
         return result
 
     def _command(self, command_name, payload):
-        return self._execute(command_name, payload)
+        try:
+            result = self._execute_runtime_command(command_name, dict(payload or {}))
+        except (KeyError, TypeError):
+            return self._execute(command_name, payload)
+        if isinstance(result, dict) and "state" in result:
+            self.state = result["state"]
+        return result
 
     def _query(self, query_name, payload):
+        try:
+            return self._execute_runtime_query(query_name, dict(payload or {}))
+        except (KeyError, TypeError):
+            return self._execute(query_name, payload)
+
+    def _execute_runtime_command(self, command_name, payload):
+        if command_name == "command_treasury_bank_accounts":
+            return treasury_runtime.treasury_cash_register_bank_account(self.state, payload.get("account", payload))
+        if command_name == "command_treasury_balances":
+            return treasury_runtime.treasury_cash_capture_bank_balance(self.state, payload.get("balance", payload))
+        if command_name == "command_treasury_statements":
+            return treasury_runtime.treasury_cash_ingest_bank_statement(self.state, payload.get("statement", payload))
+        if command_name == "command_treasury_statements_id_reconcile":
+            statement_id = payload.get("statement_id") or payload.get("id")
+            return treasury_runtime.treasury_cash_reconcile_statement(
+                self.state,
+                statement_id,
+                expected_flows=tuple(payload.get("expected_flows", ())),
+            )
+        if command_name == "command_treasury_forecasts":
+            return treasury_runtime.treasury_cash_forecast_cash(
+                self.state,
+                payload["tenant"],
+                inflows=tuple(payload.get("inflows", ())),
+                outflows=tuple(payload.get("outflows", ())),
+            )
+        if command_name == "command_treasury_liquidity_optimize":
+            return treasury_runtime.treasury_cash_optimize_liquidity(
+                self.state,
+                tenant=payload["tenant"],
+                target_balance=payload["target_balance"],
+                funding_options=tuple(payload.get("funding_options", ())),
+            )
+        if command_name == "command_treasury_payment_rails_route":
+            return treasury_runtime.treasury_cash_route_payment_rail(rails=tuple(payload.get("rails", ())))
+        if command_name == "command_treasury_investments":
+            return treasury_runtime.treasury_cash_place_investment(self.state, payload.get("investment", payload))
+        if command_name == "command_treasury_debt_draws":
+            return treasury_runtime.treasury_cash_draw_debt_facility(self.state, payload.get("draw", payload))
+        if command_name == "command_treasury_fx_hedge_recommendations":
+            return treasury_runtime.treasury_cash_recommend_hedge(payload.get("exposure", payload))
+        if command_name == "command_treasury_events_inbox":
+            return treasury_runtime.treasury_cash_receive_event(
+                self.state,
+                payload.get("event", payload),
+                simulate_failure=bool(payload.get("simulate_failure", False)),
+            )
+        return self._execute(command_name, payload)
+
+    def _execute_runtime_query(self, query_name, payload):
+        if query_name == "query_treasury_cash_position":
+            return treasury_runtime.treasury_cash_build_cash_position(
+                self.state,
+                tenant=payload["tenant"],
+                value_date=payload["value_date"],
+            )
+        if query_name == "query_treasury_workbench":
+            return treasury_runtime.treasury_cash_build_workbench_view(
+                self.state,
+                tenant=payload["tenant"],
+                value_date=payload["value_date"],
+            )
         return self._execute(query_name, payload)
 
     def command_treasury_bank_accounts(self, payload=None):
@@ -150,6 +223,7 @@ def service_operation_manifest():
         'operation_contracts': service_operation_contracts()['contracts'],
         'transaction_boundary': 'owned_datastore_plus_outbox',
         'outbox_table': EVENT_CONTRACT['outbox_table'],
+        'event_contract': EVENT_CONTRACT,
         'side_effects': (),
     }
 
