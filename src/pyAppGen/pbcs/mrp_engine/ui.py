@@ -301,3 +301,29 @@ def mrp_engine_render_standalone_workbench(workbench: dict) -> dict:
         {'key': 'shortage_total', 'value': workbench.get('shortage_total', 0), 'fragment': 'ShortageBoard'},
     )
     return {'format': 'appgen.mrp-engine-standalone-render.v1', 'ok': blueprint['ok'] and bool(cards), 'pbc': 'mrp_engine', 'tenant': workbench.get('tenant'), 'cards': cards, 'forms': tuple(item['key'] for item in blueprint['forms']), 'wizards': tuple(item['key'] for item in blueprint['wizards']), 'controls': tuple(item['key'] for item in blueprint['controls']), 'side_effects': ()}
+
+# Improve1 MRP engine control UI extension.
+from .mrp_engine_control import improve1_mrp_engine_control_contract as _improve1_mrp_engine_control_contract
+
+_MRP_ENGINE_BASE_UI_CONTRACT = mrp_engine_ui_contract
+_MRP_ENGINE_BASE_RENDER_WORKBENCH = mrp_engine_render_workbench
+
+
+def mrp_engine_ui_contract():
+    ui = dict(_MRP_ENGINE_BASE_UI_CONTRACT())
+    control = _improve1_mrp_engine_control_contract()
+    panels = tuple(item["evidence"]["ui_surface"] for item in control["capabilities"])
+    service_actions = tuple(item["evidence"]["service_api"] for item in control["capabilities"])
+    ui.update({"ok": ui.get("ok") is True and control["ok"], "mrp_engine_control_contract": control, "mrp_engine_control_panels": panels, "mrp_engine_control_service_actions": service_actions, "stream_engine_picker_visible": False})
+    return ui
+
+
+def mrp_engine_render_workbench(state: dict | None = None, *, tenant: str = "default", principal_permissions: tuple[str, ...] = ()):
+    if state is None:
+        state = _appgen_smoke_state()
+    if not principal_permissions:
+        principal_permissions = tuple(dict.fromkeys(_MRP_ENGINE_BASE_UI_CONTRACT().get("action_permissions", {}).values()))
+    workbench = dict(_MRP_ENGINE_BASE_RENDER_WORKBENCH(state, tenant=tenant, principal_permissions=principal_permissions))
+    control = _improve1_mrp_engine_control_contract()
+    workbench.update({"ok": workbench.get("ok") is True and control["ok"], "mrp_engine_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]), "mrp_engine_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]), "mrp_engine_control_agent_tools": tuple(f"mrp_engine.skills.{item['slug']}" for item in control["capabilities"])})
+    return workbench

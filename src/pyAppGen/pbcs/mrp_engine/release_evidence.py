@@ -110,3 +110,35 @@ def build_release_evidence():
     evidence['standalone_repository'] = standalone_repository_smoke_test()
     evidence['ok'] = evidence.get('ok') is True and evidence['documentation']['ok'] and evidence['standalone_app']['ok'] and evidence['standalone_repository']['ok']
     return evidence
+
+# Improve1 MRP engine control release evidence extension.
+from .mrp_engine_control import improve1_mrp_engine_control_contract as _mrp_engine_control_contract
+
+_MRP_ENGINE_BASE_BUILD_RELEASE_EVIDENCE = build_release_evidence
+_MRP_ENGINE_BASE_RELEASE_READINESS_MANIFEST = release_readiness_manifest
+_MRP_ENGINE_BASE_VALIDATE_RELEASE_EVIDENCE = validate_release_evidence
+
+
+def build_release_evidence():
+    evidence = dict(_MRP_ENGINE_BASE_BUILD_RELEASE_EVIDENCE())
+    control = _mrp_engine_control_contract()
+    checks = tuple(evidence.get("checks", ())) + ({"id": "mrp_engine_control_contract", "ok": control["ok"]}, {"id": "mrp_engine_control_traceability", "ok": control["capability_count"] == 50})
+    evidence.update({"mrp_engine_control": control, "mrp_engine_controls": tuple(item["evidence"] for item in control["capabilities"]), "checks": checks, "blocking_gaps": tuple(check for check in checks if check.get("ok") is not True)})
+    evidence["ok"] = not evidence["blocking_gaps"]
+    return evidence
+
+
+def release_readiness_manifest():
+    manifest = dict(_MRP_ENGINE_BASE_RELEASE_READINESS_MANIFEST())
+    evidence = build_release_evidence()
+    manifest.update({"ok": evidence["ok"], "evidence": evidence, "sections": tuple(dict.fromkeys(tuple(manifest.get("sections", ())) + ("mrp_engine_control", "improve1_traceability"))), "blocking_gaps": evidence["blocking_gaps"]})
+    return manifest
+
+
+def validate_release_evidence():
+    base = dict(_MRP_ENGINE_BASE_VALIDATE_RELEASE_EVIDENCE())
+    evidence = build_release_evidence()
+    control = evidence["mrp_engine_control"]
+    failed = tuple(check for check in evidence["checks"] if check.get("ok") is not True)
+    base.update({"ok": base.get("ok") is True and evidence["ok"] and control["ok"] and not failed, "failed_checks": tuple(base.get("failed_checks", ())) + failed, "mrp_engine_control": control})
+    return base
