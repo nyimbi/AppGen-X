@@ -341,3 +341,34 @@ def price_promotion_engine_render_standalone_workbench(workbench: dict) -> dict:
         {'key':'coupon_redemptions','value':workbench.get('coupon_redemption_count',0),'fragment':'CouponConsole'},
         {'key':'settlements','value':workbench.get('promotion_settlement_count',0),'fragment':'PromotionSettlementBoard'},)
     return {'format':'appgen.price-promotion-engine-standalone-render.v1','ok':bp['ok'] and bool(cards),'pbc':'price_promotion_engine','tenant':workbench.get('tenant'),'cards':cards,'forms':tuple(i['key'] for i in bp['forms']),'wizards':tuple(i['key'] for i in bp['wizards']),'controls':tuple(i['key'] for i in bp['controls']),'side_effects':()}
+
+# Improve1 pricing control UI extension.
+from .pricing_control import improve1_pricing_control_contract as _improve1_pricing_control_contract
+
+_PRICING_CONTROL_BASE_UI_CONTRACT = price_promotion_engine_ui_contract
+_PRICING_CONTROL_BASE_RENDER_WORKBENCH = price_promotion_engine_render_workbench
+
+
+def price_promotion_engine_ui_contract() -> dict:
+    ui = dict(_PRICING_CONTROL_BASE_UI_CONTRACT())
+    control = _improve1_pricing_control_contract()
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "pricing_control_contract": control,
+        "pricing_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "pricing_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def price_promotion_engine_render_workbench(*args, **kwargs) -> dict:
+    workbench = dict(_PRICING_CONTROL_BASE_RENDER_WORKBENCH(*args, **kwargs))
+    control = _improve1_pricing_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "pricing_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "pricing_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "pricing_control_agent_tools": tuple(f"price_promotion_engine.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench
