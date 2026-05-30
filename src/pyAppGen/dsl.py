@@ -5095,8 +5095,12 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and set(validate_generate_cli.get("generated_blocked_cases", ()))
             == {"generate_blocks_warnings", "generate_blocks_errors_even_when_warnings_allowed"}
             and validate_generate_cli.get("manifest_case_count") >= 2
+            and validate_generate_cli.get("manifest_existing_case_count") >= 2
             and validate_generate_cli.get("artifact_handoff_case_count") >= 1
+            and validate_generate_cli.get("artifact_path_missing_case_count") == 0
             and validate_generate_cli.get("blocking_gap_case_count") >= 2
+            and validate_generate_cli.get("generated_blocked_output_absent_case_count") >= 1
+            and {"lint_warnings", "lint_errors"} <= set(validate_generate_cli.get("generated_blocking_gap_names", ()))
             and not warning_generation_blocked["ok"]
             and "lint_warnings" in warning_generation_blocked.get("blocking_gaps", ())
             and warning_generation_allowed["ok"]
@@ -5124,8 +5128,17 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "generated_blocked_case_count": validate_generate_cli.get("generated_blocked_case_count"),
                     "generated_blocked_cases": validate_generate_cli.get("generated_blocked_cases"),
                     "manifest_case_count": validate_generate_cli.get("manifest_case_count"),
+                    "manifest_existing_case_count": validate_generate_cli.get("manifest_existing_case_count"),
+                    "manifest_existing_cases": validate_generate_cli.get("manifest_existing_cases"),
                     "artifact_handoff_case_count": validate_generate_cli.get("artifact_handoff_case_count"),
+                    "artifact_path_case_count": validate_generate_cli.get("artifact_path_case_count"),
+                    "artifact_path_missing_case_count": validate_generate_cli.get("artifact_path_missing_case_count"),
                     "blocking_gap_case_count": validate_generate_cli.get("blocking_gap_case_count"),
+                    "generated_blocked_output_absent_case_count": validate_generate_cli.get("generated_blocked_output_absent_case_count"),
+                    "generated_blocked_output_absent_cases": validate_generate_cli.get("generated_blocked_output_absent_cases"),
+                    "generated_blocking_gap_names": validate_generate_cli.get("generated_blocking_gap_names"),
+                    "payload_format_count": validate_generate_cli.get("payload_format_count"),
+                    "payload_formats": validate_generate_cli.get("payload_formats"),
                 },
                 "text_renderer": {
                     "format": validate_generate_text_renderer.get("format"),
@@ -10710,6 +10723,30 @@ def _tooling_audit_validate_generate_cli(tmp: Path, source: str) -> dict:
         for case in validation_cases
         if case.get("ok") and case.get("exit_code") == 1 and case.get("diagnostic_codes")
     )
+    manifest_existing_cases = tuple(
+        case["case"]
+        for case in generated_cases
+        if case.get("manifest_exists") is True
+        or (case.get("manifest") and Path(str(case.get("manifest"))).exists())
+    )
+    artifact_path_case_count = sum(
+        1 for case in generated_cases if case.get("artifact_paths_exist") is True
+    )
+    generated_blocked_output_absent_cases = tuple(
+        case["case"]
+        for case in generated_cases
+        if case.get("exit_code") == 1
+        and case.get("blocking_gaps")
+        and case.get("output_exists") is False
+    )
+    generated_blocking_gap_names = tuple(
+        dict.fromkeys(
+            gap
+            for case in generated_cases
+            for gap in case.get("blocking_gaps", ())
+        )
+    )
+    payload_formats = tuple(dict.fromkeys(case.get("payload_format") for case in cases if case.get("payload_format")))
     case_ids = tuple(case["case"] for case in cases)
     return {
         "format": "appgen.validate-generate-cli-audit.v1",
@@ -10728,8 +10765,21 @@ def _tooling_audit_validate_generate_cli(tmp: Path, source: str) -> dict:
         "validation_rejection_case_count": len(validation_rejection_cases),
         "validation_rejection_cases": validation_rejection_cases,
         "manifest_case_count": sum(1 for case in generated_cases if case.get("manifest") or case.get("manifest_exists")),
+        "manifest_existing_case_count": len(manifest_existing_cases),
+        "manifest_existing_cases": manifest_existing_cases,
         "artifact_handoff_case_count": sum(1 for case in generated_cases if case.get("artifact_count", 0) > 0),
+        "artifact_path_case_count": artifact_path_case_count,
+        "artifact_path_missing_case_count": sum(
+            1
+            for case in generated_cases
+            if case.get("artifact_count", 0) > 0 and case.get("artifact_paths_exist") is not True
+        ),
         "blocking_gap_case_count": sum(1 for case in cases if case.get("blocking_gaps")),
+        "generated_blocked_output_absent_case_count": len(generated_blocked_output_absent_cases),
+        "generated_blocked_output_absent_cases": generated_blocked_output_absent_cases,
+        "generated_blocking_gap_names": generated_blocking_gap_names,
+        "payload_format_count": len(payload_formats),
+        "payload_formats": payload_formats,
         "cases": cases,
     }
 

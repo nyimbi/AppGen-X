@@ -4381,8 +4381,20 @@ def test_validate_generate_cli_audit_proves_generated_artifact_handoff(tmp_path:
         "validate_rejects_unknown_targets",
     )
     assert audit["manifest_case_count"] == 2
+    assert audit["manifest_existing_case_count"] == 2
+    assert set(audit["manifest_existing_cases"]) == {
+        "generate_writes_artifacts",
+        "generate_allows_warnings_when_requested",
+    }
     assert audit["artifact_handoff_case_count"] == 1
+    assert audit["artifact_path_case_count"] == 1
+    assert audit["artifact_path_missing_case_count"] == 0
     assert audit["blocking_gap_case_count"] == 2
+    assert audit["generated_blocked_output_absent_case_count"] == 1
+    assert audit["generated_blocked_output_absent_cases"] == ("generate_blocks_errors_even_when_warnings_allowed",)
+    assert {"lint_warnings", "lint_errors"} <= set(audit["generated_blocking_gap_names"])
+    assert audit["payload_format_count"] == len(audit["payload_formats"])
+    assert set(audit["payload_formats"]) == {"appgen.validate-report.v1", "appgen.generate-report.v1"}
     assert generated["ok"] is True
     assert generated["targets"] == ("web",)
     assert generated["semantic_model_format"] == "appgen.semantic-model.v1"
@@ -5380,8 +5392,19 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "generate_blocks_errors_even_when_warnings_allowed",
     }
     assert generate_policy_check["detail"]["cli"]["manifest_case_count"] >= 2
+    assert generate_policy_check["detail"]["cli"]["manifest_existing_case_count"] >= 2
     assert generate_policy_check["detail"]["cli"]["artifact_handoff_case_count"] >= 1
+    assert generate_policy_check["detail"]["cli"]["artifact_path_case_count"] >= 1
+    assert generate_policy_check["detail"]["cli"]["artifact_path_missing_case_count"] == 0
     assert generate_policy_check["detail"]["cli"]["blocking_gap_case_count"] >= 2
+    assert generate_policy_check["detail"]["cli"]["generated_blocked_output_absent_case_count"] >= 1
+    assert "generate_blocks_errors_even_when_warnings_allowed" in (
+        generate_policy_check["detail"]["cli"]["generated_blocked_output_absent_cases"]
+    )
+    assert {"lint_warnings", "lint_errors"} <= set(generate_policy_check["detail"]["cli"]["generated_blocking_gap_names"])
+    assert generate_policy_check["detail"]["cli"]["payload_format_count"] == len(
+        generate_policy_check["detail"]["cli"]["payload_formats"]
+    )
     assert generate_policy_check["detail"]["text_renderer"]["format"] == "appgen.validate-generate-text-renderer.v1"
     assert generate_policy_check["detail"]["text_renderer"]["artifact_line_count"] >= 1
     assert generate_policy_check["detail"]["text_renderer"]["manifest_line_count"] >= 1

@@ -831,8 +831,11 @@ audit reports total, passing, failing, validation, and generation case counts
 so release evidence can distinguish target-validation coverage from
 artifact-generation coverage. It also reports case ids, failing case ids,
 generation success cases, generation blocked cases, validation rejection cases,
-manifest case counts, artifact handoff case counts, and blocking-gap case
-counts so agents can review generation readiness without expanding every case.
+manifest case counts, existing-manifest case counts, artifact handoff case
+counts, artifact-path case counts, artifact-path-missing counts, blocked-output
+absence counts, payload-format counts, generated blocking-gap names, and
+blocking-gap case counts so agents can review generation readiness without
+expanding every case.
 The aggregate tooling audit exposes generation handoff independently as
 `generate_artifact_policy_contracts`. That gate fails when successful
 generation stops writing manifests/artifacts, warning-only sources stop blocking
