@@ -13807,8 +13807,10 @@ def _lsp_position_to_index(source: str, position: dict | None) -> int | None:
     line_index = int(position.get("line", 0))
     character = int(position.get("character", 0))
     lines = (source or "").splitlines(keepends=True)
-    if line_index < 0 or line_index >= len(lines):
+    if line_index < 0:
         return None
+    if line_index >= len(lines):
+        return len(source or "")
     return sum(len(line) for line in lines[:line_index]) + min(max(character, 0), len(lines[line_index]))
 
 
