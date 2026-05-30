@@ -1702,6 +1702,40 @@ audit RenameAudit { evidence: "Customer" }
     assert any(item["code"] == "AGX1101" for item in rename["blockers"])
 
 
+def test_lsp_view_rename_candidate_scopes_menu_targets_and_preserves_operation() -> None:
+    source = """
+app RenameViews { targets: web }
+table Invoice { id: int pk; InvoiceForm: string }
+view InvoiceForm for Invoice { Main: id }
+operation InvoiceForm { draft -> done }
+menu MainMenu { item invoices -> InvoiceForm; on Open -> InvoiceForm }
+audit RenameAudit { evidence: "InvoiceForm" }
+// InvoiceForm remains in this comment
+"""
+
+    report = lsp_service_dsl(
+        source,
+        source_name="view-rename.appgen",
+        position=_position_of(source, "InvoiceForm for"),
+        rename_to="InvoiceReviewForm",
+    )
+    rename = report["rename"]
+    change = rename["workspace_edit"]["changes"]["view-rename.appgen"][0]["newText"]
+
+    assert rename["ok"] is False
+    assert rename["blocked"] is True
+    assert rename["lexical_scope"] == "view_declarations_and_targets"
+    assert rename["occurrence_count"] == 2
+    assert "view InvoiceReviewForm for Invoice" in change
+    assert "item invoices -> InvoiceReviewForm" in change
+    assert "InvoiceForm: string" in change
+    assert "operation InvoiceForm" in change
+    assert "on Open -> InvoiceForm" in change
+    assert 'evidence: "InvoiceForm"' in change
+    assert "// InvoiceForm remains in this comment" in change
+    assert any(item["code"] == "AGX1101" for item in rename["blockers"])
+
+
 def test_lsp_service_exposes_code_action_for_missing_handler_target() -> None:
     source = """
     app Bad { targets: web }
@@ -2073,8 +2107,8 @@ def test_lsp_rename_cli_audit_covers_safe_and_blocked_renames(tmp_path: Path) ->
 
     assert report["format"] == "appgen.lsp-rename-cli-audit.v1"
     assert report["ok"] is True
-    assert report["scenario_count"] == 5
-    assert report["passing_scenario_count"] == 5
+    assert report["scenario_count"] == 6
+    assert report["passing_scenario_count"] == 6
     assert report["blocked_code_count"] >= 1
     assert report["blocked_fix_count"] >= 1
     assert report["safe_ok"] is True
@@ -2098,6 +2132,14 @@ def test_lsp_rename_cli_audit_covers_safe_and_blocked_renames(tmp_path: Path) ->
     assert report["table_field_preserved"] is True
     assert report["table_string_preserved"] is True
     assert report["table_comment_preserved"] is True
+    assert report["view_scope_ok"] is True
+    assert report["view_scope"] == "view_declarations_and_targets"
+    assert report["view_occurrence_count"] == 2
+    assert report["view_blocked"] is True
+    assert report["view_field_preserved"] is True
+    assert report["view_operation_preserved"] is True
+    assert report["view_string_preserved"] is True
+    assert report["view_comment_preserved"] is True
     assert report["blocked_ok"] is True
     assert report["blocked_exit_code"] == 0
     assert report["blocked_rename_format"] == "appgen.lsp-rename.v1"
@@ -4666,6 +4708,11 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert lsp_check["detail"]["rename_cli"]["table_scope"] == "table_declarations_and_targets"
     assert lsp_check["detail"]["rename_cli"]["table_occurrence_count"] == 4
     assert lsp_check["detail"]["rename_cli"]["table_field_preserved"] is True
+    assert lsp_check["detail"]["rename_cli"]["view_scope_ok"] is True
+    assert lsp_check["detail"]["rename_cli"]["view_scope"] == "view_declarations_and_targets"
+    assert lsp_check["detail"]["rename_cli"]["view_occurrence_count"] == 2
+    assert lsp_check["detail"]["rename_cli"]["view_field_preserved"] is True
+    assert lsp_check["detail"]["rename_cli"]["view_operation_preserved"] is True
     assert lsp_check["detail"]["rename_cli"]["changed"] is True
     assert lsp_check["detail"]["rename_cli"]["migration_format"] == "appgen.migration-plan.v1"
     assert lsp_check["detail"]["rename_cli"]["safe_ok"] is True

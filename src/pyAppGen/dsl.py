@@ -8659,6 +8659,56 @@ audit RenameAudit { evidence: "Customer" }
         and any(item.get("code") == "AGX1101" for item in table_rename.get("blockers", ()))
     )
 
+    view_source = """
+app RenameViews { targets: web }
+table Invoice { id: int pk; InvoiceForm: string }
+view InvoiceForm for Invoice { Main: id }
+operation InvoiceForm { draft -> done }
+menu MainMenu { item invoices -> InvoiceForm; on Open -> InvoiceForm }
+audit RenameAudit { evidence: "InvoiceForm" }
+// InvoiceForm remains in this comment
+"""
+    view_path = tmp / "lsp-rename-view.appgen"
+    view_path.write_text(view_source, encoding="utf-8")
+    view_position = _tooling_lsp_position(view_source, "InvoiceForm for")
+    view_position_arg = f"{view_position['line']}:{view_position['character']}"
+    view_output = io.StringIO()
+    with contextlib.redirect_stdout(view_output):
+        view_exit = dsl_tooling_cli(
+            (
+                "lsp",
+                str(view_path),
+                "--position",
+                view_position_arg,
+                "--rename",
+                "InvoiceReviewForm",
+                "--json",
+            )
+        )
+    try:
+        view_payload = json.loads(view_output.getvalue())
+    except json.JSONDecodeError:
+        view_payload = {}
+    view_rename = view_payload.get("rename", {})
+    view_changes = view_rename.get("workspace_edit", {}).get("changes", {}).get(str(view_path), ())
+    view_patched_text = view_changes[0].get("newText", "") if view_changes else ""
+    view_scope_ok = (
+        view_exit == 0
+        and view_payload.get("format") == "appgen.lsp-service.v1"
+        and view_rename.get("format") == "appgen.lsp-rename.v1"
+        and view_rename.get("blocked") is True
+        and view_rename.get("lexical_scope") == "view_declarations_and_targets"
+        and view_rename.get("occurrence_count") == 2
+        and "view InvoiceReviewForm for Invoice" in view_patched_text
+        and "item invoices -> InvoiceReviewForm" in view_patched_text
+        and "InvoiceForm: string" in view_patched_text
+        and "operation InvoiceForm" in view_patched_text
+        and "on Open -> InvoiceForm" in view_patched_text
+        and 'evidence: "InvoiceForm"' in view_patched_text
+        and "// InvoiceForm remains in this comment" in view_patched_text
+        and any(item.get("code") == "AGX1101" for item in view_rename.get("blockers", ()))
+    )
+
     risk_source = """
 app RenameRisk { targets: web }
 
@@ -8742,9 +8792,11 @@ view InvoiceForm for Invoice {
 
     return {
         "format": "appgen.lsp-rename-cli-audit.v1",
-        "ok": safe_ok and lexical_scope_ok and table_scope_ok and blocked_ok and blocked_text_ok,
-        "scenario_count": 5,
-        "passing_scenario_count": sum(1 for ok in (safe_ok, lexical_scope_ok, table_scope_ok, blocked_ok, blocked_text_ok) if ok),
+        "ok": safe_ok and lexical_scope_ok and table_scope_ok and view_scope_ok and blocked_ok and blocked_text_ok,
+        "scenario_count": 6,
+        "passing_scenario_count": sum(
+            1 for ok in (safe_ok, lexical_scope_ok, table_scope_ok, view_scope_ok, blocked_ok, blocked_text_ok) if ok
+        ),
         "blocked_code_count": len(blocked_codes),
         "blocked_fix_count": len(blocked_fixes),
         "exit_code": exit_code,
@@ -8771,6 +8823,14 @@ view InvoiceForm for Invoice {
         "table_field_preserved": "Customer: string" in table_patched_text,
         "table_string_preserved": 'evidence: "Customer"' in table_patched_text,
         "table_comment_preserved": "// Customer remains in this comment" in table_patched_text,
+        "view_scope_ok": view_scope_ok,
+        "view_scope": view_rename.get("lexical_scope"),
+        "view_occurrence_count": view_rename.get("occurrence_count"),
+        "view_blocked": view_rename.get("blocked"),
+        "view_field_preserved": "InvoiceForm: string" in view_patched_text,
+        "view_operation_preserved": "operation InvoiceForm" in view_patched_text,
+        "view_string_preserved": 'evidence: "InvoiceForm"' in view_patched_text,
+        "view_comment_preserved": "// InvoiceForm remains in this comment" in view_patched_text,
         "blocked_ok": blocked_ok,
         "blocked_exit_code": risk_exit,
         "blocked_payload_format": risk_payload.get("format"),
@@ -13242,7 +13302,7 @@ def lsp_rename_dsl_documents(
 
 def _replace_symbol_identifier_occurrences(source: str, token: str, new_name: str, symbol: dict | None) -> tuple[str, int, str]:
     symbol_kind = (symbol or {}).get("kind")
-    if symbol_kind in {"operation", "flow", "table"}:
+    if symbol_kind in {"operation", "flow", "table", "view"}:
         return (*_replace_identifier_occurrences_scoped(source, token, new_name, scope=symbol_kind), f"{symbol_kind}_declarations_and_targets")
     text, count = _replace_identifier_occurrences(source, token, new_name)
     return text, count, "code_identifiers"
@@ -13341,6 +13401,11 @@ def _rename_occurrence_in_scope(source: str, start: int, end: int, scope: str | 
         if re.search(r"->\s*$", before[-40:]) and re.match(r"\s*\.", after):
             return True
         if re.search(r"\bsource\s+$", before[-80:]):
+            return True
+    if scope == "view":
+        if re.search(r"\bview\s+$", before[-80:]):
+            return True
+        if re.search(r"\bitem\s+[A-Za-z_][A-Za-z0-9_]*\s*->\s*$", before[-120:]):
             return True
     return False
 

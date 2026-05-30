@@ -1245,6 +1245,10 @@ database-backed view subjects, relationship targets, and report sources while
 preserving same-named fields and non-code text; because table renames can imply
 schema migration risk, the candidate may still be blocked by migration safety
 until an explicit rename hint or migration decision is supplied.
+View renames produce scoped candidate edits for view declarations and menu item
+navigation targets while preserving same-named fields, operation targets,
+comments, and string literals; if the surrounding migration/safety preview is
+ambiguous, the candidate remains visible but blocked.
 
 ### Capabilities
 
@@ -1303,8 +1307,8 @@ explicit migration approval, such as destructive relationship changes. The
 blocker includes an `add_rename_hint` fix suggestion so agents and IDEs can ask
 for an explicit migration decision before applying the edit. The
 `appgen.lsp-rename-cli-audit.v1` gate also exercises lexical-scope safety by
-renaming handler and table targets while proving matching names in fields,
-comments, and string literals are preserved.
+renaming handler, table, and view targets while proving matching names in fields,
+operations, comments, and string literals are preserved.
 
 ### Completion Sources
 
