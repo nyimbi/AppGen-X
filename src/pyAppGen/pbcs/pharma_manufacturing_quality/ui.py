@@ -1,19 +1,11 @@
-from .domain_depth import domain_capability_surface_contract, DOMAIN_OPERATIONS, DOMAIN_RULES, DOMAIN_PARAMETERS, DOMAIN_ADVANCED_CAPABILITIES, DOMAIN_OWNED_TABLES, DOMAIN_EDGE_CASES
-PBC_KEY = 'pharma_manufacturing_quality'
-
+"""UI contracts for pharma_manufacturing_quality."""
+from .controls import control_catalog
+from .domain_depth import DOMAIN_ADVANCED_CAPABILITIES, DOMAIN_EDGE_CASES, DOMAIN_OPERATIONS, DOMAIN_OWNED_TABLES, DOMAIN_PARAMETERS, DOMAIN_RULES, domain_capability_surface_contract
+from .forms import form_catalog
+from .wizards import wizard_catalog
+PBC_KEY="pharma_manufacturing_quality"
 def pharma_manufacturing_quality_ui_contract():
-    surface = domain_capability_surface_contract()
-    return {'ok': True, 'pbc': PBC_KEY, 'fragments': ('PharmaManufacturingQualityWorkbench',
- 'PharmaManufacturingQualityDetail',
- 'PharmaManufacturingQualityAssistantPanel'), 'configuration_editor': True, 'stream_engine_picker_visible': False, 'action_permissions': ('pharma_manufacturing_quality.read',
- 'pharma_manufacturing_quality.create',
- 'pharma_manufacturing_quality.update',
- 'pharma_manufacturing_quality.approve',
- 'pharma_manufacturing_quality.admin'), 'full_capability_surface': {'operation_actions': DOMAIN_OPERATIONS, 'rule_editors': DOMAIN_RULES, 'parameter_editors': DOMAIN_PARAMETERS, 'advanced_panels': DOMAIN_ADVANCED_CAPABILITIES, 'table_browsers': DOMAIN_OWNED_TABLES, 'edge_case_queues': DOMAIN_EDGE_CASES, 'agent_tools': tuple(f'{PBC_KEY}_skills.{op}' for op in DOMAIN_OPERATIONS), 'navigation_sections': ('overview','operations','edge_case_triage','advanced_intelligence','release_evidence'), 'coverage': surface['coverage']}, 'side_effects': ()}
-
+    s=domain_capability_surface_contract(); return {"ok":True,"pbc":PBC_KEY,"fragments":("PharmaManufacturingQualityWorkbench","PharmaManufacturingQualityDetail","PharmaManufacturingQualityAssistantPanel","PharmaManufacturingQualityBatchConsole","PharmaManufacturingQualityDeviationBoard","PharmaManufacturingQualityReleaseDesk"),"configuration_editor":True,"stream_engine_picker_visible":False,"action_permissions":("pharma_manufacturing_quality.read","pharma_manufacturing_quality.create","pharma_manufacturing_quality.update","pharma_manufacturing_quality.approve","pharma_manufacturing_quality.admin"),"role_boards":("mbr_control","batch_execution","genealogy","deviations_and_capa","validation","serialization","batch_release","recall_impact"),"forms":form_catalog()["forms"],"wizards":wizard_catalog()["wizards"],"controls":control_catalog()["controls"],"full_capability_surface":{"operation_actions":DOMAIN_OPERATIONS,"rule_editors":DOMAIN_RULES,"parameter_editors":DOMAIN_PARAMETERS,"advanced_panels":DOMAIN_ADVANCED_CAPABILITIES,"table_browsers":DOMAIN_OWNED_TABLES,"edge_case_queues":DOMAIN_EDGE_CASES,"agent_tools":tuple(f"{PBC_KEY}_skills.{op}" for op in DOMAIN_OPERATIONS),"navigation_sections":("overview","batch_execution","quality_events","validation","release","recall","release_evidence"),"coverage":s["coverage"]},"side_effects":()}
 def pharma_manufacturing_quality_render_workbench():
-    ui = pharma_manufacturing_quality_ui_contract(); full = ui['full_capability_surface']
-    return {'ok': True, 'pbc': PBC_KEY, 'route': f'/workbench/pbcs/{PBC_KEY}', 'operation_actions': full['operation_actions'], 'table_browsers': full['table_browsers'], 'side_effects': ()}
-
-def smoke_test():
-    return {'ok': pharma_manufacturing_quality_ui_contract()['ok'] and pharma_manufacturing_quality_render_workbench()['ok'], 'side_effects': ()}
+    ui=pharma_manufacturing_quality_ui_contract(); full=ui["full_capability_surface"]; return {"ok":True,"pbc":PBC_KEY,"route":f"/workbench/pbcs/{PBC_KEY}","role_boards":ui["role_boards"],"operation_actions":full["operation_actions"],"table_browsers":full["table_browsers"],"forms":tuple(f["id"] for f in ui["forms"]),"wizards":tuple(w["id"] for w in ui["wizards"]),"exception_queues":full["edge_case_queues"],"side_effects":()}
+def smoke_test(): return {"ok":pharma_manufacturing_quality_ui_contract()["ok"] and pharma_manufacturing_quality_render_workbench()["ok"],"side_effects":()}
