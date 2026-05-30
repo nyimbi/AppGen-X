@@ -1434,7 +1434,10 @@ failure evidence from the top-level report.
 The CLI audit also reports case, passing-case, required-action, observed-action,
 missing-action, applied-edit, lint-passing-case, lint-failing-case,
 changed-case, unchanged-case, and blocking-gap counts so external agents can
-verify quick-fix coverage without expanding every case.
+verify quick-fix coverage without expanding every case. It also reports
+case ids, failing-case names, expected-text match counts, forbidden-text removal
+counts, and lint-format counts so regressions can be traced to the exact
+quick-fix family and whether the patch, cleanup, or lint handoff failed.
 The top-level tooling audit publishes three separate release gates for this
 surface: `lsp_quick_fix_coverage_contracts` proves required quick-fix families
 apply as linted DSL patches; `lsp_quick_fix_cli_contracts` proves the CLI has
@@ -1444,6 +1447,9 @@ title, edit, changed, lint, available-action, and diagnostic evidence visible
 for agents and IDEs that consume human-readable logs.
 `appgen.lsp-rename-cli-audit.v1` reports safe, blocked JSON, and blocked text
 scenario counts plus blocker-code and suggested-fix counts for rename safety.
+It also reports named scenario ids, failing-scenario counts, and failing
+scenario names so rename regressions identify the exact lexical scope or
+approval-blocker path that failed.
 
 ## IDE Integration
 

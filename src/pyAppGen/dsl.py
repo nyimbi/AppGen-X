@@ -5376,7 +5376,12 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and lsp_text_renderer["ok"]
             and lsp_rpc["ok"]
             and lsp_stdio["ok"]
-            and lsp_rename_cli["ok"],
+            and lsp_rename_cli["ok"]
+            and lsp_rename_cli.get("passing_scenario_count") == lsp_rename_cli.get("scenario_count")
+            and lsp_rename_cli.get("failing_scenario_count") == 0
+            and lsp_rename_cli.get("safe_json_scenario_count", 0) >= 5
+            and lsp_rename_cli.get("blocked_json_scenario_count", 0) >= 5
+            and lsp_rename_cli.get("blocked_text_scenario_count") == 1,
             "Language server exposes and serves diagnostics, completion, hover, definitions, references, symbols, rename, code actions, and formatting from JSON-RPC and the appgen lsp CLI.",
             "docs/tooling.md#language-server-specification",
             {
@@ -5519,8 +5524,12 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and tuple(lsp_apply_cli.get("required_action_ids", ()))
             == tuple(code_action_apply_audit.get("required_action_ids", ()))
             and lsp_apply_cli.get("passing_case_count") == lsp_apply_cli.get("case_count")
+            and lsp_apply_cli.get("failing_case_count") == 0
             and lsp_apply_cli.get("missing_required_action_count") == 0
             and lsp_apply_cli.get("applied_edit_count", 0) >= lsp_apply_cli.get("case_count", 0)
+            and lsp_apply_cli.get("expected_text_case_count") == lsp_apply_cli.get("case_count")
+            and lsp_apply_cli.get("forbidden_removed_case_count") == lsp_apply_cli.get("case_count")
+            and lsp_apply_cli.get("lint_format_case_count") == lsp_apply_cli.get("case_count")
             and lsp_apply_cli.get("lint_passing_case_count") == lsp_apply_cli.get("case_count")
             and lsp_apply_cli.get("lint_failing_case_count") == 0
             and lsp_apply_cli.get("changed_case_count") == lsp_apply_cli.get("case_count")
@@ -9242,6 +9251,7 @@ package WebPackage { target: web; smoke: launch }
         path.write_text(source, encoding="utf-8")
         exit_code, payload = run_apply(path, action_id)
         patched_source = payload.get("patched_source", "")
+        expected_matched = expected_text in patched_source
         forbidden_removed = all(item not in patched_source for item in forbidden_text)
         cases.append(
             {
@@ -9251,7 +9261,7 @@ package WebPackage { target: web; smoke: launch }
                 and payload.get("ok") is True
                 and payload.get("changed") is True
                 and payload.get("action_id") == action_id
-                and expected_text in patched_source
+                and expected_matched
                 and forbidden_removed
                 and payload.get("lint", {}).get("format") == "appgen.lint-report.v1"
                 and payload.get("lint", {}).get("ok") is True
@@ -9264,6 +9274,7 @@ package WebPackage { target: web; smoke: launch }
                 "lint_format": payload.get("lint", {}).get("format"),
                 "lint_ok": payload.get("lint", {}).get("ok"),
                 "expected_text": expected_text,
+                "expected_matched": expected_matched,
                 "forbidden_removed": forbidden_removed,
             }
         )
@@ -9276,10 +9287,15 @@ package WebPackage { target: web; smoke: launch }
         "case_count": len(cases),
         "passing_case_count": sum(1 for case in cases if case["ok"]),
         "failing_case_count": len(failing_cases),
+        "failing_cases": tuple(case["case"] for case in failing_cases),
+        "case_ids": observed_action_ids,
         "required_action_count": len(required_action_ids),
         "observed_action_count": len(observed_action_ids),
         "missing_required_action_count": len(missing_required_action_ids),
         "applied_edit_count": sum(case["applied_edit_count"] for case in cases),
+        "expected_text_case_count": sum(1 for case in cases if case["expected_matched"]),
+        "forbidden_removed_case_count": sum(1 for case in cases if case["forbidden_removed"]),
+        "lint_format_case_count": sum(1 for case in cases if case["lint_format"] == "appgen.lint-report.v1"),
         "lint_passing_case_count": sum(1 for case in cases if case["lint_ok"]),
         "lint_failing_case_count": sum(1 for case in cases if not case["lint_ok"]),
         "changed_case_count": sum(1 for case in cases if case["changed"]),
@@ -9760,6 +9776,23 @@ view InvoiceForm for Invoice {
         and "rename-blocker AGX1101:" in blocked_text
         and "fixes=add_rename_hint" in blocked_text
     )
+    scenario_results = (
+        {"id": "safe_flow_rename", "ok": safe_ok, "mode": "safe_json"},
+        {"id": "lexical_operation_scope", "ok": lexical_scope_ok, "mode": "safe_json"},
+        {"id": "blocked_table_scope", "ok": table_scope_ok, "mode": "blocked_json"},
+        {"id": "blocked_view_scope", "ok": view_scope_ok, "mode": "blocked_json"},
+        {"id": "blocked_pbc_scope", "ok": pbc_scope_ok, "mode": "blocked_json"},
+        {"id": "event_scope", "ok": event_scope_ok, "mode": "safe_json"},
+        {"id": "package_scope", "ok": package_scope_ok, "mode": "safe_json"},
+        {"id": "deployment_unit_scope", "ok": deployment_scope_ok, "mode": "safe_json"},
+        {"id": "blocked_field_scope", "ok": field_scope_ok, "mode": "blocked_json"},
+        {"id": "approval_blocker_json", "ok": blocked_ok, "mode": "blocked_json"},
+        {"id": "approval_blocker_text", "ok": blocked_text_ok, "mode": "blocked_text"},
+    )
+    failing_scenarios = tuple(case["id"] for case in scenario_results if not case["ok"])
+    safe_json_scenarios = tuple(case["id"] for case in scenario_results if case["mode"] == "safe_json")
+    blocked_json_scenarios = tuple(case["id"] for case in scenario_results if case["mode"] == "blocked_json")
+    blocked_text_scenarios = tuple(case["id"] for case in scenario_results if case["mode"] == "blocked_text")
 
     return {
         "format": "appgen.lsp-rename-cli-audit.v1",
@@ -9776,24 +9809,18 @@ view InvoiceForm for Invoice {
             and blocked_ok
             and blocked_text_ok
         ),
-        "scenario_count": 11,
-        "passing_scenario_count": sum(
-            1
-            for ok in (
-                safe_ok,
-                lexical_scope_ok,
-                table_scope_ok,
-                view_scope_ok,
-                pbc_scope_ok,
-                event_scope_ok,
-                package_scope_ok,
-                deployment_scope_ok,
-                field_scope_ok,
-                blocked_ok,
-                blocked_text_ok,
-            )
-            if ok
-        ),
+        "scenario_count": len(scenario_results),
+        "passing_scenario_count": sum(1 for case in scenario_results if case["ok"]),
+        "failing_scenario_count": len(failing_scenarios),
+        "failing_scenarios": failing_scenarios,
+        "scenario_ids": tuple(case["id"] for case in scenario_results),
+        "scenarios": scenario_results,
+        "safe_json_scenario_count": len(safe_json_scenarios),
+        "blocked_json_scenario_count": len(blocked_json_scenarios),
+        "blocked_text_scenario_count": len(blocked_text_scenarios),
+        "safe_json_scenarios": safe_json_scenarios,
+        "blocked_json_scenarios": blocked_json_scenarios,
+        "blocked_text_scenarios": blocked_text_scenarios,
         "blocked_code_count": len(blocked_codes),
         "blocked_fix_count": len(blocked_fixes),
         "exit_code": exit_code,

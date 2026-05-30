@@ -2460,10 +2460,15 @@ def test_lsp_code_action_cli_audit_covers_required_agent_facing_quick_fixes(tmp_
     assert report["case_count"] == len(report["cases"])
     assert report["passing_case_count"] == report["case_count"]
     assert report["failing_case_count"] == 0
+    assert report["failing_cases"] == ()
+    assert report["case_ids"] == report["observed_action_ids"]
     assert report["required_action_count"] == len(report["required_action_ids"])
     assert report["observed_action_count"] == len(report["observed_action_ids"])
     assert report["missing_required_action_count"] == 0
     assert report["applied_edit_count"] >= report["case_count"]
+    assert report["expected_text_case_count"] == report["case_count"]
+    assert report["forbidden_removed_case_count"] == report["case_count"]
+    assert report["lint_format_case_count"] == report["case_count"]
     assert report["lint_passing_case_count"] == report["case_count"]
     assert report["lint_failing_case_count"] == 0
     assert report["changed_case_count"] == report["case_count"]
@@ -2527,6 +2532,24 @@ def test_lsp_rename_cli_audit_covers_safe_and_blocked_renames(tmp_path: Path) ->
     assert report["ok"] is True
     assert report["scenario_count"] == 11
     assert report["passing_scenario_count"] == 11
+    assert report["failing_scenario_count"] == 0
+    assert report["failing_scenarios"] == ()
+    assert report["scenario_ids"] == (
+        "safe_flow_rename",
+        "lexical_operation_scope",
+        "blocked_table_scope",
+        "blocked_view_scope",
+        "blocked_pbc_scope",
+        "event_scope",
+        "package_scope",
+        "deployment_unit_scope",
+        "blocked_field_scope",
+        "approval_blocker_json",
+        "approval_blocker_text",
+    )
+    assert report["safe_json_scenario_count"] == 5
+    assert report["blocked_json_scenario_count"] == 5
+    assert report["blocked_text_scenario_count"] == 1
     assert report["blocked_code_count"] >= 1
     assert report["blocked_fix_count"] >= 1
     assert report["safe_ok"] is True
@@ -5190,6 +5213,14 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert lsp_check["detail"]["stdio"]["method_count"] >= 1
     assert lsp_check["detail"]["rename_cli"]["format"] == "appgen.lsp-rename-cli-audit.v1"
     assert lsp_check["detail"]["rename_cli"]["ok"] is True
+    assert lsp_check["detail"]["rename_cli"]["passing_scenario_count"] == (
+        lsp_check["detail"]["rename_cli"]["scenario_count"]
+    )
+    assert lsp_check["detail"]["rename_cli"]["failing_scenario_count"] == 0
+    assert lsp_check["detail"]["rename_cli"]["failing_scenarios"] == ()
+    assert lsp_check["detail"]["rename_cli"]["safe_json_scenario_count"] == 5
+    assert lsp_check["detail"]["rename_cli"]["blocked_json_scenario_count"] == 5
+    assert lsp_check["detail"]["rename_cli"]["blocked_text_scenario_count"] == 1
     assert lsp_check["detail"]["rename_cli"]["rename_format"] == "appgen.lsp-rename.v1"
     assert lsp_check["detail"]["rename_cli"]["token"] == "SubmitInvoice"
     assert lsp_check["detail"]["rename_cli"]["new_name"] == "PostInvoice"
@@ -5338,7 +5369,12 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         quick_fix_cli["detail"]["application_required_action_ids"]
     )
     assert quick_fix_cli["detail"]["cli"]["missing_required_action_count"] == 0
+    assert quick_fix_cli["detail"]["cli"]["failing_case_count"] == 0
+    assert quick_fix_cli["detail"]["cli"]["failing_cases"] == ()
     assert quick_fix_cli["detail"]["cli"]["changed_case_count"] == quick_fix_cli["detail"]["cli"]["case_count"]
+    assert quick_fix_cli["detail"]["cli"]["expected_text_case_count"] == quick_fix_cli["detail"]["cli"]["case_count"]
+    assert quick_fix_cli["detail"]["cli"]["forbidden_removed_case_count"] == quick_fix_cli["detail"]["cli"]["case_count"]
+    assert quick_fix_cli["detail"]["cli"]["lint_format_case_count"] == quick_fix_cli["detail"]["cli"]["case_count"]
     assert quick_fix_cli["detail"]["cli"]["blocking_gap_count"] == 0
     quick_fix_text = next(check for check in report["checks"] if check["id"] == "lsp_quick_fix_text_contracts")
     assert quick_fix_text["ok"] is True
