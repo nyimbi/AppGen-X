@@ -4,6 +4,7 @@ from __future__ import annotations
 from copy import deepcopy
 import hashlib
 
+from .bim_control import improve1_bim_control_contract
 from .domain_depth import (
     DOMAIN_OPERATIONS,
     DOMAIN_OWNED_TABLES,
@@ -533,6 +534,7 @@ def building_information_modeling_ops_build_release_evidence() -> dict:
         {"id": "forms_wizards_controls", "ok": True},
         {"id": "federation_slice_runtime", "ok": smoke["ok"]},
         {"id": "retry_dead_letter", "ok": True},
+        {"id": "improve1_bim_control", "ok": improve1_bim_control_contract()["capability_count"] == 50},
     )
     return {
         "format": "appgen.building-information-modeling-ops-release-evidence.v1",
@@ -551,6 +553,7 @@ def building_information_modeling_ops_build_release_evidence() -> dict:
             "wizards": building_information_modeling_ops_build_wizard_contract()["wizards"],
             "controls": building_information_modeling_ops_build_controls_contract()["controls"],
             "single_pbc_app": building_information_modeling_ops_build_single_pbc_app_contract(),
+            "improve1_bim_control": improve1_bim_control_contract(),
             "smoke": smoke,
         },
         "blocking_gaps": tuple(check["id"] for check in checks if not check["ok"]),

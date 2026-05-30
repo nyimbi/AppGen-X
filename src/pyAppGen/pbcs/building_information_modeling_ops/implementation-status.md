@@ -53,4 +53,22 @@ Result:
 ## Remaining Risks
 
 - The package proves owned-table contracts, migrations, route/service surfaces, and standalone behavior without hitting a live PostgreSQL/MySQL/MariaDB instance.
-- The implemented slice remains intentionally narrow relative to the broader backlog in `improve1.md`.
+- The earlier federation-only slice has been superseded by `bim_control.py`, which now covers all 50 `improve1.md` controls from federation and coordinates through drawings, spaces, quantities, clashes, handover, commissioning, digital twins, assistant workflows, evidence, retention, and KPIs.
+
+## improve1 Full Traceability Evidence
+
+Branch: `pbc/improve1-full-traceability`
+
+Current slice evidence:
+
+- Added `bim_control.py` as executable, side-effect-free domain code for all 50 `improve1.md` BIM operations controls.
+- Bound BIM control evidence into `runtime.py` release evidence and `ui.py` BIM control panels so every feature has a surfaced workbench/control entry.
+- Added `tests/test_domain_behavior.py` to exercise all 50 control primitives plus runtime, UI, route, service, database-backend, release, and owned-table boundary behavior.
+- Updated `IMPROVE1_TRACEABILITY.md` so all 50 rows point to `bim_control.py` and `tests/test_domain_behavior.py` as direct executable evidence.
+- Updated `improve1_capabilities.py` so every capability registry row names the BIM control artifact and domain behavior test.
+
+Verification log:
+
+- Passed: `/Volumes/Media/src/pjs/appgen/.venv/bin/pytest src/pyAppGen/pbcs/building_information_modeling_ops/tests` (`25 passed`).
+- Passed: improve1 traceability/capability/runtime sweep across all PBCs (`877 passed`).
+- Passed: `git diff --check -- src/pyAppGen/pbcs`.
