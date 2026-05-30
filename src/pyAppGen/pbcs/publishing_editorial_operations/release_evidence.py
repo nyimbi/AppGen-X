@@ -1,11 +1,13 @@
 from .runtime import publishing_editorial_operations_build_release_evidence
+from .standalone import standalone_smoke_test
 
 def build_release_evidence():
     return publishing_editorial_operations_build_release_evidence()
 
 def release_readiness_manifest():
     evidence = build_release_evidence()
-    return {'ok': evidence['ok'], 'pbc': evidence['pbc'], 'sections': ('schema','services','events','handlers','ui','agent','governance'), 'blocking_gaps': (), 'boundary_gaps': (), 'evidence': evidence, 'side_effects': ()}
+    standalone = standalone_smoke_test()
+    return {'ok': evidence['ok'] and standalone['ok'], 'pbc': evidence['pbc'], 'sections': ('schema','services','events','handlers','ui','agent','governance'), 'blocking_gaps': (), 'boundary_gaps': (), 'evidence': evidence, 'standalone': standalone, 'side_effects': ()}
 
 def validate_release_evidence():
     manifest = release_readiness_manifest()
