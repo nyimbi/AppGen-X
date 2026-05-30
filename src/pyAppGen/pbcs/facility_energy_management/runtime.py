@@ -267,3 +267,39 @@ def facility_energy_management_runtime_smoke():
     }
 
 facility_energy_management_execute_domain_operation = execute_domain_operation
+
+
+# Energy improve1 control extension with per-feature executable evidence.
+from .energy_control import improve1_energy_control_contract as facility_energy_management_improve1_energy_control_contract
+
+_FACILITY_ENERGY_MANAGEMENT_DOMAIN_BUILD_RELEASE_EVIDENCE = facility_energy_management_build_release_evidence
+_FACILITY_ENERGY_MANAGEMENT_DOMAIN_RUNTIME_CAPABILITIES = facility_energy_management_runtime_capabilities
+
+
+def facility_energy_management_build_release_evidence():
+    evidence = dict(_FACILITY_ENERGY_MANAGEMENT_DOMAIN_BUILD_RELEASE_EVIDENCE())
+    energy_control = facility_energy_management_improve1_energy_control_contract()
+    checks = tuple(evidence.get('checks', ())) + (
+        {'id': 'improve1_energy_control_contract', 'ok': energy_control['ok']},
+        {'id': 'improve1_energy_control_capability_count', 'ok': energy_control['capability_count'] == 50},
+        {'id': 'improve1_energy_control_boundary', 'ok': not energy_control['blocking_gaps'] and energy_control['stream_engine_picker_visible'] is False},
+    )
+    return {**evidence, 'ok': evidence.get('ok') is True and all(check['ok'] for check in checks), 'checks': checks, 'energy_control': energy_control, 'blocking_gaps': tuple(check for check in checks if not check['ok']), 'side_effects': ()}
+
+
+def facility_energy_management_runtime_capabilities():
+    runtime = dict(_FACILITY_ENERGY_MANAGEMENT_DOMAIN_RUNTIME_CAPABILITIES())
+    energy_control = facility_energy_management_improve1_energy_control_contract()
+    return {
+        **runtime,
+        'ok': runtime.get('ok') is True and energy_control['ok'],
+        'energy_control': energy_control,
+        'operations': tuple(runtime.get('operations', ())) + ('improve1_energy_control_contract',),
+        'improve1_energy_control_capabilities': tuple(item['slug'] for item in energy_control['capabilities']),
+        'owned_tables': tuple(dict.fromkeys(tuple(runtime.get('owned_tables', ())) + tuple(energy_control['owned_tables']))),
+        'allowed_database_backends': energy_control['allowed_database_backends'],
+        'event_contract': energy_control['event_contract'],
+        'required_event_topic': energy_control['required_event_topic'],
+        'stream_engine_picker_visible': False,
+        'side_effects': (),
+    }

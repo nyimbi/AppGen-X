@@ -25,3 +25,25 @@ def facility_energy_management_standalone_ui_contract():
 def smoke_test():
     standalone = facility_energy_management_standalone_ui_contract()
     return {'ok': facility_energy_management_ui_contract()['ok'] and facility_energy_management_render_workbench()['ok'] and standalone['ok'], 'side_effects': ()}
+
+
+# Improve1 energy control coverage is part of the visible workbench contract.
+from .energy_control import improve1_energy_control_contract
+
+_FACILITY_ENERGY_MANAGEMENT_FULL_UI_CONTRACT = facility_energy_management_ui_contract
+_FACILITY_ENERGY_MANAGEMENT_FULL_RENDER_WORKBENCH = facility_energy_management_render_workbench
+
+
+def facility_energy_management_ui_contract():
+    base = dict(_FACILITY_ENERGY_MANAGEMENT_FULL_UI_CONTRACT())
+    energy_control = improve1_energy_control_contract()
+    full_surface = dict(base.get('full_capability_surface', {}))
+    full_surface['energy_control_panels'] = tuple(item['evidence']['ui_surface'] for item in energy_control['capabilities'])
+    full_surface['energy_control_service_actions'] = tuple(item['evidence']['service_api'] for item in energy_control['capabilities'])
+    return {**base, 'ok': base.get('ok') is True and energy_control['ok'], 'full_capability_surface': full_surface, 'energy_control_contract': energy_control, 'stream_engine_picker_visible': False}
+
+
+def facility_energy_management_render_workbench():
+    base = dict(_FACILITY_ENERGY_MANAGEMENT_FULL_RENDER_WORKBENCH())
+    energy_control = improve1_energy_control_contract()
+    return {**base, 'ok': base.get('ok') is True and energy_control['ok'], 'energy_control_actions': tuple(item['evidence']['service_api'] for item in energy_control['capabilities']), 'energy_control_contract': energy_control, 'stream_engine_picker_visible': False}
