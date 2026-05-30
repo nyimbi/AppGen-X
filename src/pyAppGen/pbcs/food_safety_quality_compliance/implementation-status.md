@@ -12,3 +12,10 @@
 - No external persistence adapter is implemented; the slice is in-memory and package-local by design.
 - Recall impact analysis expects caller-supplied projections rather than connected downstream event stores.
 - CCP monitoring records and sanitation/environmental monitoring remain modeled through inspection findings rather than dedicated tables.
+
+## Improve1 food safety control implementation
+
+- Added `food_control.py` as the executable control contract for all 50 hand-curated food safety quality compliance capabilities.
+- Each capability now maps to owned HACCP, CCP, inspection, nonconformance, recall, supplier audit, hold, control, and evidence surfaces plus declared AppGen-X projection dependencies.
+- Runtime, UI, and release evidence expose food safety controls without stream-engine picker leakage and keep ordinary datastore backends limited to PostgreSQL/MySQL/MariaDB.
+- Domain behavior tests cover positive execution for all 50 capabilities plus negative guards for HACCP version pinning, CCP mapping, monitoring records, holds, projection-only genealogy/recalls, agent CRUD previews, cryptographic evidence, release gates, and overlap boundaries.

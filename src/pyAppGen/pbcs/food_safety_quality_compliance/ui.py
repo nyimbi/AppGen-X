@@ -37,3 +37,23 @@ def food_safety_quality_compliance_render_workbench(state=None, tenant: str = "d
 
 def smoke_test():
     return {"ok": food_safety_quality_compliance_ui_contract()["ok"] and food_safety_quality_compliance_render_workbench()["ok"], "side_effects": ()}
+
+
+from .food_control import improve1_food_control_contract
+
+_food_safety_quality_compliance_base_ui_contract = food_safety_quality_compliance_ui_contract
+_food_safety_quality_compliance_base_render_workbench = food_safety_quality_compliance_render_workbench
+
+def food_safety_quality_compliance_ui_contract():
+    ui = _food_safety_quality_compliance_base_ui_contract()
+    control = improve1_food_control_contract()
+    surface = dict(ui.get('full_capability_surface', {}))
+    surface['food_control_panels'] = tuple(item['evidence']['ui_surface'] for item in control['capabilities'])
+    surface['food_control_service_actions'] = tuple(item['evidence']['service_api'] for item in control['capabilities'])
+    surface['food_control_tables'] = control['owned_tables']
+    return {**ui, 'ok': ui.get('ok') is True and control['ok'], 'full_capability_surface': surface, 'food_control_contract': control, 'side_effects': ()}
+
+def food_safety_quality_compliance_render_workbench(state=None, tenant: str = 'default'):
+    workbench = _food_safety_quality_compliance_base_render_workbench(state, tenant=tenant)
+    control = improve1_food_control_contract()
+    return {**workbench, 'ok': workbench.get('ok') is True and control['ok'], 'food_control_panels': tuple(item['evidence']['ui_surface'] for item in control['capabilities']), 'food_control_service_actions': tuple(item['evidence']['service_api'] for item in control['capabilities']), 'side_effects': ()}
