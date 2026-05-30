@@ -2890,11 +2890,92 @@ def _validate_generate_text_renderer_contract() -> dict:
     check_lines = tuple(line for line in lines if line.startswith(("ok ", "fail ")))
     target_detail_lines = tuple(line for line in lines if line.startswith(("unknown-targets ", "missing-targets ")))
     artifact_lines = tuple(line for line in lines if line.startswith("artifact "))
+    manifest_lines = tuple(line for line in lines if line.startswith("manifest "))
     gap_lines = tuple(line for line in lines if line.startswith("gap "))
     diagnostic_lines = tuple(line for line in lines if line.startswith(("warning ", "error ")))
+    emitted_requested_targets = tuple()
+    emitted_app_targets = tuple()
+    emitted_generate_targets = tuple()
+    for line in summary_lines:
+        parts = line.split()
+        for part in parts:
+            if part.startswith("requested="):
+                emitted_requested_targets = tuple(part.removeprefix("requested=").split(","))
+            elif part.startswith("app_targets="):
+                emitted_app_targets = tuple(part.removeprefix("app_targets=").split(","))
+            elif part.startswith("targets="):
+                emitted_generate_targets = tuple(part.removeprefix("targets=").split(","))
+    emitted_check_ids = tuple(line.split()[1] for line in check_lines if len(line.split()) >= 2)
+    emitted_passing_check_ids = tuple(line.split()[1] for line in check_lines if line.startswith("ok ") and len(line.split()) >= 2)
+    emitted_failing_check_ids = tuple(line.split()[1] for line in check_lines if line.startswith("fail ") and len(line.split()) >= 2)
+    emitted_unknown_targets = tuple()
+    emitted_missing_targets = tuple()
+    for line in target_detail_lines:
+        if line.startswith("unknown-targets "):
+            emitted_unknown_targets = tuple(item.strip() for item in line.removeprefix("unknown-targets ").split(","))
+        elif line.startswith("missing-targets "):
+            emitted_missing_targets = tuple(item.strip() for item in line.removeprefix("missing-targets ").split(","))
+    emitted_artifact_paths = tuple(
+        line.removeprefix("artifact ").split(" bytes=", 1)[0].strip() for line in artifact_lines
+    )
+    emitted_manifest_paths = tuple(line.removeprefix("manifest ").strip() for line in manifest_lines)
+    emitted_gap_ids = tuple(line.removeprefix("gap ").strip() for line in gap_lines)
+    emitted_diagnostic_codes = tuple(line.split()[1].rstrip(":") for line in diagnostic_lines if len(line.split()) >= 2)
+    emitted_diagnostic_severities = tuple(line.split()[0] for line in diagnostic_lines if line.split())
+    required_requested_targets = tuple(validate_payload["requested_targets"])
+    required_app_targets = tuple(validate_payload["app_targets"])
+    required_generate_targets = tuple(generate_payload["targets"])
+    required_check_ids = tuple(check["check"] for check in validate_payload["checks"])
+    required_passing_check_ids = tuple(check["check"] for check in validate_payload["checks"] if check["ok"])
+    required_failing_check_ids = tuple(check["check"] for check in validate_payload["checks"] if not check["ok"])
+    compatibility_check = next(check for check in validate_payload["checks"] if check["check"] == "target_compatibility")
+    required_unknown_targets = tuple(compatibility_check["unknown_targets"])
+    required_missing_targets = tuple(compatibility_check["missing_targets"])
+    required_artifact_paths = tuple(artifact["path"] for artifact in generate_payload["artifacts"])
+    required_manifest_paths = (generate_payload["manifest"],)
+    required_gap_ids = tuple(generate_payload["blocking_gaps"])
+    required_diagnostic_codes = tuple(
+        diagnostic["code"] for diagnostic in (*validate_payload["diagnostics"], *generate_payload["diagnostics"])
+    )
+    required_diagnostic_severities = tuple(
+        diagnostic["severity"] for diagnostic in (*validate_payload["diagnostics"], *generate_payload["diagnostics"])
+    )
+    missing_requested_targets = tuple(target for target in required_requested_targets if target not in emitted_requested_targets)
+    missing_app_targets = tuple(target for target in required_app_targets if target not in emitted_app_targets)
+    missing_generate_targets = tuple(target for target in required_generate_targets if target not in emitted_generate_targets)
+    missing_check_ids = tuple(check_id for check_id in required_check_ids if check_id not in emitted_check_ids)
+    missing_passing_check_ids = tuple(
+        check_id for check_id in required_passing_check_ids if check_id not in emitted_passing_check_ids
+    )
+    missing_failing_check_ids = tuple(
+        check_id for check_id in required_failing_check_ids if check_id not in emitted_failing_check_ids
+    )
+    missing_unknown_targets = tuple(target for target in required_unknown_targets if target not in emitted_unknown_targets)
+    missing_missing_targets = tuple(target for target in required_missing_targets if target not in emitted_missing_targets)
+    missing_artifact_paths = tuple(path for path in required_artifact_paths if path not in emitted_artifact_paths)
+    missing_manifest_paths = tuple(path for path in required_manifest_paths if path not in emitted_manifest_paths)
+    missing_gap_ids = tuple(gap_id for gap_id in required_gap_ids if gap_id not in emitted_gap_ids)
+    missing_diagnostic_codes = tuple(code for code in required_diagnostic_codes if code not in emitted_diagnostic_codes)
+    missing_diagnostic_severities = tuple(
+        severity for severity in required_diagnostic_severities if severity not in emitted_diagnostic_severities
+    )
     return {
         "format": "appgen.validate-generate-text-renderer.v1",
-        "ok": not missing and not text.lstrip().startswith("{"),
+        "ok": not missing
+        and not missing_requested_targets
+        and not missing_app_targets
+        and not missing_generate_targets
+        and not missing_check_ids
+        and not missing_passing_check_ids
+        and not missing_failing_check_ids
+        and not missing_unknown_targets
+        and not missing_missing_targets
+        and not missing_artifact_paths
+        and not missing_manifest_paths
+        and not missing_gap_ids
+        and not missing_diagnostic_codes
+        and not missing_diagnostic_severities
+        and not text.lstrip().startswith("{"),
         **_text_renderer_contract_counts(
             text,
             required_fragments,
@@ -2908,11 +2989,63 @@ def _validate_generate_text_renderer_contract() -> dict:
         "failing_check_line_count": sum(1 for line in check_lines if line.startswith("fail ")),
         "target_detail_line_count": len(target_detail_lines),
         "artifact_line_count": len(artifact_lines),
-        "manifest_line_count": sum(1 for line in lines if line.startswith("manifest ")),
+        "manifest_line_count": len(manifest_lines),
         "gap_line_count": len(gap_lines),
         "diagnostic_line_count": len(diagnostic_lines),
         "warning_line_count": sum(1 for line in diagnostic_lines if line.startswith("warning ")),
         "error_line_count": sum(1 for line in diagnostic_lines if line.startswith("error ")),
+        "required_requested_targets": required_requested_targets,
+        "emitted_requested_targets": emitted_requested_targets,
+        "missing_requested_target_count": len(missing_requested_targets),
+        "missing_requested_targets": missing_requested_targets,
+        "required_app_targets": required_app_targets,
+        "emitted_app_targets": emitted_app_targets,
+        "missing_app_target_count": len(missing_app_targets),
+        "missing_app_targets": missing_app_targets,
+        "required_generate_targets": required_generate_targets,
+        "emitted_generate_targets": emitted_generate_targets,
+        "missing_generate_target_count": len(missing_generate_targets),
+        "missing_generate_targets": missing_generate_targets,
+        "required_check_ids": required_check_ids,
+        "emitted_check_ids": emitted_check_ids,
+        "missing_check_id_count": len(missing_check_ids),
+        "missing_check_ids": missing_check_ids,
+        "required_passing_check_ids": required_passing_check_ids,
+        "emitted_passing_check_ids": emitted_passing_check_ids,
+        "missing_passing_check_id_count": len(missing_passing_check_ids),
+        "missing_passing_check_ids": missing_passing_check_ids,
+        "required_failing_check_ids": required_failing_check_ids,
+        "emitted_failing_check_ids": emitted_failing_check_ids,
+        "missing_failing_check_id_count": len(missing_failing_check_ids),
+        "missing_failing_check_ids": missing_failing_check_ids,
+        "required_unknown_targets": required_unknown_targets,
+        "emitted_unknown_targets": emitted_unknown_targets,
+        "missing_unknown_target_count": len(missing_unknown_targets),
+        "missing_unknown_targets": missing_unknown_targets,
+        "required_missing_targets": required_missing_targets,
+        "emitted_missing_targets": emitted_missing_targets,
+        "missing_missing_target_count": len(missing_missing_targets),
+        "missing_missing_targets": missing_missing_targets,
+        "required_artifact_paths": required_artifact_paths,
+        "emitted_artifact_paths": emitted_artifact_paths,
+        "missing_artifact_path_count": len(missing_artifact_paths),
+        "missing_artifact_paths": missing_artifact_paths,
+        "required_manifest_paths": required_manifest_paths,
+        "emitted_manifest_paths": emitted_manifest_paths,
+        "missing_manifest_path_count": len(missing_manifest_paths),
+        "missing_manifest_paths": missing_manifest_paths,
+        "required_gap_ids": required_gap_ids,
+        "emitted_gap_ids": emitted_gap_ids,
+        "missing_gap_id_count": len(missing_gap_ids),
+        "missing_gap_ids": missing_gap_ids,
+        "required_diagnostic_codes": required_diagnostic_codes,
+        "emitted_diagnostic_codes": emitted_diagnostic_codes,
+        "missing_diagnostic_code_count": len(missing_diagnostic_codes),
+        "missing_diagnostic_codes": missing_diagnostic_codes,
+        "required_diagnostic_severities": required_diagnostic_severities,
+        "emitted_diagnostic_severities": emitted_diagnostic_severities,
+        "missing_diagnostic_severity_count": len(missing_diagnostic_severities),
+        "missing_diagnostic_severities": missing_diagnostic_severities,
         "json_fallback": text.lstrip().startswith("{"),
         "text_prefix": text[:240],
     }
@@ -5647,6 +5780,15 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and validate_generate_text_renderer.get("failing_check_line_count") == 1
             and validate_generate_text_renderer.get("target_detail_line_count") == 2
             and validate_generate_text_renderer.get("error_line_count") == 1
+            and validate_generate_text_renderer.get("missing_requested_target_count") == 0
+            and validate_generate_text_renderer.get("missing_app_target_count") == 0
+            and validate_generate_text_renderer.get("missing_check_id_count") == 0
+            and validate_generate_text_renderer.get("missing_passing_check_id_count") == 0
+            and validate_generate_text_renderer.get("missing_failing_check_id_count") == 0
+            and validate_generate_text_renderer.get("missing_unknown_target_count") == 0
+            and validate_generate_text_renderer.get("missing_missing_target_count") == 0
+            and validate_generate_text_renderer.get("missing_diagnostic_code_count") == 0
+            and validate_generate_text_renderer.get("missing_diagnostic_severity_count") == 0
             and validate_generate_text_renderer.get("json_fallback") is False,
             "Validation contracts prove requested/app target normalization, AGX0802 target failures, target-compatibility checks, and text diagnostics.",
             "docs/tooling.md#appgen-validate",
@@ -5675,6 +5817,58 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "failing_check_line_count": validate_generate_text_renderer.get("failing_check_line_count"),
                     "target_detail_line_count": validate_generate_text_renderer.get("target_detail_line_count"),
                     "error_line_count": validate_generate_text_renderer.get("error_line_count"),
+                    "required_requested_targets": validate_generate_text_renderer.get("required_requested_targets"),
+                    "emitted_requested_targets": validate_generate_text_renderer.get("emitted_requested_targets"),
+                    "missing_requested_target_count": validate_generate_text_renderer.get(
+                        "missing_requested_target_count"
+                    ),
+                    "missing_requested_targets": validate_generate_text_renderer.get("missing_requested_targets"),
+                    "required_app_targets": validate_generate_text_renderer.get("required_app_targets"),
+                    "emitted_app_targets": validate_generate_text_renderer.get("emitted_app_targets"),
+                    "missing_app_target_count": validate_generate_text_renderer.get("missing_app_target_count"),
+                    "missing_app_targets": validate_generate_text_renderer.get("missing_app_targets"),
+                    "required_check_ids": validate_generate_text_renderer.get("required_check_ids"),
+                    "emitted_check_ids": validate_generate_text_renderer.get("emitted_check_ids"),
+                    "missing_check_id_count": validate_generate_text_renderer.get("missing_check_id_count"),
+                    "missing_check_ids": validate_generate_text_renderer.get("missing_check_ids"),
+                    "required_passing_check_ids": validate_generate_text_renderer.get("required_passing_check_ids"),
+                    "emitted_passing_check_ids": validate_generate_text_renderer.get("emitted_passing_check_ids"),
+                    "missing_passing_check_id_count": validate_generate_text_renderer.get(
+                        "missing_passing_check_id_count"
+                    ),
+                    "missing_passing_check_ids": validate_generate_text_renderer.get("missing_passing_check_ids"),
+                    "required_failing_check_ids": validate_generate_text_renderer.get("required_failing_check_ids"),
+                    "emitted_failing_check_ids": validate_generate_text_renderer.get("emitted_failing_check_ids"),
+                    "missing_failing_check_id_count": validate_generate_text_renderer.get(
+                        "missing_failing_check_id_count"
+                    ),
+                    "missing_failing_check_ids": validate_generate_text_renderer.get("missing_failing_check_ids"),
+                    "required_unknown_targets": validate_generate_text_renderer.get("required_unknown_targets"),
+                    "emitted_unknown_targets": validate_generate_text_renderer.get("emitted_unknown_targets"),
+                    "missing_unknown_target_count": validate_generate_text_renderer.get("missing_unknown_target_count"),
+                    "missing_unknown_targets": validate_generate_text_renderer.get("missing_unknown_targets"),
+                    "required_missing_targets": validate_generate_text_renderer.get("required_missing_targets"),
+                    "emitted_missing_targets": validate_generate_text_renderer.get("emitted_missing_targets"),
+                    "missing_missing_target_count": validate_generate_text_renderer.get("missing_missing_target_count"),
+                    "missing_missing_targets": validate_generate_text_renderer.get("missing_missing_targets"),
+                    "required_diagnostic_codes": validate_generate_text_renderer.get("required_diagnostic_codes"),
+                    "emitted_diagnostic_codes": validate_generate_text_renderer.get("emitted_diagnostic_codes"),
+                    "missing_diagnostic_code_count": validate_generate_text_renderer.get(
+                        "missing_diagnostic_code_count"
+                    ),
+                    "missing_diagnostic_codes": validate_generate_text_renderer.get("missing_diagnostic_codes"),
+                    "required_diagnostic_severities": validate_generate_text_renderer.get(
+                        "required_diagnostic_severities"
+                    ),
+                    "emitted_diagnostic_severities": validate_generate_text_renderer.get(
+                        "emitted_diagnostic_severities"
+                    ),
+                    "missing_diagnostic_severity_count": validate_generate_text_renderer.get(
+                        "missing_diagnostic_severity_count"
+                    ),
+                    "missing_diagnostic_severities": validate_generate_text_renderer.get(
+                        "missing_diagnostic_severities"
+                    ),
                     "json_fallback": validate_generate_text_renderer.get("json_fallback"),
                 },
             },
@@ -5711,6 +5905,12 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and validate_generate_text_renderer.get("manifest_line_count") >= 1
             and validate_generate_text_renderer.get("gap_line_count") >= 1
             and validate_generate_text_renderer.get("warning_line_count") >= 1
+            and validate_generate_text_renderer.get("missing_generate_target_count") == 0
+            and validate_generate_text_renderer.get("missing_artifact_path_count") == 0
+            and validate_generate_text_renderer.get("missing_manifest_path_count") == 0
+            and validate_generate_text_renderer.get("missing_gap_id_count") == 0
+            and validate_generate_text_renderer.get("missing_diagnostic_code_count") == 0
+            and validate_generate_text_renderer.get("missing_diagnostic_severity_count") == 0
             and validate_generate_text_renderer.get("json_fallback") is False,
             "Generation contracts prove artifact and manifest handoff, warnings block by default, allow-warnings permits warning-only sources, and errors still block.",
             "docs/tooling.md#appgen-generate",
@@ -5755,6 +5955,42 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "manifest_line_count": validate_generate_text_renderer.get("manifest_line_count"),
                     "gap_line_count": validate_generate_text_renderer.get("gap_line_count"),
                     "warning_line_count": validate_generate_text_renderer.get("warning_line_count"),
+                    "required_generate_targets": validate_generate_text_renderer.get("required_generate_targets"),
+                    "emitted_generate_targets": validate_generate_text_renderer.get("emitted_generate_targets"),
+                    "missing_generate_target_count": validate_generate_text_renderer.get(
+                        "missing_generate_target_count"
+                    ),
+                    "missing_generate_targets": validate_generate_text_renderer.get("missing_generate_targets"),
+                    "required_artifact_paths": validate_generate_text_renderer.get("required_artifact_paths"),
+                    "emitted_artifact_paths": validate_generate_text_renderer.get("emitted_artifact_paths"),
+                    "missing_artifact_path_count": validate_generate_text_renderer.get("missing_artifact_path_count"),
+                    "missing_artifact_paths": validate_generate_text_renderer.get("missing_artifact_paths"),
+                    "required_manifest_paths": validate_generate_text_renderer.get("required_manifest_paths"),
+                    "emitted_manifest_paths": validate_generate_text_renderer.get("emitted_manifest_paths"),
+                    "missing_manifest_path_count": validate_generate_text_renderer.get("missing_manifest_path_count"),
+                    "missing_manifest_paths": validate_generate_text_renderer.get("missing_manifest_paths"),
+                    "required_gap_ids": validate_generate_text_renderer.get("required_gap_ids"),
+                    "emitted_gap_ids": validate_generate_text_renderer.get("emitted_gap_ids"),
+                    "missing_gap_id_count": validate_generate_text_renderer.get("missing_gap_id_count"),
+                    "missing_gap_ids": validate_generate_text_renderer.get("missing_gap_ids"),
+                    "required_diagnostic_codes": validate_generate_text_renderer.get("required_diagnostic_codes"),
+                    "emitted_diagnostic_codes": validate_generate_text_renderer.get("emitted_diagnostic_codes"),
+                    "missing_diagnostic_code_count": validate_generate_text_renderer.get(
+                        "missing_diagnostic_code_count"
+                    ),
+                    "missing_diagnostic_codes": validate_generate_text_renderer.get("missing_diagnostic_codes"),
+                    "required_diagnostic_severities": validate_generate_text_renderer.get(
+                        "required_diagnostic_severities"
+                    ),
+                    "emitted_diagnostic_severities": validate_generate_text_renderer.get(
+                        "emitted_diagnostic_severities"
+                    ),
+                    "missing_diagnostic_severity_count": validate_generate_text_renderer.get(
+                        "missing_diagnostic_severity_count"
+                    ),
+                    "missing_diagnostic_severities": validate_generate_text_renderer.get(
+                        "missing_diagnostic_severities"
+                    ),
                     "json_fallback": validate_generate_text_renderer.get("json_fallback"),
                 },
             },

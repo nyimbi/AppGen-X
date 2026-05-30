@@ -6227,6 +6227,41 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert validate_target_check["detail"]["text_renderer"]["failing_check_line_count"] == 1
     assert validate_target_check["detail"]["text_renderer"]["target_detail_line_count"] == 2
     assert validate_target_check["detail"]["text_renderer"]["error_line_count"] == 1
+    assert validate_target_check["detail"]["text_renderer"]["emitted_requested_targets"] == (
+        validate_target_check["detail"]["text_renderer"]["required_requested_targets"]
+    )
+    assert validate_target_check["detail"]["text_renderer"]["missing_requested_target_count"] == 0
+    assert validate_target_check["detail"]["text_renderer"]["missing_requested_targets"] == ()
+    assert validate_target_check["detail"]["text_renderer"]["emitted_app_targets"] == (
+        validate_target_check["detail"]["text_renderer"]["required_app_targets"]
+    )
+    assert validate_target_check["detail"]["text_renderer"]["missing_app_target_count"] == 0
+    assert validate_target_check["detail"]["text_renderer"]["missing_app_targets"] == ()
+    assert validate_target_check["detail"]["text_renderer"]["emitted_check_ids"] == (
+        validate_target_check["detail"]["text_renderer"]["required_check_ids"]
+    )
+    assert validate_target_check["detail"]["text_renderer"]["missing_check_id_count"] == 0
+    assert validate_target_check["detail"]["text_renderer"]["missing_check_ids"] == ()
+    assert validate_target_check["detail"]["text_renderer"]["emitted_passing_check_ids"] == (
+        validate_target_check["detail"]["text_renderer"]["required_passing_check_ids"]
+    )
+    assert validate_target_check["detail"]["text_renderer"]["missing_passing_check_id_count"] == 0
+    assert validate_target_check["detail"]["text_renderer"]["missing_passing_check_ids"] == ()
+    assert validate_target_check["detail"]["text_renderer"]["emitted_failing_check_ids"] == (
+        validate_target_check["detail"]["text_renderer"]["required_failing_check_ids"]
+    )
+    assert validate_target_check["detail"]["text_renderer"]["missing_failing_check_id_count"] == 0
+    assert validate_target_check["detail"]["text_renderer"]["missing_failing_check_ids"] == ()
+    assert validate_target_check["detail"]["text_renderer"]["emitted_unknown_targets"] == (
+        validate_target_check["detail"]["text_renderer"]["required_unknown_targets"]
+    )
+    assert validate_target_check["detail"]["text_renderer"]["missing_unknown_target_count"] == 0
+    assert validate_target_check["detail"]["text_renderer"]["missing_unknown_targets"] == ()
+    assert validate_target_check["detail"]["text_renderer"]["emitted_missing_targets"] == (
+        validate_target_check["detail"]["text_renderer"]["required_missing_targets"]
+    )
+    assert validate_target_check["detail"]["text_renderer"]["missing_missing_target_count"] == 0
+    assert validate_target_check["detail"]["text_renderer"]["missing_missing_targets"] == ()
     assert validate_target_check["detail"]["text_renderer"]["json_fallback"] is False
     generate_policy_check = next(check for check in report["checks"] if check["id"] == "generate_artifact_policy_contracts")
     assert generate_policy_check["detail"]["generate"]["format"] == "appgen.generate-report.v1"
@@ -6274,6 +6309,36 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert generate_policy_check["detail"]["text_renderer"]["manifest_line_count"] >= 1
     assert generate_policy_check["detail"]["text_renderer"]["gap_line_count"] >= 1
     assert generate_policy_check["detail"]["text_renderer"]["warning_line_count"] >= 1
+    assert generate_policy_check["detail"]["text_renderer"]["emitted_generate_targets"] == (
+        generate_policy_check["detail"]["text_renderer"]["required_generate_targets"]
+    )
+    assert generate_policy_check["detail"]["text_renderer"]["missing_generate_target_count"] == 0
+    assert generate_policy_check["detail"]["text_renderer"]["missing_generate_targets"] == ()
+    assert generate_policy_check["detail"]["text_renderer"]["emitted_artifact_paths"] == (
+        generate_policy_check["detail"]["text_renderer"]["required_artifact_paths"]
+    )
+    assert generate_policy_check["detail"]["text_renderer"]["missing_artifact_path_count"] == 0
+    assert generate_policy_check["detail"]["text_renderer"]["missing_artifact_paths"] == ()
+    assert generate_policy_check["detail"]["text_renderer"]["emitted_manifest_paths"] == (
+        generate_policy_check["detail"]["text_renderer"]["required_manifest_paths"]
+    )
+    assert generate_policy_check["detail"]["text_renderer"]["missing_manifest_path_count"] == 0
+    assert generate_policy_check["detail"]["text_renderer"]["missing_manifest_paths"] == ()
+    assert generate_policy_check["detail"]["text_renderer"]["emitted_gap_ids"] == (
+        generate_policy_check["detail"]["text_renderer"]["required_gap_ids"]
+    )
+    assert generate_policy_check["detail"]["text_renderer"]["missing_gap_id_count"] == 0
+    assert generate_policy_check["detail"]["text_renderer"]["missing_gap_ids"] == ()
+    assert generate_policy_check["detail"]["text_renderer"]["emitted_diagnostic_codes"] == (
+        generate_policy_check["detail"]["text_renderer"]["required_diagnostic_codes"]
+    )
+    assert generate_policy_check["detail"]["text_renderer"]["missing_diagnostic_code_count"] == 0
+    assert generate_policy_check["detail"]["text_renderer"]["missing_diagnostic_codes"] == ()
+    assert generate_policy_check["detail"]["text_renderer"]["emitted_diagnostic_severities"] == (
+        generate_policy_check["detail"]["text_renderer"]["required_diagnostic_severities"]
+    )
+    assert generate_policy_check["detail"]["text_renderer"]["missing_diagnostic_severity_count"] == 0
+    assert generate_policy_check["detail"]["text_renderer"]["missing_diagnostic_severities"] == ()
     assert generate_policy_check["detail"]["text_renderer"]["json_fallback"] is False
     assert cli_check["detail"]["format_write"]["format"] == "appgen.format-write-audit.v1"
     assert cli_check["detail"]["format_write"]["ok"] is True
@@ -7914,6 +7979,58 @@ def test_validate_generate_text_renderer_contract_proves_readiness_log_markers()
     assert report["diagnostic_line_count"] == 2
     assert report["warning_line_count"] == 1
     assert report["error_line_count"] == 1
+    assert report["required_requested_targets"] == ("web", "mobile")
+    assert report["emitted_requested_targets"] == report["required_requested_targets"]
+    assert report["missing_requested_target_count"] == 0
+    assert report["missing_requested_targets"] == ()
+    assert report["required_app_targets"] == ("web",)
+    assert report["emitted_app_targets"] == report["required_app_targets"]
+    assert report["missing_app_target_count"] == 0
+    assert report["missing_app_targets"] == ()
+    assert report["required_generate_targets"] == ("web",)
+    assert report["emitted_generate_targets"] == report["required_generate_targets"]
+    assert report["missing_generate_target_count"] == 0
+    assert report["missing_generate_targets"] == ()
+    assert report["required_check_ids"] == ("syntax", "target_compatibility")
+    assert report["emitted_check_ids"] == report["required_check_ids"]
+    assert report["missing_check_id_count"] == 0
+    assert report["missing_check_ids"] == ()
+    assert report["required_passing_check_ids"] == ("syntax",)
+    assert report["emitted_passing_check_ids"] == report["required_passing_check_ids"]
+    assert report["missing_passing_check_id_count"] == 0
+    assert report["missing_passing_check_ids"] == ()
+    assert report["required_failing_check_ids"] == ("target_compatibility",)
+    assert report["emitted_failing_check_ids"] == report["required_failing_check_ids"]
+    assert report["missing_failing_check_id_count"] == 0
+    assert report["missing_failing_check_ids"] == ()
+    assert report["required_unknown_targets"] == ("mobile",)
+    assert report["emitted_unknown_targets"] == report["required_unknown_targets"]
+    assert report["missing_unknown_target_count"] == 0
+    assert report["missing_unknown_targets"] == ()
+    assert report["required_missing_targets"] == ("mobile",)
+    assert report["emitted_missing_targets"] == report["required_missing_targets"]
+    assert report["missing_missing_target_count"] == 0
+    assert report["missing_missing_targets"] == ()
+    assert report["required_artifact_paths"] == ("generated/app/web/routes.json",)
+    assert report["emitted_artifact_paths"] == report["required_artifact_paths"]
+    assert report["missing_artifact_path_count"] == 0
+    assert report["missing_artifact_paths"] == ()
+    assert report["required_manifest_paths"] == ("generated/app/appgen-manifest.json",)
+    assert report["emitted_manifest_paths"] == report["required_manifest_paths"]
+    assert report["missing_manifest_path_count"] == 0
+    assert report["missing_manifest_paths"] == ()
+    assert report["required_gap_ids"] == ("lint_warnings",)
+    assert report["emitted_gap_ids"] == report["required_gap_ids"]
+    assert report["missing_gap_id_count"] == 0
+    assert report["missing_gap_ids"] == ()
+    assert report["required_diagnostic_codes"] == ("AGX0802", "AGX0404")
+    assert report["emitted_diagnostic_codes"] == report["required_diagnostic_codes"]
+    assert report["missing_diagnostic_code_count"] == 0
+    assert report["missing_diagnostic_codes"] == ()
+    assert report["required_diagnostic_severities"] == ("error", "warning")
+    assert report["emitted_diagnostic_severities"] == report["required_diagnostic_severities"]
+    assert report["missing_diagnostic_severity_count"] == 0
+    assert report["missing_diagnostic_severities"] == ()
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(
