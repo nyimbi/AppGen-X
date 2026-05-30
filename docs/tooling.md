@@ -635,8 +635,12 @@ dsl-quality`, `appgen dsl-antlr`, `appgen dsl-authoring-gate <file>`, and
 authoring, and editor-service evidence used by the aggregate tooling audit.
 `appgen.dsl-language-cli-audit.v1` exercises those commands in JSON and text
 modes, reports JSON/text case counts, payload formats, failing cases, and
-completion counts, and blocks the tooling audit when agents or CI cannot query
-the language-quality gate directly.
+completion counts. It also reports required, observed, and missing JSON/text
+case ids, expected versus observed payload formats by case, required text
+markers by case, and missing text markers. The aggregate tooling audit blocks
+when agents or CI cannot query the language-quality gate directly, when any
+expected command mode disappears, when JSON payload formats drift, or when text
+logs lose the markers external coding agents rely on.
 
 ### `appgen lint`
 

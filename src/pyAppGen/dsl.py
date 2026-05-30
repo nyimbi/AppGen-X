@@ -4733,7 +4733,10 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         ),
         _tooling_audit_check(
             "dsl_language_cli_contracts",
-            dsl_language_cli["ok"],
+            dsl_language_cli["ok"]
+            and dsl_language_cli.get("missing_case_count") == 0
+            and dsl_language_cli.get("missing_payload_format_case_count") == 0
+            and dsl_language_cli.get("missing_text_marker_count") == 0,
             "DSL language-quality, ANTLR integrity, authoring-gate, and language-service contracts are callable from CLI JSON and text modes.",
             "docs/tooling.md#cli-contracts",
             dsl_language_cli,
@@ -12206,15 +12209,93 @@ def _tooling_audit_dsl_language_cli(tmp: Path, source: str) -> dict:
         },
     )
     failing_cases = tuple(case["case"] for case in cases if not case["ok"])
+    required_case_ids = (
+        "dsl_quality_json",
+        "dsl_antlr_json",
+        "dsl_authoring_gate_json",
+        "dsl_language_service_json",
+        "dsl_quality_text",
+        "dsl_antlr_text",
+        "dsl_authoring_gate_text",
+        "dsl_language_service_text",
+    )
+    observed_case_ids = tuple(case["case"] for case in cases)
+    missing_case_ids = tuple(case_id for case_id in required_case_ids if case_id not in observed_case_ids)
+    expected_payload_formats_by_case = {
+        "dsl_quality_json": "appgen.dsl-language-quality.v1",
+        "dsl_antlr_json": "appgen.dsl-antlr-integrity.v1",
+        "dsl_authoring_gate_json": "appgen.dsl-authoring-release-gate.v1",
+        "dsl_language_service_json": "appgen.dsl-language-service.v1",
+    }
+    payload_formats_by_case = {
+        case["case"]: case.get("payload_format")
+        for case in cases
+        if case["case"] in expected_payload_formats_by_case
+    }
+    missing_payload_format_cases = tuple(
+        case_id
+        for case_id, expected_format in expected_payload_formats_by_case.items()
+        if payload_formats_by_case.get(case_id) != expected_format
+    )
+    text_outputs_by_case = {
+        "dsl_quality_text": quality_text,
+        "dsl_antlr_text": antlr_text,
+        "dsl_authoring_gate_text": authoring_text,
+        "dsl_language_service_text": service_text,
+    }
+    required_text_markers_by_case = {
+        "dsl_quality_text": (
+            "dsl-quality ok: format=appgen.dsl-language-quality.v1",
+            "antlr_format=appgen.dsl-antlr-integrity.v1",
+            "budget_format=appgen.dsl-keyword-budget.v1",
+        ),
+        "dsl_antlr_text": (
+            "dsl-antlr ok: format=appgen.dsl-antlr-integrity.v1",
+            "missing_rules=0",
+        ),
+        "dsl_authoring_gate_text": (
+            "dsl-authoring-gate ok: format=appgen.dsl-authoring-release-gate.v1",
+            "decision=approved",
+        ),
+        "dsl_language_service_text": (
+            "dsl-language-service ok: format=appgen.dsl-language-service.v1",
+            "quality_format=appgen.dsl-language-quality.v1",
+        ),
+    }
+    missing_text_markers_by_case = {
+        case_id: tuple(marker for marker in markers if marker not in text_outputs_by_case.get(case_id, ""))
+        for case_id, markers in required_text_markers_by_case.items()
+    }
+    missing_text_marker_cases = tuple(
+        case_id for case_id, markers in missing_text_markers_by_case.items() if markers
+    )
+    text_marker_count = sum(len(markers) for markers in required_text_markers_by_case.values())
+    missing_text_marker_count = sum(len(markers) for markers in missing_text_markers_by_case.values())
     return {
         "format": "appgen.dsl-language-cli-audit.v1",
-        "ok": not failing_cases,
+        "ok": not failing_cases
+        and not missing_case_ids
+        and not missing_payload_format_cases
+        and not missing_text_marker_cases,
         "case_count": len(cases),
         "passing_case_count": sum(1 for case in cases if case["ok"]),
         "failing_case_count": len(failing_cases),
         "failing_cases": failing_cases,
+        "required_case_ids": required_case_ids,
+        "observed_case_ids": observed_case_ids,
+        "missing_case_count": len(missing_case_ids),
+        "missing_case_ids": missing_case_ids,
         "json_case_count": 4,
         "text_case_count": 4,
+        "expected_payload_formats_by_case": expected_payload_formats_by_case,
+        "payload_formats_by_case": payload_formats_by_case,
+        "missing_payload_format_case_count": len(missing_payload_format_cases),
+        "missing_payload_format_cases": missing_payload_format_cases,
+        "required_text_markers_by_case": required_text_markers_by_case,
+        "missing_text_markers_by_case": missing_text_markers_by_case,
+        "text_marker_count": text_marker_count,
+        "missing_text_marker_count": missing_text_marker_count,
+        "missing_text_marker_cases": missing_text_marker_cases,
         "language_quality_format": quality_payload.get("format"),
         "antlr_integrity_format": antlr_payload.get("format"),
         "authoring_gate_format": authoring_payload.get("format"),

@@ -5266,7 +5266,17 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert language_cli_check["detail"]["ok"] is True
     assert language_cli_check["detail"]["json_case_count"] == 4
     assert language_cli_check["detail"]["text_case_count"] == 4
+    assert language_cli_check["detail"]["missing_case_count"] == 0
+    assert language_cli_check["detail"]["missing_case_ids"] == ()
     assert language_cli_check["detail"]["failing_cases"] == ()
+    assert language_cli_check["detail"]["missing_payload_format_case_count"] == 0
+    assert language_cli_check["detail"]["missing_payload_format_cases"] == ()
+    assert language_cli_check["detail"]["missing_text_marker_count"] == 0
+    assert language_cli_check["detail"]["missing_text_marker_cases"] == ()
+    assert language_cli_check["detail"]["observed_case_ids"] == language_cli_check["detail"]["required_case_ids"]
+    assert language_cli_check["detail"]["payload_formats_by_case"] == (
+        language_cli_check["detail"]["expected_payload_formats_by_case"]
+    )
     assert language_cli_check["detail"]["language_quality_format"] == "appgen.dsl-language-quality.v1"
     assert language_cli_check["detail"]["antlr_integrity_format"] == "appgen.dsl-antlr-integrity.v1"
     assert language_cli_check["detail"]["authoring_gate_format"] == "appgen.dsl-authoring-release-gate.v1"
@@ -7581,8 +7591,36 @@ def test_dsl_language_cli_audit_proves_quality_authoring_and_service_commands(tm
     assert audit["passing_case_count"] == audit["case_count"]
     assert audit["failing_case_count"] == 0
     assert audit["failing_cases"] == ()
+    assert audit["required_case_ids"] == (
+        "dsl_quality_json",
+        "dsl_antlr_json",
+        "dsl_authoring_gate_json",
+        "dsl_language_service_json",
+        "dsl_quality_text",
+        "dsl_antlr_text",
+        "dsl_authoring_gate_text",
+        "dsl_language_service_text",
+    )
+    assert audit["observed_case_ids"] == audit["required_case_ids"]
+    assert audit["missing_case_count"] == 0
+    assert audit["missing_case_ids"] == ()
     assert audit["json_case_count"] == 4
     assert audit["text_case_count"] == 4
+    assert audit["expected_payload_formats_by_case"] == {
+        "dsl_quality_json": "appgen.dsl-language-quality.v1",
+        "dsl_antlr_json": "appgen.dsl-antlr-integrity.v1",
+        "dsl_authoring_gate_json": "appgen.dsl-authoring-release-gate.v1",
+        "dsl_language_service_json": "appgen.dsl-language-service.v1",
+    }
+    assert audit["payload_formats_by_case"] == audit["expected_payload_formats_by_case"]
+    assert audit["missing_payload_format_case_count"] == 0
+    assert audit["missing_payload_format_cases"] == ()
+    assert audit["missing_text_marker_count"] == 0
+    assert audit["missing_text_marker_cases"] == ()
+    assert all(markers == () for markers in audit["missing_text_markers_by_case"].values())
+    assert audit["text_marker_count"] == sum(
+        len(markers) for markers in audit["required_text_markers_by_case"].values()
+    )
     assert audit["language_quality_format"] == "appgen.dsl-language-quality.v1"
     assert audit["antlr_integrity_format"] == "appgen.dsl-antlr-integrity.v1"
     assert audit["authoring_gate_format"] == "appgen.dsl-authoring-release-gate.v1"
