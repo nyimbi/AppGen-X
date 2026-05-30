@@ -849,6 +849,10 @@ prove graph-suite and explain logs keep graph kind, graph format, check,
 symbol, diagnostic-doc, and handler-edge evidence visible without JSON parsing.
 Its contract reports required-fragment, missing-fragment, output-line, and
 marker-line counts across graph-suite, symbol, diagnostic, and handler summaries.
+The aggregate tooling audit exposes graph rendering as its own
+`graph_rendering_contracts` gate. It fails independently when a required graph
+kind is missing, JSON/Mermaid/DOT renderings drift, graph CLI cases fail, or
+graph-suite text markers disappear.
 
 Supported graph kinds:
 
@@ -887,6 +891,10 @@ reports `symbol_id`, `symbol_kind`,
 `diagnostic_docs_url`, `handler_match_count`, and `handler_edges` from JSON
 mode so CLI release evidence carries the same navigational details as IDE
 integrations.
+The aggregate tooling audit exposes explain behavior as
+`explain_cli_contracts`, which fails independently when symbol, diagnostic, or
+handler text/JSON modes lose the `appgen.explain-report.v1` marker, navigation
+details, or graph/explain text renderer evidence.
 
 ### `appgen doctor`
 

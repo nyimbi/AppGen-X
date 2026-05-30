@@ -3846,10 +3846,28 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         missing_required_option_exit=ok("appgen.missing-required-option-exit-audit.v1"),
         invalid_choice_exit=ok("appgen.invalid-choice-exit-audit.v1"),
         cli_help_surface=ok("appgen.cli-help-surface-audit.v1"),
-        graphs=ok("appgen.graph-suite-report.v1"),
-        graph_cli=ok("appgen.graph-cli-audit.v1"),
-        graph_suite_cli=ok("appgen.graph-suite-cli-audit.v1"),
-        explain_cli=ok("appgen.explain-cli-audit.v1"),
+        graphs={
+            **ok("appgen.graph-suite-report.v1"),
+            "missing_kind_count": 0,
+            "missing_rendering_count": 0,
+        },
+        graph_cli={
+            **ok("appgen.graph-cli-audit.v1"),
+            "missing_required_kind_count": 0,
+            "failing_case_count": 0,
+        },
+        graph_suite_cli={
+            **ok("appgen.graph-suite-cli-audit.v1"),
+            "missing_rendering_count": 0,
+            "missing_text_fragment_count": 0,
+        },
+        explain_cli={
+            **ok("appgen.explain-cli-audit.v1"),
+            "case_count": 6,
+            "passing_case_count": 6,
+            "missing_report_format_count": 0,
+        },
+        graph_explain_text_renderer=ok("appgen.graph-explain-text-renderer.v1"),
         lsp={
             **ok("appgen.lsp-service.v1"),
             "completionCoverage": {
@@ -3944,6 +3962,8 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         "formatter_idempotency",
         "cli_usage_failure_modes",
         "graph_json_mermaid_and_dot",
+        "graph_rendering_contracts",
+        "explain_cli_contracts",
         "lsp_transport_rpc_contracts",
         "lsp_navigation_completion_contracts",
         "rename_and_code_actions",
@@ -4074,6 +4094,8 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "package_and_release_verifiers",
         "package_manifest_handoff_contracts",
         "release_text_evidence_contracts",
+        "graph_rendering_contracts",
+        "explain_cli_contracts",
         "parser_golden_and_drift_gates",
         "tooling_doc_anchor_integrity",
         "non_goal_policy_guards",
@@ -4683,6 +4705,39 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "qualified_handler_text",
         "qualified_handler_json",
     } <= {case["case"] for case in graph_check["detail"]["explain_cli"]["cases"]}
+    graph_rendering_check = next(check for check in report["checks"] if check["id"] == "graph_rendering_contracts")
+    assert graph_rendering_check["detail"]["suite_format"] == "appgen.graph-suite-report.v1"
+    assert graph_rendering_check["detail"]["required_kind_count"] == len(appgen_dsl.REQUIRED_GRAPH_KINDS)
+    assert graph_rendering_check["detail"]["missing_kind_count"] == 0
+    assert graph_rendering_check["detail"]["missing_rendering_count"] == 0
+    assert graph_rendering_check["detail"]["cli"]["format"] == "appgen.graph-cli-format-audit.v1"
+    assert graph_rendering_check["detail"]["cli"]["case_count"] == 10
+    assert graph_rendering_check["detail"]["cli"]["failing_case_count"] == 0
+    assert graph_rendering_check["detail"]["cli"]["graph_kind_count"] == len(appgen_dsl.REQUIRED_GRAPH_KINDS)
+    assert graph_rendering_check["detail"]["cli"]["missing_required_kind_count"] == 0
+    assert graph_rendering_check["detail"]["cli"]["payload_format_case_count"] == graph_rendering_check["detail"]["cli"]["json_case_count"]
+    assert graph_rendering_check["detail"]["cli"]["text_marker_case_count"] == (
+        graph_rendering_check["detail"]["cli"]["mermaid_case_count"] + graph_rendering_check["detail"]["cli"]["dot_case_count"]
+    )
+    assert graph_rendering_check["detail"]["suite_cli"]["format"] == "appgen.graph-suite-cli-audit.v1"
+    assert graph_rendering_check["detail"]["suite_cli"]["missing_required_kind_count"] == 0
+    assert graph_rendering_check["detail"]["suite_cli"]["missing_rendering_count"] == 0
+    assert graph_rendering_check["detail"]["suite_cli"]["missing_text_fragment_count"] == 0
+    assert graph_rendering_check["detail"]["suite_cli"]["rendering_kind_count"] == len(appgen_dsl.REQUIRED_GRAPH_KINDS)
+    explain_contract_check = next(check for check in report["checks"] if check["id"] == "explain_cli_contracts")
+    assert explain_contract_check["detail"]["format"] == "appgen.explain-cli-audit.v1"
+    assert explain_contract_check["detail"]["case_count"] == 6
+    assert explain_contract_check["detail"]["passing_case_count"] == 6
+    assert explain_contract_check["detail"]["exit_failure_count"] == 0
+    assert explain_contract_check["detail"]["text_case_count"] == 3
+    assert explain_contract_check["detail"]["json_case_count"] == 3
+    assert explain_contract_check["detail"]["missing_report_format_count"] == 0
+    assert explain_contract_check["detail"]["symbol_case_count"] == 2
+    assert explain_contract_check["detail"]["diagnostic_case_count"] == 2
+    assert explain_contract_check["detail"]["handler_case_count"] == 2
+    assert explain_contract_check["detail"]["text_renderer"]["format"] == "appgen.graph-explain-text-renderer.v1"
+    assert explain_contract_check["detail"]["text_renderer"]["missing_fragment_count"] == 0
+    assert explain_contract_check["detail"]["text_renderer"]["json_fallback"] is False
     nl_check = next(check for check in report["checks"] if check["id"] == "natural_language_patch_planner")
     assert nl_check["detail"]["cli"]["format"] == "appgen.nl-plan-cli-audit.v1"
     assert nl_check["detail"]["cli"]["ok"] is True

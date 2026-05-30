@@ -4385,6 +4385,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         graph_cli=graph_cli,
         graph_suite_cli=graph_suite_cli,
         explain_cli=explain_cli,
+        graph_explain_text_renderer=graph_explain_text_renderer,
         lsp=lsp,
         lsp_rpc=lsp_rpc,
         lsp_stdio=lsp_stdio,
@@ -4622,6 +4623,88 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "cli": graph_cli,
                 "suite_cli": graph_suite_cli,
                 "explain_cli": explain_cli,
+            },
+        ),
+        _tooling_audit_check(
+            "graph_rendering_contracts",
+            graphs["ok"]
+            and graphs.get("missing_kind_count") == 0
+            and graphs.get("missing_rendering_count") == 0
+            and set(REQUIRED_GRAPH_KINDS) <= set(graph_cli.get("covered_graph_kinds", ()))
+            and graph_cli.get("missing_required_kind_count") == 0
+            and graph_cli.get("failing_case_count") == 0
+            and graph_cli.get("payload_format_case_count") == graph_cli.get("json_case_count")
+            and graph_cli.get("text_marker_case_count")
+            == graph_cli.get("mermaid_case_count", 0) + graph_cli.get("dot_case_count", 0)
+            and graph_suite_cli["ok"]
+            and graph_suite_cli.get("missing_required_kind_count") == 0
+            and graph_suite_cli.get("missing_rendering_count") == 0
+            and graph_suite_cli.get("missing_text_fragment_count") == 0,
+            "Graph tooling renders every required graph kind through JSON, Mermaid, and DOT release contracts with reviewable text markers.",
+            "docs/tooling.md#graph-tooling",
+            {
+                "suite_format": graphs.get("format"),
+                "required_kind_count": graphs.get("required_kind_count"),
+                "present_kind_count": graphs.get("present_kind_count"),
+                "missing_kind_count": graphs.get("missing_kind_count"),
+                "missing_rendering_count": graphs.get("missing_rendering_count"),
+                "cli": {
+                    "format": graph_cli.get("format"),
+                    "case_count": graph_cli.get("case_count"),
+                    "passing_case_count": graph_cli.get("passing_case_count"),
+                    "failing_case_count": graph_cli.get("failing_case_count"),
+                    "graph_kind_count": graph_cli.get("graph_kind_count"),
+                    "missing_required_kind_count": graph_cli.get("missing_required_kind_count"),
+                    "output_format_count": graph_cli.get("output_format_count"),
+                    "json_case_count": graph_cli.get("json_case_count"),
+                    "mermaid_case_count": graph_cli.get("mermaid_case_count"),
+                    "dot_case_count": graph_cli.get("dot_case_count"),
+                    "payload_format_case_count": graph_cli.get("payload_format_case_count"),
+                    "text_marker_case_count": graph_cli.get("text_marker_case_count"),
+                },
+                "suite_cli": {
+                    "format": graph_suite_cli.get("format"),
+                    "required_kind_count": graph_suite_cli.get("required_kind_count"),
+                    "missing_required_kind_count": graph_suite_cli.get("missing_required_kind_count"),
+                    "output_format_count": graph_suite_cli.get("output_format_count"),
+                    "missing_rendering_count": graph_suite_cli.get("missing_rendering_count"),
+                    "missing_text_fragment_count": graph_suite_cli.get("missing_text_fragment_count"),
+                    "rendering_kind_count": graph_suite_cli.get("rendering_kind_count"),
+                },
+            },
+        ),
+        _tooling_audit_check(
+            "explain_cli_contracts",
+            explain_cli["ok"]
+            and explain_cli.get("case_count") == 6
+            and explain_cli.get("passing_case_count") == explain_cli.get("case_count")
+            and explain_cli.get("exit_failure_count") == 0
+            and explain_cli.get("text_case_count") == 3
+            and explain_cli.get("json_case_count") == 3
+            and explain_cli.get("missing_report_format_count") == 0
+            and explain_cli.get("symbol_case_count") == 2
+            and explain_cli.get("diagnostic_case_count") == 2
+            and explain_cli.get("handler_case_count") == 2
+            and graph_explain_text_renderer["ok"],
+            "Explain CLI covers symbol, diagnostic, and handler text/JSON modes with format markers and navigation details.",
+            "docs/tooling.md#appgen-explain",
+            {
+                "format": explain_cli.get("format"),
+                "case_count": explain_cli.get("case_count"),
+                "passing_case_count": explain_cli.get("passing_case_count"),
+                "exit_failure_count": explain_cli.get("exit_failure_count"),
+                "text_case_count": explain_cli.get("text_case_count"),
+                "json_case_count": explain_cli.get("json_case_count"),
+                "missing_report_format_count": explain_cli.get("missing_report_format_count"),
+                "symbol_case_count": explain_cli.get("symbol_case_count"),
+                "diagnostic_case_count": explain_cli.get("diagnostic_case_count"),
+                "handler_case_count": explain_cli.get("handler_case_count"),
+                "text_renderer": {
+                    "format": graph_explain_text_renderer.get("format"),
+                    "missing_fragment_count": graph_explain_text_renderer.get("missing_fragment_count"),
+                    "marker_line_count": graph_explain_text_renderer.get("marker_line_count"),
+                    "json_fallback": graph_explain_text_renderer.get("json_fallback"),
+                },
             },
         ),
         _tooling_audit_check(
@@ -5559,9 +5642,34 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     ),
                 },
                 {
+                    "id": "graph_rendering_contracts",
+                    "ok": evidence["graphs"].get("missing_kind_count") == 0
+                    and evidence["graphs"].get("missing_rendering_count") == 0
+                    and evidence["graph_cli"].get("missing_required_kind_count") == 0
+                    and evidence["graph_cli"].get("failing_case_count") == 0
+                    and evidence["graph_suite_cli"].get("missing_rendering_count") == 0
+                    and evidence["graph_suite_cli"].get("missing_text_fragment_count") == 0,
+                    "evidence_formats": (
+                        evidence["graphs"].get("format"),
+                        evidence["graph_cli"].get("format"),
+                        evidence["graph_suite_cli"].get("format"),
+                    ),
+                },
+                {
                     "id": "explain_symbols_diagnostics_handlers",
                     "ok": evidence["explain_cli"].get("ok") is True,
                     "evidence_format": evidence["explain_cli"].get("format"),
+                },
+                {
+                    "id": "explain_cli_contracts",
+                    "ok": evidence["explain_cli"].get("ok") is True
+                    and evidence["explain_cli"].get("case_count") == evidence["explain_cli"].get("passing_case_count")
+                    and evidence["explain_cli"].get("missing_report_format_count") == 0
+                    and evidence["graph_explain_text_renderer"].get("ok") is True,
+                    "evidence_formats": (
+                        evidence["explain_cli"].get("format"),
+                        evidence["graph_explain_text_renderer"].get("format"),
+                    ),
                 },
             ),
         ),
