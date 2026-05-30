@@ -1210,11 +1210,39 @@ def test_nl_plan_cli_audit_covers_all_supported_edit_operations(tmp_path: Path) 
     assert audit["rejected_case_count"] == 1
     assert audit["text_case_count"] == 1
     assert tuple(audit["required_operation_kinds"]) == tuple(contract["required_edit_operations"])
+    expected_case_ids = tuple(f"{kind}_json" for kind in contract["required_edit_operations"])
+    assert audit["required_accepted_case_ids"] == expected_case_ids
+    assert audit["observed_accepted_case_ids"] == expected_case_ids
+    assert audit["missing_accepted_case_count"] == 0
+    assert audit["missing_accepted_case_ids"] == ()
+    assert audit["expected_operation_kind_by_case"] == {f"{kind}_json": kind for kind in contract["required_edit_operations"]}
+    assert all(
+        audit["expected_operation_kind_by_case"][case_id] in audit["operation_kinds_by_case"][case_id]
+        for case_id in expected_case_ids
+    )
+    assert audit["missing_expected_operation_kind_case_count"] == 0
+    assert audit["missing_expected_operation_kind_cases"] == ()
     assert set(audit["accepted_operation_kinds"]) >= set(contract["required_edit_operations"])
     assert audit["accepted_operation_kind_count"] == len(audit["accepted_operation_kinds"])
     assert audit["missing_accepted_operation_kind_count"] == 0
     assert audit["missing_accepted_operation_kinds"] == ()
     assert audit["accepted_case_count"] == len(contract["required_edit_operations"])
+    assert audit["expected_payload_formats_by_case"] == {case_id: "appgen.nl-plan.v1" for case_id in expected_case_ids}
+    assert audit["payload_formats_by_case"] == audit["expected_payload_formats_by_case"]
+    assert audit["missing_payload_format_case_count"] == 0
+    assert audit["missing_payload_format_cases"] == ()
+    assert audit["lint_ok_cases"] == expected_case_ids
+    assert audit["missing_lint_ok_case_count"] == 0
+    assert audit["missing_lint_ok_cases"] == ()
+    assert audit["migration_format_cases"] == expected_case_ids
+    assert audit["missing_migration_format_case_count"] == 0
+    assert audit["missing_migration_format_cases"] == ()
+    assert audit["test_plan_cases"] == expected_case_ids
+    assert audit["missing_test_plan_case_count"] == 0
+    assert audit["missing_test_plan_cases"] == ()
+    assert audit["token_budget_cases"] == expected_case_ids
+    assert audit["missing_token_budget_case_count"] == 0
+    assert audit["missing_token_budget_cases"] == ()
     assert audit["blocking_cases"] == ()
     assert audit["blocking_case_count"] == 0
     assert audit["accepted_patch_bytes"] > 0
@@ -1222,6 +1250,17 @@ def test_nl_plan_cli_audit_covers_all_supported_edit_operations(tmp_path: Path) 
     assert audit["accepted_token_budget_notes"] >= len(contract["required_edit_operations"])
     assert audit["accepted_text_exit_code"] == 0
     assert audit["accepted_text_prefix"].startswith("nl-plan ok: format=appgen.nl-plan.v1")
+    assert audit["required_text_markers"] == (
+        "report_format",
+        "lint_format",
+        "migration_format",
+        "test_plan",
+        "token_budget_notes",
+        "token_budget_note",
+    )
+    assert all(audit["text_markers"][marker] is True for marker in audit["required_text_markers"])
+    assert audit["missing_text_marker_count"] == 0
+    assert audit["missing_text_markers"] == ()
     assert audit["accepted_text_marker_count"] >= 6
     assert audit["accepted_text_has_report_format"] is True
     assert audit["accepted_text_has_lint_format"] is True
@@ -6987,11 +7026,40 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert tuple(nl_check["detail"]["cli"]["required_operation_kinds"]) == tuple(
         nl_check["detail"]["contract"]["required_edit_operations"]
     )
+    assert nl_check["detail"]["cli"]["required_accepted_case_ids"] == tuple(
+        f"{kind}_json" for kind in nl_check["detail"]["contract"]["required_edit_operations"]
+    )
+    assert nl_check["detail"]["cli"]["observed_accepted_case_ids"] == nl_check["detail"]["cli"][
+        "required_accepted_case_ids"
+    ]
+    assert nl_check["detail"]["cli"]["missing_accepted_case_count"] == 0
+    assert nl_check["detail"]["cli"]["missing_accepted_case_ids"] == ()
+    assert nl_check["detail"]["cli"]["missing_expected_operation_kind_case_count"] == 0
+    assert nl_check["detail"]["cli"]["missing_expected_operation_kind_cases"] == ()
     assert set(nl_check["detail"]["cli"]["accepted_operation_kinds"]) >= set(
         nl_check["detail"]["contract"]["required_edit_operations"]
     )
     assert nl_check["detail"]["cli"]["missing_accepted_operation_kind_count"] == 0
     assert nl_check["detail"]["cli"]["missing_accepted_operation_kinds"] == ()
+    assert nl_check["detail"]["cli"]["payload_formats_by_case"] == nl_check["detail"]["cli"][
+        "expected_payload_formats_by_case"
+    ]
+    assert nl_check["detail"]["cli"]["missing_payload_format_case_count"] == 0
+    assert nl_check["detail"]["cli"]["missing_payload_format_cases"] == ()
+    assert nl_check["detail"]["cli"]["lint_ok_cases"] == nl_check["detail"]["cli"]["required_accepted_case_ids"]
+    assert nl_check["detail"]["cli"]["missing_lint_ok_case_count"] == 0
+    assert nl_check["detail"]["cli"]["missing_lint_ok_cases"] == ()
+    assert nl_check["detail"]["cli"]["migration_format_cases"] == nl_check["detail"]["cli"][
+        "required_accepted_case_ids"
+    ]
+    assert nl_check["detail"]["cli"]["missing_migration_format_case_count"] == 0
+    assert nl_check["detail"]["cli"]["missing_migration_format_cases"] == ()
+    assert nl_check["detail"]["cli"]["test_plan_cases"] == nl_check["detail"]["cli"]["required_accepted_case_ids"]
+    assert nl_check["detail"]["cli"]["missing_test_plan_case_count"] == 0
+    assert nl_check["detail"]["cli"]["missing_test_plan_cases"] == ()
+    assert nl_check["detail"]["cli"]["token_budget_cases"] == nl_check["detail"]["cli"]["required_accepted_case_ids"]
+    assert nl_check["detail"]["cli"]["missing_token_budget_case_count"] == 0
+    assert nl_check["detail"]["cli"]["missing_token_budget_cases"] == ()
     assert nl_check["detail"]["cli"]["accepted_case_count"] == len(nl_check["detail"]["contract"]["required_edit_operations"])
     assert nl_check["detail"]["cli"]["blocking_cases"] == ()
     assert nl_check["detail"]["cli"]["blocking_case_count"] == 0
@@ -7034,6 +7102,13 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert nl_cli_agent_check["detail"]["missing_accepted_operation_kind_count"] == 0
     assert nl_cli_agent_check["detail"]["missing_accepted_operation_kinds"] == ()
+    assert nl_cli_agent_check["detail"]["missing_accepted_case_count"] == 0
+    assert nl_cli_agent_check["detail"]["missing_expected_operation_kind_case_count"] == 0
+    assert nl_cli_agent_check["detail"]["missing_payload_format_case_count"] == 0
+    assert nl_cli_agent_check["detail"]["missing_lint_ok_case_count"] == 0
+    assert nl_cli_agent_check["detail"]["missing_migration_format_case_count"] == 0
+    assert nl_cli_agent_check["detail"]["missing_test_plan_case_count"] == 0
+    assert nl_cli_agent_check["detail"]["missing_token_budget_case_count"] == 0
     assert nl_cli_agent_check["detail"]["accepted_patch_bytes"] > 0
     assert nl_cli_agent_check["detail"]["accepted_test_count"] >= nl_cli_agent_check["detail"]["accepted_case_count"]
     assert nl_cli_agent_check["detail"]["accepted_token_budget_notes"] >= (
@@ -7041,6 +7116,8 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert nl_cli_agent_check["detail"]["migration_format"] == "appgen.migration-plan.v1"
     assert nl_cli_agent_check["detail"]["accepted_text_marker_count"] >= 6
+    assert nl_cli_agent_check["detail"]["missing_text_marker_count"] == 0
+    assert nl_cli_agent_check["detail"]["missing_text_markers"] == ()
     assert nl_cli_agent_check["detail"]["accepted_text_has_report_format"] is True
     assert nl_cli_agent_check["detail"]["accepted_text_has_lint_format"] is True
     assert nl_cli_agent_check["detail"]["accepted_text_has_migration_format"] is True

@@ -6149,7 +6149,14 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and nl_plan_cli.get("accepted_passing_case_count") == nl_plan_cli.get("accepted_case_count")
             and nl_plan_cli.get("accepted_failing_case_count") == 0
             and nl_plan_cli.get("accepted_operation_kind_count", 0) >= nl_plan_contract.get("required_operation_count", 0)
+            and nl_plan_cli.get("missing_accepted_case_count") == 0
             and nl_plan_cli.get("missing_accepted_operation_kind_count") == 0
+            and nl_plan_cli.get("missing_expected_operation_kind_case_count") == 0
+            and nl_plan_cli.get("missing_payload_format_case_count") == 0
+            and nl_plan_cli.get("missing_lint_ok_case_count") == 0
+            and nl_plan_cli.get("missing_migration_format_case_count") == 0
+            and nl_plan_cli.get("missing_test_plan_case_count") == 0
+            and nl_plan_cli.get("missing_token_budget_case_count") == 0
             and nl_plan_cli.get("accepted_patch_bytes", 0) > 0
             and nl_plan_cli.get("accepted_test_count", 0) >= nl_plan_cli.get("accepted_case_count", 0)
             and nl_plan_cli.get("accepted_token_budget_notes", 0) >= nl_plan_cli.get("accepted_case_count", 0)
@@ -6158,6 +6165,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and nl_plan_cli.get("accepted_text_has_report_format") is True
             and nl_plan_cli.get("accepted_text_has_lint_format") is True
             and nl_plan_cli.get("accepted_text_has_migration_format") is True
+            and nl_plan_cli.get("missing_text_marker_count") == 0
             and bool(nl_plan_cli.get("accepted_text_test_plan_lines"))
             and nl_plan_cli.get("accepted_text_has_token_notes") is True
             and bool(nl_plan_cli.get("accepted_text_token_note_lines"))
@@ -6176,15 +6184,43 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "rejected_case_count": nl_plan_cli.get("rejected_case_count"),
                 "text_case_count": nl_plan_cli.get("text_case_count"),
                 "required_operation_kinds": nl_plan_cli.get("required_operation_kinds"),
+                "required_accepted_case_ids": nl_plan_cli.get("required_accepted_case_ids"),
+                "observed_accepted_case_ids": nl_plan_cli.get("observed_accepted_case_ids"),
+                "missing_accepted_case_count": nl_plan_cli.get("missing_accepted_case_count"),
+                "missing_accepted_case_ids": nl_plan_cli.get("missing_accepted_case_ids"),
+                "expected_operation_kind_by_case": nl_plan_cli.get("expected_operation_kind_by_case"),
+                "operation_kinds_by_case": nl_plan_cli.get("operation_kinds_by_case"),
+                "missing_expected_operation_kind_case_count": nl_plan_cli.get("missing_expected_operation_kind_case_count"),
+                "missing_expected_operation_kind_cases": nl_plan_cli.get("missing_expected_operation_kind_cases"),
                 "accepted_operation_kinds": nl_plan_cli.get("accepted_operation_kinds"),
                 "accepted_operation_kind_count": nl_plan_cli.get("accepted_operation_kind_count"),
                 "missing_accepted_operation_kind_count": nl_plan_cli.get("missing_accepted_operation_kind_count"),
                 "missing_accepted_operation_kinds": nl_plan_cli.get("missing_accepted_operation_kinds"),
+                "expected_payload_formats_by_case": nl_plan_cli.get("expected_payload_formats_by_case"),
+                "payload_formats_by_case": nl_plan_cli.get("payload_formats_by_case"),
+                "missing_payload_format_case_count": nl_plan_cli.get("missing_payload_format_case_count"),
+                "missing_payload_format_cases": nl_plan_cli.get("missing_payload_format_cases"),
+                "lint_ok_cases": nl_plan_cli.get("lint_ok_cases"),
+                "missing_lint_ok_case_count": nl_plan_cli.get("missing_lint_ok_case_count"),
+                "missing_lint_ok_cases": nl_plan_cli.get("missing_lint_ok_cases"),
+                "migration_format_cases": nl_plan_cli.get("migration_format_cases"),
+                "missing_migration_format_case_count": nl_plan_cli.get("missing_migration_format_case_count"),
+                "missing_migration_format_cases": nl_plan_cli.get("missing_migration_format_cases"),
+                "test_plan_cases": nl_plan_cli.get("test_plan_cases"),
+                "missing_test_plan_case_count": nl_plan_cli.get("missing_test_plan_case_count"),
+                "missing_test_plan_cases": nl_plan_cli.get("missing_test_plan_cases"),
+                "token_budget_cases": nl_plan_cli.get("token_budget_cases"),
+                "missing_token_budget_case_count": nl_plan_cli.get("missing_token_budget_case_count"),
+                "missing_token_budget_cases": nl_plan_cli.get("missing_token_budget_cases"),
                 "accepted_patch_bytes": nl_plan_cli.get("accepted_patch_bytes"),
                 "accepted_test_count": nl_plan_cli.get("accepted_test_count"),
                 "accepted_token_budget_notes": nl_plan_cli.get("accepted_token_budget_notes"),
                 "migration_format": nl_plan_cli.get("migration_format"),
                 "accepted_text_prefix": nl_plan_cli.get("accepted_text_prefix"),
+                "required_text_markers": nl_plan_cli.get("required_text_markers"),
+                "text_markers": nl_plan_cli.get("text_markers"),
+                "missing_text_marker_count": nl_plan_cli.get("missing_text_marker_count"),
+                "missing_text_markers": nl_plan_cli.get("missing_text_markers"),
                 "accepted_text_marker_count": nl_plan_cli.get("accepted_text_marker_count"),
                 "accepted_text_has_report_format": nl_plan_cli.get("accepted_text_has_report_format"),
                 "accepted_text_has_lint_format": nl_plan_cli.get("accepted_text_has_lint_format"),
@@ -13345,6 +13381,7 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
         operation_kinds = tuple(operation.get("kind") for operation in payload.get("edit_operations", ()))
         accepted_cases.append(
             {
+                "case": f"{expected_kind}_json",
                 "expected_kind": expected_kind,
                 "prompt": prompt,
                 "exit_code": exit_code,
@@ -13397,6 +13434,41 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
     accepted_test_count = sum(case["test_count"] for case in accepted_cases)
     accepted_token_budget_notes = sum(case["token_budget_notes"] for case in accepted_cases)
     required_operation_kinds = tuple(expected_kind for expected_kind, _prompt in accepted_specs)
+    required_accepted_case_ids = tuple(f"{expected_kind}_json" for expected_kind in required_operation_kinds)
+    observed_accepted_case_ids = tuple(case["case"] for case in accepted_cases)
+    missing_accepted_case_ids = tuple(
+        case_id for case_id in required_accepted_case_ids if case_id not in observed_accepted_case_ids
+    )
+    expected_operation_kind_by_case = {
+        f"{expected_kind}_json": expected_kind for expected_kind in required_operation_kinds
+    }
+    operation_kinds_by_case = {case["case"]: case["operation_kinds"] for case in accepted_cases}
+    missing_expected_operation_kind_cases = tuple(
+        case_id
+        for case_id, expected_kind in expected_operation_kind_by_case.items()
+        if expected_kind not in operation_kinds_by_case.get(case_id, ())
+    )
+    expected_payload_formats_by_case = {case_id: "appgen.nl-plan.v1" for case_id in required_accepted_case_ids}
+    payload_formats_by_case = {case["case"]: case["format"] for case in accepted_cases}
+    missing_payload_format_cases = tuple(
+        case_id
+        for case_id, expected_format in expected_payload_formats_by_case.items()
+        if payload_formats_by_case.get(case_id) != expected_format
+    )
+    lint_ok_cases = tuple(case["case"] for case in accepted_cases if case["lint_ok"] is True)
+    missing_lint_ok_cases = tuple(case_id for case_id in required_accepted_case_ids if case_id not in lint_ok_cases)
+    migration_format_cases = tuple(
+        case["case"] for case in accepted_cases if case["migration_format"] == "appgen.migration-plan.v1"
+    )
+    missing_migration_format_cases = tuple(
+        case_id for case_id in required_accepted_case_ids if case_id not in migration_format_cases
+    )
+    test_plan_cases = tuple(case["case"] for case in accepted_cases if case["test_count"] > 0)
+    missing_test_plan_cases = tuple(case_id for case_id in required_accepted_case_ids if case_id not in test_plan_cases)
+    token_budget_cases = tuple(case["case"] for case in accepted_cases if case["token_budget_notes"] > 0)
+    missing_token_budget_cases = tuple(
+        case_id for case_id in required_accepted_case_ids if case_id not in token_budget_cases
+    )
     accepted_operation_kinds = tuple(
         sorted({operation_kind for case in accepted_cases for operation_kind in case["operation_kinds"]})
     )
@@ -13404,6 +13476,23 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
         kind for kind in required_operation_kinds if kind not in accepted_operation_kinds
     )
     accepted_failing_cases = tuple(case["expected_kind"] for case in accepted_cases if not case["passed"])
+    required_text_markers = (
+        "report_format",
+        "lint_format",
+        "migration_format",
+        "test_plan",
+        "token_budget_notes",
+        "token_budget_note",
+    )
+    text_markers = {
+        "report_format": accepted_text_has_report_format,
+        "lint_format": accepted_text_has_lint_format,
+        "migration_format": accepted_text_has_migration_format,
+        "test_plan": bool(accepted_text_test_plan_lines),
+        "token_budget_notes": accepted_text_has_token_notes,
+        "token_budget_note": bool(accepted_text_token_note_lines),
+    }
+    missing_text_markers = tuple(marker for marker in required_text_markers if not text_markers.get(marker))
     accepted_text_marker_count = sum(
         1
         for marker_present in (
@@ -13426,6 +13515,13 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
     return {
         "format": "appgen.nl-plan-cli-audit.v1",
         "ok": all(case["passed"] for case in accepted_cases)
+        and not missing_accepted_case_ids
+        and not missing_expected_operation_kind_cases
+        and not missing_payload_format_cases
+        and not missing_lint_ok_cases
+        and not missing_migration_format_cases
+        and not missing_test_plan_cases
+        and not missing_token_budget_cases
         and not missing_accepted_operation_kinds
         and accepted_text_exit == 0
         and accepted_text_has_report_format
@@ -13434,6 +13530,7 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
         and bool(accepted_text_test_plan_lines)
         and accepted_text_has_token_notes
         and bool(accepted_text_token_note_lines)
+        and not missing_text_markers
         and rejected_ok,
         "case_count": len(accepted_cases) + 2,
         "accepted_case_count": len(accepted_cases),
@@ -13442,6 +13539,30 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
         "rejected_case_count": 1,
         "text_case_count": 1,
         "required_operation_kinds": required_operation_kinds,
+        "required_accepted_case_ids": required_accepted_case_ids,
+        "observed_accepted_case_ids": observed_accepted_case_ids,
+        "missing_accepted_case_count": len(missing_accepted_case_ids),
+        "missing_accepted_case_ids": missing_accepted_case_ids,
+        "expected_operation_kind_by_case": expected_operation_kind_by_case,
+        "operation_kinds_by_case": operation_kinds_by_case,
+        "missing_expected_operation_kind_case_count": len(missing_expected_operation_kind_cases),
+        "missing_expected_operation_kind_cases": missing_expected_operation_kind_cases,
+        "expected_payload_formats_by_case": expected_payload_formats_by_case,
+        "payload_formats_by_case": payload_formats_by_case,
+        "missing_payload_format_case_count": len(missing_payload_format_cases),
+        "missing_payload_format_cases": missing_payload_format_cases,
+        "lint_ok_cases": lint_ok_cases,
+        "missing_lint_ok_case_count": len(missing_lint_ok_cases),
+        "missing_lint_ok_cases": missing_lint_ok_cases,
+        "migration_format_cases": migration_format_cases,
+        "missing_migration_format_case_count": len(missing_migration_format_cases),
+        "missing_migration_format_cases": missing_migration_format_cases,
+        "test_plan_cases": test_plan_cases,
+        "missing_test_plan_case_count": len(missing_test_plan_cases),
+        "missing_test_plan_cases": missing_test_plan_cases,
+        "token_budget_cases": token_budget_cases,
+        "missing_token_budget_case_count": len(missing_token_budget_cases),
+        "missing_token_budget_cases": missing_token_budget_cases,
         "accepted_cases": tuple(accepted_cases),
         "accepted_operation_kinds": accepted_operation_kinds,
         "accepted_operation_kind_count": len(accepted_operation_kinds),
@@ -13452,6 +13573,10 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
         "accepted_exit_code": accepted_cases[0]["exit_code"] if accepted_cases else None,
         "accepted_text_exit_code": accepted_text_exit,
         "accepted_text_prefix": accepted_text_lines[0] if accepted_text_lines else "",
+        "required_text_markers": required_text_markers,
+        "text_markers": text_markers,
+        "missing_text_marker_count": len(missing_text_markers),
+        "missing_text_markers": missing_text_markers,
         "accepted_text_marker_count": accepted_text_marker_count,
         "accepted_text_has_report_format": accepted_text_has_report_format,
         "accepted_text_has_lint_format": accepted_text_has_lint_format,

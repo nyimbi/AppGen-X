@@ -1904,6 +1904,10 @@ The CLI proof mirrors the same operation family through
 `appgen.nl-plan-cli-audit.v1`: each supported edit operation is exercised
 through `appgen nl-plan --json`, then checked for the expected operation kind,
 linted patch, migration preview, generated test plan, and token-budget notes.
+It reports required, observed, and missing accepted JSON case ids; expected and
+observed operation kinds by case; expected and observed `appgen.nl-plan.v1`
+payload formats by case; cases missing lint, migration-preview, test-plan, or
+token-budget evidence; and required versus missing text markers.
 It also runs an accepted request without `--json` and requires the text output
 to expose the `appgen.nl-plan.v1` envelope, nested lint and migration-preview
 format markers, PostgreSQL backend marker, generated test-plan entries as
@@ -1918,9 +1922,10 @@ The aggregate tooling audit exposes this proof independently as
 `natural_language_cli_agent_contracts`. That gate fails when JSON output stops
 carrying bounded DSL patches, accepted text output hides report, lint,
 migration, test-plan, or token-budget markers, rejected prompts stop returning
-`AGX1201`, or blocking cases appear. This is the release gate for Claude Code,
-OpenAI Codex, OpenCode, Ollama, vLLM, and small local models using natural
-language as a first-class development vector.
+`AGX1201`, named accepted operation cases disappear, per-case payload/lint/
+migration/test/token evidence drifts, or blocking cases appear. This is the
+release gate for Claude Code, OpenAI Codex, OpenCode, Ollama, vLLM, and small
+local models using natural language as a first-class development vector.
 
 The test-strategy CLI audit reports case, passing-case, failing-case, case-id,
 required-surface, observed-surface, missing-surface, payload-format, and
