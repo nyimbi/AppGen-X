@@ -26,3 +26,23 @@ def fleet_mobility_operations_standalone_ui_contract():
 def smoke_test():
     standalone = fleet_mobility_operations_standalone_ui_contract()
     return {'ok': fleet_mobility_operations_ui_contract()['ok'] and fleet_mobility_operations_render_workbench()['ok'] and standalone['ok'], 'side_effects': ()}
+
+
+from .fleet_control import improve1_fleet_control_contract
+
+_fleet_mobility_operations_base_ui_contract = fleet_mobility_operations_ui_contract
+_fleet_mobility_operations_base_render_workbench = fleet_mobility_operations_render_workbench
+
+def fleet_mobility_operations_ui_contract():
+    ui = _fleet_mobility_operations_base_ui_contract()
+    control = improve1_fleet_control_contract()
+    surface = dict(ui.get('full_capability_surface', {}))
+    surface['fleet_control_panels'] = tuple(item['evidence']['ui_surface'] for item in control['capabilities'])
+    surface['fleet_control_service_actions'] = tuple(item['evidence']['service_api'] for item in control['capabilities'])
+    surface['fleet_control_tables'] = control['owned_tables']
+    return {**ui, 'ok': ui.get('ok') is True and control['ok'], 'full_capability_surface': surface, 'fleet_control_contract': control, 'side_effects': ()}
+
+def fleet_mobility_operations_render_workbench():
+    workbench = _fleet_mobility_operations_base_render_workbench()
+    control = improve1_fleet_control_contract()
+    return {**workbench, 'ok': workbench.get('ok') is True and control['ok'], 'fleet_control_panels': tuple(item['evidence']['ui_surface'] for item in control['capabilities']), 'fleet_control_service_actions': tuple(item['evidence']['service_api'] for item in control['capabilities']), 'side_effects': ()}

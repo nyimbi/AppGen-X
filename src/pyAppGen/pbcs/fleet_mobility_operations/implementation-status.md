@@ -16,3 +16,10 @@ Implemented as a package-local standalone PBC slice with dispatch control tower 
 ## Known Gaps
 
 - Live telematics feeds, vehicle dispatch integrations, fuel-card processors, and map rendering are represented as package-local contracts rather than external integrations.
+
+## Improve1 fleet control implementation
+
+- Added `fleet_control.py` as the executable control contract for all 50 `improve1.md` capabilities.
+- Each capability now maps to owned fleet tables, required domain fields, a UI panel, a service route, package-local tests, AppGen-X eventing evidence, and PostgreSQL/MySQL/MariaDB datastore boundaries.
+- Runtime, UI, and release-evidence contracts expose the fleet control surface without stream-engine picker leakage.
+- Domain behavior tests cover positive execution for all 50 capabilities plus negative guards for dispatch readiness, driver rest windows, telematics quarantine, EV charging feasibility, agent preview confirmation, tenant isolation, and operational release gates.

@@ -267,3 +267,23 @@ def fleet_mobility_operations_runtime_smoke():
     }
 
 fleet_mobility_operations_execute_domain_operation = execute_domain_operation
+
+
+from .fleet_control import improve1_fleet_control_contract as fleet_mobility_operations_improve1_fleet_control_contract
+
+_fleet_mobility_operations_base_build_release_evidence = fleet_mobility_operations_build_release_evidence
+_fleet_mobility_operations_base_runtime_capabilities = fleet_mobility_operations_runtime_capabilities
+
+def fleet_mobility_operations_build_release_evidence():
+    evidence = _fleet_mobility_operations_base_build_release_evidence()
+    control = fleet_mobility_operations_improve1_fleet_control_contract()
+    checks = tuple(evidence.get('checks', ())) + ({'id': 'improve1_fleet_control', 'ok': control['ok']},)
+    generated = dict(evidence.get('generated_artifacts', {}))
+    generated['fleet_control'] = {'capability_count': control['capability_count'], 'owned_tables': control['owned_tables'], 'event_contract': control['event_contract'], 'required_event_topic': control['required_event_topic']}
+    return {**evidence, 'ok': evidence.get('ok') is True and control['ok'], 'checks': checks, 'generated_artifacts': generated, 'fleet_control': control, 'blocking_gaps': tuple(evidence.get('blocking_gaps', ())) + tuple(control.get('blocking_gaps', ())), 'side_effects': ()}
+
+def fleet_mobility_operations_runtime_capabilities():
+    capabilities = _fleet_mobility_operations_base_runtime_capabilities()
+    control = fleet_mobility_operations_improve1_fleet_control_contract()
+    operations = tuple(capabilities.get('operations', ())) + ('improve1_fleet_control_contract',)
+    return {**capabilities, 'ok': capabilities.get('ok') is True and control['ok'], 'operations': operations, 'fleet_control': control, 'improve1_capabilities': tuple(item['slug'] for item in control['capabilities']), 'owned_tables': tuple(dict.fromkeys(tuple(capabilities.get('owned_tables', ())) + tuple(control['owned_tables']))), 'allowed_database_backends': control['allowed_database_backends'], 'event_contract': control['event_contract'], 'stream_engine_picker_visible': False, 'side_effects': ()}

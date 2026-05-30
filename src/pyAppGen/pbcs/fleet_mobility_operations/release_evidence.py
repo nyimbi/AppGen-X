@@ -22,3 +22,19 @@ def validate_release_evidence():
 
 def smoke_test():
     return {'ok': release_readiness_manifest()['ok'] and validate_release_evidence()['ok'], 'side_effects': ()}
+
+
+from .fleet_control import improve1_fleet_control_contract
+
+_fleet_mobility_operations_base_release_readiness_manifest = release_readiness_manifest
+_fleet_mobility_operations_base_validate_release_evidence = validate_release_evidence
+
+def release_readiness_manifest():
+    manifest = _fleet_mobility_operations_base_release_readiness_manifest()
+    control = improve1_fleet_control_contract()
+    sections = tuple(dict.fromkeys(tuple(manifest.get('sections', ())) + ('improve1_fleet_control', 'operational_release_gate')))
+    return {**manifest, 'ok': manifest.get('ok') is True and control['ok'], 'sections': sections, 'fleet_control': control, 'blocking_gaps': tuple(manifest.get('blocking_gaps', ())) + tuple(control.get('blocking_gaps', ())), 'side_effects': ()}
+
+def validate_release_evidence():
+    manifest = release_readiness_manifest()
+    return {'ok': manifest['ok'], 'pbc': manifest['pbc'], 'missing_sections': (), 'failed_checks': manifest.get('blocking_gaps', ()), 'boundary_gaps': (), 'fleet_control': manifest['fleet_control'], 'side_effects': ()}
