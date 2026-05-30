@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .claims_control import CLAIMS_CONTROL_CAPABILITIES, improve1_claims_control_contract
 from typing import Any
 
 from .config import PARAMETERS
@@ -76,7 +77,9 @@ def claims_adjudication_healthcare_ui_contract() -> dict[str, Any]:
             "operation_actions": DOMAIN_OPERATIONS,
             "rule_editors": RULES,
             "parameter_editors": PARAMETERS,
-            "advanced_panels": DOMAIN_ADVANCED_CAPABILITIES,
+            "advanced_panels": DOMAIN_ADVANCED_CAPABILITIES + CLAIMS_CONTROL_CAPABILITIES,
+            "claims_control_panels": tuple(f"claims_control_{capability}" for capability in CLAIMS_CONTROL_CAPABILITIES),
+            "claims_control_contract": improve1_claims_control_contract(),
             "table_browsers": BUSINESS_TABLES,
             "edge_case_queues": DOMAIN_EDGE_CASES,
             "agent_tools": tuple(f"{PBC_KEY}_skills.{op}" for op in DOMAIN_OPERATIONS),

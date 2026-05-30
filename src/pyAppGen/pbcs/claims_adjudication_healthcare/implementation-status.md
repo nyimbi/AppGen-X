@@ -18,3 +18,14 @@ The PBC owns claims, claim lines, coding reviews, benefit rules, denials, appeal
 ## Known Gaps
 
 The slice is side-effect-free and package-local; it does not exercise live clearinghouse feeds, real payer pricing systems, or live PostgreSQL/MySQL/MariaDB instances.
+
+## improve1 Full Traceability Evidence
+
+- Added `claims_control.py` with 50 side-effect-free healthcare claims adjudication controls covering intake canonicalization, lifecycle states, claim lines, eligibility and provider projections, benefit rules, medical necessity, authorization matching, coding validation, COB, cost share, pricing, pend reasons, denials, appeals, duplicates, payment integrity, FWA review, attachments, corrected claims, overpayment recovery, adjustments, benefit limits, bundling, inpatient and professional logic, notices, SLA, explainability, rule simulation, operations workbench, agent review, governed CRUD, model governance, continuous controls, dead-letter retry, dependency freshness, low-value care analytics, provider disputes, subrogation, audit sampling, cryptographic proofs, privacy views, erroneous denial correction, scenario seeds, financial reconciliation, regulatory reporting, full release simulation, package boundaries, and DSL/agent exposure.
+- Bound the claims control contract into `runtime.py` release evidence and `ui.py` claims-control panels so generated applications surface the full payer adjudication domain control set.
+- Updated `IMPROVE1_TRACEABILITY.md` and `improve1_capabilities.py` so every feature 1-50 maps to `claims_control.py`, package UI, service/API surface, `tests/test_domain_behavior.py`, and release evidence.
+
+Validation:
+- `/Volumes/Media/src/pjs/appgen/.venv/bin/pytest src/pyAppGen/pbcs/claims_adjudication_healthcare/tests` -> 25 passed.
+- Improve1 repository sweep -> 877 passed, 197 warnings limited to existing deprecation warnings outside this PBC slice.
+- `git diff --check -- src/pyAppGen/pbcs` -> passed with no output.

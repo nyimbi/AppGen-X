@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .claims_control import improve1_claims_control_contract
 from copy import deepcopy
 import hashlib
 from typing import Any
@@ -1184,6 +1185,7 @@ def claims_adjudication_healthcare_build_release_evidence() -> dict[str, Any]:
         {"id": "api_contract", "ok": claims_adjudication_healthcare_build_api_contract()["ok"]},
         {"id": "permissions_contract", "ok": claims_adjudication_healthcare_permissions_contract()["ok"]},
         {"id": "runtime_smoke", "ok": claims_adjudication_healthcare_runtime_smoke()["ok"]},
+        {"id": "improve1_claims_control", "ok": improve1_claims_control_contract()["capability_count"] == 50},
     )
     return {
         "format": "appgen.claims-adjudication-healthcare-release-evidence.v1",
@@ -1195,6 +1197,7 @@ def claims_adjudication_healthcare_build_release_evidence() -> dict[str, Any]:
             "models": tuple(contract["class_name"] for contract in model_contracts()),
             "events": {"emits": EMITTED, "consumes": CONSUMED},
             "ui": CLAIMS_ADJUDICATION_HEALTHCARE_UI_FRAGMENT_KEYS,
+            "improve1_claims_control": improve1_claims_control_contract(),
         },
         "blocking_gaps": (),
         "side_effects": (),
