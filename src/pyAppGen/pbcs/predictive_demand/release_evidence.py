@@ -108,3 +108,38 @@ def smoke_test():
         "evidence": evidence,
         "side_effects": (),
     }
+
+# Improve1 demand release evidence extension.
+from .demand_control import improve1_demand_control_contract as _improve1_demand_control_contract
+
+_DEMAND_CONTROL_BASE_BUILD_RELEASE_EVIDENCE = build_release_evidence
+_DEMAND_CONTROL_BASE_RELEASE_READINESS_MANIFEST = release_readiness_manifest
+_DEMAND_CONTROL_BASE_VALIDATE_RELEASE_EVIDENCE = validate_release_evidence
+
+
+def build_release_evidence() -> dict:
+    evidence = dict(_DEMAND_CONTROL_BASE_BUILD_RELEASE_EVIDENCE())
+    control = _improve1_demand_control_contract()
+    evidence["ok"] = bool(evidence.get("ok")) and control["ok"]
+    evidence["demand_control"] = control
+    evidence["traceability"] = tuple(dict.fromkeys(tuple(evidence.get("traceability", ())) + ("improve1_demand_control", "tests/test_domain_behavior.py")))
+    evidence["blocking_gaps"] = tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ()))
+    return evidence
+
+
+def release_readiness_manifest() -> dict:
+    manifest = dict(_DEMAND_CONTROL_BASE_RELEASE_READINESS_MANIFEST())
+    control = _improve1_demand_control_contract()
+    manifest["ok"] = bool(manifest.get("ok")) and control["ok"]
+    manifest["demand_control"] = control
+    manifest["blocking_gaps"] = tuple(manifest.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ()))
+    return manifest
+
+
+def validate_release_evidence() -> dict:
+    validation = dict(_DEMAND_CONTROL_BASE_VALIDATE_RELEASE_EVIDENCE())
+    control = _improve1_demand_control_contract()
+    validation["ok"] = bool(validation.get("ok")) and control["ok"]
+    validation["demand_control"] = control
+    validation["failed_checks"] = tuple(validation.get("failed_checks", ())) + tuple(control.get("blocking_gaps", ()))
+    return validation
