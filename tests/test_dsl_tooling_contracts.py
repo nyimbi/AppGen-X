@@ -3534,6 +3534,8 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     assert package["contributes"]["grammars"][0]["path"] == "./syntaxes/appgen.tmLanguage.json"
     assert {
         "appgen.lint",
+        "appgen.semantic",
+        "appgen.previewSemantic",
         "appgen.format",
         "appgen.graph",
         "appgen.previewGraph",
@@ -3550,6 +3552,9 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     assert language_config["comments"]["lineComment"] == "//"
     assert grammar["scopeName"] == "source.appgen"
     assert '["lsp", "--stdio"]' in source
+    assert '["semantic", activeFile(), "--json"]' in source
+    assert '["semantic", file, "--json"]' in source
+    assert "renderSemanticModel" in source
     assert "registerCompletionItemProvider" in source
     assert "registerHoverProvider" in source
     assert "registerDefinitionProvider" in source
@@ -3577,7 +3582,7 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     assert audit["language_extension_count"] == len(audit["language_extensions"])
     assert audit["command_count"] == len(audit["commands"])
     assert audit["required_command_count"] == len(audit["required_commands"])
-    assert audit["required_command_count"] >= 10
+    assert audit["required_command_count"] >= 12
     assert audit["missing_command_count"] == 0
     assert audit["missing_commands"] == ()
     assert audit["command_palette_count"] >= audit["required_command_count"]
@@ -3606,6 +3611,8 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     assert audit["missing_webview_marker_count"] == 0
     assert audit["missing_webview_markers"] == ()
     assert '["generate", file, "--out", out, "--allow-warnings", "--json"]' in audit["command_cli_markers"]
+    assert '["semantic", activeFile(), "--json"]' in audit["command_cli_markers"]
+    assert '["semantic", file, "--json"]' in audit["command_cli_markers"]
 
 
 def test_release_verifier_report_covers_package_pbc_and_deployment_evidence() -> None:

@@ -4415,3 +4415,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   handlers, JSON output, text output, source-file markers, symbol-file markers,
   and contract-count markers; the aggregate tooling gate now requires this
   evidence in the shared semantic-model and implementation-phase checks.
+- Current VS Code semantic command pass exposes the new semantic model contract
+  directly in the editor. The extension now contributes `appgen.semantic` and
+  `appgen.previewSemantic`, activates on both commands, calls `appgen semantic
+  <file> --json`, and renders a semantic-model webview with source files,
+  per-file symbol counts, model counts, diagnostics, and raw JSON. The
+  `appgen.vscode-extension-audit.v1` gate now requires the semantic command
+  IDs, activation events, CLI argument markers, and semantic webview renderer.

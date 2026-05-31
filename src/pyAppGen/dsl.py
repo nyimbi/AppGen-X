@@ -12079,6 +12079,8 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
     configuration_properties = configuration.get("properties", {})
     required_commands = {
         "appgen.lint",
+        "appgen.semantic",
+        "appgen.previewSemantic",
         "appgen.format",
         "appgen.graph",
         "appgen.previewGraph",
@@ -12105,6 +12107,8 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
     )
     command_cli_markers = (
         '["lint", activeFile(), "--json"]',
+        '["semantic", activeFile(), "--json"]',
+        '["semantic", file, "--json"]',
         '["format", activeFile(), "--write", "--json"]',
         '["graph-suite", activeFile(), "--json"]',
         '["explain", file, "--symbol", symbol, "--json"]',
@@ -12116,6 +12120,7 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
     webview_markers = (
         "createWebviewPanel",
         "renderGraphPreview",
+        "renderSemanticModel",
         "renderArtifactPreview",
         "renderPbcCatalog",
         "showJsonPreview",

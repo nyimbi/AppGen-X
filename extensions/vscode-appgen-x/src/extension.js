@@ -26,6 +26,8 @@ function activate(context) {
   }));
   registerProviders(context);
   registerCommand(context, "appgen.lint", () => runForActiveFile(["lint", activeFile(), "--json"], "AppGen-X Lint"));
+  registerCommand(context, "appgen.semantic", () => runForActiveFile(["semantic", activeFile(), "--json"], "AppGen-X Semantic Model"));
+  registerCommand(context, "appgen.previewSemantic", previewSemanticModel);
   registerCommand(context, "appgen.format", () => runForActiveFile(["format", activeFile(), "--write", "--json"], "AppGen-X Format"));
   registerCommand(context, "appgen.graph", () => runForActiveFile(["graph-suite", activeFile(), "--json"], "AppGen-X Graphs"));
   registerCommand(context, "appgen.previewGraph", previewGraph);
@@ -461,6 +463,33 @@ function renderGraphPreview(payload) {
   return previewShell("AppGen-X Graph Preview", sections || `<pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre>`);
 }
 
+function renderSemanticModel(payload) {
+  const sourceFiles = payload.source_files || [];
+  const symbols = payload.symbols || {};
+  const tables = payload.tables || {};
+  const views = payload.views || {};
+  const flows = payload.flows || {};
+  const diagnostics = payload.diagnostics || [];
+  const symbolCounts = payload.source_file_symbol_counts || {};
+  const symbolRows = Object.entries(symbolCounts).map(([file, count]) => `<li>${escapeHtml(file)}: ${escapeHtml(count)} symbols</li>`).join("");
+  const body = `<p>Status: ${escapeHtml(payload.ok ? "ok" : "failed")}</p>
+    <p>Format: ${escapeHtml(payload.format || "")}</p>
+    <p>Source mode: ${escapeHtml(payload.source_mode || "file")}; files: ${sourceFiles.length}; symbols: ${Object.keys(symbols).length}</p>
+    <h2>Source Files</h2>
+    <ul>${sourceFiles.map((file) => `<li>${escapeHtml(file)}</li>`).join("")}</ul>
+    <h2>Symbols By File</h2>
+    <ul>${symbolRows}</ul>
+    <h2>Model Summary</h2>
+    <ul>
+      <li>Tables: ${Object.keys(tables).length}</li>
+      <li>Views: ${Object.keys(views).length}</li>
+      <li>Flows: ${Object.keys(flows).length}</li>
+      <li>Diagnostics: ${diagnostics.length}</li>
+    </ul>
+    <details><summary>Raw semantic model</summary><pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre></details>`;
+  return previewShell("AppGen-X Semantic Model", body);
+}
+
 function renderArtifactPreview(payload) {
   const artifacts = payload.artifacts || payload.written_artifacts || [];
   const gaps = payload.blocking_gaps || [];
@@ -533,6 +562,13 @@ function previewGraph() {
   const file = activeFile();
   return runAppGenJson(["graph-suite", file, "--json"], "AppGen-X Graph Preview").then((result) => {
     showJsonPreview("AppGen-X Graph Preview", result.payload, renderGraphPreview);
+  });
+}
+
+function previewSemanticModel() {
+  const file = activeFile();
+  return runAppGenJson(["semantic", file, "--json"], "AppGen-X Semantic Model Preview").then((result) => {
+    showJsonPreview("AppGen-X Semantic Model", result.payload, renderSemanticModel);
   });
 }
 

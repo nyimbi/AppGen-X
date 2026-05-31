@@ -14,6 +14,8 @@
   "activationEvents": [
     "onLanguage:appgen",
     "onCommand:appgen.lint",
+    "onCommand:appgen.semantic",
+    "onCommand:appgen.previewSemantic",
     "onCommand:appgen.format",
     "onCommand:appgen.graph",
     "onCommand:appgen.previewGraph",
@@ -64,6 +66,14 @@
         "title": "AppGen-X: Lint Current File"
       },
       {
+        "command": "appgen.semantic",
+        "title": "AppGen-X: Show Semantic Model JSON"
+      },
+      {
+        "command": "appgen.previewSemantic",
+        "title": "AppGen-X: Preview Semantic Model"
+      },
+      {
         "command": "appgen.format",
         "title": "AppGen-X: Format Current File"
       },
@@ -104,6 +114,12 @@
       "commandPalette": [
         {
           "command": "appgen.lint"
+        },
+        {
+          "command": "appgen.semantic"
+        },
+        {
+          "command": "appgen.previewSemantic"
         },
         {
           "command": "appgen.format"

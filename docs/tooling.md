@@ -1796,8 +1796,8 @@ The VS Code extension should provide:
 - outline tree;
 - graph previews;
 - generated artifact preview;
-- command palette actions for lint, semantic, format, graph, explain, generate, and
-  package;
+- command palette actions for lint, semantic JSON, semantic preview, format,
+  graph, explain, generate, and package;
 - PBC catalog browser.
 
 The repository ships the extension scaffold at `extensions/vscode-appgen-x`.
@@ -1807,13 +1807,14 @@ dependency-free JSON-RPC client that launches `appgen lsp --stdio`. The client
 registers VS Code providers for diagnostics, completion, hover, definition,
 references, document symbols, workspace symbols, rename, code actions, and
 formatting, while command palette actions call the same CLI contracts for lint,
-format, graph, explain, generate, and package. Graph previews, generated
-artifact previews, and the PBC catalog browser render CLI JSON reports in
-webview panels rather than relying on editor-specific state.
+semantic model extraction, format, graph, explain, generate, and package.
+Semantic model previews, graph previews, generated artifact previews, and the
+PBC catalog browser render CLI JSON reports in webview panels rather than
+relying on editor-specific state.
 `appgen.vscode-extension-audit.v1` checks this surface explicitly: language
 metadata, syntax grammar, command contributions, LSP providers, diagnostics
 collection, command activation events, command palette membership, CLI command
-configuration, CLI-backed command argument contracts, and graph/artifact/PBC
+configuration, CLI-backed command argument contracts, and semantic/graph/artifact/PBC
 webview renderers must all be present before the extension is counted as
 tooling-complete. The audit also reports command, activation-event,
 provider-marker, CLI-contract-marker, and webview-marker counts so release
