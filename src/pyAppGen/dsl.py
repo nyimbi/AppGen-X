@@ -7929,6 +7929,9 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and lsp_rpc.get("blocking_gap_count") == 0
             and lsp_stdio["ok"]
             and lsp_stdio.get("missing_response_ids") == ()
+            and lsp_stdio.get("missing_response_method_count") == 0
+            and lsp_stdio.get("missing_notification_method_count") == 0
+            and lsp_stdio.get("missing_changed_diagnostic_code_family_count") == 0
             and lsp_stdio.get("request_message_count", 0) >= 4
             and lsp_stdio.get("id_response_count", 0) >= lsp_stdio.get("request_message_count", 0)
             and lsp_stdio.get("diagnostic_publication_count", 0) >= 1
@@ -7961,6 +7964,24 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "notification_count": lsp_stdio.get("notification_count"),
                     "diagnostic_publication_count": lsp_stdio.get("diagnostic_publication_count"),
                     "missing_response_ids": lsp_stdio.get("missing_response_ids"),
+                    "expected_response_ids_by_method": lsp_stdio.get("expected_response_ids_by_method"),
+                    "response_ids_by_method": lsp_stdio.get("response_ids_by_method"),
+                    "missing_response_method_count": lsp_stdio.get("missing_response_method_count"),
+                    "missing_response_methods": lsp_stdio.get("missing_response_methods"),
+                    "required_notification_methods": lsp_stdio.get("required_notification_methods"),
+                    "observed_notification_methods": lsp_stdio.get("observed_notification_methods"),
+                    "missing_notification_method_count": lsp_stdio.get("missing_notification_method_count"),
+                    "missing_notification_methods": lsp_stdio.get("missing_notification_methods"),
+                    "required_changed_diagnostic_code_families": lsp_stdio.get(
+                        "required_changed_diagnostic_code_families"
+                    ),
+                    "changed_diagnostic_code_families": lsp_stdio.get("changed_diagnostic_code_families"),
+                    "missing_changed_diagnostic_code_family_count": lsp_stdio.get(
+                        "missing_changed_diagnostic_code_family_count"
+                    ),
+                    "missing_changed_diagnostic_code_families": lsp_stdio.get(
+                        "missing_changed_diagnostic_code_families"
+                    ),
                     "completion_response_count": lsp_stdio.get("completion_response_count"),
                     "workspace_symbol_response_count": lsp_stdio.get("workspace_symbol_response_count"),
                     "shutdown_response_count": lsp_stdio.get("shutdown_response_count"),
@@ -13163,8 +13184,26 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
             break
         responses.append(response)
     expected_ids = tuple(message["id"] for message in messages if "id" in message)
+    expected_response_ids_by_method = {
+        message["method"]: message["id"] for message in messages if "id" in message
+    }
     observed_ids = tuple(response.get("id") for response in responses if "id" in response)
     missing_response_ids = tuple(response_id for response_id in expected_ids if response_id not in observed_ids)
+    response_ids_by_method = {
+        method: response_id
+        for method, response_id in expected_response_ids_by_method.items()
+        if response_id in observed_ids
+    }
+    missing_response_methods = tuple(
+        method
+        for method, response_id in expected_response_ids_by_method.items()
+        if response_ids_by_method.get(method) != response_id
+    )
+    required_notification_methods = ("textDocument/publishDiagnostics",)
+    observed_notification_methods = tuple(response.get("method") for response in responses if response.get("method"))
+    missing_notification_methods = tuple(
+        method for method in required_notification_methods if method not in set(observed_notification_methods)
+    )
     diagnostic_publication_count = sum(
         1 for response in responses if response.get("method") == "textDocument/publishDiagnostics"
     )
@@ -13173,6 +13212,16 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
     )
     changed_diagnostics = tuple(diagnostic_publications[-1].get("params", {}).get("diagnostics", ())) if diagnostic_publications else ()
     changed_diagnostic_codes = tuple(item.get("code") for item in changed_diagnostics)
+    required_changed_diagnostic_code_families = {
+        "unresolved_binding_or_table": ("AGX0401", "AGX0402"),
+    }
+    changed_diagnostic_code_families = {
+        family: tuple(code for code in allowed_codes if code in set(changed_diagnostic_codes))
+        for family, allowed_codes in required_changed_diagnostic_code_families.items()
+    }
+    missing_changed_diagnostic_code_families = tuple(
+        family for family, codes in changed_diagnostic_code_families.items() if not codes
+    )
     changed_error_count = sum(1 for item in changed_diagnostics if item.get("severity") == 1)
     completion_response_count = sum(
         1
@@ -13197,7 +13246,10 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
         and changed_error_count >= 1
         and any(code in {"AGX0401", "AGX0402"} for code in changed_diagnostic_codes)
         and shutdown_response_count >= 1
-        and not missing_response_ids,
+        and not missing_response_ids
+        and not missing_response_methods
+        and not missing_notification_methods
+        and not missing_changed_diagnostic_code_families,
         "exit_code": exit_code,
         "total_message_count": len(messages),
         "request_message_count": 4,
@@ -13208,15 +13260,27 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
         "expected_ids": expected_ids,
         "missing_response_id_count": len(missing_response_ids),
         "missing_response_ids": missing_response_ids,
+        "expected_response_ids_by_method": expected_response_ids_by_method,
+        "response_ids_by_method": response_ids_by_method,
+        "missing_response_method_count": len(missing_response_methods),
+        "missing_response_methods": missing_response_methods,
         "notification_count": sum(1 for response in responses if response.get("method")),
         "method_count": len({response.get("method") for response in responses if response.get("method")}),
         "methods": tuple(response.get("method") for response in responses if response.get("method")),
+        "required_notification_methods": required_notification_methods,
+        "observed_notification_methods": observed_notification_methods,
+        "missing_notification_method_count": len(missing_notification_methods),
+        "missing_notification_methods": missing_notification_methods,
         "ids": tuple(response.get("id") for response in responses if "id" in response),
         "diagnostic_publication_count": diagnostic_publication_count,
         "changed_source_differs": changed_source != source,
         "changed_diagnostic_count": len(changed_diagnostics),
         "changed_error_count": changed_error_count,
         "changed_diagnostic_codes": changed_diagnostic_codes,
+        "required_changed_diagnostic_code_families": required_changed_diagnostic_code_families,
+        "changed_diagnostic_code_families": changed_diagnostic_code_families,
+        "missing_changed_diagnostic_code_family_count": len(missing_changed_diagnostic_code_families),
+        "missing_changed_diagnostic_code_families": missing_changed_diagnostic_code_families,
         "completion_response_count": completion_response_count,
         "workspace_symbol_response_count": workspace_symbol_response_count,
         "shutdown_response_count": shutdown_response_count,

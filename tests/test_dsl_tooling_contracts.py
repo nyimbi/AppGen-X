@@ -3075,13 +3075,32 @@ def test_lsp_stdio_transport_audit_exercises_editor_requests() -> None:
     assert audit["expected_id_count"] == len(audit["expected_ids"]) == 4
     assert audit["missing_response_id_count"] == 0
     assert audit["missing_response_ids"] == ()
+    assert audit["expected_response_ids_by_method"] == {
+        "initialize": 1,
+        "textDocument/completion": 2,
+        "workspace/symbol": 3,
+        "shutdown": 4,
+    }
+    assert audit["response_ids_by_method"] == audit["expected_response_ids_by_method"]
+    assert audit["missing_response_method_count"] == 0
+    assert audit["missing_response_methods"] == ()
     assert audit["notification_count"] >= 2
     assert audit["method_count"] >= 1
+    assert audit["required_notification_methods"] == ("textDocument/publishDiagnostics",)
+    assert "textDocument/publishDiagnostics" in audit["observed_notification_methods"]
+    assert audit["missing_notification_method_count"] == 0
+    assert audit["missing_notification_methods"] == ()
     assert audit["diagnostic_publication_count"] >= 2
     assert audit["changed_source_differs"] is True
     assert audit["changed_diagnostic_count"] >= 1
     assert audit["changed_error_count"] >= 1
     assert {"AGX0401", "AGX0402"} & set(audit["changed_diagnostic_codes"])
+    assert audit["required_changed_diagnostic_code_families"] == {
+        "unresolved_binding_or_table": ("AGX0401", "AGX0402"),
+    }
+    assert audit["changed_diagnostic_code_families"]["unresolved_binding_or_table"]
+    assert audit["missing_changed_diagnostic_code_family_count"] == 0
+    assert audit["missing_changed_diagnostic_code_families"] == ()
     assert audit["completion_response_count"] >= 1
     assert audit["workspace_symbol_response_count"] >= 1
     assert audit["shutdown_response_count"] >= 1
@@ -6159,6 +6178,18 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert lsp_transport_check["detail"]["stdio"]["format"] == "appgen.lsp-stdio-transport-audit.v1"
     assert lsp_transport_check["detail"]["stdio"]["request_message_count"] == 4
     assert lsp_transport_check["detail"]["stdio"]["missing_response_ids"] == ()
+    assert lsp_transport_check["detail"]["stdio"]["response_ids_by_method"] == lsp_transport_check["detail"]["stdio"][
+        "expected_response_ids_by_method"
+    ]
+    assert lsp_transport_check["detail"]["stdio"]["missing_response_method_count"] == 0
+    assert lsp_transport_check["detail"]["stdio"]["missing_response_methods"] == ()
+    assert lsp_transport_check["detail"]["stdio"]["required_notification_methods"] == ("textDocument/publishDiagnostics",)
+    assert "textDocument/publishDiagnostics" in lsp_transport_check["detail"]["stdio"]["observed_notification_methods"]
+    assert lsp_transport_check["detail"]["stdio"]["missing_notification_method_count"] == 0
+    assert lsp_transport_check["detail"]["stdio"]["missing_notification_methods"] == ()
+    assert lsp_transport_check["detail"]["stdio"]["changed_diagnostic_code_families"]["unresolved_binding_or_table"]
+    assert lsp_transport_check["detail"]["stdio"]["missing_changed_diagnostic_code_family_count"] == 0
+    assert lsp_transport_check["detail"]["stdio"]["missing_changed_diagnostic_code_families"] == ()
     assert lsp_transport_check["detail"]["stdio"]["completion_response_count"] == 1
     assert lsp_transport_check["detail"]["stdio"]["workspace_symbol_response_count"] == 1
     assert lsp_transport_check["detail"]["stdio"]["shutdown_response_count"] == 1

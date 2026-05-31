@@ -4237,3 +4237,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   (`1 passed`, with the known active-PBC `datetime.utcnow()` warnings only),
   scoped diff whitespace check, and restricted-name scan outside archive, Git
   internals, and active PBC paths.
+- Current LSP stdio transport hardening pass expands JSON-RPC framing evidence
+  with expected and observed response ids by method, required and observed
+  notification methods, and changed-buffer diagnostic code families. The
+  aggregate `lsp_transport_rpc_contracts` gate now requires those named missing
+  lists to be empty, so initialize, completion, workspace-symbol, shutdown, and
+  diagnostics regressions fail by method or diagnostic-family name instead of
+  only aggregate response counts. Verification passed: Python compile for the
+  touched DSL and tests, focused LSP stdio audit (`1 passed`), aggregate tooling
+  audit (`1 passed`, with the known active-PBC `datetime.utcnow()` warnings
+  only), scoped diff whitespace check, and restricted-name scan outside archive,
+  Git internals, and active PBC paths.

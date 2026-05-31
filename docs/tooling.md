@@ -1417,6 +1417,12 @@ The aggregate tooling audit exposes two narrower language-server gates in
 addition to `language_server_core_features`. `lsp_transport_rpc_contracts`
 proves JSON-RPC provider breadth and stdio `Content-Length` framing, including
 diagnostics publication, completion, workspace-symbol, and shutdown responses.
+The stdio transport audit publishes expected and observed response ids by
+method, required and observed notification methods, and required diagnostic-code
+families for changed buffers. The transport gate requires the named missing
+method, notification, and diagnostic-family lists to be empty, so initialize,
+completion, workspace-symbol, shutdown, and diagnostics regressions fail by
+method name rather than only by aggregate response counts.
 `lsp_navigation_completion_contracts` proves completion coverage, LSP symbol
 coverage, lexical reference scoping, definition/reference text markers,
 navigation, formatting, hover, and text-summary evidence remain complete and
