@@ -4191,3 +4191,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   audit (`1 passed`, with the known active-PBC `datetime.utcnow()` warnings
   only), scoped diff whitespace check, and restricted-name scan outside archive,
   Git internals, and active PBC paths.
+- Current LSP rename scenario hardening pass expands safe-refactor evidence with
+  required and observed rename scenario ids, execution modes, and lexical scopes.
+  The aggregate `language_server_core_features` gate now requires missing
+  scenario, mode, and scope lists to be empty, so table, field, view, operation,
+  workflow, PBC, event, package, and deployment-unit rename coverage cannot
+  regress behind aggregate scenario counts. Verification passed: Python compile
+  for the touched DSL and tests, focused LSP rename audit (`1 passed`),
+  aggregate tooling audit (`1 passed`, with the known active-PBC
+  `datetime.utcnow()` warnings only), scoped diff whitespace check, and
+  restricted-name scan outside archive, Git internals, and active PBC paths.

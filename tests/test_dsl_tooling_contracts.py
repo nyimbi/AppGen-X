@@ -2763,6 +2763,15 @@ def test_lsp_rename_cli_audit_covers_safe_and_blocked_renames(tmp_path: Path) ->
         "approval_blocker_json",
         "approval_blocker_text",
     )
+    assert report["observed_scenario_ids"] == report["required_scenario_ids"]
+    assert report["missing_scenario_count"] == 0
+    assert report["missing_scenario_ids"] == ()
+    assert report["observed_modes_by_scenario"] == report["required_modes_by_scenario"]
+    assert report["missing_mode_scenario_count"] == 0
+    assert report["missing_mode_scenarios"] == ()
+    assert report["observed_scopes_by_scenario"] == report["required_scopes_by_scenario"]
+    assert report["missing_scope_scenario_count"] == 0
+    assert report["missing_scope_scenarios"] == ()
     assert report["safe_json_scenario_count"] == 5
     assert report["blocked_json_scenario_count"] == 5
     assert report["blocked_text_scenario_count"] == 1
@@ -5986,6 +5995,21 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert lsp_check["detail"]["rename_cli"]["failing_scenario_count"] == 0
     assert lsp_check["detail"]["rename_cli"]["failing_scenarios"] == ()
+    assert lsp_check["detail"]["rename_cli"]["observed_scenario_ids"] == (
+        lsp_check["detail"]["rename_cli"]["required_scenario_ids"]
+    )
+    assert lsp_check["detail"]["rename_cli"]["missing_scenario_count"] == 0
+    assert lsp_check["detail"]["rename_cli"]["missing_scenario_ids"] == ()
+    assert lsp_check["detail"]["rename_cli"]["observed_modes_by_scenario"] == (
+        lsp_check["detail"]["rename_cli"]["required_modes_by_scenario"]
+    )
+    assert lsp_check["detail"]["rename_cli"]["missing_mode_scenario_count"] == 0
+    assert lsp_check["detail"]["rename_cli"]["missing_mode_scenarios"] == ()
+    assert lsp_check["detail"]["rename_cli"]["observed_scopes_by_scenario"] == (
+        lsp_check["detail"]["rename_cli"]["required_scopes_by_scenario"]
+    )
+    assert lsp_check["detail"]["rename_cli"]["missing_scope_scenario_count"] == 0
+    assert lsp_check["detail"]["rename_cli"]["missing_scope_scenarios"] == ()
     assert lsp_check["detail"]["rename_cli"]["safe_json_scenario_count"] == 5
     assert lsp_check["detail"]["rename_cli"]["blocked_json_scenario_count"] == 5
     assert lsp_check["detail"]["rename_cli"]["blocked_text_scenario_count"] == 1

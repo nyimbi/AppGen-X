@@ -1458,6 +1458,12 @@ same-named operations and handlers. Package renames update package declarations
 without rewriting evidence text. Deployment-unit renames update the unit plus
 its health, resource, and environment declarations while preserving the
 operation or PBC declaration that the unit points at.
+The rename CLI audit publishes required and observed scenario ids, required and
+observed execution modes, and required and observed lexical scopes for every
+safe or blocked refactor scenario. The language-server gate requires the named
+missing scenario, mode, and scope lists to be empty, so deleting a table, field,
+view, operation, workflow, PBC, event, package, or deployment-unit rename
+scenario cannot hide behind aggregate scenario counts.
 
 ### Capabilities
 

@@ -7898,6 +7898,9 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and lsp_rename_cli["ok"]
             and lsp_rename_cli.get("passing_scenario_count") == lsp_rename_cli.get("scenario_count")
             and lsp_rename_cli.get("failing_scenario_count") == 0
+            and lsp_rename_cli.get("missing_scenario_count") == 0
+            and lsp_rename_cli.get("missing_mode_scenario_count") == 0
+            and lsp_rename_cli.get("missing_scope_scenario_count") == 0
             and lsp_rename_cli.get("safe_json_scenario_count", 0) >= 5
             and lsp_rename_cli.get("blocked_json_scenario_count", 0) >= 5
             and lsp_rename_cli.get("blocked_text_scenario_count") == 1,
@@ -13898,17 +13901,123 @@ view InvoiceForm for Invoice {
         and "fixes=add_rename_hint" in blocked_text
     )
     scenario_results = (
-        {"id": "safe_flow_rename", "ok": safe_ok, "mode": "safe_json"},
-        {"id": "lexical_operation_scope", "ok": lexical_scope_ok, "mode": "safe_json"},
-        {"id": "blocked_table_scope", "ok": table_scope_ok, "mode": "blocked_json"},
-        {"id": "blocked_view_scope", "ok": view_scope_ok, "mode": "blocked_json"},
-        {"id": "blocked_pbc_scope", "ok": pbc_scope_ok, "mode": "blocked_json"},
-        {"id": "event_scope", "ok": event_scope_ok, "mode": "safe_json"},
-        {"id": "package_scope", "ok": package_scope_ok, "mode": "safe_json"},
-        {"id": "deployment_unit_scope", "ok": deployment_scope_ok, "mode": "safe_json"},
-        {"id": "blocked_field_scope", "ok": field_scope_ok, "mode": "blocked_json"},
-        {"id": "approval_blocker_json", "ok": blocked_ok, "mode": "blocked_json"},
-        {"id": "approval_blocker_text", "ok": blocked_text_ok, "mode": "blocked_text"},
+        {
+            "id": "safe_flow_rename",
+            "ok": safe_ok,
+            "mode": "safe_json",
+            "scope": rename.get("lexical_scope"),
+        },
+        {
+            "id": "lexical_operation_scope",
+            "ok": lexical_scope_ok,
+            "mode": "safe_json",
+            "scope": lexical_rename.get("lexical_scope"),
+        },
+        {
+            "id": "blocked_table_scope",
+            "ok": table_scope_ok,
+            "mode": "blocked_json",
+            "scope": table_rename.get("lexical_scope"),
+        },
+        {
+            "id": "blocked_view_scope",
+            "ok": view_scope_ok,
+            "mode": "blocked_json",
+            "scope": view_rename.get("lexical_scope"),
+        },
+        {
+            "id": "blocked_pbc_scope",
+            "ok": pbc_scope_ok,
+            "mode": "blocked_json",
+            "scope": pbc_rename.get("lexical_scope"),
+        },
+        {
+            "id": "event_scope",
+            "ok": event_scope_ok,
+            "mode": "safe_json",
+            "scope": event_rename.get("lexical_scope"),
+        },
+        {
+            "id": "package_scope",
+            "ok": package_scope_ok,
+            "mode": "safe_json",
+            "scope": package_rename.get("lexical_scope"),
+        },
+        {
+            "id": "deployment_unit_scope",
+            "ok": deployment_scope_ok,
+            "mode": "safe_json",
+            "scope": deployment_rename.get("lexical_scope"),
+        },
+        {
+            "id": "blocked_field_scope",
+            "ok": field_scope_ok,
+            "mode": "blocked_json",
+            "scope": field_rename.get("lexical_scope"),
+        },
+        {
+            "id": "approval_blocker_json",
+            "ok": blocked_ok,
+            "mode": "blocked_json",
+            "scope": blocked_rename.get("lexical_scope"),
+        },
+        {"id": "approval_blocker_text", "ok": blocked_text_ok, "mode": "blocked_text", "scope": None},
+    )
+    required_scenario_ids = (
+        "safe_flow_rename",
+        "lexical_operation_scope",
+        "blocked_table_scope",
+        "blocked_view_scope",
+        "blocked_pbc_scope",
+        "event_scope",
+        "package_scope",
+        "deployment_unit_scope",
+        "blocked_field_scope",
+        "approval_blocker_json",
+        "approval_blocker_text",
+    )
+    observed_scenario_ids = tuple(case["id"] for case in scenario_results)
+    missing_scenario_ids = tuple(case_id for case_id in required_scenario_ids if case_id not in observed_scenario_ids)
+    required_modes_by_scenario = {
+        "safe_flow_rename": "safe_json",
+        "lexical_operation_scope": "safe_json",
+        "blocked_table_scope": "blocked_json",
+        "blocked_view_scope": "blocked_json",
+        "blocked_pbc_scope": "blocked_json",
+        "event_scope": "safe_json",
+        "package_scope": "safe_json",
+        "deployment_unit_scope": "safe_json",
+        "blocked_field_scope": "blocked_json",
+        "approval_blocker_json": "blocked_json",
+        "approval_blocker_text": "blocked_text",
+    }
+    observed_modes_by_scenario = {case["id"]: case["mode"] for case in scenario_results}
+    missing_mode_scenarios = tuple(
+        scenario
+        for scenario, expected_mode in required_modes_by_scenario.items()
+        if observed_modes_by_scenario.get(scenario) != expected_mode
+    )
+    required_scopes_by_scenario = {
+        "safe_flow_rename": "flow_declarations_and_targets",
+        "lexical_operation_scope": "operation_declarations_and_targets",
+        "blocked_table_scope": "table_declarations_and_targets",
+        "blocked_view_scope": "view_declarations_and_targets",
+        "blocked_pbc_scope": "pbc_declarations_and_targets",
+        "event_scope": "event_declarations_and_targets",
+        "package_scope": "package_declarations_and_targets",
+        "deployment_unit_scope": "deployment_unit_declarations_and_targets",
+        "blocked_field_scope": "field_declarations_and_bindings",
+        "approval_blocker_json": "field_declarations_and_bindings",
+    }
+    observed_scopes_by_scenario = {
+        case["id"]: case["scope"]
+        for case in scenario_results
+        if case.get("scope")
+    }
+    missing_scope_scenarios = tuple(
+        scenario
+        for scenario, expected_scope in required_scopes_by_scenario.items()
+        if observed_scopes_by_scenario.get(scenario) != expected_scope
     )
     failing_scenarios = tuple(case["id"] for case in scenario_results if not case["ok"])
     safe_json_scenarios = tuple(case["id"] for case in scenario_results if case["mode"] == "safe_json")
@@ -13929,13 +14038,28 @@ view InvoiceForm for Invoice {
             and field_scope_ok
             and blocked_ok
             and blocked_text_ok
+            and not missing_scenario_ids
+            and not missing_mode_scenarios
+            and not missing_scope_scenarios
         ),
         "scenario_count": len(scenario_results),
         "passing_scenario_count": sum(1 for case in scenario_results if case["ok"]),
         "failing_scenario_count": len(failing_scenarios),
         "failing_scenarios": failing_scenarios,
-        "scenario_ids": tuple(case["id"] for case in scenario_results),
+        "required_scenario_ids": required_scenario_ids,
+        "observed_scenario_ids": observed_scenario_ids,
+        "scenario_ids": observed_scenario_ids,
+        "missing_scenario_count": len(missing_scenario_ids),
+        "missing_scenario_ids": missing_scenario_ids,
         "scenarios": scenario_results,
+        "required_modes_by_scenario": required_modes_by_scenario,
+        "observed_modes_by_scenario": observed_modes_by_scenario,
+        "missing_mode_scenario_count": len(missing_mode_scenarios),
+        "missing_mode_scenarios": missing_mode_scenarios,
+        "required_scopes_by_scenario": required_scopes_by_scenario,
+        "observed_scopes_by_scenario": observed_scopes_by_scenario,
+        "missing_scope_scenario_count": len(missing_scope_scenarios),
+        "missing_scope_scenarios": missing_scope_scenarios,
         "safe_json_scenario_count": len(safe_json_scenarios),
         "blocked_json_scenario_count": len(blocked_json_scenarios),
         "blocked_text_scenario_count": len(blocked_text_scenarios),
