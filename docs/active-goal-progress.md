@@ -4395,3 +4395,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   aggregate LSP transport and implementation-phase gates now require those
   workflow gaps to be empty so IDE readiness cannot be inferred from isolated
   one-off requests alone.
+- Current designer-sync delivery pass adds atomic multi-surface visual edit
+  transactions. `kind: "transaction"` edits can now span database fields, form
+  components, workflow transitions, package metadata, and deployment units in
+  one request; valid transactions return
+  `appgen.designer-visual-transaction-result.v1` with per-edit patches, combined
+  DSL diffs, changed surfaces, and semantic evidence. Invalid database-backed
+  form bindings reject the transaction atomically while preserving the original
+  patched source and exposing attempted-source diagnostics. The matrix, CLI
+  audit, aggregate IDE gate, and implementation-phase gate now require this
+  bulk transaction proof.

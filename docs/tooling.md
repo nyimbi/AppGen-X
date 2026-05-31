@@ -1803,15 +1803,31 @@ diff previews, patched source, the after-edit semantic model, changed designer
 surfaces, and refreshed projections for accepted visual edits. Form, database,
 workflow, PBC composition, and package/deployment edit paths must validate the
 patched DSL before the Studio accepts the visual operation.
+Designer edits may also be submitted as an atomic transaction with
+`kind: "transaction"` and an `edits` array. A transaction can span database
+field creation, form component placement, workflow transition edits,
+package/deployment edits, and other designer surfaces in one request. The
+transaction returns `appgen.designer-visual-transaction-result.v1`, per-edit
+patch evidence, combined DSL diff evidence, changed-surface evidence, and an
+attempted-source preview. If any edit makes the database-backed form invalid,
+the transaction is rejected atomically: the returned `patched_source` remains
+the original source, diagnostics explain the invalid binding, and the attempted
+source shows what would have been applied.
 The designer-sync audit reports scenario, passing-scenario, changed-surface,
 projection, invalid-case, and traceback-free counts across accepted edits,
-malformed JSON, and non-object edit payloads.
+bulk transactions, malformed JSON, and non-object edit payloads.
 It also reports required, observed, missing, and failing scenario ids; required
 projection ids; missing projection ids; required changed surfaces; required
 diff fragments; invalid-case ids; traceback-free case ids; and missing
 traceback-free cases. The aggregate IDE gate fails when a named designer-sync
 scenario, projection surface, changed surface, diff preview fragment, or
 invalid-payload rejection contract disappears.
+For bulk transactions, the audit also reports atomic status, operation count,
+operation names, required/observed/missing changed surfaces, patch count, and
+semantic-model format. The aggregate IDE and implementation-phase gates require
+the bulk transaction to round-trip with zero missing surface gaps, so Studio
+cannot claim visual-designer readiness while only supporting one edit at a
+time.
 The CLI audit also publishes expected and observed exit codes for valid and
 invalid designer-sync scenarios and expected versus observed payload formats for
 accepted visual edits, plus per-scenario `ok` status. The aggregate IDE gate
@@ -1848,9 +1864,10 @@ accepted.
 Designer edit coverage is executable through
 `appgen.designer-visual-edit-matrix.v1`. The matrix proves database field
 edits, form component placement, workflow transitions, PBC composition
-includes, package creation, deployment-unit creation, and invalid form binding
-rejection all pass through the same linted DSL patch and projection refresh
-path before acceptance.
+includes, package creation, deployment-unit creation, multi-surface transaction
+acceptance, atomic transaction rejection, and invalid form binding rejection all
+pass through the same linted DSL patch and projection refresh path before
+acceptance.
 
 The package-level Studio now exposes `appgen.studio-semantic-service.v1` as the
 shared web IDE bridge. That contract composes `appgen.lsp-service.v1`,

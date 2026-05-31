@@ -4160,6 +4160,82 @@ def test_designer_sync_visual_edits_apply_real_dsl_mutations_and_diff_previews()
     assert "pbc_composition_designer" in pbc["visual_edit"]["changed_surfaces"]
 
 
+def test_designer_sync_applies_multi_surface_transactions_atomically() -> None:
+    transaction = designer_sync_report_dsl(
+        TOOLING_SAMPLE,
+        source_name="finance.appgen",
+        visual_edit={
+            "kind": "transaction",
+            "edits": [
+                {"kind": "add_field", "table": "Invoice", "field": "bulk_note", "type": "string"},
+                {
+                    "kind": "add_component",
+                    "view": "InvoiceForm",
+                    "binding": "bulk_note",
+                    "component": "TextBox",
+                    "x": 2,
+                    "y": 3,
+                    "w": 5,
+                    "h": 1,
+                },
+                {"kind": "add_flow_transition", "flow": "SubmitInvoice", "from": "posted", "to": "archived"},
+                {"kind": "add_package", "name": "WebBulkRelease", "target": "web"},
+                {"kind": "add_deployment_unit", "deployment": "Production", "target": "SubmitInvoice", "pattern": "worker"},
+            ],
+        },
+    )
+    rejected = designer_sync_report_dsl(
+        TOOLING_SAMPLE,
+        source_name="finance.appgen",
+        visual_edit={
+            "kind": "transaction",
+            "edits": [
+                {"kind": "add_field", "table": "Invoice", "field": "rolled_back_note", "type": "string"},
+                {
+                    "kind": "add_component",
+                    "view": "InvoiceForm",
+                    "binding": "missing.field",
+                    "component": "Lookup",
+                    "x": 1,
+                    "y": 2,
+                    "w": 4,
+                    "h": 1,
+                },
+            ],
+        },
+    )
+
+    visual = transaction["visual_edit"]
+    assert transaction["ok"] is True
+    assert visual["format"] == "appgen.designer-visual-transaction-result.v1"
+    assert visual["accepted"] is True
+    assert visual["atomic"] is True
+    assert visual["operation_count"] == 5
+    assert visual["operations"] == (
+        "add_field",
+        "add_component",
+        "add_flow_transition",
+        "add_package",
+        "add_deployment_unit",
+    )
+    assert {"database_designer", "form_designer", "workflow_designer", "package_deployment_designer"} <= set(
+        visual["changed_surfaces"]
+    )
+    assert "bulk_note" in visual["semantic_after"]["tables"]["Invoice"]["fields"]
+    assert "@ bulk_note TextBox 2 3 5 1" in visual["patched_source"]
+    assert "posted -> archived" in visual["patched_source"]
+    assert "package WebBulkRelease" in visual["patched_source"]
+    assert "unit SubmitInvoice as worker" in visual["patched_source"]
+
+    rejected_visual = rejected["visual_edit"]
+    assert rejected["ok"] is False
+    assert rejected_visual["accepted"] is False
+    assert rejected_visual["atomic"] is True
+    assert "rolled_back_note" not in rejected_visual["patched_source"]
+    assert "rolled_back_note" in rejected_visual["attempted_source"]
+    assert any(item["code"] == "AGX0402" for item in rejected_visual["diagnostics"])
+
+
 def test_designer_visual_edit_matrix_covers_required_studio_edit_paths() -> None:
     matrix = designer_visual_edit_matrix_dsl(TOOLING_SAMPLE, source_name="finance.appgen")
     case_ids = {case["id"] for case in matrix["cases"]}
@@ -4173,6 +4249,8 @@ def test_designer_visual_edit_matrix_covers_required_studio_edit_paths() -> None
         "pbc_composition_designer_add_include",
         "package_designer_add_package",
         "deployment_designer_add_unit",
+        "multi_surface_transaction_round_trip",
+        "multi_surface_transaction_rejects_invalid_binding_atomically",
         "form_designer_reject_invalid_binding",
     } <= case_ids
     assert matrix["blocking_gaps"] == ()
@@ -4186,6 +4264,25 @@ def test_appgen_designer_sync_subcommand_emits_json_and_text_contracts(tmp_path:
         "table": "Invoice",
         "field": "sync_note",
         "type": "string",
+    }
+    bulk_edit = {
+        "kind": "transaction",
+        "edits": [
+            {"kind": "add_field", "table": "Invoice", "field": "bulk_sync_note", "type": "string"},
+            {
+                "kind": "add_component",
+                "view": "InvoiceForm",
+                "binding": "bulk_sync_note",
+                "component": "TextBox",
+                "x": 2,
+                "y": 3,
+                "w": 5,
+                "h": 1,
+            },
+            {"kind": "add_flow_transition", "flow": "SubmitInvoice", "from": "posted", "to": "archived"},
+            {"kind": "add_package", "name": "WebBulkRelease", "target": "web"},
+            {"kind": "add_deployment_unit", "deployment": "Production", "target": "SubmitInvoice", "pattern": "worker"},
+        ],
     }
 
     result = subprocess.run(
@@ -4211,6 +4308,13 @@ def test_appgen_designer_sync_subcommand_emits_json_and_text_contracts(tmp_path:
     )
     edit_text_result = subprocess.run(
         [sys.executable, "-m", "pyAppGen", "designer-sync", str(path), "--edit-json", json.dumps(edit)],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+    bulk_result = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "designer-sync", str(path), "--edit-json", json.dumps(bulk_edit), "--json"],
         check=False,
         cwd=Path(__file__).resolve().parents[1],
         text=True,
@@ -4253,6 +4357,12 @@ def test_appgen_designer_sync_subcommand_emits_json_and_text_contracts(tmp_path:
     assert edit_text_result.returncode == 0, edit_text_result.stderr
     assert "visual-edit accepted=True round_trip=True" in edit_text_result.stdout
     assert "changed=database_designer" in edit_text_result.stdout
+    assert bulk_result.returncode == 0, bulk_result.stderr
+    bulk_payload = json.loads(bulk_result.stdout)
+    assert bulk_payload["visual_edit"]["format"] == "appgen.designer-visual-transaction-result.v1"
+    assert bulk_payload["visual_edit"]["accepted"] is True
+    assert bulk_payload["visual_edit"]["operation_count"] == 5
+    assert "bulk_sync_note" in bulk_payload["visual_edit"]["patched_source"]
     assert invalid_edit_result.returncode == 2
     assert "invalid JSON for --edit-json" in invalid_edit_result.stderr
     assert non_object_edit_result.returncode == 2
@@ -4266,10 +4376,11 @@ def test_designer_sync_cli_audit_proves_diff_semantic_and_projection_refresh(tmp
 
     assert report["format"] == "appgen.designer-sync-cli-audit.v1"
     assert report["ok"] is True
-    assert report["scenario_count"] == 3
+    assert report["scenario_count"] == 4
     assert report["passing_scenario_count"] == report["scenario_count"]
     assert report["required_scenario_ids"] == (
         "valid_add_field_round_trip",
+        "bulk_transaction_round_trip",
         "invalid_json_rejected",
         "non_object_edit_rejected",
     )
@@ -4280,6 +4391,7 @@ def test_designer_sync_cli_audit_proves_diff_semantic_and_projection_refresh(tmp
     assert report["failing_scenario_ids"] == ()
     assert report["expected_exit_codes_by_scenario"] == {
         "valid_add_field_round_trip": 0,
+        "bulk_transaction_round_trip": 0,
         "invalid_json_rejected": 2,
         "non_object_edit_rejected": 2,
     }
@@ -4288,6 +4400,7 @@ def test_designer_sync_cli_audit_proves_diff_semantic_and_projection_refresh(tmp
     assert report["missing_exit_code_scenarios"] == ()
     assert report["expected_payload_formats_by_scenario"] == {
         "valid_add_field_round_trip": "appgen.designer-sync-report.v1",
+        "bulk_transaction_round_trip": "appgen.designer-sync-report.v1",
     }
     assert report["payload_formats_by_scenario"] == report["expected_payload_formats_by_scenario"]
     assert report["missing_payload_format_scenario_count"] == 0
@@ -4327,6 +4440,24 @@ def test_designer_sync_cli_audit_proves_diff_semantic_and_projection_refresh(tmp
     assert report["valid_semantic_model_format"] == "appgen.semantic-model.v1"
     assert report["valid_projection_format"] == "appgen.designer-database-projection.v1"
     assert report["valid_projection_semantic_model_format"] == "appgen.semantic-model.v1"
+    assert report["bulk_exit"] == 0
+    assert report["bulk_payload_format"] == "appgen.designer-sync-report.v1"
+    assert report["bulk_result_format"] == "appgen.designer-visual-transaction-result.v1"
+    assert report["bulk_atomic"] is True
+    assert report["bulk_round_trip"] is True
+    assert report["bulk_operation_count"] == 5
+    assert report["bulk_operations"] == (
+        "add_field",
+        "add_component",
+        "add_flow_transition",
+        "add_package",
+        "add_deployment_unit",
+    )
+    assert set(report["required_bulk_changed_surfaces"]) <= set(report["bulk_changed_surfaces"])
+    assert report["missing_bulk_changed_surfaces"] == ()
+    assert report["bulk_diff_lines"] > 0
+    assert report["bulk_patch_count"] == 5
+    assert report["bulk_semantic_model_format"] == "appgen.semantic-model.v1"
 
 
 def test_diagnostic_catalog_and_fixture_audit_cover_required_agx_codes() -> None:
@@ -6156,8 +6287,8 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     designer_check = next(check for check in report["checks"] if check["id"] == "ide_visual_designer_round_trip")
     assert designer_check["detail"]["cli"]["format"] == "appgen.designer-sync-cli-audit.v1"
     assert designer_check["detail"]["cli"]["ok"] is True
-    assert designer_check["detail"]["cli"]["scenario_count"] == 3
-    assert designer_check["detail"]["cli"]["passing_scenario_count"] == 3
+    assert designer_check["detail"]["cli"]["scenario_count"] == 4
+    assert designer_check["detail"]["cli"]["passing_scenario_count"] == 4
     assert designer_check["detail"]["cli"]["missing_scenario_count"] == 0
     assert designer_check["detail"]["cli"]["failing_scenario_count"] == 0
     assert designer_check["detail"]["cli"]["exit_codes_by_scenario"] == designer_check["detail"]["cli"][
@@ -6192,6 +6323,16 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert designer_check["detail"]["cli"]["missing_diff_fragment_count"] == 0
     assert designer_check["detail"]["cli"]["valid_semantic_model_format"] == "appgen.semantic-model.v1"
     assert designer_check["detail"]["cli"]["valid_projection_semantic_model_format"] == "appgen.semantic-model.v1"
+    assert designer_check["detail"]["cli"]["bulk_result_format"] == "appgen.designer-visual-transaction-result.v1"
+    assert designer_check["detail"]["cli"]["bulk_atomic"] is True
+    assert designer_check["detail"]["cli"]["bulk_round_trip"] is True
+    assert designer_check["detail"]["cli"]["bulk_operation_count"] == 5
+    assert set(designer_check["detail"]["cli"]["required_bulk_changed_surfaces"]) <= set(
+        designer_check["detail"]["cli"]["bulk_changed_surfaces"]
+    )
+    assert designer_check["detail"]["cli"]["missing_bulk_changed_surfaces"] == ()
+    assert designer_check["detail"]["cli"]["bulk_patch_count"] == 5
+    assert designer_check["detail"]["cli"]["bulk_semantic_model_format"] == "appgen.semantic-model.v1"
     assert designer_check["detail"]["cli"]["non_object_exit"] == 2
     assert "--edit-json must be a JSON object" in designer_check["detail"]["cli"]["non_object_stderr"]
     assert designer_check["detail"]["text_renderer"]["emitted_surfaces"] == designer_check["detail"]["text_renderer"][

@@ -8501,8 +8501,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and designer_sync_cli.get("missing_projection_count") == 0
             and designer_sync_cli.get("missing_changed_surface_count") == 0
             and designer_sync_cli.get("missing_diff_fragment_count") == 0
-            and designer_sync_cli.get("missing_traceback_free_case_count") == 0,
-            "Studio designer projections, visual edits, and text summaries round-trip through linted DSL patches.",
+            and designer_sync_cli.get("missing_traceback_free_case_count") == 0
+            and designer_sync_cli.get("bulk_result_format") == "appgen.designer-visual-transaction-result.v1"
+            and designer_sync_cli.get("bulk_atomic") is True
+            and designer_sync_cli.get("bulk_round_trip") is True
+            and designer_sync_cli.get("bulk_operation_count", 0) >= 5
+            and not designer_sync_cli.get("missing_bulk_changed_surfaces", ()),
+            "Studio designer projections, visual edits, bulk transactions, and text summaries round-trip through linted DSL patches.",
             "docs/tooling.md#ide-integration",
             {
                 "format": designer.get("format"),
@@ -11536,7 +11541,11 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     "ok": evidence["designer"].get("ok") is True
                     and evidence["designer_visual_edit_matrix"].get("ok") is True
                     and evidence["designer_sync_cli"].get("ok") is True
-                    and evidence["designer_sync_cli"].get("missing_ok_scenario_count") == 0,
+                    and evidence["designer_sync_cli"].get("missing_ok_scenario_count") == 0
+                    and evidence["designer_sync_cli"].get("bulk_atomic") is True
+                    and evidence["designer_sync_cli"].get("bulk_round_trip") is True
+                    and evidence["designer_sync_cli"].get("bulk_operation_count", 0) >= 5
+                    and not evidence["designer_sync_cli"].get("missing_bulk_changed_surfaces", ()),
                     "evidence_formats": (
                         evidence["designer"].get("format"),
                         evidence["designer_visual_edit_matrix"].get("format"),
@@ -17215,6 +17224,30 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
     valid_payload = json.loads(output.getvalue())
     valid_edit = valid_payload.get("visual_edit", {})
     valid_projection = valid_edit.get("projections_after", {}).get("database_designer", {})
+    bulk_edit = {
+        "kind": "transaction",
+        "edits": (
+            {"kind": "add_field", "table": "Invoice", "field": "bulk_sync_note", "type": "string"},
+            {
+                "kind": "add_component",
+                "view": "InvoiceForm",
+                "binding": "bulk_sync_note",
+                "component": "TextBox",
+                "x": 2,
+                "y": 3,
+                "w": 5,
+                "h": 1,
+            },
+            {"kind": "add_flow_transition", "flow": "SubmitInvoice", "from": "posted", "to": "archived"},
+            {"kind": "add_package", "name": "WebBulkRelease", "target": "web"},
+            {"kind": "add_deployment_unit", "deployment": "Production", "target": "SubmitInvoice", "pattern": "worker"},
+        ),
+    }
+    bulk_output = io.StringIO()
+    with contextlib.redirect_stdout(bulk_output):
+        bulk_exit = dsl_tooling_cli(("designer-sync", str(source_path), "--edit-json", json.dumps(bulk_edit), "--json"))
+    bulk_payload = json.loads(bulk_output.getvalue())
+    bulk_result = bulk_payload.get("visual_edit", {})
     invalid_output = io.StringIO()
     invalid_error = io.StringIO()
     invalid_exit = 0
@@ -17245,6 +17278,29 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
         and valid_projection.get("semantic_model_format") == "appgen.semantic-model.v1"
         and valid_projection.get("er_graph", {}).get("format") == "appgen.graph.er.v1"
     )
+    required_bulk_surfaces = (
+        "database_designer",
+        "form_designer",
+        "workflow_designer",
+        "package_deployment_designer",
+    )
+    bulk_ok = (
+        bulk_exit == 0
+        and bulk_payload.get("format") == "appgen.designer-sync-report.v1"
+        and bulk_result.get("format") == "appgen.designer-visual-transaction-result.v1"
+        and bulk_result.get("accepted") is True
+        and bulk_result.get("atomic") is True
+        and bulk_result.get("round_trip_ok") is True
+        and bulk_result.get("operation_count") == 5
+        and set(required_bulk_surfaces) <= set(bulk_result.get("changed_surfaces", ()))
+        and "bulk_sync_note" in bulk_result.get("patched_source", "")
+        and "@ bulk_sync_note TextBox 2 3 5 1" in bulk_result.get("patched_source", "")
+        and "posted -> archived" in bulk_result.get("patched_source", "")
+        and "package WebBulkRelease" in bulk_result.get("patched_source", "")
+        and "unit SubmitInvoice as worker" in bulk_result.get("patched_source", "")
+        and "bulk_sync_note"
+        in bulk_result.get("semantic_after", {}).get("tables", {}).get("Invoice", {}).get("fields", {})
+    )
     invalid_ok = invalid_exit == 2 and "invalid JSON for --edit-json" in invalid_stderr and "Traceback" not in invalid_stderr
     non_object_ok = (
         non_object_exit == 2
@@ -17257,6 +17313,12 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
             "ok": valid_ok,
             "exit_code": valid_exit,
             "payload_format": valid_payload.get("format"),
+        },
+        {
+            "id": "bulk_transaction_round_trip",
+            "ok": bulk_ok,
+            "exit_code": bulk_exit,
+            "payload_format": bulk_payload.get("format"),
         },
         {
             "id": "invalid_json_rejected",
@@ -17279,6 +17341,7 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
     )
     expected_exit_codes_by_scenario = {
         "valid_add_field_round_trip": 0,
+        "bulk_transaction_round_trip": 0,
         "invalid_json_rejected": 2,
         "non_object_edit_rejected": 2,
     }
@@ -17290,6 +17353,7 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
     )
     expected_payload_formats_by_scenario = {
         "valid_add_field_round_trip": "appgen.designer-sync-report.v1",
+        "bulk_transaction_round_trip": "appgen.designer-sync-report.v1",
     }
     payload_formats_by_scenario = {
         scenario["id"]: scenario["payload_format"]
@@ -17346,6 +17410,7 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
     return {
         "format": "appgen.designer-sync-cli-audit.v1",
         "ok": valid_ok
+        and bulk_ok
         and invalid_ok
         and non_object_ok
         and not missing_scenario_ids
@@ -17357,8 +17422,8 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
         and not missing_changed_surfaces
         and not missing_diff_fragments
         and not missing_traceback_free_case_ids,
-        "scenario_count": 3,
-        "passing_scenario_count": sum(1 for ok in (valid_ok, invalid_ok, non_object_ok) if ok),
+        "scenario_count": 4,
+        "passing_scenario_count": sum(1 for ok in (valid_ok, bulk_ok, invalid_ok, non_object_ok) if ok),
         "required_scenario_ids": required_scenario_ids,
         "observed_scenario_ids": observed_scenario_ids,
         "missing_scenario_count": len(missing_scenario_ids),
@@ -17409,6 +17474,21 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
         "valid_semantic_model_format": valid_edit.get("semantic_model_format"),
         "valid_projection_format": valid_projection.get("format"),
         "valid_projection_semantic_model_format": valid_projection.get("semantic_model_format"),
+        "bulk_exit": bulk_exit,
+        "bulk_payload_format": bulk_payload.get("format"),
+        "bulk_result_format": bulk_result.get("format"),
+        "bulk_atomic": bulk_result.get("atomic"),
+        "bulk_round_trip": bulk_result.get("round_trip_ok"),
+        "bulk_operation_count": bulk_result.get("operation_count"),
+        "bulk_operations": tuple(bulk_result.get("operations", ())),
+        "bulk_changed_surfaces": tuple(bulk_result.get("changed_surfaces", ())),
+        "required_bulk_changed_surfaces": required_bulk_surfaces,
+        "missing_bulk_changed_surfaces": tuple(
+            surface for surface in required_bulk_surfaces if surface not in set(bulk_result.get("changed_surfaces", ()))
+        ),
+        "bulk_diff_lines": len(bulk_result.get("dsl_diff", ())),
+        "bulk_patch_count": len(bulk_result.get("dsl_patches", ())),
+        "bulk_semantic_model_format": bulk_result.get("semantic_model_format"),
         "invalid_exit": invalid_exit,
         "invalid_stderr": invalid_stderr.strip(),
         "non_object_exit": non_object_exit,
@@ -22995,6 +23075,60 @@ def designer_visual_edit_matrix_dsl(text: str, *, source_name: str | None = None
             (),
         ),
         (
+            "multi_surface_transaction_round_trip",
+            {
+                "kind": "transaction",
+                "edits": (
+                    {"kind": "add_field", "table": table_name, "field": "bulk_note", "type": "string"},
+                    {
+                        "kind": "add_component",
+                        "view": view_name,
+                        "binding": "bulk_note",
+                        "component": "TextBox",
+                        "x": 2,
+                        "y": 3,
+                        "w": 5,
+                        "h": 1,
+                    },
+                    {"kind": "add_flow_transition", "flow": flow_name, "from": "posted", "to": "archived"},
+                    {"kind": "add_package", "name": f"{_pascal_case(app_target)}BulkRelease", "target": app_target},
+                    {
+                        "kind": "add_deployment_unit",
+                        "deployment": "Production",
+                        "target": deployment_target,
+                        "pattern": "worker",
+                    },
+                ),
+            },
+            True,
+            "package_deployment_designer",
+            "bulk_note",
+            (),
+        ),
+        (
+            "multi_surface_transaction_rejects_invalid_binding_atomically",
+            {
+                "kind": "transaction",
+                "edits": (
+                    {"kind": "add_field", "table": table_name, "field": "rolled_back_note", "type": "string"},
+                    {
+                        "kind": "add_component",
+                        "view": view_name,
+                        "binding": "missing.field",
+                        "component": "Lookup",
+                        "x": 1,
+                        "y": 2,
+                        "w": 4,
+                        "h": 1,
+                    },
+                ),
+            },
+            False,
+            "form_designer",
+            "missing.field",
+            ("AGX0402",),
+        ),
+        (
             "form_designer_reject_invalid_binding",
             {
                 "kind": "add_component",
@@ -23016,11 +23150,12 @@ def designer_visual_edit_matrix_dsl(text: str, *, source_name: str | None = None
     for case_id, edit, should_accept, required_surface, expected_text, expected_codes in case_specs:
         result = _designer_visual_edit_result(source, edit, source_name=source_name)
         codes = tuple(item.get("code") for item in result.get("diagnostics", ()))
+        text_source = result.get("patched_source", "") if should_accept else result.get("attempted_source", result.get("patched_source", ""))
         ok = (
             result["accepted"] is should_accept
             and (not should_accept or result["round_trip_ok"])
             and required_surface in result.get("changed_surfaces", ())
-            and expected_text in result.get("patched_source", "")
+            and expected_text in text_source
             and set(expected_codes) <= set(codes)
         )
         cases.append(
@@ -23147,6 +23282,8 @@ def _valid_bindings_for_table(semantic: dict, table_name: str | None) -> tuple[s
 
 
 def _designer_visual_edit_result(source: str, visual_edit: dict | None, *, source_name: str | None = None) -> dict:
+    if (visual_edit or {}).get("kind") in {"transaction", "bulk"}:
+        return _designer_visual_transaction_result(source, visual_edit or {}, source_name=source_name)
     patch = _designer_edit_to_patch(source, visual_edit or {})
     patched_source = _append_dsl_patch(source, patch) if patch else source
     lint = lint_report_dsl(patched_source, source_name=source_name)
@@ -23181,6 +23318,95 @@ def _designer_visual_edit_result(source: str, visual_edit: dict | None, *, sourc
         "semantic_after": semantic,
         "projections_after": projections_after,
         "changed_surfaces": _designer_changed_surfaces(visual_edit or {}),
+    }
+
+
+def _designer_visual_transaction_result(source: str, visual_edit: dict, *, source_name: str | None = None) -> dict:
+    edits = tuple(edit for edit in visual_edit.get("edits", ()) if isinstance(edit, dict))
+    attempted_source = source
+    edit_results = []
+    patches = []
+    changed_surfaces = []
+    for index, edit in enumerate(edits):
+        before = attempted_source
+        patch = _designer_edit_to_patch(attempted_source, edit)
+        after = _append_dsl_patch(attempted_source, patch) if patch else attempted_source
+        patches.append(patch)
+        changed_surfaces.extend(_designer_changed_surfaces(edit))
+        edit_results.append(
+            {
+                "index": index,
+                "operation": edit.get("kind"),
+                "patch": patch,
+                "changed": after != before,
+                "changed_surfaces": _designer_changed_surfaces(edit),
+            }
+        )
+        attempted_source = after
+    lint = lint_report_dsl(attempted_source, source_name=source_name)
+    missing_patch_indexes = tuple(result["index"] for result in edit_results if not result["patch"])
+    accepted = bool(edits) and not missing_patch_indexes and lint["ok"]
+    final_source = attempted_source if accepted else source
+    semantic = semantic_model_dsl(final_source, source_name=source_name)
+    attempted_semantic = semantic_model_dsl(attempted_source, source_name=source_name)
+    projections_after = {
+        "form_designer": _designer_form_projection(semantic),
+        "database_designer": _designer_database_projection(semantic),
+        "workflow_designer": _designer_workflow_projection(semantic),
+        "pbc_composition_designer": _designer_pbc_projection(semantic),
+        "package_deployment_designer": _designer_package_deployment_projection(semantic),
+    }
+    diagnostics = tuple(lint["diagnostics"])
+    if missing_patch_indexes:
+        diagnostics += tuple(
+            _spec_diagnostic(
+                source,
+                "AGX0400",
+                "error",
+                f"Unsupported visual edit operation at index {index}.",
+            )
+            for index in missing_patch_indexes
+        )
+    return {
+        "format": "appgen.designer-visual-transaction-result.v1",
+        "operation": visual_edit.get("kind"),
+        "accepted": accepted,
+        "atomic": True,
+        "operation_count": len(edits),
+        "operations": tuple(edit.get("kind") for edit in edits),
+        "edit_results": tuple(edit_results),
+        "dsl_patch": "\n".join(patch for patch in patches if patch),
+        "dsl_patches": tuple(patch for patch in patches if patch),
+        "dsl_diff": tuple(
+            difflib.unified_diff(
+                source.splitlines(),
+                final_source.splitlines(),
+                fromfile="before.appgen",
+                tofile="after.appgen",
+                lineterm="",
+            )
+        ),
+        "attempted_diff": tuple(
+            difflib.unified_diff(
+                source.splitlines(),
+                attempted_source.splitlines(),
+                fromfile="before.appgen",
+                tofile="attempted.appgen",
+                lineterm="",
+            )
+        ),
+        "patched_source": final_source,
+        "attempted_source": attempted_source,
+        "lint": lint,
+        "diagnostics": diagnostics,
+        "round_trip_ok": accepted and semantic["ok"],
+        "semantic_model_format": semantic.get("format"),
+        "semantic_after": semantic,
+        "attempted_semantic_model_format": attempted_semantic.get("format"),
+        "attempted_semantic_ok": attempted_semantic.get("ok"),
+        "projections_after": projections_after,
+        "changed_surfaces": tuple(dict.fromkeys(changed_surfaces)),
+        "missing_patch_indexes": missing_patch_indexes,
     }
 
 
