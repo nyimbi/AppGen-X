@@ -842,7 +842,16 @@ plus the first-class agentic development-vector contracts:
 `appgen.coding-agent-backend-matrix.v1`,
 `appgen.coding-agent-development-workflow.v1`,
 `appgen.coding-agent-release-gate.v1`, and
-`appgen.agentic-generation-smoke-audit.v1`. The catalog is intentionally complete:
+`appgen.agentic-generation-smoke-audit.v1`,
+plus the Application Composition Platform and compact generation contracts:
+`appgen.acp-stream-processing-policy.v1`,
+`appgen.acp-event-processing-developer-guidance.v1`,
+`appgen.acp-stream-processor-selection.v1`,
+`appgen.acp-event-processing-choice-resolution.v1`,
+`appgen.application-composition-topology.v1`,
+`appgen.acp-capability-coverage.v1`,
+`appgen.compact-generation-brief.v1`, and
+`appgen.compact-full-app-generation-gate.v1`. The catalog is intentionally complete:
 every `appgen.*.v1` envelope named in this document, including IDE, frontend,
 visual designer, LSP hover-depth, migration, natural-language, packaging,
 release, component/PBC wrapper, and project-governance contracts, is exported as
@@ -863,6 +872,15 @@ tools and human review gates, the coding-agent backend/workflow/release contract
 prove `api-key`, `ollama`, and `vllm` development vectors, and the generated
 agentic smoke audit proves generated apps expose the same contracts without
 calling an external provider.
+
+ACP composition schemas make event-processing guidance, composable topology,
+capability coverage, and compact natural-language generation reusable by IDEs,
+CI, and coding agents. The stream-processing policy and choice-resolution
+contracts prove ordinary enterprise apps use the opinionated AppGen-X event
+contract instead of a developer-facing runtime selector, while the topology and
+capability-coverage contracts prove the composable runtime fabric and catalog
+depth. The compact generation contracts prove small local models can receive a
+bounded brief, emit DSL patches, and pass the full-app natural-language gate.
 
 The optional positional format selects one schema from the catalog. Unknown
 schema names return the same `appgen.contract-schema-catalog.v1` envelope with
@@ -2845,9 +2863,9 @@ Exit criteria:
   parser-golden, drift, migration, natural-language, release-verifier,
   package-manifest, component/PBC wrapper, doctor, tooling-audit,
   project-governance, schema-catalog, contract-validation, runtime inventory,
-  package release-audit, and agentic development-vector report schemas are
-  available from CLI JSON and text modes. The schema audit validates
-  representative payloads for all 187
+  package release-audit, agentic development-vector, ACP composition, and compact
+  generation report schemas are available from CLI JSON and text modes. The
+  schema audit validates representative payloads for all 195
   documented `appgen.*.v1` formats, so
   adding a documented contract without a matching runtime sample fails the
   release gate.

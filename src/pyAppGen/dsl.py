@@ -6782,6 +6782,18 @@ AGENTIC_DEVELOPMENT_SCHEMA_FORMATS = (
 )
 
 
+ACP_COMPOSITION_SCHEMA_FORMATS = (
+    "appgen.acp-stream-processing-policy.v1",
+    "appgen.acp-event-processing-developer-guidance.v1",
+    "appgen.acp-stream-processor-selection.v1",
+    "appgen.acp-event-processing-choice-resolution.v1",
+    "appgen.application-composition-topology.v1",
+    "appgen.acp-capability-coverage.v1",
+    "appgen.compact-generation-brief.v1",
+    "appgen.compact-full-app-generation-gate.v1",
+)
+
+
 CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.diagnostic.v1",
     "appgen.lint-report.v1",
@@ -6947,6 +6959,7 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.runtime-contract-inventory-cli-audit.v1",
     *PACKAGE_RELEASE_AUDIT_SCHEMA_FORMATS,
     *AGENTIC_DEVELOPMENT_SCHEMA_FORMATS,
+    *ACP_COMPOSITION_SCHEMA_FORMATS,
     "appgen.contract-schema-catalog.v1",
     "appgen.contract-validation-report.v1",
 )
@@ -7082,6 +7095,118 @@ def _agentic_development_schema(title: str) -> dict:
             "gates": {"type": "array", "items": {"type": "object"}},
             "required_artifacts": {"type": "array", "items": {"type": "string"}},
             "compiled_artifacts": {"type": "array", "items": {"type": "string"}},
+            "stop_condition": {"type": "string"},
+        },
+    )
+
+
+def _acp_composition_schema(title: str) -> dict:
+    required_by_format = {
+        "appgen.acp-stream-processing-policy.v1": ("format", "ok", "default", "allowed_processors", "profiles", "rules"),
+        "appgen.acp-event-processing-developer-guidance.v1": (
+            "format",
+            "ok",
+            "answer",
+            "default_runtime_profile",
+            "policy_format",
+        ),
+        "appgen.acp-stream-processor-selection.v1": (
+            "format",
+            "ok",
+            "workload",
+            "selected",
+            "default",
+            "decision",
+            "profile",
+        ),
+        "appgen.acp-event-processing-choice-resolution.v1": (
+            "format",
+            "ok",
+            "workload",
+            "action",
+            "developer_answer",
+            "selected_runtime_profile",
+        ),
+        "appgen.application-composition-topology.v1": (
+            "format",
+            "ok",
+            "layers",
+            "runtime_fabric",
+            "stream_processors",
+            "stream_processor_default",
+        ),
+        "appgen.acp-capability-coverage.v1": ("format", "ok", "coverage"),
+        "appgen.compact-generation-brief.v1": (
+            "format",
+            "ok",
+            "model",
+            "backend",
+            "prompt_tokens",
+            "patch_tokens",
+            "dsl_patch",
+            "plan",
+        ),
+        "appgen.compact-full-app-generation-gate.v1": (
+            "format",
+            "ok",
+            "profiles",
+            "generation_smoke",
+            "checks",
+            "blocking_gaps",
+        ),
+    }
+    return _contract_format_schema(
+        title,
+        required=required_by_format[title],
+        properties={
+            "default": {"type": "string"},
+            "allowed_processors": {"type": "array", "items": {"type": "string"}},
+            "developer_guidance": {"type": ("object", "string")},
+            "developer_guidance_contract": {"type": "object"},
+            "developer_action_contract": {"type": "object"},
+            "developer_use_card": {"type": "object"},
+            "developer_answer": {"type": "string"},
+            "default_runtime_profile": {"type": "string"},
+            "policy_format": {"type": "string"},
+            "profiles": {"type": "array", "items": {"type": "object"}},
+            "rules": {"type": "array", "items": {"type": "object"}},
+            "workload": {"type": "string"},
+            "selected": {"type": "string"},
+            "decision": {"type": "string"},
+            "profile": {"type": "object"},
+            "reason": {"type": "string"},
+            "developer_visible": {"type": "boolean"},
+            "selection_owner": {"type": "string"},
+            "action": {"type": "string"},
+            "public_contract": {"type": "string"},
+            "manifest_rule": {"type": "string"},
+            "selected_runtime_profile": {"type": "string"},
+            "candidate_profile": {"type": "string"},
+            "blocked_exception_profile": {"type": ("string", "null")},
+            "requires_stream_exception_evidence": {"type": "boolean"},
+            "missing_stream_exception_evidence": {"type": "boolean"},
+            "must_split_workload": {"type": "boolean"},
+            "developer_visible_options": {"type": "array", "items": {"type": "string"}},
+            "choice_budget": {"type": ("object", "integer"), "minimum": 0},
+            "do_not_compare_runtimes": {"type": "boolean"},
+            "stream_selector_exposed_to_developer": {"type": "boolean"},
+            "layers": {"type": "array", "items": {"type": "object"}},
+            "runtime_fabric": {"type": "array", "items": {"type": "string"}},
+            "stream_processors": {"type": "array", "items": {"type": "object"}},
+            "stream_processor_default": {"type": "string"},
+            "stream_processor_rules": {"type": "array", "items": {"type": "object"}},
+            "coverage": {"type": "array", "items": {"type": "object"}},
+            "model": {"type": "string"},
+            "backend": {"type": "string"},
+            "prompt_tokens": {"type": "integer", "minimum": 0},
+            "patch_tokens": {"type": "integer", "minimum": 0},
+            "system_brief": {"type": "string"},
+            "developer_brief": {"type": "object"},
+            "dsl_patch": {"type": "string"},
+            "plan": {"type": "object"},
+            "generation_smoke": {"type": "object"},
+            "checks": {"type": "array", "items": {"type": "object"}},
+            "blocking_gaps": {"type": "array", "items": {"type": "object"}},
             "stop_condition": {"type": "string"},
         },
     )
@@ -9199,6 +9324,10 @@ def _contract_schema_catalog() -> dict[str, dict]:
         **{
             schema_format: _agentic_development_schema(schema_format)
             for schema_format in AGENTIC_DEVELOPMENT_SCHEMA_FORMATS
+        },
+        **{
+            schema_format: _acp_composition_schema(schema_format)
+            for schema_format in ACP_COMPOSITION_SCHEMA_FORMATS
         },
         "appgen.contract-schema-catalog.v1": _json_object_schema(
             "appgen.contract-schema-catalog.v1",
@@ -21412,6 +21541,15 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             dsl_agentic_contract,
             provider_connection_matrix,
         )
+        from .nl import compact_full_app_generation_gate, compact_generation_brief
+        from .pbc import (
+            acp_capability_coverage,
+            acp_event_processing_developer_guidance,
+            acp_stream_processing_policy,
+            application_composition_topology,
+            resolve_acp_event_processing_choice,
+            select_acp_stream_processor,
+        )
 
         agentic_env = {
             "OPENAI_API_KEY": "configured-for-contract-schema",
@@ -21722,6 +21860,20 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             ),
             "appgen.coding-agent-release-gate.v1": coding_agent_release_gate(agentic_env),
             "appgen.agentic-generation-smoke-audit.v1": agentic_generation_smoke_audit(),
+            "appgen.acp-stream-processing-policy.v1": acp_stream_processing_policy(),
+            "appgen.acp-event-processing-developer-guidance.v1": acp_event_processing_developer_guidance(),
+            "appgen.acp-stream-processor-selection.v1": select_acp_stream_processor("ordinary erp workflow events"),
+            "appgen.acp-event-processing-choice-resolution.v1": resolve_acp_event_processing_choice(
+                "ordinary erp workflow events",
+            ),
+            "appgen.application-composition-topology.v1": application_composition_topology(),
+            "appgen.acp-capability-coverage.v1": acp_capability_coverage(),
+            "appgen.compact-generation-brief.v1": compact_generation_brief(
+                "Build a compact ERP app with customers, invoices, approval workflow, and an assistant.",
+            ),
+            "appgen.compact-full-app-generation-gate.v1": compact_full_app_generation_gate(
+                "Build a compact ERP app with customers, invoices, approval workflow, and an assistant.",
+            ),
             "appgen.contract-schema-catalog.v1": contract_schema_catalog_dsl("appgen.semantic-model.v1"),
         }
         validation_report = contract_validation_report_dsl(
@@ -33286,6 +33438,14 @@ def _app_options(ctx) -> dict[str, str]:
     return options
 
 
+def _ident_token_text(ctx, index: int = 0) -> str:
+    """Return IDENT text across generated parser context variants."""
+    identifiers = ctx.IDENT()
+    if isinstance(identifiers, list):
+        return identifiers[index].getText()
+    return identifiers.getText()
+
+
 def _validate_app_options(app_options: dict[str, str]) -> None:
     if "targets" not in app_options:
         return
@@ -34050,7 +34210,7 @@ def _rule(ctx) -> RuleSchema:
     conditions = []
     for item in ctx.ruleItem():
         if item.REQUIRED():
-            field_name = item.IDENT(0).getText()
+            field_name = _ident_token_text(item)
             message = _literal_text(item.STRING().getText()) if item.STRING() else None
             conditions.append(
                 RuleConditionSchema(
@@ -34319,7 +34479,7 @@ def _composition_block(ctx) -> PlatformBlockSchema:
             values = tuple(_agentic_value(value) for value in item.agenticOption().agenticValue())
             options[item.agenticOption().IDENT().getText()] = values
         elif text.startswith("includepbc"):
-            key = item.IDENT(0).getText()
+            key = _ident_token_text(item)
             version_values = tuple(_agentic_value(value) for value in item.agenticValue())
             version = version_values[0] if version_values else ""
             options["include"] = (*options.get("include", ()), f"{key} version {version}".strip())

@@ -11702,6 +11702,14 @@ def test_contract_schema_catalog_exposes_core_json_schemas() -> None:
         "appgen.coding-agent-development-workflow.v1",
         "appgen.coding-agent-release-gate.v1",
         "appgen.agentic-generation-smoke-audit.v1",
+        "appgen.acp-stream-processing-policy.v1",
+        "appgen.acp-event-processing-developer-guidance.v1",
+        "appgen.acp-stream-processor-selection.v1",
+        "appgen.acp-event-processing-choice-resolution.v1",
+        "appgen.application-composition-topology.v1",
+        "appgen.acp-capability-coverage.v1",
+        "appgen.compact-generation-brief.v1",
+        "appgen.compact-full-app-generation-gate.v1",
     } <= set(catalog["required_schema_formats"])
     assert catalog["missing_required_schema_count"] == 0
     assert catalog["missing_required_schema_formats"] == ()
@@ -11721,6 +11729,14 @@ def test_contract_schema_catalog_exposes_core_json_schemas() -> None:
     assert {"format", "ok", "decision", "gates", "blocking_gaps"} <= set(package_schema["required"])
     coding_agent_schema = catalog["schemas"]["appgen.coding-agent-release-gate.v1"]
     assert {"format", "ok", "decision", "gates", "blocking_gaps"} <= set(coding_agent_schema["required"])
+    acp_policy_schema = catalog["schemas"]["appgen.acp-stream-processing-policy.v1"]
+    assert {"format", "ok", "default", "allowed_processors", "profiles", "rules"} <= set(
+        acp_policy_schema["required"]
+    )
+    compact_gate_schema = catalog["schemas"]["appgen.compact-full-app-generation-gate.v1"]
+    assert {"format", "ok", "profiles", "generation_smoke", "checks", "blocking_gaps"} <= set(
+        compact_gate_schema["required"]
+    )
     assert missing["ok"] is False
     assert missing["missing_requested_schema_formats"] == ("appgen.missing-contract.v1",)
 
