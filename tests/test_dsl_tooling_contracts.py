@@ -4655,6 +4655,48 @@ def test_doctor_report_checks_parser_catalog_generator_and_ide_hooks() -> None:
     assert alias_check["detail"]["module_dispatches_tooling"] is True
 
 
+def test_doctor_cli_audit_proves_json_and_text_modes() -> None:
+    audit = appgen_dsl._tooling_audit_doctor_cli_modes()
+
+    assert audit["format"] == "appgen.doctor-cli-audit.v1"
+    assert audit["ok"] is True
+    assert audit["case_count"] == 2
+    assert audit["passing_case_count"] == audit["case_count"]
+    assert audit["failing_case_count"] == 0
+    assert audit["failing_cases"] == ()
+    assert audit["required_case_ids"] == ("doctor_json", "doctor_text")
+    assert audit["observed_case_ids"] == audit["required_case_ids"]
+    assert audit["missing_case_count"] == 0
+    assert audit["missing_case_ids"] == ()
+    assert audit["modes_by_case"] == audit["expected_modes_by_case"]
+    assert audit["missing_mode_case_count"] == 0
+    assert audit["missing_mode_cases"] == ()
+    assert audit["exit_codes_by_case"] == audit["expected_exit_codes_by_case"]
+    assert audit["missing_exit_code_case_count"] == 0
+    assert audit["missing_exit_code_cases"] == ()
+    assert audit["ok_by_case"] == {"doctor_json": True, "doctor_text": True}
+    assert audit["missing_ok_case_count"] == 0
+    assert audit["missing_ok_cases"] == ()
+    assert audit["payload_formats_by_case"] == audit["expected_payload_formats_by_case"]
+    assert audit["missing_payload_format_case_count"] == 0
+    assert audit["missing_payload_format_cases"] == ()
+    assert audit["doctor_check_count"] >= 18
+    assert audit["blocking_gap_count"] == 0
+    assert audit["observed_check_ids"] == audit["required_check_ids"]
+    assert audit["missing_required_check_count"] == 0
+    assert audit["missing_required_check_ids"] == ()
+    assert audit["detail_formats_by_check"] == audit["required_detail_formats_by_check"]
+    assert audit["missing_detail_format_check_count"] == 0
+    assert audit["missing_detail_format_checks"] == ()
+    assert audit["missing_text_marker_count"] == 0
+    assert audit["missing_text_marker_case_count"] == 0
+    assert audit["missing_text_marker_cases"] == ()
+    assert all(markers == () for markers in audit["missing_text_markers_by_case"].values())
+    assert audit["text_json_fallback_by_case"] == {"doctor_text": False}
+    assert audit["text_json_fallback_case_count"] == 0
+    assert audit["text_json_fallback_cases"] == ()
+
+
 def test_studio_semantic_service_audit_proves_panel_contracts() -> None:
     report = appgen_dsl._tooling_audit_studio_semantic_service(TOOLING_SAMPLE)
 
@@ -7652,7 +7694,45 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert doctor_gate["detail"]["text_renderer"]["missing_report_format_count"] == 0
     assert doctor_gate["detail"]["text_renderer"]["missing_report_formats"] == ()
     assert doctor_gate["detail"]["text_renderer"]["json_fallback"] is False
+    assert doctor_gate["detail"]["cli"]["format"] == "appgen.doctor-cli-audit.v1"
+    assert doctor_gate["detail"]["cli"]["case_count"] == 2
+    assert doctor_gate["detail"]["cli"]["passing_case_count"] == doctor_gate["detail"]["cli"]["case_count"]
+    assert doctor_gate["detail"]["cli"]["failing_case_count"] == 0
+    assert doctor_gate["detail"]["cli"]["failing_cases"] == ()
+    assert doctor_gate["detail"]["cli"]["observed_case_ids"] == doctor_gate["detail"]["cli"]["required_case_ids"]
+    assert doctor_gate["detail"]["cli"]["missing_case_count"] == 0
+    assert doctor_gate["detail"]["cli"]["missing_case_ids"] == ()
+    assert doctor_gate["detail"]["cli"]["modes_by_case"] == doctor_gate["detail"]["cli"]["expected_modes_by_case"]
+    assert doctor_gate["detail"]["cli"]["missing_mode_case_count"] == 0
+    assert doctor_gate["detail"]["cli"]["missing_mode_cases"] == ()
+    assert doctor_gate["detail"]["cli"]["exit_codes_by_case"] == doctor_gate["detail"]["cli"][
+        "expected_exit_codes_by_case"
+    ]
+    assert doctor_gate["detail"]["cli"]["missing_exit_code_case_count"] == 0
+    assert doctor_gate["detail"]["cli"]["missing_exit_code_cases"] == ()
+    assert doctor_gate["detail"]["cli"]["ok_by_case"] == {"doctor_json": True, "doctor_text": True}
+    assert doctor_gate["detail"]["cli"]["missing_ok_case_count"] == 0
+    assert doctor_gate["detail"]["cli"]["missing_ok_cases"] == ()
+    assert doctor_gate["detail"]["cli"]["payload_formats_by_case"] == doctor_gate["detail"]["cli"][
+        "expected_payload_formats_by_case"
+    ]
+    assert doctor_gate["detail"]["cli"]["missing_payload_format_case_count"] == 0
+    assert doctor_gate["detail"]["cli"]["missing_payload_format_cases"] == ()
+    assert doctor_gate["detail"]["cli"]["observed_check_ids"] == doctor_gate["detail"]["cli"]["required_check_ids"]
+    assert doctor_gate["detail"]["cli"]["missing_required_check_count"] == 0
+    assert doctor_gate["detail"]["cli"]["missing_required_check_ids"] == ()
+    assert doctor_gate["detail"]["cli"]["detail_formats_by_check"] == doctor_gate["detail"]["cli"][
+        "required_detail_formats_by_check"
+    ]
+    assert doctor_gate["detail"]["cli"]["missing_detail_format_check_count"] == 0
+    assert doctor_gate["detail"]["cli"]["missing_detail_format_checks"] == ()
+    assert doctor_gate["detail"]["cli"]["missing_text_marker_count"] == 0
+    assert doctor_gate["detail"]["cli"]["missing_text_marker_cases"] == ()
+    assert doctor_gate["detail"]["cli"]["text_json_fallback_by_case"] == {"doctor_text": False}
+    assert doctor_gate["detail"]["cli"]["text_json_fallback_case_count"] == 0
+    assert doctor_gate["detail"]["cli"]["text_json_fallback_cases"] == ()
     assert doctor_gate["detail"]["cli"]["doctor_check_count"] >= 15
+    assert doctor_gate["detail"]["cli"]["strategy_doctor_check_count"] >= 15
     package_check = next(check for check in report["checks"] if check["id"] == "package_and_release_verifiers")
     assert package_check["detail"]["cli"]["format"] == "appgen.package-verify-cli-audit.v1"
     assert package_check["detail"]["cli"]["ok"] is True

@@ -1063,11 +1063,22 @@ evidence for doctor check outcomes, text surfaces, and report formats. The
 aggregate doctor gate requires zero named missing entries, so a generic
 `detail_format=...` line cannot mask a hidden summary, blocking-gap marker,
 failed-check outcome, or embedded readiness report.
+`appgen.doctor-cli-audit.v1` separately invokes `appgen doctor --json` and
+`appgen doctor` text mode. It reports required, observed, and missing mode case
+ids; expected and observed output modes; expected and observed exit codes;
+per-case `ok` status; expected and observed JSON payload formats; required and
+observed doctor check ids; required and observed embedded detail formats by
+check; required and missing text markers by case; blocking-gap counts; and
+text-mode raw-JSON fallback status. The aggregate doctor gate requires every
+named gap list to be empty, so the executable command cannot drift away from the
+in-process doctor report or hide failed CLI dispatch behind a green renderer
+contract.
 The aggregate tooling audit exposes this proof independently as
 `doctor_cli_text_contracts`. That gate fails when doctor stops proving parser,
 package import, catalog, template writer, backend, semantic-model, alias, LSP,
 Studio, or editor-extension readiness, or when text output hides embedded audit
-format markers or named doctor checks.
+format markers, named doctor checks, JSON payload envelopes, exit-code
+contracts, or text-mode non-JSON output.
 
 ### `appgen tooling-audit`
 

@@ -6375,6 +6375,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     doctor_text_renderer = _doctor_text_renderer_contract()
     lsp_text_renderer = _lsp_service_text_renderer_contract()
     doctor = doctor_report_dsl()
+    doctor_cli_modes = _tooling_audit_doctor_cli_modes()
     language_quality = dsl_language_quality_contract()
     module_boundaries = module_boundary_audit_dsl()
     non_goal_policy = _tooling_audit_non_goal_policy()
@@ -9484,6 +9485,16 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and doctor_text_renderer.get("missing_text_surface_count") == 0
             and doctor_text_renderer.get("missing_report_format_count") == 0
             and doctor_text_renderer.get("json_fallback") is False
+            and doctor_cli_modes["ok"]
+            and doctor_cli_modes.get("missing_case_count") == 0
+            and doctor_cli_modes.get("missing_mode_case_count") == 0
+            and doctor_cli_modes.get("missing_exit_code_case_count") == 0
+            and doctor_cli_modes.get("missing_ok_case_count") == 0
+            and doctor_cli_modes.get("missing_payload_format_case_count") == 0
+            and doctor_cli_modes.get("missing_required_check_count") == 0
+            and doctor_cli_modes.get("missing_detail_format_check_count") == 0
+            and doctor_cli_modes.get("missing_text_marker_count") == 0
+            and doctor_cli_modes.get("text_json_fallback_case_count") == 0
             and test_strategy_cli["ok"]
             and test_strategy_cli.get("doctor_check_count", 0) >= 15,
             "Doctor CLI and text contracts prove parser, imports, catalogs, backends, semantic coverage, editor hooks, aliases, and embedded audit markers from one command.",
@@ -9530,8 +9541,49 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "json_fallback": doctor_text_renderer.get("json_fallback"),
                 },
                 "cli": {
-                    "format": test_strategy_cli.get("format"),
-                    "doctor_check_count": test_strategy_cli.get("doctor_check_count"),
+                    "format": doctor_cli_modes.get("format"),
+                    "case_count": doctor_cli_modes.get("case_count"),
+                    "passing_case_count": doctor_cli_modes.get("passing_case_count"),
+                    "failing_case_count": doctor_cli_modes.get("failing_case_count"),
+                    "failing_cases": doctor_cli_modes.get("failing_cases"),
+                    "required_case_ids": doctor_cli_modes.get("required_case_ids"),
+                    "observed_case_ids": doctor_cli_modes.get("observed_case_ids"),
+                    "missing_case_count": doctor_cli_modes.get("missing_case_count"),
+                    "missing_case_ids": doctor_cli_modes.get("missing_case_ids"),
+                    "expected_modes_by_case": doctor_cli_modes.get("expected_modes_by_case"),
+                    "modes_by_case": doctor_cli_modes.get("modes_by_case"),
+                    "missing_mode_case_count": doctor_cli_modes.get("missing_mode_case_count"),
+                    "missing_mode_cases": doctor_cli_modes.get("missing_mode_cases"),
+                    "expected_exit_codes_by_case": doctor_cli_modes.get("expected_exit_codes_by_case"),
+                    "exit_codes_by_case": doctor_cli_modes.get("exit_codes_by_case"),
+                    "missing_exit_code_case_count": doctor_cli_modes.get("missing_exit_code_case_count"),
+                    "missing_exit_code_cases": doctor_cli_modes.get("missing_exit_code_cases"),
+                    "ok_by_case": doctor_cli_modes.get("ok_by_case"),
+                    "missing_ok_case_count": doctor_cli_modes.get("missing_ok_case_count"),
+                    "missing_ok_cases": doctor_cli_modes.get("missing_ok_cases"),
+                    "expected_payload_formats_by_case": doctor_cli_modes.get("expected_payload_formats_by_case"),
+                    "payload_formats_by_case": doctor_cli_modes.get("payload_formats_by_case"),
+                    "missing_payload_format_case_count": doctor_cli_modes.get("missing_payload_format_case_count"),
+                    "missing_payload_format_cases": doctor_cli_modes.get("missing_payload_format_cases"),
+                    "required_check_ids": doctor_cli_modes.get("required_check_ids"),
+                    "observed_check_ids": doctor_cli_modes.get("observed_check_ids"),
+                    "missing_required_check_count": doctor_cli_modes.get("missing_required_check_count"),
+                    "missing_required_check_ids": doctor_cli_modes.get("missing_required_check_ids"),
+                    "required_detail_formats_by_check": doctor_cli_modes.get("required_detail_formats_by_check"),
+                    "detail_formats_by_check": doctor_cli_modes.get("detail_formats_by_check"),
+                    "missing_detail_format_check_count": doctor_cli_modes.get("missing_detail_format_check_count"),
+                    "missing_detail_format_checks": doctor_cli_modes.get("missing_detail_format_checks"),
+                    "required_text_markers_by_case": doctor_cli_modes.get("required_text_markers_by_case"),
+                    "missing_text_marker_count": doctor_cli_modes.get("missing_text_marker_count"),
+                    "missing_text_marker_cases": doctor_cli_modes.get("missing_text_marker_cases"),
+                    "missing_text_markers_by_case": doctor_cli_modes.get("missing_text_markers_by_case"),
+                    "text_json_fallback_by_case": doctor_cli_modes.get("text_json_fallback_by_case"),
+                    "text_json_fallback_case_count": doctor_cli_modes.get("text_json_fallback_case_count"),
+                    "text_json_fallback_cases": doctor_cli_modes.get("text_json_fallback_cases"),
+                    "doctor_check_count": doctor_cli_modes.get("doctor_check_count"),
+                    "blocking_gap_count": doctor_cli_modes.get("blocking_gap_count"),
+                    "strategy_format": test_strategy_cli.get("format"),
+                    "strategy_doctor_check_count": test_strategy_cli.get("doctor_check_count"),
                 },
             },
         ),
@@ -15588,6 +15640,188 @@ def _tooling_cli_text_case(argv: tuple[str, ...]) -> tuple[int, str]:
     with contextlib.redirect_stdout(output):
         exit_code = dsl_tooling_cli(argv)
     return exit_code, output.getvalue()
+
+
+def _tooling_audit_doctor_cli_modes() -> dict:
+    json_exit, json_payload = _tooling_cli_json_case(("doctor", "--json"))
+    text_exit, text_output = _tooling_cli_text_case(("doctor",))
+    required_case_ids = ("doctor_json", "doctor_text")
+    required_check_ids = (
+        "grammar_file",
+        "generated_parser",
+        "parser_sync",
+        "parser_golden_fixtures",
+        "directory_lint_input",
+        "python_package_import",
+        "sqlalchemy_import",
+        "pbc_catalog",
+        "template_writers",
+        "generator_backends",
+        "lsp_semantic_service",
+        "cli_alias_contract",
+        "lsp_completion_coverage",
+        "semantic_symbol_coverage",
+        "lsp_symbol_coverage",
+        "module_boundaries",
+        "studio_semantic_service",
+        "vscode_extension_surface",
+    )
+    observed_check_ids = tuple(check.get("check") for check in json_payload.get("checks", ()))
+    missing_required_check_ids = tuple(check_id for check_id in required_check_ids if check_id not in observed_check_ids)
+    required_detail_formats_by_check = {
+        "parser_sync": "appgen.dsl-antlr-integrity.v1",
+        "parser_golden_fixtures": "appgen.parser-golden-audit.v1",
+        "directory_lint_input": "appgen.lint-report.v1",
+        "lsp_semantic_service": "appgen.lsp-capabilities.v1",
+        "cli_alias_contract": "appgen.cli-alias-contract.v1",
+        "lsp_completion_coverage": "appgen.completion-coverage.v1",
+        "semantic_symbol_coverage": "appgen.symbol-coverage.v1",
+        "lsp_symbol_coverage": "appgen.lsp-symbol-coverage.v1",
+        "module_boundaries": "appgen.module-boundary-audit.v1",
+        "studio_semantic_service": "appgen.designer-sync-report.v1",
+        "vscode_extension_surface": "appgen.vscode-extension-audit.v1",
+    }
+    checks_by_id = {check.get("check"): check for check in json_payload.get("checks", ())}
+    detail_formats_by_check = {
+        check_id: checks_by_id.get(check_id, {}).get("detail", {}).get("report_format")
+        for check_id in required_detail_formats_by_check
+    }
+    missing_detail_format_checks = tuple(
+        check_id
+        for check_id, expected_format in required_detail_formats_by_check.items()
+        if detail_formats_by_check.get(check_id) != expected_format
+    )
+    required_text_markers_by_case = {
+        "doctor_text": (
+            "doctor ok: format=appgen.doctor-report.v1",
+            "blocking_gaps=0",
+            "detail_format=appgen.parser-golden-audit.v1",
+            "detail_format=appgen.cli-alias-contract.v1",
+            "detail_format=appgen.completion-coverage.v1",
+            "detail_format=appgen.symbol-coverage.v1",
+            "detail_format=appgen.lsp-symbol-coverage.v1",
+            "detail_format=appgen.module-boundary-audit.v1",
+            "detail_format=appgen.designer-sync-report.v1",
+            "detail_format=appgen.vscode-extension-audit.v1",
+        )
+    }
+    missing_text_markers_by_case = {
+        case_id: tuple(marker for marker in markers if marker not in text_output)
+        for case_id, markers in required_text_markers_by_case.items()
+    }
+    missing_text_marker_cases = tuple(
+        case_id for case_id, markers in missing_text_markers_by_case.items() if markers
+    )
+    cases = (
+        {
+            "case": "doctor_json",
+            "mode": "json",
+            "ok": json_exit == 0
+            and json_payload.get("format") == "appgen.doctor-report.v1"
+            and json_payload.get("ok") is True
+            and not json_payload.get("blocking_gaps")
+            and not missing_required_check_ids
+            and not missing_detail_format_checks,
+            "exit_code": json_exit,
+            "payload_format": json_payload.get("format"),
+            "check_count": len(json_payload.get("checks", ())),
+            "blocking_gap_count": len(json_payload.get("blocking_gaps", ())),
+        },
+        {
+            "case": "doctor_text",
+            "mode": "text",
+            "ok": text_exit == 0
+            and not missing_text_marker_cases
+            and not text_output.lstrip().startswith("{"),
+            "exit_code": text_exit,
+            "payload_format": None,
+            "json_fallback": text_output.lstrip().startswith("{"),
+            "text_prefix": text_output[:160],
+        },
+    )
+    expected_modes_by_case = {"doctor_json": "json", "doctor_text": "text"}
+    modes_by_case = {case["case"]: case["mode"] for case in cases}
+    missing_mode_cases = tuple(
+        case_id for case_id, expected_mode in expected_modes_by_case.items() if modes_by_case.get(case_id) != expected_mode
+    )
+    expected_exit_codes_by_case = {case_id: 0 for case_id in required_case_ids}
+    exit_codes_by_case = {case["case"]: case["exit_code"] for case in cases}
+    missing_exit_code_cases = tuple(
+        case_id
+        for case_id, expected_exit_code in expected_exit_codes_by_case.items()
+        if exit_codes_by_case.get(case_id) != expected_exit_code
+    )
+    ok_by_case = {case["case"]: case["ok"] is True for case in cases}
+    missing_ok_cases = tuple(case_id for case_id in required_case_ids if ok_by_case.get(case_id) is not True)
+    expected_payload_formats_by_case = {"doctor_json": "appgen.doctor-report.v1"}
+    payload_formats_by_case = {"doctor_json": json_payload.get("format")}
+    missing_payload_format_cases = tuple(
+        case_id
+        for case_id, expected_format in expected_payload_formats_by_case.items()
+        if payload_formats_by_case.get(case_id) != expected_format
+    )
+    text_json_fallback_by_case = {"doctor_text": text_output.lstrip().startswith("{")}
+    text_json_fallback_cases = tuple(
+        case_id for case_id, has_fallback in text_json_fallback_by_case.items() if has_fallback
+    )
+    observed_case_ids = tuple(case["case"] for case in cases)
+    missing_case_ids = tuple(case_id for case_id in required_case_ids if case_id not in observed_case_ids)
+    failing_cases = tuple(case["case"] for case in cases if case["ok"] is not True)
+    return {
+        "format": "appgen.doctor-cli-audit.v1",
+        "ok": not missing_case_ids
+        and not failing_cases
+        and not missing_mode_cases
+        and not missing_exit_code_cases
+        and not missing_ok_cases
+        and not missing_payload_format_cases
+        and not missing_required_check_ids
+        and not missing_detail_format_checks
+        and not missing_text_marker_cases
+        and not text_json_fallback_cases,
+        "case_count": len(cases),
+        "passing_case_count": sum(1 for case in cases if case["ok"] is True),
+        "failing_case_count": len(failing_cases),
+        "failing_cases": failing_cases,
+        "required_case_ids": required_case_ids,
+        "observed_case_ids": observed_case_ids,
+        "missing_case_count": len(missing_case_ids),
+        "missing_case_ids": missing_case_ids,
+        "expected_modes_by_case": expected_modes_by_case,
+        "modes_by_case": modes_by_case,
+        "missing_mode_case_count": len(missing_mode_cases),
+        "missing_mode_cases": missing_mode_cases,
+        "expected_exit_codes_by_case": expected_exit_codes_by_case,
+        "exit_codes_by_case": exit_codes_by_case,
+        "missing_exit_code_case_count": len(missing_exit_code_cases),
+        "missing_exit_code_cases": missing_exit_code_cases,
+        "ok_by_case": ok_by_case,
+        "missing_ok_case_count": len(missing_ok_cases),
+        "missing_ok_cases": missing_ok_cases,
+        "expected_payload_formats_by_case": expected_payload_formats_by_case,
+        "payload_formats_by_case": payload_formats_by_case,
+        "missing_payload_format_case_count": len(missing_payload_format_cases),
+        "missing_payload_format_cases": missing_payload_format_cases,
+        "required_check_ids": required_check_ids,
+        "observed_check_ids": observed_check_ids,
+        "missing_required_check_count": len(missing_required_check_ids),
+        "missing_required_check_ids": missing_required_check_ids,
+        "required_detail_formats_by_check": required_detail_formats_by_check,
+        "detail_formats_by_check": detail_formats_by_check,
+        "missing_detail_format_check_count": len(missing_detail_format_checks),
+        "missing_detail_format_checks": missing_detail_format_checks,
+        "required_text_markers_by_case": required_text_markers_by_case,
+        "missing_text_markers_by_case": missing_text_markers_by_case,
+        "missing_text_marker_case_count": len(missing_text_marker_cases),
+        "missing_text_marker_cases": missing_text_marker_cases,
+        "missing_text_marker_count": sum(len(markers) for markers in missing_text_markers_by_case.values()),
+        "text_json_fallback_by_case": text_json_fallback_by_case,
+        "text_json_fallback_case_count": len(text_json_fallback_cases),
+        "text_json_fallback_cases": text_json_fallback_cases,
+        "doctor_check_count": len(json_payload.get("checks", ())),
+        "blocking_gap_count": len(json_payload.get("blocking_gaps", ())),
+        "cases": cases,
+    }
 
 
 def _tooling_audit_pbc_cli_text() -> dict:

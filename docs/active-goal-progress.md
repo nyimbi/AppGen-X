@@ -4310,3 +4310,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   (`1 passed`), aggregate tooling audit (`1 passed`, with the known active-PBC
   `datetime.utcnow()` warnings only), scoped diff whitespace check, and
   restricted-name scan outside archive, Git internals, and active PBC paths.
+- Current doctor CLI hardening pass adds `appgen.doctor-cli-audit.v1`, proving
+  `doctor --json` and text mode by named case with expected and observed modes,
+  exit codes, `ok` status, JSON payload format, required doctor check ids,
+  embedded detail formats by check, text markers, blocking-gap count, and
+  text-mode raw-JSON fallback status. The aggregate
+  `doctor_cli_text_contracts` gate now requires those named missing lists to be
+  empty, so doctor readiness cannot pass by in-process report or text-renderer
+  evidence while the executable CLI mode regresses. Verification passed: Python
+  compile for the touched DSL and tests, focused doctor CLI audit (`1 passed`),
+  aggregate tooling audit (`1 passed`, with the known active-PBC
+  `datetime.utcnow()` warnings only), scoped diff whitespace check, and
+  restricted-name scan outside archive, Git internals, and active PBC paths.
