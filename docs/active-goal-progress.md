@@ -4539,3 +4539,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   code-review, collaboration, and devtools modules now have schema-backed
   manifests, operations, release contexts, smoke tests, and generated-test
   evidence.
+- Current generated IDE/productivity module expansion promotes another 120
+  `gen.py` runtime formats into the schema catalog. Project management, ERP
+  templates, version/package management, binding and binding-designer modules,
+  component wiring, form interaction, handler/property/event/component editor,
+  custom designer, inspector, data tooling, enterprise data IDE, visual design
+  IDE, and visual runtime pipeline contracts now validate through the tooling
+  schema catalog.
