@@ -367,6 +367,7 @@ def _frontend_interaction_audit(interaction_audit_text: str) -> dict:
         "data_workbench_render_inputs",
         "status_rail_audit_inputs",
         "semantic_service_bridge",
+        "dsl_editor_lint_completion_quick_fix",
     )
     required_audits = (
         "visualBindingAudit",
@@ -377,6 +378,7 @@ def _frontend_interaction_audit(interaction_audit_text: str) -> dict:
         "packageInstallAudit",
         "semanticServiceAudit",
         "designerRuntimeAudit",
+        "dslEditorAudit",
     )
     required_helpers = (
         "filterPaletteComponents",

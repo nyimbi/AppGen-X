@@ -5225,9 +5225,10 @@ def test_studio_semantic_service_audit_proves_panel_contracts() -> None:
     assert report["frontend_semantic_service_audit"]["checks"]["panel_renders_surfaces"] is True
     assert report["frontend_interaction_format"] == "appgen.frontend-interaction-audit.v1"
     assert report["frontend_interaction_audit"]["ok"] is True
-    assert report["frontend_interaction_scenario_count"] == 9
-    assert report["frontend_interaction_required_scenario_count"] == 9
+    assert report["frontend_interaction_scenario_count"] == 10
+    assert report["frontend_interaction_required_scenario_count"] == 10
     assert "actionable_drag_drop_wiring_operations" in report["frontend_interaction_scenarios"]
+    assert "dsl_editor_lint_completion_quick_fix" in report["frontend_interaction_scenarios"]
     assert set(report["frontend_interaction_required_scenarios"]) <= set(report["frontend_interaction_scenarios"])
     assert report["frontend_interaction_missing_scenarios"] == ()
     assert report["frontend_interaction_audit_input_count"] == len(
@@ -6025,6 +6026,7 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
     ] == (
         "appgen.studio-browser-smoke-ci-contract.v1",
         "appgen.frontend-semantic-service-audit.v1",
+        "appgen.frontend-dsl-editor-audit.v1",
         "appgen.frontend-interaction-audit.v1",
     )
     assert {
@@ -6485,6 +6487,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     ]["frontend_browser_smoke_bridges"] == (
         "appgen.studio-browser-smoke-ci-contract.v1",
         "appgen.frontend-semantic-service-audit.v1",
+        "appgen.frontend-dsl-editor-audit.v1",
         "appgen.frontend-interaction-audit.v1",
     )
     phase_doc_check = next(
@@ -6716,8 +6719,9 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     frontend_interaction_check = next(check for check in report["checks"] if check["id"] == "frontend_interaction_audit_bridge")
     assert frontend_interaction_check["detail"]["format"] == "appgen.frontend-interaction-audit.v1"
     assert frontend_interaction_check["detail"]["audit"]["ok"] is True
-    assert frontend_interaction_check["detail"]["scenario_count"] == 9
+    assert frontend_interaction_check["detail"]["scenario_count"] == 10
     assert "actionable_drag_drop_wiring_operations" in frontend_interaction_check["detail"]["scenarios"]
+    assert "dsl_editor_lint_completion_quick_fix" in frontend_interaction_check["detail"]["scenarios"]
     assert set(frontend_interaction_check["detail"]["required_scenarios"]) <= set(
         frontend_interaction_check["detail"]["scenarios"]
     )
@@ -11284,6 +11288,7 @@ def test_contract_schema_catalog_exposes_core_json_schemas() -> None:
         "appgen.studio-semantic-service.v1",
         "appgen.studio-semantic-service-audit.v1",
         "appgen.frontend-semantic-service-audit.v1",
+        "appgen.frontend-dsl-editor-audit.v1",
         "appgen.frontend-interaction-audit.v1",
         "appgen.vscode-extension-audit.v1",
         "appgen.diagnostic-catalog.v1",

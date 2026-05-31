@@ -2059,6 +2059,14 @@ shared web IDE bridge. That contract composes `appgen.lsp-service.v1`,
 database designer, workflow designer, PBC composition designer,
 package/deployment designer, diagnostics panel, graph/explain panel, and
 natural-language planner all prove they are reading the same semantic source.
+The browser Studio now includes a concrete DSL Editor workbench rather than a
+placeholder panel. It renders editable source, diagnostics, semantic outline,
+completion templates for schema/UI/workflow/agent/release constructs, quick
+fixes for missing handlers and weak status fields, and compact agent handoff
+cues. Its static frontend audit is `appgen.frontend-dsl-editor-audit.v1`, and
+the interaction bridge requires the named
+`dsl_editor_lint_completion_quick_fix` scenario before Studio readiness can
+pass.
 `appgen.studio-semantic-service-audit.v1` is the executable audit for that
 bridge. It verifies every required Studio panel is present, every panel emits
 the expected contract format, semantic-bound panels report

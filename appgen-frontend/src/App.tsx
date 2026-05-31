@@ -3,6 +3,7 @@ import './App.css'
 import { ComponentPalette } from './ComponentPalette'
 import { DataServiceWorkbench } from './DataServiceWorkbench'
 import { DesignerCanvas } from './DesignerCanvas'
+import { DslEditorWorkbench } from './DslEditorWorkbench'
 import { DeviceApiWorkbench } from './DeviceApiWorkbench'
 import { InspectorPanel } from './InspectorPanel'
 import { PackageManager } from './PackageManager'
@@ -71,6 +72,7 @@ function App() {
         />
         <InspectorPanel selectedComponent={selectedComponent} />
       </section>
+      <DslEditorWorkbench />
       <SemanticServicePanel />
       <PackageManager />
       <DeviceApiWorkbench />

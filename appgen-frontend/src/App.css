@@ -1504,6 +1504,136 @@ h2 {
   gap: 10px;
 }
 
+.dsl-editor-workbench {
+  margin-top: 12px;
+}
+
+.dsl-editor-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+  gap: 12px;
+}
+
+.dsl-source-pane {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  color: #40566f;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.dsl-source-pane textarea {
+  width: 100%;
+  min-height: 330px;
+  resize: vertical;
+  border: 1px solid #cfd8e6;
+  border-radius: 8px;
+  padding: 12px;
+  color: #172033;
+  background: #f8fafc;
+  font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.dsl-assist-pane,
+.dsl-intelligence-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.dsl-assist-section,
+.dsl-intelligence-grid section {
+  min-width: 0;
+  border: 1px solid #d7e0ec;
+  border-radius: 8px;
+  padding: 10px;
+  background: #f8fafc;
+}
+
+.dsl-assist-section h3,
+.dsl-intelligence-grid h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.dsl-assist-section ul,
+.outline-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dsl-assist-section li,
+.outline-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  color: #40566f;
+  font-size: 12px;
+}
+
+.dsl-assist-section li span,
+.outline-list li strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dsl-assist-section li strong {
+  color: #8a3d1f;
+}
+
+.dsl-assist-section li small {
+  color: #64748b;
+}
+
+.quick-fix-list,
+.completion-strip {
+  display: grid;
+  gap: 8px;
+}
+
+.quick-fix-list button,
+.completion-strip button {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid #d7e0ec;
+  border-radius: 7px;
+  padding: 8px;
+  color: #17463f;
+  background: #ffffff;
+  font-weight: 800;
+  text-align: left;
+}
+
+.completion-strip button {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.completion-strip small {
+  color: #64748b;
+}
+
+.dsl-intelligence-grid {
+  grid-template-columns: 1.1fr 1fr 0.9fr;
+  margin-top: 12px;
+}
+
+.agent-handoff-copy,
+.dsl-empty-state {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
 .semantic-service-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-bottom: 10px;
@@ -1629,6 +1759,8 @@ h2 {
     grid-template-columns: 1fr;
   }
 
+  .dsl-editor-grid,
+  .dsl-intelligence-grid,
   .package-grid,
   .device-api-grid,
   .data-service-grid,

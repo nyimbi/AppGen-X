@@ -4492,3 +4492,9 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   each JSON evidence family. The VS Code extension audit now gates view
   contributions, welcome content, expanded CLI argument contracts, and the
   larger webview/report surface.
+- Current Studio authoring expansion adds a concrete browser DSL editor
+  workbench with editable source, diagnostics, semantic outline, completion
+  templates, quick-fix application, and agent handoff cues. The frontend
+  interaction audit now includes the `dsl_editor_lint_completion_quick_fix`
+  scenario so Studio readiness proves DSL authoring behavior rather than only
+  displaying semantic-service metadata.

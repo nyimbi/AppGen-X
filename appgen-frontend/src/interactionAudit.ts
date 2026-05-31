@@ -10,6 +10,7 @@ import { dataServiceAudit, dataServiceCapabilities } from './dataServiceCatalog'
 import type { DataServiceLane } from './dataServiceCatalog'
 import { deviceApiAudit, deviceApiCapabilities } from './deviceApiCatalog'
 import type { DeviceApiGroup } from './deviceApiCatalog'
+import { dslEditorAudit } from './dslEditorCatalog'
 import { inspectorEditorAudit } from './inspectorCatalog'
 import { packageInstallAudit } from './packageCatalog'
 import { semanticServiceAudit } from './semanticServiceContract'
@@ -50,6 +51,7 @@ export function studioInteractionAudit() {
   const inspectorAudit = inspectorEditorAudit()
   const packageAudit = packageInstallAudit()
   const semanticAudit = semanticServiceAudit()
+  const dslAudit = dslEditorAudit()
   const runtimeAudit = designerRuntimeAudit()
   const previewDrop = dragPayload ? previewComponentDropOperation(dragPayload, { x: 62, y: 62 }) : null
   const committedDrop = dragPayload
@@ -134,6 +136,16 @@ export function studioInteractionAudit() {
       id: 'semantic_service_bridge',
       ok: semanticAudit.ok,
       evidence: semanticAudit,
+    },
+    {
+      id: 'dsl_editor_lint_completion_quick_fix',
+      ok:
+        dslAudit.ok &&
+        dslAudit.diagnosticCount === 2 &&
+        dslAudit.quickFixCount === 2 &&
+        dslAudit.fixedDiagnosticCount === 0 &&
+        dslAudit.completionCount >= 5,
+      evidence: dslAudit,
     },
   ]
 
