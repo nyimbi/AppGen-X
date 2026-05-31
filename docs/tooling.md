@@ -955,6 +955,12 @@ It also publishes required and emitted graph kinds, graph formats, graph check
 ids, symbol ids, diagnostic codes, diagnostic docs URLs, and handler edges with
 named missing lists, so graph/explain release logs fail on the exact hidden
 review marker.
+The same renderer publishes required, emitted, missing, and missing-count
+evidence for graph/explain text surfaces, embedded graph-suite and explain
+report formats, explain kinds, symbol reference count markers, and handler
+match count markers. The aggregate explain gate requires zero named missing
+entries, so generic graph or explain lines cannot mask a hidden symbol detail,
+diagnostic docs link, handler edge, report format, or navigation count.
 The aggregate tooling audit exposes graph rendering as its own
 `graph_rendering_contracts` gate. It fails independently when a required graph
 kind is missing, JSON/Mermaid/DOT renderings drift, graph CLI cases fail, or

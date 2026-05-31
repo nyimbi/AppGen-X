@@ -7763,6 +7763,11 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert explain_contract_check["detail"]["text_renderer"]["missing_check_id_count"] == 0
     assert explain_contract_check["detail"]["text_renderer"]["missing_check_ids"] == ()
+    assert explain_contract_check["detail"]["text_renderer"]["emitted_explain_kinds"] == (
+        explain_contract_check["detail"]["text_renderer"]["required_explain_kinds"]
+    )
+    assert explain_contract_check["detail"]["text_renderer"]["missing_explain_kind_count"] == 0
+    assert explain_contract_check["detail"]["text_renderer"]["missing_explain_kinds"] == ()
     assert explain_contract_check["detail"]["text_renderer"]["emitted_symbol_ids"] == (
         explain_contract_check["detail"]["text_renderer"]["required_symbol_ids"]
     )
@@ -7783,6 +7788,26 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert explain_contract_check["detail"]["text_renderer"]["missing_handler_edge_count"] == 0
     assert explain_contract_check["detail"]["text_renderer"]["missing_handler_edges"] == ()
+    assert explain_contract_check["detail"]["text_renderer"]["emitted_text_surfaces"] == (
+        explain_contract_check["detail"]["text_renderer"]["required_text_surfaces"]
+    )
+    assert explain_contract_check["detail"]["text_renderer"]["missing_text_surface_count"] == 0
+    assert explain_contract_check["detail"]["text_renderer"]["missing_text_surfaces"] == ()
+    assert explain_contract_check["detail"]["text_renderer"]["emitted_report_formats"] == (
+        explain_contract_check["detail"]["text_renderer"]["required_report_formats"]
+    )
+    assert explain_contract_check["detail"]["text_renderer"]["missing_report_format_count"] == 0
+    assert explain_contract_check["detail"]["text_renderer"]["missing_report_formats"] == ()
+    assert explain_contract_check["detail"]["text_renderer"]["emitted_reference_counts"] == (
+        explain_contract_check["detail"]["text_renderer"]["required_reference_counts"]
+    )
+    assert explain_contract_check["detail"]["text_renderer"]["missing_reference_count_count"] == 0
+    assert explain_contract_check["detail"]["text_renderer"]["missing_reference_counts"] == ()
+    assert explain_contract_check["detail"]["text_renderer"]["emitted_match_counts"] == (
+        explain_contract_check["detail"]["text_renderer"]["required_match_counts"]
+    )
+    assert explain_contract_check["detail"]["text_renderer"]["missing_match_count_count"] == 0
+    assert explain_contract_check["detail"]["text_renderer"]["missing_match_counts"] == ()
     assert explain_contract_check["detail"]["text_renderer"]["json_fallback"] is False
     nl_check = next(check for check in report["checks"] if check["id"] == "natural_language_patch_planner")
     assert nl_check["detail"]["cli"]["format"] == "appgen.nl-plan-cli-audit.v1"
@@ -9049,6 +9074,66 @@ def test_graph_explain_text_renderer_contract_proves_review_log_markers() -> Non
     assert report["required_fragment_count"] == len(report["required_fragments"])
     assert report["missing_fragment_count"] == 0
     assert report["marker_line_count"] >= 11
+    assert report["required_graph_kinds"] == ("er", "lookup", "workflow")
+    assert report["emitted_graph_kinds"] == report["required_graph_kinds"]
+    assert report["missing_graph_kind_count"] == 0
+    assert report["missing_graph_kinds"] == ()
+    assert report["required_graph_formats"] == ("json", "mermaid", "dot")
+    assert report["emitted_graph_formats"] == report["required_graph_formats"]
+    assert report["missing_graph_format_count"] == 0
+    assert report["missing_graph_formats"] == ()
+    assert report["required_check_ids"] == ("er_graph", "workflow_graph")
+    assert report["emitted_check_ids"] == report["required_check_ids"]
+    assert report["missing_check_id_count"] == 0
+    assert report["missing_check_ids"] == ()
+    assert report["required_explain_kinds"] == ("symbol", "diagnostic", "handler")
+    assert report["emitted_explain_kinds"] == report["required_explain_kinds"]
+    assert report["missing_explain_kind_count"] == 0
+    assert report["missing_explain_kinds"] == ()
+    assert report["required_symbol_ids"] == ("table.Invoice",)
+    assert report["emitted_symbol_ids"] == report["required_symbol_ids"]
+    assert report["missing_symbol_id_count"] == 0
+    assert report["missing_symbol_ids"] == ()
+    assert report["required_diagnostic_codes"] == ("AGX0303",)
+    assert report["emitted_diagnostic_codes"] == report["required_diagnostic_codes"]
+    assert report["missing_diagnostic_code_count"] == 0
+    assert report["missing_diagnostic_codes"] == ()
+    assert report["required_docs_urls"] == ("docs/tooling.md#linter-rules-by-domain",)
+    assert report["emitted_docs_urls"] == report["required_docs_urls"]
+    assert report["missing_docs_url_count"] == 0
+    assert report["missing_docs_urls"] == ()
+    assert report["emitted_handler_edges"] == report["required_handler_edges"]
+    assert report["missing_handler_edge_count"] == 0
+    assert report["missing_handler_edges"] == ()
+    assert report["required_text_surfaces"] == (
+        "graph_summary",
+        "graph_kinds",
+        "graph_formats",
+        "graph_checks",
+        "explain_summaries",
+        "symbol_detail",
+        "symbol_parent",
+        "symbol_references",
+        "diagnostic_detail",
+        "diagnostic_docs",
+        "handler_match_count",
+        "handler_edges",
+    )
+    assert report["emitted_text_surfaces"] == report["required_text_surfaces"]
+    assert report["missing_text_surface_count"] == 0
+    assert report["missing_text_surfaces"] == ()
+    assert report["required_report_formats"] == ("appgen.graph-suite-report.v1", "appgen.explain-report.v1")
+    assert report["emitted_report_formats"] == report["required_report_formats"]
+    assert report["missing_report_format_count"] == 0
+    assert report["missing_report_formats"] == ()
+    assert report["required_reference_counts"] == ("references: 2",)
+    assert report["emitted_reference_counts"] == report["required_reference_counts"]
+    assert report["missing_reference_count_count"] == 0
+    assert report["missing_reference_counts"] == ()
+    assert report["required_match_counts"] == ("matches: 2",)
+    assert report["emitted_match_counts"] == report["required_match_counts"]
+    assert report["missing_match_count_count"] == 0
+    assert report["missing_match_counts"] == ()
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(

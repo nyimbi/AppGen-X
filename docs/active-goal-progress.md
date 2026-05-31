@@ -4115,3 +4115,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   the known active-PBC `datetime.utcnow()` warnings only), scoped diff
   whitespace check, and restricted-name scan outside archive, Git internals,
   and active PBC paths.
+- Current graph/explain text audit hardening pass replaces graph/explain
+  fragment-only acceptance with named evidence for review release logs.
+  `appgen.graph-explain-text-renderer.v1` now proves required and emitted graph
+  text surfaces, embedded graph-suite/explain report formats, explain kinds,
+  graph kinds, graph formats, graph check ids, symbol ids, diagnostic docs
+  URLs, handler edges, symbol reference-count markers, and handler match-count
+  markers as part of its own `ok` condition and the aggregate explain gate.
+  Verification passed: Python compile for the touched DSL and tests, focused
+  graph/explain text renderer test (`1 passed`), aggregate tooling audit
+  (`1 passed`, with the known active-PBC `datetime.utcnow()` warnings only),
+  scoped diff whitespace check, and restricted-name scan outside archive, Git
+  internals, and active PBC paths.

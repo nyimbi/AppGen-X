@@ -3630,9 +3630,13 @@ def _graph_explain_text_renderer_contract() -> dict:
     graph_kind_lines = tuple(line for line in lines if line.startswith("graph-kinds "))
     graph_format_lines = tuple(line for line in lines if line.startswith("graph-formats "))
     check_lines = tuple(line for line in lines if line.startswith(("ok ", "fail ")))
+    explain_summary_lines = tuple(line for line in lines if line.startswith("explain "))
     symbol_lines = tuple(line for line in lines if line.startswith("table."))
+    parent_lines = tuple(line for line in lines if line.startswith("parent: "))
+    reference_lines = tuple(line for line in lines if line.startswith("references: "))
     diagnostic_lines = tuple(line for line in lines if line.startswith("AGX"))
     docs_lines = tuple(line for line in lines if line.startswith("docs: "))
+    match_count_lines = tuple(line for line in lines if line.startswith("matches: "))
     handler_edge_lines = tuple(line for line in lines if " -> " in line and "[" in line and "]" in line)
     emitted_graph_kinds = tuple()
     if graph_kind_lines:
@@ -3647,32 +3651,92 @@ def _graph_explain_text_renderer_contract() -> dict:
     emitted_diagnostic_codes = tuple(line.split(":", 1)[0].strip() for line in diagnostic_lines)
     emitted_docs_urls = tuple(line.removeprefix("docs: ").strip() for line in docs_lines)
     emitted_handler_edges = tuple(line.strip() for line in handler_edge_lines)
+    emitted_explain_kinds = tuple(
+        line.split()[1] for line in explain_summary_lines if len(line.split()) >= 2
+    )
     required_graph_kinds = tuple(graph_payload["required_kinds"])
     required_graph_formats = tuple(graph_payload["formats"])
     required_check_ids = tuple(check["check"] for check in graph_payload["checks"])
+    required_explain_kinds = (symbol_payload["kind"], diagnostic_payload["kind"], handler_payload["kind"])
     required_symbol_ids = (symbol_payload["symbol"]["id"],)
     required_diagnostic_codes = (diagnostic_payload["explanation"]["code"],)
     required_docs_urls = (diagnostic_payload["explanation"]["docs_url"],)
     required_handler_edges = tuple(
         f"{match['from']} -> {match['to']} [{match['label']}]" for match in handler_payload["matches"]
     )
+    required_text_surfaces = (
+        "graph_summary",
+        "graph_kinds",
+        "graph_formats",
+        "graph_checks",
+        "explain_summaries",
+        "symbol_detail",
+        "symbol_parent",
+        "symbol_references",
+        "diagnostic_detail",
+        "diagnostic_docs",
+        "handler_match_count",
+        "handler_edges",
+    )
+    emitted_text_surfaces = tuple(
+        surface
+        for surface, present in (
+            ("graph_summary", any(line.startswith("graph-suite ") for line in lines)),
+            ("graph_kinds", bool(graph_kind_lines)),
+            ("graph_formats", bool(graph_format_lines)),
+            ("graph_checks", bool(check_lines)),
+            ("explain_summaries", bool(explain_summary_lines)),
+            ("symbol_detail", bool(symbol_lines)),
+            ("symbol_parent", bool(parent_lines)),
+            ("symbol_references", bool(reference_lines)),
+            ("diagnostic_detail", bool(diagnostic_lines)),
+            ("diagnostic_docs", bool(docs_lines)),
+            ("handler_match_count", bool(match_count_lines)),
+            ("handler_edges", bool(handler_edge_lines)),
+        )
+        if present
+    )
+    required_report_formats = ("appgen.graph-suite-report.v1", "appgen.explain-report.v1")
+    emitted_report_formats = tuple(
+        report_format for report_format in required_report_formats if report_format in text
+    )
+    required_reference_counts = ("references: 2",)
+    emitted_reference_counts = tuple(
+        marker for marker in required_reference_counts if marker in reference_lines
+    )
+    required_match_counts = ("matches: 2",)
+    emitted_match_counts = tuple(marker for marker in required_match_counts if marker in match_count_lines)
     missing_graph_kinds = tuple(kind for kind in required_graph_kinds if kind not in emitted_graph_kinds)
     missing_graph_formats = tuple(format_name for format_name in required_graph_formats if format_name not in emitted_graph_formats)
     missing_check_ids = tuple(check_id for check_id in required_check_ids if check_id not in emitted_check_ids)
+    missing_explain_kinds = tuple(kind for kind in required_explain_kinds if kind not in emitted_explain_kinds)
     missing_symbol_ids = tuple(symbol_id for symbol_id in required_symbol_ids if symbol_id not in emitted_symbol_ids)
     missing_diagnostic_codes = tuple(code for code in required_diagnostic_codes if code not in emitted_diagnostic_codes)
     missing_docs_urls = tuple(url for url in required_docs_urls if url not in emitted_docs_urls)
     missing_handler_edges = tuple(edge for edge in required_handler_edges if edge not in emitted_handler_edges)
+    missing_text_surfaces = tuple(surface for surface in required_text_surfaces if surface not in emitted_text_surfaces)
+    missing_report_formats = tuple(
+        report_format for report_format in required_report_formats if report_format not in emitted_report_formats
+    )
+    missing_reference_counts = tuple(
+        marker for marker in required_reference_counts if marker not in emitted_reference_counts
+    )
+    missing_match_counts = tuple(marker for marker in required_match_counts if marker not in emitted_match_counts)
     return {
         "format": "appgen.graph-explain-text-renderer.v1",
         "ok": not missing
         and not missing_graph_kinds
         and not missing_graph_formats
         and not missing_check_ids
+        and not missing_explain_kinds
         and not missing_symbol_ids
         and not missing_diagnostic_codes
         and not missing_docs_urls
         and not missing_handler_edges
+        and not missing_text_surfaces
+        and not missing_report_formats
+        and not missing_reference_counts
+        and not missing_match_counts
         and not text.lstrip().startswith("{"),
         **_text_renderer_contract_counts(
             text,
@@ -3693,6 +3757,10 @@ def _graph_explain_text_renderer_contract() -> dict:
         "emitted_check_ids": emitted_check_ids,
         "missing_check_id_count": len(missing_check_ids),
         "missing_check_ids": missing_check_ids,
+        "required_explain_kinds": required_explain_kinds,
+        "emitted_explain_kinds": emitted_explain_kinds,
+        "missing_explain_kind_count": len(missing_explain_kinds),
+        "missing_explain_kinds": missing_explain_kinds,
         "required_symbol_ids": required_symbol_ids,
         "emitted_symbol_ids": emitted_symbol_ids,
         "missing_symbol_id_count": len(missing_symbol_ids),
@@ -3709,6 +3777,22 @@ def _graph_explain_text_renderer_contract() -> dict:
         "emitted_handler_edges": emitted_handler_edges,
         "missing_handler_edge_count": len(missing_handler_edges),
         "missing_handler_edges": missing_handler_edges,
+        "required_text_surfaces": required_text_surfaces,
+        "emitted_text_surfaces": emitted_text_surfaces,
+        "missing_text_surface_count": len(missing_text_surfaces),
+        "missing_text_surfaces": missing_text_surfaces,
+        "required_report_formats": required_report_formats,
+        "emitted_report_formats": emitted_report_formats,
+        "missing_report_format_count": len(missing_report_formats),
+        "missing_report_formats": missing_report_formats,
+        "required_reference_counts": required_reference_counts,
+        "emitted_reference_counts": emitted_reference_counts,
+        "missing_reference_count_count": len(missing_reference_counts),
+        "missing_reference_counts": missing_reference_counts,
+        "required_match_counts": required_match_counts,
+        "emitted_match_counts": emitted_match_counts,
+        "missing_match_count_count": len(missing_match_counts),
+        "missing_match_counts": missing_match_counts,
         "json_fallback": text.lstrip().startswith("{"),
         "text_prefix": text[:240],
     }
@@ -7526,10 +7610,15 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and graph_explain_text_renderer.get("missing_graph_kind_count") == 0
             and graph_explain_text_renderer.get("missing_graph_format_count") == 0
             and graph_explain_text_renderer.get("missing_check_id_count") == 0
+            and graph_explain_text_renderer.get("missing_explain_kind_count") == 0
             and graph_explain_text_renderer.get("missing_symbol_id_count") == 0
             and graph_explain_text_renderer.get("missing_diagnostic_code_count") == 0
             and graph_explain_text_renderer.get("missing_docs_url_count") == 0
-            and graph_explain_text_renderer.get("missing_handler_edge_count") == 0,
+            and graph_explain_text_renderer.get("missing_handler_edge_count") == 0
+            and graph_explain_text_renderer.get("missing_text_surface_count") == 0
+            and graph_explain_text_renderer.get("missing_report_format_count") == 0
+            and graph_explain_text_renderer.get("missing_reference_count_count") == 0
+            and graph_explain_text_renderer.get("missing_match_count_count") == 0,
             "Explain CLI covers symbol, diagnostic, and handler text/JSON modes with format markers and navigation details.",
             "docs/tooling.md#appgen-explain",
             {
@@ -7587,6 +7676,10 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "emitted_check_ids": graph_explain_text_renderer.get("emitted_check_ids"),
                     "missing_check_id_count": graph_explain_text_renderer.get("missing_check_id_count"),
                     "missing_check_ids": graph_explain_text_renderer.get("missing_check_ids"),
+                    "required_explain_kinds": graph_explain_text_renderer.get("required_explain_kinds"),
+                    "emitted_explain_kinds": graph_explain_text_renderer.get("emitted_explain_kinds"),
+                    "missing_explain_kind_count": graph_explain_text_renderer.get("missing_explain_kind_count"),
+                    "missing_explain_kinds": graph_explain_text_renderer.get("missing_explain_kinds"),
                     "required_symbol_ids": graph_explain_text_renderer.get("required_symbol_ids"),
                     "emitted_symbol_ids": graph_explain_text_renderer.get("emitted_symbol_ids"),
                     "missing_symbol_id_count": graph_explain_text_renderer.get("missing_symbol_id_count"),
@@ -7603,6 +7696,22 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "emitted_handler_edges": graph_explain_text_renderer.get("emitted_handler_edges"),
                     "missing_handler_edge_count": graph_explain_text_renderer.get("missing_handler_edge_count"),
                     "missing_handler_edges": graph_explain_text_renderer.get("missing_handler_edges"),
+                    "required_text_surfaces": graph_explain_text_renderer.get("required_text_surfaces"),
+                    "emitted_text_surfaces": graph_explain_text_renderer.get("emitted_text_surfaces"),
+                    "missing_text_surface_count": graph_explain_text_renderer.get("missing_text_surface_count"),
+                    "missing_text_surfaces": graph_explain_text_renderer.get("missing_text_surfaces"),
+                    "required_report_formats": graph_explain_text_renderer.get("required_report_formats"),
+                    "emitted_report_formats": graph_explain_text_renderer.get("emitted_report_formats"),
+                    "missing_report_format_count": graph_explain_text_renderer.get("missing_report_format_count"),
+                    "missing_report_formats": graph_explain_text_renderer.get("missing_report_formats"),
+                    "required_reference_counts": graph_explain_text_renderer.get("required_reference_counts"),
+                    "emitted_reference_counts": graph_explain_text_renderer.get("emitted_reference_counts"),
+                    "missing_reference_count_count": graph_explain_text_renderer.get("missing_reference_count_count"),
+                    "missing_reference_counts": graph_explain_text_renderer.get("missing_reference_counts"),
+                    "required_match_counts": graph_explain_text_renderer.get("required_match_counts"),
+                    "emitted_match_counts": graph_explain_text_renderer.get("emitted_match_counts"),
+                    "missing_match_count_count": graph_explain_text_renderer.get("missing_match_count_count"),
+                    "missing_match_counts": graph_explain_text_renderer.get("missing_match_counts"),
                     "json_fallback": graph_explain_text_renderer.get("json_fallback"),
                 },
             },
