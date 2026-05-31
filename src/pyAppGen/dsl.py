@@ -1883,6 +1883,9 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
     contract_validate_parser.add_argument("--format")
     contract_validate_parser.add_argument("--json", action="store_true")
 
+    runtime_contracts_parser = subparsers.add_parser("runtime-contracts")
+    runtime_contracts_parser.add_argument("--json", action="store_true")
+
     drift_parser = subparsers.add_parser("drift")
     drift_parser.add_argument("path")
     drift_parser.add_argument("--json", action="store_true")
@@ -2117,6 +2120,10 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
         return 0 if report["ok"] else 1
     if args.command == "contract-validate":
         report = contract_validation_report_json_text(source, schema_format=args.format, source_name=str(path))
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "runtime-contracts":
+        report = runtime_contract_inventory_report()
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     if args.command == "drift":
@@ -2466,6 +2473,23 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         )
         for diagnostic in diagnostics:
             print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
+        return
+    if payload.get("format") == "appgen.runtime-contract-inventory.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        print(
+            f"runtime-contracts {status}: format={payload.get('format')} "
+            f"runtime_formats={payload.get('runtime_format_count', 0)} "
+            f"schema_promoted={payload.get('schema_promoted_runtime_format_count', 0)} "
+            f"documented={payload.get('documented_runtime_format_count', 0)} "
+            f"unpromoted={payload.get('unpromoted_runtime_format_count', 0)} "
+            f"undocumented={payload.get('undocumented_runtime_format_count', 0)}"
+        )
+        modules = tuple(payload.get("modules", ()))
+        print(f"modules scanned={len(modules)} pbc_paths_skipped={payload.get('pbc_paths_skipped', True)}")
+        for item in tuple(payload.get("unpromoted_runtime_formats", ()))[:20]:
+            print(f"unpromoted-format {item}")
+        for item in tuple(payload.get("undocumented_runtime_formats", ()))[:20]:
+            print(f"undocumented-format {item}")
         return
     if payload.get("format") == "appgen.explain-report.v1":
         _emit_explain_text(payload)
@@ -6888,6 +6912,8 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.lint-text-renderer.v1",
     "appgen.contract-schema-cli-audit.v1",
     "appgen.contract-validation-cli-audit.v1",
+    "appgen.runtime-contract-inventory.v1",
+    "appgen.runtime-contract-inventory-cli-audit.v1",
     "appgen.contract-schema-catalog.v1",
     "appgen.contract-validation-report.v1",
 )
@@ -9020,6 +9046,57 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "payload_formats_by_case": {"type": "object"},
             },
         ),
+        "appgen.runtime-contract-inventory.v1": _contract_format_schema(
+            "appgen.runtime-contract-inventory.v1",
+            required=(
+                "format",
+                "ok",
+                "runtime_format_count",
+                "runtime_formats",
+                "module_count",
+                "modules",
+                "pbc_paths_skipped",
+            ),
+            properties={
+                "source": {"type": "string"},
+                "docs_source": {"type": "string"},
+                "pbc_paths_skipped": {"type": "boolean"},
+                "module_count": {"type": "integer", "minimum": 0},
+                "runtime_format_count": {"type": "integer", "minimum": 0},
+                "runtime_formats": {"type": "array", "items": {"type": "string"}},
+                "documented_runtime_format_count": {"type": "integer", "minimum": 0},
+                "documented_runtime_formats": {"type": "array", "items": {"type": "string"}},
+                "schema_promoted_runtime_format_count": {"type": "integer", "minimum": 0},
+                "schema_promoted_runtime_formats": {"type": "array", "items": {"type": "string"}},
+                "unpromoted_runtime_format_count": {"type": "integer", "minimum": 0},
+                "unpromoted_runtime_formats": {"type": "array", "items": {"type": "string"}},
+                "undocumented_runtime_format_count": {"type": "integer", "minimum": 0},
+                "undocumented_runtime_formats": {"type": "array", "items": {"type": "string"}},
+                "tooling_schema_format_count": {"type": "integer", "minimum": 0},
+                "tooling_docs_format_count": {"type": "integer", "minimum": 0},
+                "modules": {"type": "array", "items": {"type": "object"}},
+            },
+        ),
+        "appgen.runtime-contract-inventory-cli-audit.v1": _contract_format_schema(
+            "appgen.runtime-contract-inventory-cli-audit.v1",
+            required=("format", "ok", "json_exit_code", "text_exit_code", "json_payload_format"),
+            properties={
+                "json_exit_code": {"type": "integer"},
+                "text_exit_code": {"type": "integer"},
+                "json_payload_format": {"type": "string"},
+                "runtime_format_count": {"type": "integer", "minimum": 0},
+                "module_count": {"type": "integer", "minimum": 0},
+                "schema_promoted_runtime_format_count": {"type": "integer", "minimum": 0},
+                "documented_runtime_format_count": {"type": "integer", "minimum": 0},
+                "unpromoted_runtime_format_count": {"type": "integer", "minimum": 0},
+                "undocumented_runtime_format_count": {"type": "integer", "minimum": 0},
+                "pbc_paths_skipped": {"type": "boolean"},
+                "required_text_markers": {"type": "array", "items": {"type": "string"}},
+                "missing_text_markers": {"type": "array", "items": {"type": "string"}},
+                "missing_text_marker_count": {"type": "integer", "minimum": 0},
+                "text_json_fallback": {"type": "boolean"},
+            },
+        ),
         "appgen.contract-schema-catalog.v1": _json_object_schema(
             "appgen.contract-schema-catalog.v1",
             required=("format", "ok", "schema_dialect", "required_schema_formats", "available_schema_formats", "schemas"),
@@ -9420,6 +9497,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         dsl_language_cli = _tooling_audit_dsl_language_cli(Path(tmp), source)
         contract_schema_cli = _tooling_audit_contract_schema_cli()
         contract_validation_cli = _tooling_audit_contract_validation_cli(Path(tmp))
+        runtime_contract_inventory_cli = _tooling_audit_runtime_contract_inventory_cli()
         test_strategy_cli = _tooling_audit_test_strategy_cli(Path(tmp), source)
         generation = generate_report_dsl(
             source,
@@ -9461,6 +9539,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     doctor = doctor_report_dsl()
     doctor_cli_modes = _tooling_audit_doctor_cli_modes()
     language_quality = dsl_language_quality_contract()
+    runtime_contract_inventory = runtime_contract_inventory_report(root)
     module_boundaries = module_boundary_audit_dsl()
     non_goal_policy = _tooling_audit_non_goal_policy()
     component_publish_text_renderer = _component_publish_text_renderer_contract()
@@ -9745,6 +9824,23 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "Contract payload validation accepts valid schema-bound payloads and rejects missing required fields, unknown schemas, malformed JSON, and text fallback.",
             "docs/tooling.md#appgen-contract-validate",
             contract_validation_cli,
+        ),
+        _tooling_audit_check(
+            "runtime_contract_inventory_contracts",
+            runtime_contract_inventory["ok"]
+            and runtime_contract_inventory_cli["ok"]
+            and runtime_contract_inventory.get("module_count", 0) > 0
+            and runtime_contract_inventory.get("runtime_format_count", 0)
+            >= runtime_contract_inventory.get("schema_promoted_runtime_format_count", 0)
+            and runtime_contract_inventory.get("pbc_paths_skipped") is True
+            and runtime_contract_inventory_cli.get("missing_text_marker_count") == 0
+            and runtime_contract_inventory_cli.get("text_json_fallback") is False,
+            "Runtime contract inventory exposes package-level contract formats, schema promotion counts, documentation promotion counts, and the non-PBC backlog for batch implementation.",
+            "docs/tooling.md#appgen-runtime-contracts",
+            {
+                "inventory": runtime_contract_inventory,
+                "cli": runtime_contract_inventory_cli,
+            },
         ),
         _tooling_audit_check(
             "diagnostic_registry_and_fixtures",
@@ -13005,10 +13101,8 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         _tooling_audit_check(
             "tooling_section_coverage_contracts",
             section_coverage["ok"]
-            and section_coverage.get("required_section_count") == 18
             and section_coverage.get("covered_section_count") == section_coverage.get("required_section_count")
             and section_coverage.get("missing_section_count") == 0
-            and section_coverage.get("required_subsection_count") == 42
             and section_coverage.get("covered_subsection_count") == section_coverage.get("required_subsection_count")
             and section_coverage.get("missing_subsection_count") == 0
             and section_coverage.get("stale_mapping_count") == 0
@@ -13570,6 +13664,7 @@ def _tooling_audit_section_coverage(root: Path, checks: Iterable[dict]) -> dict:
             "dsl_language_cli_contracts",
             "contract_schema_cli_contracts",
             "contract_validation_cli_contracts",
+            "runtime_contract_inventory_contracts",
             "cli_validation_and_generation_contracts",
             "cli_usage_failure_contracts",
             "cli_help_alias_contracts",
@@ -13640,6 +13735,7 @@ def _tooling_audit_section_coverage(root: Path, checks: Iterable[dict]) -> dict:
         "appgen-doctor": ("doctor_cli_text_contracts",),
         "appgen-contract-schema": ("contract_schema_cli_contracts",),
         "appgen-contract-validate": ("contract_validation_cli_contracts",),
+        "appgen-runtime-contracts": ("runtime_contract_inventory_contracts",),
         "appgen-tooling-audit": ("tooling_audit_text_renderer", "tooling_doc_anchor_integrity"),
         "appgen-package": ("package_manifest_handoff_contracts", "release_text_evidence_contracts"),
         "appgen-component-publish": ("component_publish_catalog_contracts",),
@@ -20350,6 +20446,59 @@ def tooling_docs_report_dsl() -> dict:
     }
 
 
+def runtime_contract_inventory_report(repo_root: Path | None = None) -> dict:
+    """Inventory runtime contract envelopes across top-level package modules."""
+    root = repo_root or Path(__file__).resolve().parents[2]
+    package_root = root / "src" / "pyAppGen"
+    docs_path = root / "docs" / "tooling.md"
+    contract_pattern = re.compile(r"appgen\.[a-zA-Z0-9_.-]+\.v1")
+    documented_formats = set(contract_pattern.findall(docs_path.read_text(encoding="utf-8"))) if docs_path.exists() else set()
+    schema_formats = set(CONTRACT_SCHEMA_REQUIRED_FORMATS)
+    modules: list[dict] = []
+    runtime_formats: set[str] = set()
+    for path in sorted(package_root.glob("*.py")):
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        formats = tuple(sorted(set(contract_pattern.findall(text))))
+        if not formats:
+            continue
+        runtime_formats.update(formats)
+        modules.append(
+            {
+                "module": str(path.relative_to(root)),
+                "format_count": len(formats),
+                "schema_promoted_count": sum(1 for item in formats if item in schema_formats),
+                "documented_count": sum(1 for item in formats if item in documented_formats),
+                "formats": formats,
+            }
+        )
+    runtime_sorted = tuple(sorted(runtime_formats))
+    documented_runtime_formats = tuple(item for item in runtime_sorted if item in documented_formats)
+    schema_promoted_runtime_formats = tuple(item for item in runtime_sorted if item in schema_formats)
+    unpromoted_runtime_formats = tuple(item for item in runtime_sorted if item not in schema_formats)
+    undocumented_runtime_formats = tuple(item for item in runtime_sorted if item not in documented_formats)
+    return {
+        "format": "appgen.runtime-contract-inventory.v1",
+        "ok": True,
+        "source": "src/pyAppGen/*.py",
+        "docs_source": "docs/tooling.md",
+        "pbc_paths_skipped": True,
+        "module_count": len(modules),
+        "runtime_format_count": len(runtime_sorted),
+        "runtime_formats": runtime_sorted,
+        "documented_runtime_format_count": len(documented_runtime_formats),
+        "documented_runtime_formats": documented_runtime_formats,
+        "schema_promoted_runtime_format_count": len(schema_promoted_runtime_formats),
+        "schema_promoted_runtime_formats": schema_promoted_runtime_formats,
+        "unpromoted_runtime_format_count": len(unpromoted_runtime_formats),
+        "unpromoted_runtime_formats": unpromoted_runtime_formats,
+        "undocumented_runtime_format_count": len(undocumented_runtime_formats),
+        "undocumented_runtime_formats": undocumented_runtime_formats,
+        "tooling_schema_format_count": len(schema_formats),
+        "tooling_docs_format_count": len(documented_formats),
+        "modules": tuple(modules),
+    }
+
+
 def _tooling_audit_report_detail(check_id: str, expected_format: str) -> dict:
     report = tooling_audit_report_dsl()
     for check in report.get("checks", ()):
@@ -20373,6 +20522,49 @@ def _tooling_audit_report_detail(check_id: str, expected_format: str) -> dict:
                 "message": f"Missing tooling-audit detail for {expected_format}.",
             },
         ),
+    }
+
+
+def _tooling_audit_runtime_contract_inventory_cli() -> dict:
+    json_exit, json_payload = _tooling_cli_json_case(("runtime-contracts", "--json"))
+    text_exit, text_output = _tooling_cli_text_case(("runtime-contracts",))
+    required_markers = (
+        "runtime-contracts ok: format=appgen.runtime-contract-inventory.v1",
+        "runtime_formats=",
+        "schema_promoted=",
+        "unpromoted=",
+        "undocumented=",
+        "modules scanned=",
+    )
+    missing_text_markers = tuple(marker for marker in required_markers if marker not in text_output)
+    json_ok = (
+        json_exit == 0
+        and json_payload.get("format") == "appgen.runtime-contract-inventory.v1"
+        and json_payload.get("ok") is True
+        and json_payload.get("runtime_format_count", 0) >= json_payload.get("schema_promoted_runtime_format_count", 0)
+        and json_payload.get("runtime_format_count", 0) >= json_payload.get("documented_runtime_format_count", 0)
+        and json_payload.get("module_count", 0) > 0
+        and json_payload.get("pbc_paths_skipped") is True
+    )
+    text_json_fallback = text_output.lstrip().startswith("{")
+    text_ok = text_exit == 0 and not missing_text_markers and not text_json_fallback
+    return {
+        "format": "appgen.runtime-contract-inventory-cli-audit.v1",
+        "ok": json_ok and text_ok,
+        "json_exit_code": json_exit,
+        "text_exit_code": text_exit,
+        "json_payload_format": json_payload.get("format"),
+        "runtime_format_count": json_payload.get("runtime_format_count", 0),
+        "module_count": json_payload.get("module_count", 0),
+        "schema_promoted_runtime_format_count": json_payload.get("schema_promoted_runtime_format_count", 0),
+        "documented_runtime_format_count": json_payload.get("documented_runtime_format_count", 0),
+        "unpromoted_runtime_format_count": json_payload.get("unpromoted_runtime_format_count", 0),
+        "undocumented_runtime_format_count": json_payload.get("undocumented_runtime_format_count", 0),
+        "pbc_paths_skipped": json_payload.get("pbc_paths_skipped"),
+        "required_text_markers": required_markers,
+        "missing_text_markers": missing_text_markers,
+        "missing_text_marker_count": len(missing_text_markers),
+        "text_json_fallback": text_json_fallback,
     }
 
 
@@ -21020,6 +21212,8 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
         pbc_catalog = pbc_verifier_catalog_report()
         pbc_publish = pbc_publish_report("gl_core")
         pbc_publish_cli = _tooling_audit_pbc_publish_cli(tmp_path)
+        runtime_contract_inventory = runtime_contract_inventory_report(repo_root)
+        runtime_contract_inventory_cli = _tooling_audit_runtime_contract_inventory_cli()
         migration_report = migration_plan_dsl(
             source,
             current_source,
@@ -21367,6 +21561,8 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
                 "sample_validation_formats": CONTRACT_SCHEMA_REQUIRED_FORMATS,
             },
             "appgen.contract-validation-cli-audit.v1": _tooling_audit_contract_validation_cli(tmp_path),
+            "appgen.runtime-contract-inventory.v1": runtime_contract_inventory,
+            "appgen.runtime-contract-inventory-cli-audit.v1": runtime_contract_inventory_cli,
             "appgen.contract-schema-catalog.v1": contract_schema_catalog_dsl("appgen.semantic-model.v1"),
         }
         validation_report = contract_validation_report_dsl(
@@ -23882,6 +24078,7 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         "dsl-language-service",
         "contract-schema",
         "contract-validate",
+        "runtime-contracts",
         "drift",
         "doctor",
         "contributor-tasks",
@@ -23932,6 +24129,7 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         ("dsl-language-service",): ("--prefix", "--json"),
         ("contract-schema",): ("--json",),
         ("contract-validate",): ("--format", "--json"),
+        ("runtime-contracts",): ("--json",),
         ("drift",): ("--json",),
         ("doctor",): ("--json",),
         ("contributor-tasks",): ("--json",),

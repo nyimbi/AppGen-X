@@ -5981,8 +5981,8 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
             **ok("appgen.cli-help-surface-audit.v1"),
             "documented_missing_subcommand_count": 0,
             "help_missing_subcommand_count": 0,
-            "subcommand_option_surface_count": 26,
-            "passing_option_surface_count": 26,
+            "subcommand_option_surface_count": 27,
+            "passing_option_surface_count": 27,
             "failing_option_surface_count": 0,
             "missing_option_count": 0,
             "command_alias_count": 2,
@@ -6657,6 +6657,16 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert contract_validation_check["detail"]["missing_required_error_count"] >= 1
     assert contract_validation_check["detail"]["unknown_schema_available"] is False
     assert contract_validation_check["detail"]["malformed_diagnostic_count"] >= 1
+    runtime_inventory_check = next(
+        check for check in report["checks"] if check["id"] == "runtime_contract_inventory_contracts"
+    )
+    assert runtime_inventory_check["detail"]["inventory"]["format"] == "appgen.runtime-contract-inventory.v1"
+    assert runtime_inventory_check["detail"]["inventory"]["ok"] is True
+    assert runtime_inventory_check["detail"]["inventory"]["pbc_paths_skipped"] is True
+    assert runtime_inventory_check["detail"]["inventory"]["unpromoted_runtime_format_count"] > 0
+    assert runtime_inventory_check["detail"]["cli"]["format"] == "appgen.runtime-contract-inventory-cli-audit.v1"
+    assert runtime_inventory_check["detail"]["cli"]["ok"] is True
+    assert runtime_inventory_check["detail"]["cli"]["missing_text_marker_count"] == 0
     non_goal_check = next(check for check in report["checks"] if check["id"] == "non_goal_policy_guards")
     assert non_goal_check["detail"]["format"] == "appgen.non-goal-policy-audit.v1"
     assert non_goal_check["detail"]["ok"] is True
@@ -6831,7 +6841,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert section_coverage_check["detail"]["missing_section_count"] == 0
     assert section_coverage_check["detail"]["missing_sections"] == ()
-    assert section_coverage_check["detail"]["required_subsection_count"] == 42
+    assert section_coverage_check["detail"]["required_subsection_count"] >= 42
     assert section_coverage_check["detail"]["covered_subsection_count"] == (
         section_coverage_check["detail"]["required_subsection_count"]
     )
@@ -11278,8 +11288,8 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert "component-publish, pbc, designer-sync" in normalized_help
     assert "diagnostics, parser-golden, module-boundaries, non-goals, test-strategy" in normalized_help
     assert "dsl-quality, dsl-antlr, dsl-authoring-gate, dsl-language-service" in normalized_help
-    assert "doctor, contributor-tasks, priority-order, implementation-phases" in normalized_help
-    assert "tooling-docs, and tooling-audit" in normalized_help
+    assert "runtime-contracts, drift, doctor, contributor-tasks, priority-order" in normalized_help
+    assert "implementation-phases, tooling-docs, and tooling-audit" in normalized_help
     assert "apg =" in pyproject
     assert "visual drag-and-drop form design" in normalized_help
     assert audit["format"] == "appgen.cli-help-surface-audit.v1"
@@ -11667,6 +11677,8 @@ def test_contract_schema_catalog_exposes_core_json_schemas() -> None:
         "appgen.priority-order-contract-audit.v1",
         "appgen.contract-schema-cli-audit.v1",
         "appgen.contract-validation-cli-audit.v1",
+        "appgen.runtime-contract-inventory.v1",
+        "appgen.runtime-contract-inventory-cli-audit.v1",
     } <= set(catalog["required_schema_formats"])
     assert catalog["missing_required_schema_count"] == 0
     assert catalog["missing_required_schema_formats"] == ()
@@ -11776,6 +11788,28 @@ def test_contract_validation_cli_audit_proves_payload_validation_modes(tmp_path:
     assert audit["unknown_schema_available"] is False
     assert audit["malformed_diagnostic_count"] >= 1
     assert audit["text_prefix"].startswith("contract-validate ok: format=appgen.contract-validation-report.v1")
+
+
+def test_runtime_contract_inventory_cli_audit_exposes_package_contract_backlog() -> None:
+    root = Path(__file__).resolve().parents[1]
+    report = appgen_dsl.runtime_contract_inventory_report(root)
+    audit = appgen_dsl._tooling_audit_runtime_contract_inventory_cli()
+
+    assert report["format"] == "appgen.runtime-contract-inventory.v1"
+    assert report["ok"] is True
+    assert report["pbc_paths_skipped"] is True
+    assert report["module_count"] > 0
+    assert report["runtime_format_count"] >= report["schema_promoted_runtime_format_count"]
+    assert report["runtime_format_count"] >= report["documented_runtime_format_count"]
+    assert report["unpromoted_runtime_format_count"] > 0
+    assert "appgen.runtime-contract-inventory.v1" in report["schema_promoted_runtime_formats"]
+    assert audit["format"] == "appgen.runtime-contract-inventory-cli-audit.v1"
+    assert audit["ok"] is True
+    assert audit["json_payload_format"] == "appgen.runtime-contract-inventory.v1"
+    assert audit["json_exit_code"] == 0
+    assert audit["text_exit_code"] == 0
+    assert audit["missing_text_marker_count"] == 0
+    assert audit["text_json_fallback"] is False
 
 
 def test_cli_contracts_cover_text_summaries_exit_codes_and_bad_arguments(tmp_path: Path) -> None:

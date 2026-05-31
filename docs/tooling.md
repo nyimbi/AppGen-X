@@ -815,7 +815,9 @@ audits, semantic-drift and semantic-drift text-renderer audits,
 `appgen.component-publish-cli-audit.v1`,
 `appgen.component-publish-report.v1`, `appgen.doctor-report.v1`,
 `appgen.tooling-audit.v1`, `appgen.contract-schema-catalog.v1`, and
-`appgen.contract-validation-report.v1`. The catalog is intentionally complete:
+`appgen.contract-validation-report.v1`,
+`appgen.runtime-contract-inventory.v1`, and
+`appgen.runtime-contract-inventory-cli-audit.v1`. The catalog is intentionally complete:
 every `appgen.*.v1` envelope named in this document, including IDE, frontend,
 visual designer, LSP hover-depth, migration, natural-language, packaging,
 release, component/PBC wrapper, and project-governance contracts, is exported as
@@ -883,6 +885,34 @@ The aggregate `contract_validation_cli_contracts` gate fails when contract
 validation stops rejecting broken payloads, exits with the wrong process status,
 falls back to raw JSON in text mode, or loses the stable markers external agents
 use to decide whether a generated contract is safe to consume.
+
+### `appgen runtime-contracts`
+
+```console
+appgen runtime-contracts --json
+appgen runtime-contracts
+```
+
+Inventories `appgen.*.v1` runtime envelopes across top-level package modules
+outside the active PBC implementation tree. The command returns
+`appgen.runtime-contract-inventory.v1` with module-level format lists,
+documented format counts, schema-promoted format counts, and explicit
+unpromoted/undocumented format lists. The inventory is intentionally
+non-blocking: a large backlog is expected while package-level release gates are
+promoted into reusable tooling contracts, but the backlog must be visible so
+contributors and coding agents can work in batches instead of rediscovering
+formats by source scraping.
+
+Text mode prints the inventory envelope format, runtime format count,
+schema-promoted count, documented count, unpromoted count, undocumented count,
+module count, and sample unpromoted/undocumented format names. JSON remains the
+authoritative handoff.
+
+`appgen.runtime-contract-inventory-cli-audit.v1` proves JSON and text modes for
+this command. The aggregate tooling audit exposes it through
+`runtime_contract_inventory_contracts`, which fails if the inventory command
+stops scanning package modules, stops skipping PBC paths, loses text markers, or
+falls back to raw JSON.
 
 ### `appgen semantic`
 
@@ -2775,7 +2805,7 @@ Exit criteria:
   package-manifest, component/PBC wrapper, doctor, tooling-audit,
   project-governance, schema-catalog, and contract-validation report schemas are
   available from CLI JSON and text modes. The schema audit validates
-  representative payloads for all 162 documented `appgen.*.v1` formats, so
+  representative payloads for all 164 documented `appgen.*.v1` formats, so
   adding a documented contract without a matching runtime sample fails the
   release gate.
 - `appgen.contract-validation-cli-audit.v1` proves those JSON contracts can be

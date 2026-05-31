@@ -97832,9 +97832,9 @@ def main(
     migration-plan, nl-plan, lsp, verify, package, component-publish, pbc,
     designer-sync, diagnostics, parser-golden, module-boundaries, non-goals,
     test-strategy, dsl-quality, dsl-antlr, dsl-authoring-gate,
-    dsl-language-service, contract-schema, contract-validate, drift, doctor,
-    contributor-tasks, priority-order, implementation-phases, tooling-docs, and
-    tooling-audit.
+    dsl-language-service, contract-schema, contract-validate, runtime-contracts,
+    drift, doctor, contributor-tasks, priority-order, implementation-phases,
+    tooling-docs, and tooling-audit.
     """
     schema_sources = [
         path for path in (dbml_path, sql_path, pony_path, dsl_path) if path is not None
