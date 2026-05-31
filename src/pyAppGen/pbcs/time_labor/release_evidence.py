@@ -15,3 +15,32 @@ def validate_release_evidence()->dict:
  e=build_release_evidence(); m=release_readiness_manifest(); missing=tuple(s for s in m["required_sections"] if s not in m["sections"]); failed=tuple(c for c in m["checks"] if c.get("ok") is not True); boundary=tuple(g for g,f in (("schema_shared_table_access",e["schema"].get("shared_table_access") is not False),("service_shared_table_access",e["service"].get("shared_table_access") is not False),("api_shared_table_access",e["api"].get("shared_table_access") is not False),("repository_shared_table_access",e["repository"].get("shared_table_access") is not False)) if f); return {"ok":m["ok"] and e["pbc"]==m["pbc"] and not m["blocking_gaps"] and not missing and not failed and not boundary,"pbc":"time_labor","manifest":m,"missing_sections":missing,"failed_checks":failed,"boundary_gaps":boundary,"side_effects":()}
 def smoke_test()->dict:
  v=validate_release_evidence(); e=build_release_evidence(); return {"ok":v["ok"] and e["ok"],"validation":v,"evidence":e,"side_effects":()}
+
+
+# Improve1 time labor control release extension.
+from .time_labor_control import improve1_time_labor_control_contract as _improve1_time_labor_control_contract
+
+_TIME_CONTROL_BASE_BUILD_RELEASE_EVIDENCE = build_release_evidence
+_TIME_CONTROL_BASE_VALIDATE_RELEASE_EVIDENCE = validate_release_evidence
+
+
+def build_release_evidence() -> dict:
+    evidence = dict(_TIME_CONTROL_BASE_BUILD_RELEASE_EVIDENCE())
+    control = _improve1_time_labor_control_contract()
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_time_labor_control", "ok": control["ok"]},)
+    evidence.update({
+        "ok": bool(evidence.get("ok")) and control["ok"],
+        "checks": checks,
+        "time_labor_control": control,
+        "blocking_gaps": tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ())),
+    })
+    return evidence
+
+
+def validate_release_evidence() -> dict:
+    validation = dict(_TIME_CONTROL_BASE_VALIDATE_RELEASE_EVIDENCE())
+    control = _improve1_time_labor_control_contract()
+    validation["ok"] = validation.get("ok") is True and control["ok"]
+    validation["time_labor_control"] = control
+    validation["blocking_gaps"] = tuple(validation.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ()))
+    return validation
