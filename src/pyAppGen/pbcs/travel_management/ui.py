@@ -52,3 +52,35 @@ def travel_management_render_workbench(state=None):
         'table_browsers': full['table_browsers'],
         'agent_tools': full['agent_tools'],
     }
+
+
+# Improve1 travel management control UI extension.
+from .travel_management_control import improve1_travel_management_control_contract as _improve1_travel_management_control_contract
+
+_TRAVEL_CONTROL_BASE_UI_CONTRACT = travel_management_ui_contract
+_TRAVEL_CONTROL_BASE_RENDER_WORKBENCH = travel_management_render_workbench
+
+
+def travel_management_ui_contract() -> dict:
+    ui = dict(_TRAVEL_CONTROL_BASE_UI_CONTRACT())
+    control = _improve1_travel_management_control_contract()
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "travel_management_control_contract": control,
+        "travel_management_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "travel_management_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def travel_management_render_workbench(*args, **kwargs) -> dict:
+    workbench = dict(_TRAVEL_CONTROL_BASE_RENDER_WORKBENCH(*args, **kwargs))
+    control = _improve1_travel_management_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "travel_management_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "travel_management_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "travel_management_control_agent_tools": tuple(f"travel_management.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench

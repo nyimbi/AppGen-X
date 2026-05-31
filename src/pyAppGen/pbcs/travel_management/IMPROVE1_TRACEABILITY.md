@@ -63,3 +63,10 @@ Verification rule: every row must identify a code/model artifact, UI surface, se
 - Matrix rows: 50 of 50 improve1 features.
 - The accompanying `tests/test_improve1_traceability.py` test verifies row count and required evidence columns against the current backlog.
 - This file is traceability evidence, not a substitute for the executable tests and release evidence linked in the table.
+
+
+## Executable travel management control evidence
+
+- `travel_management_control.py` provides feature-specific control specs for all 50 rows, including owned control tables, trip/policy/booking/duty-of-care/disruption/expense/privacy fields, UI panel names, service/API routes, declared AppGen-X dependencies, allowed database backends, and side-effect-free evaluation evidence.
+- `tests/test_domain_behavior.py` verifies every improve1 feature through the executable control contract and asserts fail-closed behavior for trip/policy/booking, care/disruption, expense/supplier, operations/agent/privacy, approval, AI-agent preview, owned-table, database, and eventing constraints.
+- Runtime, UI, release evidence, and improve1 execution planning now expose `improve1_travel_management_control_contract` as package-local release evidence.
