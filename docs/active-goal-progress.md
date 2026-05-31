@@ -4436,3 +4436,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   The contract-schema audit validates live samples for all 43 required schemas,
   so editor payload drift is caught by schema validation instead of relying only
   on prose and aggregate audit counts.
+- Current CLI contract-schema expansion pass promotes command-surface failure
+  and discoverability payloads into reusable schemas. `appgen contract-schema`
+  now covers internal-error payloads, internal-error exit audits, missing-input
+  audits, missing-required-option audits, invalid-choice audits, CLI alias
+  contracts, and CLI help-surface audits. The live schema sample validator now
+  covers all 50 required formats, so agents can validate both successful tooling
+  envelopes and controlled CLI failure contracts through the same catalog.

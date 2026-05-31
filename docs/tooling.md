@@ -722,6 +722,11 @@ JSON Schema 2020-12 dialect, and includes schemas for `appgen.diagnostic.v1`,
 `appgen.lsp-json-rpc-audit.v1`, `appgen.lsp-stdio-transport-audit.v1`,
 `appgen.lsp-service-text-renderer.v1`, and
 `appgen.lsp-code-action-text-renderer.v1`,
+`appgen.internal-error.v1`, `appgen.internal-error-exit-audit.v1`,
+`appgen.missing-input-exit-audit.v1`,
+`appgen.missing-required-option-exit-audit.v1`,
+`appgen.invalid-choice-exit-audit.v1`, `appgen.cli-alias-contract.v1`, and
+`appgen.cli-help-surface-audit.v1`,
 `appgen.designer-sync-report.v1`, diagnostic catalog and fixture audit reports,
 parser-golden and semantic-drift audits, `appgen.migration-plan.v1`,
 `appgen.nl-plan.v1`, `appgen.release-verifier-report.v1`,
@@ -2549,6 +2554,8 @@ Exit criteria:
   semantic-model, formatter, validate/generate, graph-suite, explain, LSP,
   LSP capability, diagnostic, completion, hover, navigation, symbol, code-action,
   formatting, rename, JSON-RPC, stdio, and text-renderer subcontracts,
+  CLI alias/help, missing-input, missing-required-option, invalid-choice, and
+  internal-error contracts,
   designer-sync, diagnostic catalog, parser-golden, drift, migration,
   natural-language, release-verifier, component-publish, doctor, tooling-audit,
   schema-catalog, and contract-validation report schemas are available from CLI
