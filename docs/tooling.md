@@ -1749,6 +1749,13 @@ It also reports summary-line, surface-line, visual-edit-line, dsl-diff-line,
 matrix-line, operation-line, case-line, check-line, passing-check-line, and
 failing-check-line counts so designer release logs prove round-trip,
 projection, and matrix evidence did not collapse into prose.
+Those counts are backed by named evidence: the renderer publishes required,
+emitted, missing, and missing-count fields for designer surfaces, changed
+surfaces, visual edit operations, matrix case ids, check ids, DSL diff snippets,
+text surfaces, embedded contract formats, and status markers. The aggregate IDE
+gate requires zero named missing entries, so a generic designer-sync line cannot
+mask a hidden changed surface, operation, case, diff preview, matrix format, or
+round-trip marker.
 `--edit-json` must be a JSON object; malformed edit payloads are CLI
 configuration errors and return exit code `2` before any designer mutation is
 accepted.

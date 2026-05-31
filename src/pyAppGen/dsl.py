@@ -4370,7 +4370,7 @@ def _emit_designer_sync_text(payload: dict) -> None:
             print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
     if matrix.get("format") == "appgen.designer-visual-edit-matrix.v1":
         print(
-            f"visual-edit-matrix ok={matrix.get('ok')} "
+            f"visual-edit-matrix ok={matrix.get('ok')} format={matrix.get('format')} "
             f"cases={len(matrix.get('cases', ()))} gaps={len(matrix.get('blocking_gaps', ()))}"
         )
         required_operations = tuple(matrix.get("required_operations", ()))
@@ -4441,7 +4441,7 @@ def _designer_sync_text_renderer_contract() -> dict:
         "visual-edit accepted=True round_trip=True changed=database_designer,form_designer diff_lines=2",
         "dsl-diff +  sync_note: string",
         "dsl-diff +  Main: sync_note",
-        "visual-edit-matrix ok=True cases=7 gaps=0",
+        "visual-edit-matrix ok=True format=appgen.designer-visual-edit-matrix.v1 cases=7 gaps=0",
         "visual-edit-operations add_field, add_component, add_flow_transition, add_pbc_include, add_package, add_deployment_unit",
         "visual-edit-case database_designer_add_field",
         "visual-edit-case form_designer_add_component",
@@ -4463,9 +4463,106 @@ def _designer_sync_text_renderer_contract() -> dict:
     operation_lines = tuple(line for line in lines if line.startswith("visual-edit-operations "))
     case_lines = tuple(line for line in lines if line.startswith("visual-edit-case "))
     check_lines = tuple(line for line in lines if line.startswith(("ok ", "fail ")))
+    emitted_surfaces = tuple(
+        surface.strip()
+        for line in surface_lines
+        for surface in line.removeprefix("surfaces ").split(",")
+        if surface.strip()
+    )
+    emitted_changed_surfaces = tuple()
+    for line in visual_edit_lines:
+        for part in line.split():
+            if part.startswith("changed="):
+                emitted_changed_surfaces = tuple(
+                    surface.strip() for surface in part.removeprefix("changed=").split(",") if surface.strip()
+                )
+    emitted_operations = tuple(
+        operation.strip()
+        for line in operation_lines
+        for operation in line.removeprefix("visual-edit-operations ").split(",")
+        if operation.strip()
+    )
+    emitted_case_ids = tuple(line.removeprefix("visual-edit-case ").strip() for line in case_lines)
+    emitted_check_ids = tuple(line.split()[1] for line in check_lines if len(line.split()) >= 2)
+    emitted_diff_snippets = tuple(line.removeprefix("dsl-diff ").strip() for line in dsl_diff_lines)
+    required_surfaces = tuple(payload["surfaces"])
+    required_changed_surfaces = tuple(payload["visual_edit"]["changed_surfaces"])
+    required_operations = tuple(payload["visual_edit_matrix"]["required_operations"])
+    required_case_ids = tuple(case["id"] for case in payload["visual_edit_matrix"]["cases"])
+    required_check_ids = tuple(check["check"] for check in payload["checks"])
+    required_diff_snippets = tuple(payload["visual_edit"]["dsl_diff"])
+    missing_surfaces = tuple(surface for surface in required_surfaces if surface not in emitted_surfaces)
+    missing_changed_surfaces = tuple(
+        surface for surface in required_changed_surfaces if surface not in emitted_changed_surfaces
+    )
+    missing_operations = tuple(operation for operation in required_operations if operation not in emitted_operations)
+    missing_case_ids = tuple(case_id for case_id in required_case_ids if case_id not in emitted_case_ids)
+    missing_check_ids = tuple(check_id for check_id in required_check_ids if check_id not in emitted_check_ids)
+    missing_diff_snippets = tuple(
+        snippet for snippet in required_diff_snippets if snippet not in emitted_diff_snippets
+    )
+    required_text_surfaces = (
+        "summary",
+        "surfaces",
+        "visual_edit",
+        "dsl_diff",
+        "visual_edit_matrix",
+        "operations",
+        "cases",
+        "checks",
+    )
+    emitted_text_surfaces = tuple(
+        surface
+        for surface, present in (
+            ("summary", bool(summary_lines)),
+            ("surfaces", bool(surface_lines)),
+            ("visual_edit", bool(visual_edit_lines)),
+            ("dsl_diff", bool(dsl_diff_lines)),
+            ("visual_edit_matrix", bool(matrix_lines)),
+            ("operations", bool(operation_lines)),
+            ("cases", bool(case_lines)),
+            ("checks", bool(check_lines)),
+        )
+        if present
+    )
+    missing_text_surfaces = tuple(
+        surface for surface in required_text_surfaces if surface not in emitted_text_surfaces
+    )
+    required_contract_formats = (
+        "appgen.designer-sync-report.v1",
+        "appgen.semantic-model.v1",
+        "appgen.designer-visual-edit-matrix.v1",
+    )
+    emitted_contract_formats = tuple(
+        contract_format for contract_format in required_contract_formats if contract_format in text
+    )
+    missing_contract_formats = tuple(
+        contract_format for contract_format in required_contract_formats if contract_format not in emitted_contract_formats
+    )
+    required_status_markers = (
+        "designer-sync ok",
+        "accepted=True",
+        "round_trip=True",
+        "ok=True",
+        "gaps=0",
+    )
+    emitted_status_markers = tuple(marker for marker in required_status_markers if marker in text)
+    missing_status_markers = tuple(
+        marker for marker in required_status_markers if marker not in emitted_status_markers
+    )
     return {
         "format": "appgen.designer-sync-text-renderer.v1",
-        "ok": not missing and not text.lstrip().startswith("{"),
+        "ok": not missing
+        and not missing_surfaces
+        and not missing_changed_surfaces
+        and not missing_operations
+        and not missing_case_ids
+        and not missing_check_ids
+        and not missing_diff_snippets
+        and not missing_text_surfaces
+        and not missing_contract_formats
+        and not missing_status_markers
+        and not text.lstrip().startswith("{"),
         **_text_renderer_contract_counts(
             text,
             required_fragments,
@@ -4483,6 +4580,42 @@ def _designer_sync_text_renderer_contract() -> dict:
         "check_line_count": len(check_lines),
         "passing_check_line_count": sum(1 for line in check_lines if line.startswith("ok ")),
         "failing_check_line_count": sum(1 for line in check_lines if line.startswith("fail ")),
+        "required_surfaces": required_surfaces,
+        "emitted_surfaces": emitted_surfaces,
+        "missing_surface_count": len(missing_surfaces),
+        "missing_surfaces": missing_surfaces,
+        "required_changed_surfaces": required_changed_surfaces,
+        "emitted_changed_surfaces": emitted_changed_surfaces,
+        "missing_changed_surface_count": len(missing_changed_surfaces),
+        "missing_changed_surfaces": missing_changed_surfaces,
+        "required_operations": required_operations,
+        "emitted_operations": emitted_operations,
+        "missing_operation_count": len(missing_operations),
+        "missing_operations": missing_operations,
+        "required_case_ids": required_case_ids,
+        "emitted_case_ids": emitted_case_ids,
+        "missing_case_id_count": len(missing_case_ids),
+        "missing_case_ids": missing_case_ids,
+        "required_check_ids": required_check_ids,
+        "emitted_check_ids": emitted_check_ids,
+        "missing_check_id_count": len(missing_check_ids),
+        "missing_check_ids": missing_check_ids,
+        "required_diff_snippets": required_diff_snippets,
+        "emitted_diff_snippets": emitted_diff_snippets,
+        "missing_diff_snippet_count": len(missing_diff_snippets),
+        "missing_diff_snippets": missing_diff_snippets,
+        "required_text_surfaces": required_text_surfaces,
+        "emitted_text_surfaces": emitted_text_surfaces,
+        "missing_text_surface_count": len(missing_text_surfaces),
+        "missing_text_surfaces": missing_text_surfaces,
+        "required_contract_formats": required_contract_formats,
+        "emitted_contract_formats": emitted_contract_formats,
+        "missing_contract_format_count": len(missing_contract_formats),
+        "missing_contract_formats": missing_contract_formats,
+        "required_status_markers": required_status_markers,
+        "emitted_status_markers": emitted_status_markers,
+        "missing_status_marker_count": len(missing_status_markers),
+        "missing_status_markers": missing_status_markers,
         "json_fallback": text.lstrip().startswith("{"),
         "text_prefix": text[:240],
     }
@@ -8074,6 +8207,15 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and designer["visual_edit"]["round_trip_ok"]
             and designer_visual_edit_matrix["ok"]
             and designer_sync_text_renderer["ok"]
+            and designer_sync_text_renderer.get("missing_surface_count") == 0
+            and designer_sync_text_renderer.get("missing_changed_surface_count") == 0
+            and designer_sync_text_renderer.get("missing_operation_count") == 0
+            and designer_sync_text_renderer.get("missing_case_id_count") == 0
+            and designer_sync_text_renderer.get("missing_check_id_count") == 0
+            and designer_sync_text_renderer.get("missing_diff_snippet_count") == 0
+            and designer_sync_text_renderer.get("missing_text_surface_count") == 0
+            and designer_sync_text_renderer.get("missing_contract_format_count") == 0
+            and designer_sync_text_renderer.get("missing_status_marker_count") == 0
             and designer_sync_cli["ok"]
             and designer_sync_cli.get("missing_scenario_count") == 0
             and designer_sync_cli.get("failing_scenario_count") == 0

@@ -5773,6 +5773,51 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert designer_check["detail"]["cli"]["valid_projection_semantic_model_format"] == "appgen.semantic-model.v1"
     assert designer_check["detail"]["cli"]["non_object_exit"] == 2
     assert "--edit-json must be a JSON object" in designer_check["detail"]["cli"]["non_object_stderr"]
+    assert designer_check["detail"]["text_renderer"]["emitted_surfaces"] == designer_check["detail"]["text_renderer"][
+        "required_surfaces"
+    ]
+    assert designer_check["detail"]["text_renderer"]["missing_surface_count"] == 0
+    assert designer_check["detail"]["text_renderer"]["missing_surfaces"] == ()
+    assert designer_check["detail"]["text_renderer"]["emitted_changed_surfaces"] == designer_check["detail"][
+        "text_renderer"
+    ]["required_changed_surfaces"]
+    assert designer_check["detail"]["text_renderer"]["missing_changed_surface_count"] == 0
+    assert designer_check["detail"]["text_renderer"]["missing_changed_surfaces"] == ()
+    assert designer_check["detail"]["text_renderer"]["emitted_operations"] == designer_check["detail"]["text_renderer"][
+        "required_operations"
+    ]
+    assert designer_check["detail"]["text_renderer"]["missing_operation_count"] == 0
+    assert designer_check["detail"]["text_renderer"]["missing_operations"] == ()
+    assert designer_check["detail"]["text_renderer"]["emitted_case_ids"] == designer_check["detail"]["text_renderer"][
+        "required_case_ids"
+    ]
+    assert designer_check["detail"]["text_renderer"]["missing_case_id_count"] == 0
+    assert designer_check["detail"]["text_renderer"]["missing_case_ids"] == ()
+    assert designer_check["detail"]["text_renderer"]["emitted_check_ids"] == designer_check["detail"]["text_renderer"][
+        "required_check_ids"
+    ]
+    assert designer_check["detail"]["text_renderer"]["missing_check_id_count"] == 0
+    assert designer_check["detail"]["text_renderer"]["missing_check_ids"] == ()
+    assert designer_check["detail"]["text_renderer"]["emitted_diff_snippets"] == designer_check["detail"][
+        "text_renderer"
+    ]["required_diff_snippets"]
+    assert designer_check["detail"]["text_renderer"]["missing_diff_snippet_count"] == 0
+    assert designer_check["detail"]["text_renderer"]["missing_diff_snippets"] == ()
+    assert designer_check["detail"]["text_renderer"]["emitted_text_surfaces"] == designer_check["detail"][
+        "text_renderer"
+    ]["required_text_surfaces"]
+    assert designer_check["detail"]["text_renderer"]["missing_text_surface_count"] == 0
+    assert designer_check["detail"]["text_renderer"]["missing_text_surfaces"] == ()
+    assert designer_check["detail"]["text_renderer"]["emitted_contract_formats"] == designer_check["detail"][
+        "text_renderer"
+    ]["required_contract_formats"]
+    assert designer_check["detail"]["text_renderer"]["missing_contract_format_count"] == 0
+    assert designer_check["detail"]["text_renderer"]["missing_contract_formats"] == ()
+    assert designer_check["detail"]["text_renderer"]["emitted_status_markers"] == designer_check["detail"][
+        "text_renderer"
+    ]["required_status_markers"]
+    assert designer_check["detail"]["text_renderer"]["missing_status_marker_count"] == 0
+    assert designer_check["detail"]["text_renderer"]["missing_status_markers"] == ()
     studio_check = next(check for check in report["checks"] if check["id"] == "studio_semantic_service")
     assert studio_check["detail"]["format"] == "appgen.studio-semantic-service-audit.v1"
     assert studio_check["detail"]["ok"] is True
@@ -8743,6 +8788,81 @@ def test_designer_sync_text_renderer_contract_proves_round_trip_log_markers() ->
     assert report["check_line_count"] == 2
     assert report["passing_check_line_count"] == 2
     assert report["failing_check_line_count"] == 0
+    assert report["required_surfaces"] == (
+        "form_designer",
+        "database_designer",
+        "workflow_designer",
+        "package_designer",
+    )
+    assert report["emitted_surfaces"] == report["required_surfaces"]
+    assert report["missing_surface_count"] == 0
+    assert report["missing_surfaces"] == ()
+    assert report["required_changed_surfaces"] == ("database_designer", "form_designer")
+    assert report["emitted_changed_surfaces"] == report["required_changed_surfaces"]
+    assert report["missing_changed_surface_count"] == 0
+    assert report["missing_changed_surfaces"] == ()
+    assert report["required_operations"] == (
+        "add_field",
+        "add_component",
+        "add_flow_transition",
+        "add_pbc_include",
+        "add_package",
+        "add_deployment_unit",
+    )
+    assert report["emitted_operations"] == report["required_operations"]
+    assert report["missing_operation_count"] == 0
+    assert report["missing_operations"] == ()
+    assert report["required_case_ids"] == (
+        "database_designer_add_field",
+        "form_designer_add_component",
+        "workflow_designer_add_transition",
+        "pbc_composition_designer_add_include",
+        "package_designer_add_package",
+        "deployment_designer_add_unit",
+        "form_designer_reject_invalid_binding",
+    )
+    assert report["emitted_case_ids"] == report["required_case_ids"]
+    assert report["missing_case_id_count"] == 0
+    assert report["missing_case_ids"] == ()
+    assert report["required_check_ids"] == ("semantic_round_trip", "projection_refresh")
+    assert report["emitted_check_ids"] == report["required_check_ids"]
+    assert report["missing_check_id_count"] == 0
+    assert report["missing_check_ids"] == ()
+    assert report["required_diff_snippets"] == ("+  sync_note: string", "+  Main: sync_note")
+    assert report["emitted_diff_snippets"] == report["required_diff_snippets"]
+    assert report["missing_diff_snippet_count"] == 0
+    assert report["missing_diff_snippets"] == ()
+    assert report["required_text_surfaces"] == (
+        "summary",
+        "surfaces",
+        "visual_edit",
+        "dsl_diff",
+        "visual_edit_matrix",
+        "operations",
+        "cases",
+        "checks",
+    )
+    assert report["emitted_text_surfaces"] == report["required_text_surfaces"]
+    assert report["missing_text_surface_count"] == 0
+    assert report["missing_text_surfaces"] == ()
+    assert report["required_contract_formats"] == (
+        "appgen.designer-sync-report.v1",
+        "appgen.semantic-model.v1",
+        "appgen.designer-visual-edit-matrix.v1",
+    )
+    assert report["emitted_contract_formats"] == report["required_contract_formats"]
+    assert report["missing_contract_format_count"] == 0
+    assert report["missing_contract_formats"] == ()
+    assert report["required_status_markers"] == (
+        "designer-sync ok",
+        "accepted=True",
+        "round_trip=True",
+        "ok=True",
+        "gaps=0",
+    )
+    assert report["emitted_status_markers"] == report["required_status_markers"]
+    assert report["missing_status_marker_count"] == 0
+    assert report["missing_status_markers"] == ()
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(
@@ -8752,7 +8872,7 @@ def test_designer_sync_text_renderer_contract_proves_round_trip_log_markers() ->
         "visual-edit accepted=True round_trip=True changed=database_designer,form_designer diff_lines=2",
         "dsl-diff +  sync_note: string",
         "dsl-diff +  Main: sync_note",
-        "visual-edit-matrix ok=True cases=7 gaps=0",
+        "visual-edit-matrix ok=True format=appgen.designer-visual-edit-matrix.v1 cases=7 gaps=0",
         "visual-edit-operations add_field, add_component, add_flow_transition, add_pbc_include, add_package, add_deployment_unit",
         "visual-edit-case database_designer_add_field",
         "visual-edit-case form_designer_add_component",

@@ -4127,3 +4127,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   (`1 passed`, with the known active-PBC `datetime.utcnow()` warnings only),
   scoped diff whitespace check, and restricted-name scan outside archive, Git
   internals, and active PBC paths.
+- Current designer-sync text audit hardening pass replaces fragment-only
+  designer handoff acceptance with named evidence for Studio/IDE round-trip
+  logs. `appgen.designer-sync-text-renderer.v1` now proves required and emitted
+  designer surfaces, changed surfaces, visual edit operations, matrix case ids,
+  check ids, DSL diff snippets, text surfaces, embedded report/matrix contract
+  formats, and status markers as part of its own `ok` condition and the
+  aggregate IDE gate. Verification passed: Python compile for the touched DSL
+  and tests, focused designer-sync text renderer test (`1 passed`), aggregate
+  tooling audit (`1 passed`, with the known active-PBC `datetime.utcnow()`
+  warnings only), scoped diff whitespace check, and restricted-name scan
+  outside archive, Git internals, and active PBC paths.
