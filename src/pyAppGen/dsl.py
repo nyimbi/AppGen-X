@@ -4327,14 +4327,32 @@ def _emit_nl_plan_text(payload: dict) -> None:
     operation_kinds = tuple(operation.get("kind") for operation in operations if operation.get("kind"))
     migration = payload.get("migration_preview") or {}
     token_budget_notes = tuple(payload.get("token_budget_notes", ()))
+    agent_handoffs = tuple(payload.get("agent_handoffs", ()))
+    compact_briefs = tuple(payload.get("compact_model_briefs", ()))
     print(
         f"nl-plan {status}: format={payload.get('format')} intent={payload.get('intent', 'unknown')} "
         f"operations={len(operations)} patch_bytes={len(payload.get('dsl_patch', ''))} "
         f"tests={len(payload.get('test_plan', ()))} "
-        f"token_notes={len(token_budget_notes)}"
+        f"token_notes={len(token_budget_notes)} agent_handoffs={len(agent_handoffs)}"
     )
     if operation_kinds:
         print(f"operation-kinds {', '.join(operation_kinds)}")
+    if agent_handoffs:
+        print(f"agent-handoffs {len(agent_handoffs)}")
+        for handoff in agent_handoffs:
+            print(
+                f"agent-handoff {handoff.get('vector')} launcher={handoff.get('launcher')} "
+                f"backends={','.join(handoff.get('backends', ()))} "
+                f"outputs={','.join(handoff.get('required_outputs', ()))}"
+            )
+    if compact_briefs:
+        print(f"compact-model-briefs {len(compact_briefs)}")
+        for brief in compact_briefs:
+            print(
+                f"compact-model {brief.get('model')} backend={brief.get('backend')} "
+                f"prompt_tokens={brief.get('prompt_tokens')} patch_tokens={brief.get('patch_tokens')} "
+                f"ok={brief.get('ok')}"
+            )
     for test in payload.get("test_plan", ()):
         if not isinstance(test, dict):
             continue
@@ -21756,6 +21774,8 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
     for expected_kind, prompt in accepted_specs:
         exit_code, payload = run_json(("nl-plan", str(source_path), "--prompt", prompt, "--json"))
         operation_kinds = tuple(operation.get("kind") for operation in payload.get("edit_operations", ()))
+        agent_handoff_vectors = tuple(handoff.get("vector") for handoff in payload.get("agent_handoffs", ()))
+        compact_model_briefs = tuple(payload.get("compact_model_briefs", ()))
         accepted_cases.append(
             {
                 "case": f"{expected_kind}_json",
@@ -21770,6 +21790,10 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
                 "migration_format": payload.get("migration_preview", {}).get("format"),
                 "test_count": len(payload.get("test_plan", ())),
                 "token_budget_notes": len(payload.get("token_budget_notes", ())),
+                "agent_handoff_count": len(agent_handoff_vectors),
+                "agent_handoff_vectors": agent_handoff_vectors,
+                "compact_model_count": len(compact_model_briefs),
+                "compact_model_ok": all(brief.get("ok") for brief in compact_model_briefs),
                 "passed": exit_code == 0
                 and payload.get("format") == "appgen.nl-plan.v1"
                 and payload.get("ok") is True
@@ -21779,7 +21803,9 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
                 and payload.get("lint", {}).get("ok") is True
                 and payload.get("migration_preview", {}).get("format") == "appgen.migration-plan.v1"
                 and bool(payload.get("test_plan"))
-                and bool(payload.get("token_budget_notes")),
+                and bool(payload.get("token_budget_notes"))
+                and {"claude_code", "openai_codex", "opencode"} <= set(agent_handoff_vectors)
+                and all(brief.get("ok") for brief in compact_model_briefs),
             }
         )
     rejected_exit, rejected_payload = run_json(
@@ -21807,9 +21833,13 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
     accepted_text_test_plan_lines = tuple(line for line in accepted_text_lines if line.startswith("test-plan "))
     accepted_text_has_token_notes = any(line.startswith("token-budget-notes ") for line in accepted_text_lines)
     accepted_text_token_note_lines = tuple(line for line in accepted_text_lines if line.startswith("token-budget-note "))
+    accepted_text_agent_handoff_lines = tuple(line for line in accepted_text_lines if line.startswith("agent-handoff "))
+    accepted_text_compact_model_lines = tuple(line for line in accepted_text_lines if line.startswith("compact-model "))
     accepted_patch_bytes = sum(case["patch_bytes"] for case in accepted_cases)
     accepted_test_count = sum(case["test_count"] for case in accepted_cases)
     accepted_token_budget_notes = sum(case["token_budget_notes"] for case in accepted_cases)
+    accepted_agent_handoff_count = sum(case["agent_handoff_count"] for case in accepted_cases)
+    accepted_compact_model_count = sum(case["compact_model_count"] for case in accepted_cases)
     required_operation_kinds = tuple(expected_kind for expected_kind, _prompt in accepted_specs)
     required_accepted_case_ids = tuple(f"{expected_kind}_json" for expected_kind in required_operation_kinds)
     observed_accepted_case_ids = tuple(case["case"] for case in accepted_cases)
@@ -21855,6 +21885,18 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
     missing_token_budget_cases = tuple(
         case_id for case_id in required_accepted_case_ids if case_id not in token_budget_cases
     )
+    agent_handoff_cases = tuple(
+        case["case"]
+        for case in accepted_cases
+        if {"claude_code", "openai_codex", "opencode"} <= set(case["agent_handoff_vectors"])
+    )
+    missing_agent_handoff_cases = tuple(
+        case_id for case_id in required_accepted_case_ids if case_id not in agent_handoff_cases
+    )
+    compact_model_cases = tuple(case["case"] for case in accepted_cases if case["compact_model_ok"])
+    missing_compact_model_cases = tuple(
+        case_id for case_id in required_accepted_case_ids if case_id not in compact_model_cases
+    )
     accepted_operation_kinds = tuple(
         sorted({operation_kind for case in accepted_cases for operation_kind in case["operation_kinds"]})
     )
@@ -21869,6 +21911,8 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
         "test_plan",
         "token_budget_notes",
         "token_budget_note",
+        "agent_handoffs",
+        "compact_model_briefs",
     )
     text_markers = {
         "report_format": accepted_text_has_report_format,
@@ -21877,6 +21921,8 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
         "test_plan": bool(accepted_text_test_plan_lines),
         "token_budget_notes": accepted_text_has_token_notes,
         "token_budget_note": bool(accepted_text_token_note_lines),
+        "agent_handoffs": bool(accepted_text_agent_handoff_lines),
+        "compact_model_briefs": bool(accepted_text_compact_model_lines),
     }
     missing_text_markers = tuple(marker for marker in required_text_markers if not text_markers.get(marker))
     accepted_text_marker_count = sum(
@@ -21888,6 +21934,8 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
             bool(accepted_text_test_plan_lines),
             accepted_text_has_token_notes,
             bool(accepted_text_token_note_lines),
+            bool(accepted_text_agent_handoff_lines),
+            bool(accepted_text_compact_model_lines),
         )
         if marker_present
     )
@@ -21942,6 +21990,8 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
         and not missing_migration_format_cases
         and not missing_test_plan_cases
         and not missing_token_budget_cases
+        and not missing_agent_handoff_cases
+        and not missing_compact_model_cases
         and not missing_accepted_operation_kinds
         and accepted_text_exit == 0
         and accepted_text_has_report_format
@@ -21950,6 +22000,8 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
         and bool(accepted_text_test_plan_lines)
         and accepted_text_has_token_notes
         and bool(accepted_text_token_note_lines)
+        and bool(accepted_text_agent_handoff_lines)
+        and bool(accepted_text_compact_model_lines)
         and not missing_text_markers
         and rejected_ok
         and not missing_rejected_exit_code_cases
@@ -21994,6 +22046,12 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
         "token_budget_cases": token_budget_cases,
         "missing_token_budget_case_count": len(missing_token_budget_cases),
         "missing_token_budget_cases": missing_token_budget_cases,
+        "agent_handoff_cases": agent_handoff_cases,
+        "missing_agent_handoff_case_count": len(missing_agent_handoff_cases),
+        "missing_agent_handoff_cases": missing_agent_handoff_cases,
+        "compact_model_cases": compact_model_cases,
+        "missing_compact_model_case_count": len(missing_compact_model_cases),
+        "missing_compact_model_cases": missing_compact_model_cases,
         "accepted_cases": tuple(accepted_cases),
         "accepted_operation_kinds": accepted_operation_kinds,
         "accepted_operation_kind_count": len(accepted_operation_kinds),
@@ -22017,6 +22075,10 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
         "accepted_text_has_token_notes": accepted_text_has_token_notes,
         "accepted_text_token_note_line_count": len(accepted_text_token_note_lines),
         "accepted_text_token_note_lines": accepted_text_token_note_lines,
+        "accepted_text_agent_handoff_line_count": len(accepted_text_agent_handoff_lines),
+        "accepted_text_agent_handoff_lines": accepted_text_agent_handoff_lines,
+        "accepted_text_compact_model_line_count": len(accepted_text_compact_model_lines),
+        "accepted_text_compact_model_lines": accepted_text_compact_model_lines,
         "rejected_ok": rejected_ok,
         "rejected_case_id": rejected_case_id,
         "rejected_exit_code": rejected_exit,
@@ -22028,6 +22090,8 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
         "accepted_patch_bytes": accepted_patch_bytes,
         "accepted_test_count": accepted_test_count,
         "accepted_token_budget_notes": accepted_token_budget_notes,
+        "accepted_agent_handoff_count": accepted_agent_handoff_count,
+        "accepted_compact_model_count": accepted_compact_model_count,
         "migration_format": accepted_cases[0]["migration_format"] if accepted_cases else None,
         "rejected_payload_format": rejected_payload.get("format"),
         "expected_rejected_payload_formats_by_case": expected_rejected_payload_formats_by_case,
@@ -23942,6 +24006,8 @@ def nl_plan_dsl(
             "migration_preview": migration_plan_dsl(source, source, previous_name=source_name, current_name=source_name, backend=backend),
             "test_plan": (),
             "token_budget_notes": _nl_token_budget_notes(),
+            "agent_handoffs": (),
+            "compact_model_briefs": _nl_compact_model_briefs(prompt, "", operation),
             "diagnostics": (diagnostic,),
         }
 
@@ -23969,6 +24035,8 @@ def nl_plan_dsl(
         "migration_preview": migration,
         "test_plan": _nl_test_plan(operation),
         "token_budget_notes": _nl_token_budget_notes(),
+        "agent_handoffs": _nl_agent_handoffs(prompt, operation, patch),
+        "compact_model_briefs": _nl_compact_model_briefs(prompt, patch, operation),
         "diagnostics": diagnostics,
     }
 
@@ -24012,6 +24080,8 @@ def nl_plan_contract_audit_dsl(text: str, *, source_name: str | None = None) -> 
         plan = nl_plan_dsl(source, source_name=source_name, prompt=prompt)
         operation_kinds = tuple(operation.get("kind") for operation in plan.get("edit_operations", ()))
         diagnostic_codes = tuple(item.get("code") for item in plan.get("diagnostics", ()))
+        agent_handoff_vectors = tuple(handoff.get("vector") for handoff in plan.get("agent_handoffs", ()))
+        compact_models = tuple(brief.get("model") for brief in plan.get("compact_model_briefs", ()))
         ok = (
             plan["ok"] is should_accept
             and (expected_kind == "unsupported" or expected_kind in operation_kinds)
@@ -24020,6 +24090,9 @@ def nl_plan_contract_audit_dsl(text: str, *, source_name: str | None = None) -> 
             and (not should_accept or plan.get("migration_preview", {}).get("format") == "appgen.migration-plan.v1")
             and (not should_accept or bool(plan.get("test_plan")))
             and bool(plan.get("token_budget_notes"))
+            and (not should_accept or {"claude_code", "openai_codex", "opencode"} <= set(agent_handoff_vectors))
+            and {"qwen3.5-2b", "qwen3.5-4b", "local-4b-vllm"} <= set(compact_models)
+            and all(brief.get("ok") for brief in plan.get("compact_model_briefs", ()))
             and (should_accept or "AGX1201" in diagnostic_codes)
         )
         cases.append(
@@ -24036,6 +24109,8 @@ def nl_plan_contract_audit_dsl(text: str, *, source_name: str | None = None) -> 
                 "migration_format": plan.get("migration_preview", {}).get("format"),
                 "test_count": len(plan.get("test_plan", ())),
                 "token_budget_note_count": len(plan.get("token_budget_notes", ())),
+                "agent_handoff_vectors": agent_handoff_vectors,
+                "compact_models": compact_models,
             }
         )
     observed_operation_kinds = tuple(
@@ -24043,6 +24118,16 @@ def nl_plan_contract_audit_dsl(text: str, *, source_name: str | None = None) -> 
     )
     missing_required_operation_kinds = tuple(
         operation_kind for operation_kind in required_edit_operations if operation_kind not in observed_operation_kinds
+    )
+    agent_handoff_cases = tuple(
+        case["id"]
+        for case in cases
+        if case["accepted"] and {"claude_code", "openai_codex", "opencode"} <= set(case["agent_handoff_vectors"])
+    )
+    compact_model_cases = tuple(
+        case["id"]
+        for case in cases
+        if {"qwen3.5-2b", "qwen3.5-4b", "local-4b-vllm"} <= set(case["compact_models"])
     )
     blocking_gaps = tuple(case["id"] for case in cases if not case["ok"])
     return {
@@ -24058,6 +24143,10 @@ def nl_plan_contract_audit_dsl(text: str, *, source_name: str | None = None) -> 
         "missing_required_operation_kinds": missing_required_operation_kinds,
         "missing_required_operation_kind_count": len(missing_required_operation_kinds),
         "token_budget_case_count": sum(1 for case in cases if case["token_budget_note_count"] > 0),
+        "agent_handoff_case_count": len(agent_handoff_cases),
+        "agent_handoff_cases": agent_handoff_cases,
+        "compact_model_case_count": len(compact_model_cases),
+        "compact_model_cases": compact_model_cases,
         "cases": tuple(cases),
         "required_edit_operations": required_edit_operations,
         "blocking_gap_count": len(blocking_gaps),
@@ -28534,7 +28623,100 @@ def _nl_token_budget_notes() -> tuple[str, ...]:
         "Send the semantic symbols and the requested edit operation, not the whole generated project.",
         "Return a DSL patch and let AppGen-X run lint, migration preview, and generation.",
         "Reject requests that cannot be represented as a bounded DSL operation.",
+        "Use agent handoffs as compact contracts for Claude Code, OpenAI Codex, OpenCode, Ollama, and vLLM.",
     )
+
+
+_NL_CODING_AGENT_VECTORS = (
+    {
+        "vector": "claude_code",
+        "label": "Claude Code",
+        "launcher": "claude",
+        "backends": ("api-key", "ollama", "vllm"),
+        "required_env": ("ANTHROPIC_API_KEY",),
+    },
+    {
+        "vector": "openai_codex",
+        "label": "OpenAI Codex",
+        "launcher": "codex",
+        "backends": ("api-key", "ollama", "vllm"),
+        "required_env": ("OPENAI_API_KEY",),
+    },
+    {
+        "vector": "opencode",
+        "label": "OpenCode",
+        "launcher": "opencode",
+        "backends": ("ollama", "vllm", "api-key"),
+        "required_env": (),
+    },
+)
+
+_NL_SMALL_MODEL_PROFILES = (
+    {"model": "qwen3.5-2b", "backend": "ollama", "max_prompt_tokens": 900, "max_patch_tokens": 1400},
+    {"model": "qwen3.5-4b", "backend": "ollama", "max_prompt_tokens": 1200, "max_patch_tokens": 1800},
+    {"model": "local-4b-vllm", "backend": "vllm", "max_prompt_tokens": 1200, "max_patch_tokens": 1800},
+)
+
+
+def _nl_agent_handoffs(prompt: str, operation: dict, patch: str) -> tuple[dict, ...]:
+    operation_kind = operation.get("kind", "unsupported")
+    handoff_prompt = (
+        "Apply this AppGen-X change by returning only a DSL patch, lint result, "
+        "migration preview, generated test plan, and rollback notes."
+    )
+    return tuple(
+        {
+            **vector,
+            "prompt": prompt,
+            "operation_kind": operation_kind,
+            "handoff_prompt": handoff_prompt,
+            "patch_bytes": len(patch),
+            "required_outputs": (
+                "dsl_patch",
+                "lint_report",
+                "migration_preview",
+                "generated_test_plan",
+                "rollback_notes",
+            ),
+            "guardrails": (
+                "no_generated_code_blob",
+                "lint_before_apply",
+                "schema_diff_required",
+                "human_review_for_destructive_changes",
+                "secret_redaction",
+            ),
+            "local_backends": tuple(backend for backend in vector["backends"] if backend in {"ollama", "vllm"}),
+        }
+        for vector in _NL_CODING_AGENT_VECTORS
+    )
+
+
+def _nl_compact_model_briefs(prompt: str, patch: str, operation: dict) -> tuple[dict, ...]:
+    symbols = tuple(operation.get("affected_symbols", ()))
+    compact_prompt = (
+        f"intent={operation.get('intent', 'unsupported')}; "
+        f"operation={operation.get('kind', 'unsupported')}; "
+        f"symbols={','.join(symbols[:8])}; "
+        f"request={prompt.strip()}"
+    )
+    prompt_tokens = _estimate_compact_tokens(compact_prompt)
+    patch_tokens = _estimate_compact_tokens(patch)
+    return tuple(
+        {
+            **profile,
+            "prompt_tokens": prompt_tokens,
+            "patch_tokens": patch_tokens,
+            "ok": prompt_tokens <= profile["max_prompt_tokens"] and patch_tokens <= profile["max_patch_tokens"],
+            "inputs": ("intent", "operation", "symbols", "request"),
+            "outputs": ("dsl_patch", "tests", "migration_impact", "rollback_plan"),
+        }
+        for profile in _NL_SMALL_MODEL_PROFILES
+    )
+
+
+def _estimate_compact_tokens(text: str) -> int:
+    normalized = re.sub(r"\s+", " ", (text or "").strip())
+    return max(1, (len(normalized) + 3) // 4)
 
 
 def _semantic_symbols(source: str, schema: AppSchema) -> dict:

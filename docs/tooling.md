@@ -2333,6 +2333,14 @@ migration, test-plan, or token-budget markers, rejected prompts stop returning
 migration/test/token evidence drifts, or blocking cases appear. This is the
 release gate for Claude Code, OpenAI Codex, OpenCode, Ollama, vLLM, and small
 local models using natural language as a first-class development vector.
+Every accepted `appgen nl-plan` response now carries `agent_handoffs` for
+Claude Code, OpenAI Codex, and OpenCode with launcher names, supported
+`api-key`/`ollama`/`vllm` backends, required outputs, and guardrails. Text mode
+prints `agent-handoff ...` lines so external coding agents can pick the right
+execution vector without expanding the full JSON payload. The same response
+also carries compact model briefs for `qwen3.5-2b`, `qwen3.5-4b`, and a vLLM
+4B profile with prompt and patch token estimates, and text mode prints
+`compact-model ...` lines for CI and local-agent routing.
 The CLI audit also publishes expected and observed accepted-case exit codes,
 accepted-case `ok` booleans, rejected-case exit codes, rejected payload formats,
 required rejected diagnostic codes, and rejected empty-patch evidence by named

@@ -1207,6 +1207,15 @@ def test_nl_plan_returns_linted_dsl_patch_and_migration_preview() -> None:
     assert plan["migration_preview"]["format"] == "appgen.migration-plan.v1"
     assert any(change["kind"] == "add_table" and change["table"] == "CreditMemo" for change in plan["migration_preview"]["changes"])
     assert plan["token_budget_notes"]
+    assert {handoff["vector"] for handoff in plan["agent_handoffs"]} == {
+        "claude_code",
+        "openai_codex",
+        "opencode",
+    }
+    assert {"qwen3.5-2b", "qwen3.5-4b", "local-4b-vllm"} <= {
+        brief["model"] for brief in plan["compact_model_briefs"]
+    }
+    assert all(brief["ok"] for brief in plan["compact_model_briefs"])
 
 
 def test_appgen_nl_plan_subcommand_emits_json_and_text_contracts(tmp_path: Path) -> None:
@@ -1256,6 +1265,9 @@ def test_appgen_nl_plan_subcommand_emits_json_and_text_contracts(tmp_path: Path)
     assert f"patch_bytes={len(payload['dsl_patch'])}" in text_result.stdout
     assert f"tests={len(payload['test_plan'])}" in text_result.stdout
     assert f"token_notes={len(payload['token_budget_notes'])}" in text_result.stdout
+    assert f"agent_handoffs={len(payload['agent_handoffs'])}" in text_result.stdout
+    assert "agent-handoff openai_codex launcher=codex" in text_result.stdout
+    assert "compact-model qwen3.5-2b backend=ollama" in text_result.stdout
     assert f"token-budget-notes {len(payload['token_budget_notes'])}" in text_result.stdout
     assert "operation-kinds add_table" in text_result.stdout
     assert f"lint format={payload['lint']['format']}: ok={payload['lint']['ok']}" in text_result.stdout
@@ -1283,6 +1295,8 @@ def test_nl_plan_contract_audit_covers_supported_edit_operations_and_rejections(
     assert audit["missing_required_operation_kinds"] == ()
     assert audit["missing_required_operation_kind_count"] == 0
     assert audit["token_budget_case_count"] == audit["case_count"]
+    assert audit["agent_handoff_case_count"] == audit["accepted_case_count"]
+    assert audit["compact_model_case_count"] == audit["case_count"]
     assert set(audit["required_edit_operations"]) <= {
         "add_table",
         "add_field",
@@ -1370,11 +1384,19 @@ def test_nl_plan_cli_audit_covers_all_supported_edit_operations(tmp_path: Path) 
     assert audit["token_budget_cases"] == expected_case_ids
     assert audit["missing_token_budget_case_count"] == 0
     assert audit["missing_token_budget_cases"] == ()
+    assert audit["agent_handoff_cases"] == expected_case_ids
+    assert audit["missing_agent_handoff_case_count"] == 0
+    assert audit["missing_agent_handoff_cases"] == ()
+    assert audit["compact_model_cases"] == expected_case_ids
+    assert audit["missing_compact_model_case_count"] == 0
+    assert audit["missing_compact_model_cases"] == ()
     assert audit["blocking_cases"] == ()
     assert audit["blocking_case_count"] == 0
     assert audit["accepted_patch_bytes"] > 0
     assert audit["accepted_test_count"] >= len(contract["required_edit_operations"])
     assert audit["accepted_token_budget_notes"] >= len(contract["required_edit_operations"])
+    assert audit["accepted_agent_handoff_count"] >= len(contract["required_edit_operations"]) * 3
+    assert audit["accepted_compact_model_count"] >= len(contract["required_edit_operations"]) * 3
     assert audit["accepted_text_exit_code"] == 0
     assert audit["accepted_text_prefix"].startswith("nl-plan ok: format=appgen.nl-plan.v1")
     assert audit["required_text_markers"] == (
@@ -1384,11 +1406,13 @@ def test_nl_plan_cli_audit_covers_all_supported_edit_operations(tmp_path: Path) 
         "test_plan",
         "token_budget_notes",
         "token_budget_note",
+        "agent_handoffs",
+        "compact_model_briefs",
     )
     assert all(audit["text_markers"][marker] is True for marker in audit["required_text_markers"])
     assert audit["missing_text_marker_count"] == 0
     assert audit["missing_text_markers"] == ()
-    assert audit["accepted_text_marker_count"] >= 6
+    assert audit["accepted_text_marker_count"] >= 8
     assert audit["accepted_text_has_report_format"] is True
     assert audit["accepted_text_has_lint_format"] is True
     assert audit["accepted_text_has_migration_format"] is True
@@ -1400,6 +1424,12 @@ def test_nl_plan_cli_audit_covers_all_supported_edit_operations(tmp_path: Path) 
     assert audit["accepted_text_token_note_lines"]
     assert audit["accepted_text_token_note_line_count"] == len(audit["accepted_text_token_note_lines"])
     assert all(line.startswith("token-budget-note ") for line in audit["accepted_text_token_note_lines"])
+    assert audit["accepted_text_agent_handoff_lines"]
+    assert audit["accepted_text_agent_handoff_line_count"] == len(audit["accepted_text_agent_handoff_lines"])
+    assert any("openai_codex" in line for line in audit["accepted_text_agent_handoff_lines"])
+    assert audit["accepted_text_compact_model_lines"]
+    assert audit["accepted_text_compact_model_line_count"] == len(audit["accepted_text_compact_model_lines"])
+    assert any("qwen3.5-2b" in line for line in audit["accepted_text_compact_model_lines"])
     assert audit["rejected_ok"] is True
     assert audit["rejected_case_id"] == "reject_out_of_dsl_generated_code"
     assert audit["rejected_exit_code"] == 1

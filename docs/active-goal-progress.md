@@ -4473,3 +4473,9 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   inspection, generated handler wiring evidence, and browser-smoke assertions
   for the drag/drop runtime. The frontend interaction audit now requires nine
   named scenarios, including actionable drag/drop wiring operations.
+- Current natural-language agent-vector pass makes `appgen nl-plan` directly
+  consumable by coding agents. Accepted plans now emit handoff contracts for
+  Claude Code, OpenAI Codex, and OpenCode, plus compact model briefs for
+  qwen3.5 2B/4B and vLLM-local profiles. The CLI text audit now requires
+  `agent-handoff` and `compact-model` markers so small local models and external
+  coding agents can route work without expanding the full JSON payload.
