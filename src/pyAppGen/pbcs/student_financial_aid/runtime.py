@@ -173,3 +173,44 @@ def student_financial_aid_runtime_capabilities() -> dict:
 
 
 student_financial_aid_execute_domain_operation = build_standalone_app().run_operation
+
+# Improve1 student financial aid control extension.
+from .student_financial_aid_control import evaluate_student_financial_aid_control, improve1_student_financial_aid_control_contract
+
+_AID_CONTROL_BASE_RUNTIME_CAPABILITIES = student_financial_aid_runtime_capabilities
+_AID_CONTROL_BASE_BUILD_RELEASE_EVIDENCE = student_financial_aid_build_release_evidence
+
+
+def student_financial_aid_runtime_capabilities() -> dict:
+    runtime = dict(_AID_CONTROL_BASE_RUNTIME_CAPABILITIES())
+    control = improve1_student_financial_aid_control_contract()
+    runtime["ok"] = bool(runtime.get("ok")) and control["ok"]
+    runtime["student_financial_aid_control"] = control
+    runtime["operations"] = tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + ("evaluate_student_financial_aid_control", "improve1_student_financial_aid_control_contract")))
+    runtime["improve1_control_owned_tables"] = control["owned_tables"]
+    runtime["event_contract"] = "AppGen-X"
+    runtime["stream_engine_picker_visible"] = False
+    return runtime
+
+
+def student_financial_aid_build_release_evidence() -> dict:
+    evidence = dict(_AID_CONTROL_BASE_BUILD_RELEASE_EVIDENCE())
+    control = improve1_student_financial_aid_control_contract()
+    artifacts = dict(evidence.get("generated_artifacts", {}))
+    artifacts["student_financial_aid_control"] = {
+        "contract": control["format"],
+        "capability_count": control["capability_count"],
+        "owned_tables": control["owned_tables"],
+        "service_apis": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "ui_surfaces": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "test": "tests/test_domain_behavior.py",
+    }
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_student_financial_aid_control", "ok": control["ok"]},)
+    evidence.update({
+        "ok": bool(evidence.get("ok")) and control["ok"],
+        "checks": checks,
+        "generated_artifacts": artifacts,
+        "student_financial_aid_control": control,
+        "blocking_gaps": tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ())),
+    })
+    return evidence

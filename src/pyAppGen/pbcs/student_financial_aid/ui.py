@@ -95,3 +95,34 @@ def smoke_test() -> dict:
         'workbench': workbench,
         'side_effects': (),
     }
+
+# Improve1 student financial aid control UI extension.
+from .student_financial_aid_control import improve1_student_financial_aid_control_contract as _improve1_student_financial_aid_control_contract
+
+_AID_CONTROL_BASE_UI_CONTRACT = student_financial_aid_ui_contract
+_AID_CONTROL_BASE_RENDER_WORKBENCH = student_financial_aid_render_workbench
+
+
+def student_financial_aid_ui_contract() -> dict:
+    ui = dict(_AID_CONTROL_BASE_UI_CONTRACT())
+    control = _improve1_student_financial_aid_control_contract()
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "student_financial_aid_control_contract": control,
+        "student_financial_aid_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "student_financial_aid_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def student_financial_aid_render_workbench(*args, **kwargs) -> dict:
+    workbench = dict(_AID_CONTROL_BASE_RENDER_WORKBENCH(*args, **kwargs))
+    control = _improve1_student_financial_aid_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "student_financial_aid_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "student_financial_aid_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "student_financial_aid_control_agent_tools": tuple(f"student_financial_aid.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench
