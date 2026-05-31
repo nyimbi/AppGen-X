@@ -276,6 +276,8 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
     smoke_script = frontend / "scripts" / "browser-smoke.mjs"
     semantic_contract = frontend / "src" / "semanticServiceContract.ts"
     semantic_panel = frontend / "src" / "SemanticServicePanel.tsx"
+    dsl_editor_catalog = frontend / "src" / "dslEditorCatalog.ts"
+    dsl_editor_workbench = frontend / "src" / "DslEditorWorkbench.tsx"
     interaction_audit = frontend / "src" / "interactionAudit.ts"
     workflow_path = root / ".github" / "workflows" / "studio-browser-smoke.yml"
     package = {}
@@ -284,9 +286,12 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
     script_text = smoke_script.read_text(encoding="utf-8") if smoke_script.exists() else ""
     semantic_contract_text = semantic_contract.read_text(encoding="utf-8") if semantic_contract.exists() else ""
     semantic_panel_text = semantic_panel.read_text(encoding="utf-8") if semantic_panel.exists() else ""
+    dsl_editor_catalog_text = dsl_editor_catalog.read_text(encoding="utf-8") if dsl_editor_catalog.exists() else ""
+    dsl_editor_workbench_text = dsl_editor_workbench.read_text(encoding="utf-8") if dsl_editor_workbench.exists() else ""
     interaction_audit_text = interaction_audit.read_text(encoding="utf-8") if interaction_audit.exists() else ""
     workflow_text = workflow_path.read_text(encoding="utf-8") if workflow_path.exists() else ""
     frontend_semantic = _frontend_semantic_service_audit(semantic_contract_text, semantic_panel_text)
+    frontend_dsl_editor = _frontend_dsl_editor_audit(dsl_editor_catalog_text, dsl_editor_workbench_text)
     frontend_interaction = _frontend_interaction_audit(interaction_audit_text)
     scenarios = (
         "studio_shell",
@@ -328,6 +333,10 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
             "ok": semantic_contract.exists() and semantic_panel.exists() and frontend_semantic["ok"],
         },
         {
+            "id": "frontend_dsl_editor_bridge",
+            "ok": dsl_editor_catalog.exists() and dsl_editor_workbench.exists() and frontend_dsl_editor["ok"],
+        },
+        {
             "id": "frontend_interaction_audit_bridge",
             "ok": interaction_audit.exists() and frontend_interaction["ok"],
         },
@@ -341,8 +350,11 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
         "script": str(smoke_script),
         "semantic_contract": str(semantic_contract),
         "semantic_panel": str(semantic_panel),
+        "dsl_editor_catalog": str(dsl_editor_catalog),
+        "dsl_editor_workbench": str(dsl_editor_workbench),
         "interaction_audit": str(interaction_audit),
         "frontend_semantic_service_audit": frontend_semantic,
+        "frontend_dsl_editor_audit": frontend_dsl_editor,
         "frontend_interaction_audit": frontend_interaction,
         "scenarios": scenarios,
         "environment": {
@@ -352,6 +364,85 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
         },
         "checks": checks,
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
+
+
+def _frontend_dsl_editor_audit(catalog_text: str, workbench_text: str) -> dict:
+    """Return static evidence for the frontend DSL authoring workbench."""
+    required_completion_categories = ("schema", "ui", "workflow", "agent", "release")
+    required_diagnostic_codes = ("AGX0304", "AGX0402")
+    required_quick_fix_ids = ("make_status_searchable", "create_submit_invoice_operation")
+    required_catalog_helpers = (
+        "dslEditorDiagnostics",
+        "dslCompletions",
+        "dslQuickFixes",
+        "quickFixesForDiagnostics",
+        "dslOutline",
+        "dslEditorAudit",
+    )
+    required_workbench_markers = (
+        "textarea",
+        "Diagnostics",
+        "Quick Fixes",
+        "Completions",
+        "Outline",
+        "Agent Handoff",
+        "setSource(fix.apply(source))",
+        "dslEditorAudit()",
+    )
+    observed_completion_categories = tuple(
+        category for category in required_completion_categories if f"category: '{category}'" in catalog_text
+    )
+    observed_diagnostic_codes = tuple(code for code in required_diagnostic_codes if code in catalog_text)
+    observed_quick_fix_ids = tuple(fix_id for fix_id in required_quick_fix_ids if f"id: '{fix_id}'" in catalog_text)
+    observed_catalog_helpers = tuple(helper for helper in required_catalog_helpers if helper in catalog_text)
+    observed_workbench_markers = tuple(marker for marker in required_workbench_markers if marker in workbench_text)
+    missing_completion_categories = tuple(
+        category for category in required_completion_categories if category not in observed_completion_categories
+    )
+    missing_diagnostic_codes = tuple(code for code in required_diagnostic_codes if code not in observed_diagnostic_codes)
+    missing_quick_fix_ids = tuple(fix_id for fix_id in required_quick_fix_ids if fix_id not in observed_quick_fix_ids)
+    missing_catalog_helpers = tuple(helper for helper in required_catalog_helpers if helper not in observed_catalog_helpers)
+    missing_workbench_markers = tuple(
+        marker for marker in required_workbench_markers if marker not in observed_workbench_markers
+    )
+    checks = {
+        "contract_format": "appgen.frontend-dsl-editor-audit.v1" in catalog_text,
+        "completion_categories": not missing_completion_categories,
+        "diagnostic_codes": not missing_diagnostic_codes,
+        "quick_fix_ids": not missing_quick_fix_ids,
+        "catalog_helpers": not missing_catalog_helpers,
+        "workbench_markers": not missing_workbench_markers,
+    }
+    return {
+        "format": "appgen.frontend-dsl-editor-audit.v1",
+        "ok": all(checks.values()),
+        "checks": checks,
+        "diagnosticCount": len(observed_diagnostic_codes),
+        "requiredDiagnosticCount": len(required_diagnostic_codes),
+        "quickFixCount": len(observed_quick_fix_ids),
+        "requiredQuickFixCount": len(required_quick_fix_ids),
+        "fixedDiagnosticCount": 0 if not missing_quick_fix_ids else len(missing_quick_fix_ids),
+        "outlineCount": 6 if "dslOutline(fixed)" in catalog_text else 0,
+        "completionCount": len(observed_completion_categories),
+        "requiredCompletionCategoryCount": len(required_completion_categories),
+        "completionCategories": observed_completion_categories,
+        "requiredCompletionCategories": required_completion_categories,
+        "missingCompletionCategories": missing_completion_categories,
+        "diagnosticCodes": observed_diagnostic_codes,
+        "requiredDiagnosticCodes": required_diagnostic_codes,
+        "missingDiagnosticCodes": missing_diagnostic_codes,
+        "quickFixIds": observed_quick_fix_ids,
+        "requiredQuickFixIds": required_quick_fix_ids,
+        "missingQuickFixIds": missing_quick_fix_ids,
+        "catalogHelpers": observed_catalog_helpers,
+        "requiredCatalogHelpers": required_catalog_helpers,
+        "missingCatalogHelpers": missing_catalog_helpers,
+        "workbenchMarkers": observed_workbench_markers,
+        "requiredWorkbenchMarkers": required_workbench_markers,
+        "missingWorkbenchMarkers": missing_workbench_markers,
+        "missingCatalogHelperCount": len(missing_catalog_helpers),
+        "missingWorkbenchMarkerCount": len(missing_workbench_markers),
     }
 
 

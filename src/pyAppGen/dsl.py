@@ -11022,6 +11022,49 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             },
         ),
         _tooling_audit_check(
+            "frontend_dsl_editor_bridge",
+            studio.get("frontend_dsl_editor_audit", {}).get("ok") is True
+            and studio.get("frontend_dsl_editor_diagnostic_count", 0)
+            >= studio.get("frontend_dsl_editor_required_diagnostic_count", 0)
+            and studio.get("frontend_dsl_editor_quick_fix_count", 0)
+            >= studio.get("frontend_dsl_editor_required_quick_fix_count", 0)
+            and studio.get("frontend_dsl_editor_completion_count", 0)
+            >= studio.get("frontend_dsl_editor_required_completion_category_count", 0)
+            and studio.get("frontend_dsl_editor_fixed_diagnostic_count") == 0
+            and studio.get("frontend_dsl_editor_missing_completion_categories") == ()
+            and studio.get("frontend_dsl_editor_missing_diagnostic_codes") == ()
+            and studio.get("frontend_dsl_editor_missing_quick_fix_ids") == ()
+            and studio.get("frontend_dsl_editor_missing_catalog_helpers") == ()
+            and studio.get("frontend_dsl_editor_missing_workbench_markers") == (),
+            "Frontend DSL editor exposes diagnostics, completions, quick fixes, outline, and agent-handoff evidence.",
+            "docs/tooling.md#appgen-x-studio-monaco",
+            {
+                "format": studio.get("frontend_dsl_editor_format"),
+                "audit": studio.get("frontend_dsl_editor_audit"),
+                "diagnostic_count": studio.get("frontend_dsl_editor_diagnostic_count"),
+                "required_diagnostic_count": studio.get("frontend_dsl_editor_required_diagnostic_count"),
+                "quick_fix_count": studio.get("frontend_dsl_editor_quick_fix_count"),
+                "required_quick_fix_count": studio.get("frontend_dsl_editor_required_quick_fix_count"),
+                "fixed_diagnostic_count": studio.get("frontend_dsl_editor_fixed_diagnostic_count"),
+                "outline_count": studio.get("frontend_dsl_editor_outline_count"),
+                "completion_count": studio.get("frontend_dsl_editor_completion_count"),
+                "required_completion_category_count": studio.get(
+                    "frontend_dsl_editor_required_completion_category_count"
+                ),
+                "completion_categories": studio.get("frontend_dsl_editor_completion_categories"),
+                "required_completion_categories": studio.get(
+                    "frontend_dsl_editor_required_completion_categories"
+                ),
+                "missing_completion_categories": studio.get(
+                    "frontend_dsl_editor_missing_completion_categories"
+                ),
+                "missing_diagnostic_codes": studio.get("frontend_dsl_editor_missing_diagnostic_codes"),
+                "missing_quick_fix_ids": studio.get("frontend_dsl_editor_missing_quick_fix_ids"),
+                "missing_catalog_helpers": studio.get("frontend_dsl_editor_missing_catalog_helpers"),
+                "missing_workbench_markers": studio.get("frontend_dsl_editor_missing_workbench_markers"),
+            },
+        ),
+        _tooling_audit_check(
             "frontend_interaction_audit_bridge",
             studio.get("frontend_interaction_audit", {}).get("ok") is True
             and studio.get("frontend_interaction_scenario_count", 0)
@@ -12853,6 +12896,7 @@ def _tooling_audit_section_coverage(root: Path, checks: Iterable[dict]) -> dict:
             "vscode_extension_surface",
             "studio_semantic_service",
             "frontend_semantic_service_bridge",
+            "frontend_dsl_editor_bridge",
             "frontend_interaction_audit_bridge",
         ),
         "graph-tooling": ("graph_and_explain_tooling", "graph_rendering_contracts", "explain_cli_contracts"),
@@ -12924,6 +12968,7 @@ def _tooling_audit_section_coverage(root: Path, checks: Iterable[dict]) -> dict:
         "appgen-x-studio-monaco": (
             "studio_semantic_service",
             "frontend_semantic_service_bridge",
+            "frontend_dsl_editor_bridge",
             "frontend_interaction_audit_bridge",
         ),
         "parser-golden-audit": ("parser_golden_fixture_contracts",),
@@ -14065,6 +14110,12 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     and evidence["studio"].get("frontend_semantic_missing_services") == ()
                     and evidence["studio"].get("frontend_semantic_missing_surfaces") == ()
                     and evidence["studio"].get("frontend_semantic_missing_surface_contracts") == ()
+                    and evidence["studio"].get("frontend_dsl_editor_audit", {}).get("ok") is True
+                    and evidence["studio"].get("frontend_dsl_editor_missing_completion_categories") == ()
+                    and evidence["studio"].get("frontend_dsl_editor_missing_diagnostic_codes") == ()
+                    and evidence["studio"].get("frontend_dsl_editor_missing_quick_fix_ids") == ()
+                    and evidence["studio"].get("frontend_dsl_editor_missing_catalog_helpers") == ()
+                    and evidence["studio"].get("frontend_dsl_editor_missing_workbench_markers") == ()
                     and evidence["studio"].get("frontend_interaction_missing_scenarios") == ()
                     and evidence["studio"].get("frontend_interaction_missing_audit_inputs") == ()
                     and evidence["studio"].get("frontend_interaction_missing_helpers") == (),
@@ -14080,6 +14131,15 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                         "frontend_interaction_missing_audit_inputs"
                     ),
                     "missing_interaction_helpers": evidence["studio"].get("frontend_interaction_missing_helpers"),
+                    "missing_dsl_completion_categories": evidence["studio"].get(
+                        "frontend_dsl_editor_missing_completion_categories"
+                    ),
+                    "missing_dsl_diagnostic_codes": evidence["studio"].get(
+                        "frontend_dsl_editor_missing_diagnostic_codes"
+                    ),
+                    "missing_dsl_quick_fix_ids": evidence["studio"].get(
+                        "frontend_dsl_editor_missing_quick_fix_ids"
+                    ),
                     "evidence_formats": (
                         evidence["studio"].get("browser_smoke_format"),
                         evidence["studio"].get("frontend_semantic_service_format"),
@@ -14566,6 +14626,7 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
     nl = report.get("natural_language_evolution", {})
     nl_plan = nl.get("plan", {})
     frontend_semantic = browser_smoke.get("frontend_semantic_service_audit", {})
+    frontend_dsl_editor = browser_smoke.get("frontend_dsl_editor_audit", {})
     frontend_interaction = browser_smoke.get("frontend_interaction_audit", {})
     browser_smoke_checks = {check.get("id"): check.get("ok") for check in browser_smoke.get("checks", ())}
     panel_counts = {
@@ -14649,12 +14710,20 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         and "semantic_service_bridge" in browser_smoke.get("scenarios", ())
         and "interaction_audit_bridge" in browser_smoke.get("scenarios", ())
         and browser_smoke_checks.get("frontend_semantic_service_bridge") is True
+        and browser_smoke_checks.get("frontend_dsl_editor_bridge") is True
         and browser_smoke_checks.get("frontend_interaction_audit_bridge") is True
         and frontend_semantic.get("format") == "appgen.frontend-semantic-service-audit.v1"
         and frontend_semantic.get("ok") is True
         and not frontend_semantic.get("missing_services", ())
         and not frontend_semantic.get("missing_surfaces", ())
         and not frontend_semantic.get("missing_surface_contracts", ())
+        and frontend_dsl_editor.get("format") == "appgen.frontend-dsl-editor-audit.v1"
+        and frontend_dsl_editor.get("ok") is True
+        and not frontend_dsl_editor.get("missingCompletionCategories", ())
+        and not frontend_dsl_editor.get("missingDiagnosticCodes", ())
+        and not frontend_dsl_editor.get("missingQuickFixIds", ())
+        and not frontend_dsl_editor.get("missingCatalogHelpers", ())
+        and not frontend_dsl_editor.get("missingWorkbenchMarkers", ())
         and frontend_interaction.get("format") == "appgen.frontend-interaction-audit.v1"
         and frontend_interaction.get("ok") is True
         and not frontend_interaction.get("missing_scenarios", ())
@@ -14724,6 +14793,37 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         "frontend_semantic_missing_service_count": frontend_semantic.get("missing_service_count"),
         "frontend_semantic_missing_surface_count": frontend_semantic.get("missing_surface_count"),
         "frontend_semantic_missing_surface_contract_count": frontend_semantic.get("missing_surface_contract_count"),
+        "frontend_dsl_editor_audit": frontend_dsl_editor,
+        "frontend_dsl_editor_format": frontend_dsl_editor.get("format"),
+        "frontend_dsl_editor_diagnostic_count": frontend_dsl_editor.get("diagnosticCount"),
+        "frontend_dsl_editor_required_diagnostic_count": frontend_dsl_editor.get("requiredDiagnosticCount"),
+        "frontend_dsl_editor_quick_fix_count": frontend_dsl_editor.get("quickFixCount"),
+        "frontend_dsl_editor_required_quick_fix_count": frontend_dsl_editor.get("requiredQuickFixCount"),
+        "frontend_dsl_editor_fixed_diagnostic_count": frontend_dsl_editor.get("fixedDiagnosticCount"),
+        "frontend_dsl_editor_outline_count": frontend_dsl_editor.get("outlineCount"),
+        "frontend_dsl_editor_completion_count": frontend_dsl_editor.get("completionCount"),
+        "frontend_dsl_editor_required_completion_category_count": frontend_dsl_editor.get(
+            "requiredCompletionCategoryCount"
+        ),
+        "frontend_dsl_editor_completion_categories": tuple(frontend_dsl_editor.get("completionCategories", ())),
+        "frontend_dsl_editor_required_completion_categories": tuple(
+            frontend_dsl_editor.get("requiredCompletionCategories", ())
+        ),
+        "frontend_dsl_editor_missing_completion_categories": tuple(
+            frontend_dsl_editor.get("missingCompletionCategories", ())
+        ),
+        "frontend_dsl_editor_diagnostic_codes": tuple(frontend_dsl_editor.get("diagnosticCodes", ())),
+        "frontend_dsl_editor_missing_diagnostic_codes": tuple(
+            frontend_dsl_editor.get("missingDiagnosticCodes", ())
+        ),
+        "frontend_dsl_editor_quick_fix_ids": tuple(frontend_dsl_editor.get("quickFixIds", ())),
+        "frontend_dsl_editor_missing_quick_fix_ids": tuple(frontend_dsl_editor.get("missingQuickFixIds", ())),
+        "frontend_dsl_editor_missing_catalog_helpers": tuple(
+            frontend_dsl_editor.get("missingCatalogHelpers", ())
+        ),
+        "frontend_dsl_editor_missing_workbench_markers": tuple(
+            frontend_dsl_editor.get("missingWorkbenchMarkers", ())
+        ),
         "frontend_interaction_audit": frontend_interaction,
         "frontend_interaction_format": frontend_interaction.get("format"),
         "frontend_interaction_scenario_count": frontend_interaction.get("scenario_count"),
@@ -20264,16 +20364,7 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             },
             "appgen.studio-semantic-service-audit.v1": studio_audit,
             "appgen.frontend-semantic-service-audit.v1": studio_audit.get("frontend_semantic_service_audit", {}),
-            "appgen.frontend-dsl-editor-audit.v1": {
-                "format": "appgen.frontend-dsl-editor-audit.v1",
-                "ok": True,
-                "diagnosticCount": 2,
-                "quickFixCount": 2,
-                "fixedDiagnosticCount": 0,
-                "outlineCount": 6,
-                "completionCount": 5,
-                "missingCompletionCategories": (),
-            },
+            "appgen.frontend-dsl-editor-audit.v1": studio_audit.get("frontend_dsl_editor_audit", {}),
             "appgen.frontend-interaction-audit.v1": studio_audit.get("frontend_interaction_audit", {}),
             "appgen.vscode-extension-audit.v1": _tooling_audit_vscode_extension(repo_root),
             "appgen.diagnostic-catalog.v1": diagnostic_catalog_dsl(),

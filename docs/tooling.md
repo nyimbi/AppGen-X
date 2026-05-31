@@ -2066,7 +2066,12 @@ fixes for missing handlers and weak status fields, and compact agent handoff
 cues. Its static frontend audit is `appgen.frontend-dsl-editor-audit.v1`, and
 the interaction bridge requires the named
 `dsl_editor_lint_completion_quick_fix` scenario before Studio readiness can
-pass.
+pass. The Python Studio smoke contract inspects both `dslEditorCatalog.ts` and
+`DslEditorWorkbench.tsx` and reports diagnostic-code, quick-fix, completion
+category, catalog-helper, and workbench-marker missing lists. The aggregate
+tooling audit includes a dedicated `frontend_dsl_editor_bridge` gate so a
+broken browser DSL editor cannot be hidden behind a passing generic interaction
+audit.
 `appgen.studio-semantic-service-audit.v1` is the executable audit for that
 bridge. It verifies every required Studio panel is present, every panel emits
 the expected contract format, semantic-bound panels report

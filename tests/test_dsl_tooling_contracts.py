@@ -5199,6 +5199,7 @@ def test_studio_semantic_service_audit_proves_panel_contracts() -> None:
     assert "semantic_service_bridge" in report["browser_smoke_scenarios"]
     assert "interaction_audit_bridge" in report["browser_smoke_scenarios"]
     assert report["browser_smoke_checks"]["frontend_semantic_service_bridge"] is True
+    assert report["browser_smoke_checks"]["frontend_dsl_editor_bridge"] is True
     assert report["browser_smoke_checks"]["frontend_interaction_audit_bridge"] is True
     assert report["frontend_semantic_service_format"] == "appgen.frontend-semantic-service-audit.v1"
     assert report["frontend_semantic_service_audit"]["ok"] is True
@@ -5223,6 +5224,24 @@ def test_studio_semantic_service_audit_proves_panel_contracts() -> None:
     assert report["frontend_semantic_missing_surface_contract_count"] == 0
     assert report["frontend_semantic_service_audit"]["checks"]["panel_renders_services"] is True
     assert report["frontend_semantic_service_audit"]["checks"]["panel_renders_surfaces"] is True
+    assert report["frontend_dsl_editor_format"] == "appgen.frontend-dsl-editor-audit.v1"
+    assert report["frontend_dsl_editor_audit"]["ok"] is True
+    assert report["frontend_dsl_editor_diagnostic_count"] == 2
+    assert report["frontend_dsl_editor_required_diagnostic_count"] == 2
+    assert report["frontend_dsl_editor_quick_fix_count"] == 2
+    assert report["frontend_dsl_editor_required_quick_fix_count"] == 2
+    assert report["frontend_dsl_editor_fixed_diagnostic_count"] == 0
+    assert report["frontend_dsl_editor_outline_count"] >= 6
+    assert report["frontend_dsl_editor_completion_count"] == 5
+    assert report["frontend_dsl_editor_required_completion_category_count"] == 5
+    assert set(report["frontend_dsl_editor_required_completion_categories"]) <= set(
+        report["frontend_dsl_editor_completion_categories"]
+    )
+    assert report["frontend_dsl_editor_missing_completion_categories"] == ()
+    assert report["frontend_dsl_editor_missing_diagnostic_codes"] == ()
+    assert report["frontend_dsl_editor_missing_quick_fix_ids"] == ()
+    assert report["frontend_dsl_editor_missing_catalog_helpers"] == ()
+    assert report["frontend_dsl_editor_missing_workbench_markers"] == ()
     assert report["frontend_interaction_format"] == "appgen.frontend-interaction-audit.v1"
     assert report["frontend_interaction_audit"]["ok"] is True
     assert report["frontend_interaction_scenario_count"] == 10
@@ -5845,16 +5864,31 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         studio={
             **ok("appgen.studio-semantic-service-audit.v1"),
             "browser_smoke_format": "appgen.studio-browser-smoke-ci-contract.v1",
-            "browser_smoke_checks": {
-                "frontend_semantic_service_bridge": True,
-                "frontend_interaction_audit_bridge": True,
-            },
-            "frontend_semantic_service_format": "appgen.frontend-semantic-service-audit.v1",
-            "frontend_semantic_service_audit": {"format": "appgen.frontend-semantic-service-audit.v1", "ok": True},
-            "frontend_semantic_missing_services": (),
-            "frontend_semantic_missing_surfaces": (),
-            "frontend_semantic_missing_surface_contracts": (),
-            "frontend_interaction_format": "appgen.frontend-interaction-audit.v1",
+                "browser_smoke_checks": {
+                    "frontend_semantic_service_bridge": True,
+                    "frontend_dsl_editor_bridge": True,
+                    "frontend_interaction_audit_bridge": True,
+                },
+                "frontend_semantic_service_format": "appgen.frontend-semantic-service-audit.v1",
+                "frontend_semantic_service_audit": {"format": "appgen.frontend-semantic-service-audit.v1", "ok": True},
+                "frontend_semantic_missing_services": (),
+                "frontend_semantic_missing_surfaces": (),
+                "frontend_semantic_missing_surface_contracts": (),
+                "frontend_dsl_editor_format": "appgen.frontend-dsl-editor-audit.v1",
+                "frontend_dsl_editor_audit": {"format": "appgen.frontend-dsl-editor-audit.v1", "ok": True},
+                "frontend_dsl_editor_diagnostic_count": 2,
+                "frontend_dsl_editor_required_diagnostic_count": 2,
+                "frontend_dsl_editor_quick_fix_count": 2,
+                "frontend_dsl_editor_required_quick_fix_count": 2,
+                "frontend_dsl_editor_fixed_diagnostic_count": 0,
+                "frontend_dsl_editor_completion_count": 5,
+                "frontend_dsl_editor_required_completion_category_count": 5,
+                "frontend_dsl_editor_missing_completion_categories": (),
+                "frontend_dsl_editor_missing_diagnostic_codes": (),
+                "frontend_dsl_editor_missing_quick_fix_ids": (),
+                "frontend_dsl_editor_missing_catalog_helpers": (),
+                "frontend_dsl_editor_missing_workbench_markers": (),
+                "frontend_interaction_format": "appgen.frontend-interaction-audit.v1",
             "frontend_interaction_audit": {"format": "appgen.frontend-interaction-audit.v1", "ok": True},
             "frontend_interaction_missing_scenarios": (),
             "frontend_interaction_missing_audit_inputs": (),
@@ -5867,7 +5901,7 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
             "missing_ok_scenario_count": 0,
             "bulk_atomic": True,
             "bulk_round_trip": True,
-            "bulk_operation_count": 5,
+            "bulk_operation_count": 7,
             "missing_bulk_changed_surfaces": (),
         },
         migration_detected=appgen_dsl.REQUIRED_MIGRATION_DETECTIONS,
@@ -6213,6 +6247,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "vscode_extension_surface",
         "studio_semantic_service",
         "frontend_semantic_service_bridge",
+        "frontend_dsl_editor_bridge",
         "frontend_interaction_audit_bridge",
         "cli_usage_failure_contracts",
         "validate_target_contracts",
@@ -6629,12 +6664,12 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert designer_check["detail"]["cli"]["bulk_result_format"] == "appgen.designer-visual-transaction-result.v1"
     assert designer_check["detail"]["cli"]["bulk_atomic"] is True
     assert designer_check["detail"]["cli"]["bulk_round_trip"] is True
-    assert designer_check["detail"]["cli"]["bulk_operation_count"] == 5
+    assert designer_check["detail"]["cli"]["bulk_operation_count"] == 7
     assert set(designer_check["detail"]["cli"]["required_bulk_changed_surfaces"]) <= set(
         designer_check["detail"]["cli"]["bulk_changed_surfaces"]
     )
     assert designer_check["detail"]["cli"]["missing_bulk_changed_surfaces"] == ()
-    assert designer_check["detail"]["cli"]["bulk_patch_count"] == 5
+    assert designer_check["detail"]["cli"]["bulk_patch_count"] == 7
     assert designer_check["detail"]["cli"]["bulk_semantic_model_format"] == "appgen.semantic-model.v1"
     assert designer_check["detail"]["cli"]["non_object_exit"] == 2
     assert "--edit-json must be a JSON object" in designer_check["detail"]["cli"]["non_object_stderr"]
@@ -6716,6 +6751,21 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert frontend_semantic_check["detail"]["missing_service_count"] == 0
     assert frontend_semantic_check["detail"]["missing_surface_count"] == 0
     assert frontend_semantic_check["detail"]["missing_surface_contract_count"] == 0
+    frontend_dsl_check = next(check for check in report["checks"] if check["id"] == "frontend_dsl_editor_bridge")
+    assert frontend_dsl_check["detail"]["format"] == "appgen.frontend-dsl-editor-audit.v1"
+    assert frontend_dsl_check["detail"]["audit"]["ok"] is True
+    assert frontend_dsl_check["detail"]["diagnostic_count"] == 2
+    assert frontend_dsl_check["detail"]["quick_fix_count"] == 2
+    assert frontend_dsl_check["detail"]["fixed_diagnostic_count"] == 0
+    assert frontend_dsl_check["detail"]["completion_count"] == 5
+    assert set(frontend_dsl_check["detail"]["required_completion_categories"]) <= set(
+        frontend_dsl_check["detail"]["completion_categories"]
+    )
+    assert frontend_dsl_check["detail"]["missing_completion_categories"] == ()
+    assert frontend_dsl_check["detail"]["missing_diagnostic_codes"] == ()
+    assert frontend_dsl_check["detail"]["missing_quick_fix_ids"] == ()
+    assert frontend_dsl_check["detail"]["missing_catalog_helpers"] == ()
+    assert frontend_dsl_check["detail"]["missing_workbench_markers"] == ()
     frontend_interaction_check = next(check for check in report["checks"] if check["id"] == "frontend_interaction_audit_bridge")
     assert frontend_interaction_check["detail"]["format"] == "appgen.frontend-interaction-audit.v1"
     assert frontend_interaction_check["detail"]["audit"]["ok"] is True

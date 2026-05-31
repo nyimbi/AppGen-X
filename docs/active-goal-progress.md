@@ -4498,3 +4498,9 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   interaction audit now includes the `dsl_editor_lint_completion_quick_fix`
   scenario so Studio readiness proves DSL authoring behavior rather than only
   displaying semantic-service metadata.
+- Current Studio evidence expansion promotes the DSL editor from frontend-only
+  behavior into Python release evidence. `studio_browser_smoke_ci_contract`
+  now statically inspects the DSL editor catalog and workbench, exposes
+  `appgen.frontend-dsl-editor-audit.v1`, and the aggregate tooling audit has a
+  dedicated `frontend_dsl_editor_bridge` gate for diagnostics, completions,
+  quick fixes, outline, helper functions, and workbench markers.
