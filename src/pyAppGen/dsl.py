@@ -6770,6 +6770,18 @@ PACKAGE_RELEASE_AUDIT_SCHEMA_FORMATS = (
 )
 
 
+AGENTIC_DEVELOPMENT_SCHEMA_FORMATS = (
+    "appgen.package-agentic-dsl-contract.v1",
+    "appgen.package-agent-provider-matrix.v1",
+    "appgen.package-agent-tool-policy.v1",
+    "appgen.package-agent-execution-matrix.v1",
+    "appgen.coding-agent-backend-matrix.v1",
+    "appgen.coding-agent-development-workflow.v1",
+    "appgen.coding-agent-release-gate.v1",
+    "appgen.agentic-generation-smoke-audit.v1",
+)
+
+
 CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.diagnostic.v1",
     "appgen.lint-report.v1",
@@ -6934,6 +6946,7 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.runtime-contract-inventory.v1",
     "appgen.runtime-contract-inventory-cli-audit.v1",
     *PACKAGE_RELEASE_AUDIT_SCHEMA_FORMATS,
+    *AGENTIC_DEVELOPMENT_SCHEMA_FORMATS,
     "appgen.contract-schema-catalog.v1",
     "appgen.contract-validation-report.v1",
 )
@@ -7024,6 +7037,51 @@ def _package_release_audit_schema(title: str) -> dict:
             "passing_gate_count": {"type": "integer", "minimum": 0},
             "blocking_gap_count": {"type": "integer", "minimum": 0},
             "release_evidence": {"type": "object"},
+            "stop_condition": {"type": "string"},
+        },
+    )
+
+
+def _agentic_development_schema(title: str) -> dict:
+    required_by_format = {
+        "appgen.package-agentic-dsl-contract.v1": ("format", "ok", "providers", "provider_modes", "agents"),
+        "appgen.package-agent-provider-matrix.v1": ("format", "ok", "modes", "providers", "missing_api_providers"),
+        "appgen.package-agent-tool-policy.v1": ("format", "ok", "policies"),
+        "appgen.package-agent-execution-matrix.v1": ("format", "ok", "plans"),
+        "appgen.coding-agent-backend-matrix.v1": ("format", "ok", "vectors", "backends"),
+        "appgen.coding-agent-development-workflow.v1": ("format", "ok", "vector", "backend", "stages"),
+        "appgen.coding-agent-release-gate.v1": ("format", "ok", "decision", "gates", "blocking_gaps"),
+        "appgen.agentic-generation-smoke-audit.v1": ("format", "ok", "decision", "checks", "blocking_gaps"),
+    }
+    return _contract_format_schema(
+        title,
+        required=required_by_format[title],
+        properties={
+            "app": {"type": "string"},
+            "targets": {"type": ("array", "string"), "items": {"type": "string"}},
+            "providers": {"type": "array", "items": {"type": ("object", "string")}},
+            "provider_modes": {"type": "array", "items": {"type": "string"}},
+            "agents": {"type": "array", "items": {"type": ("object", "string")}},
+            "agent_provider_links": {"type": "array", "items": {"type": "object"}},
+            "modes": {"type": "array", "items": {"type": "string"}},
+            "missing_api_providers": {"type": "array", "items": {"type": "string"}},
+            "policies": {"type": "array", "items": {"type": "object"}},
+            "plans": {"type": "array", "items": {"type": "object"}},
+            "vectors": {"type": "array", "items": {"type": "object"}},
+            "backends": {"type": "array", "items": {"type": "object"}},
+            "vector": {"type": "string"},
+            "launcher": {"type": "string"},
+            "backend": {"type": "string"},
+            "stages": {"type": "array", "items": {"type": "object"}},
+            "guardrails": {"type": "array", "items": {"type": "string"}},
+            "appgen_surfaces": {"type": "array", "items": {"type": "string"}},
+            "decision": {"type": "string", "enum": ("approved", "blocked")},
+            "catalog": {"type": "array", "items": {"type": "object"}},
+            "backend_matrix": {"type": "object"},
+            "workflows": {"type": "array", "items": {"type": "object"}},
+            "gates": {"type": "array", "items": {"type": "object"}},
+            "required_artifacts": {"type": "array", "items": {"type": "string"}},
+            "compiled_artifacts": {"type": "array", "items": {"type": "string"}},
             "stop_condition": {"type": "string"},
         },
     )
@@ -9137,6 +9195,10 @@ def _contract_schema_catalog() -> dict[str, dict]:
         **{
             schema_format: _package_release_audit_schema(schema_format)
             for schema_format in PACKAGE_RELEASE_AUDIT_SCHEMA_FORMATS
+        },
+        **{
+            schema_format: _agentic_development_schema(schema_format)
+            for schema_format in AGENTIC_DEVELOPMENT_SCHEMA_FORMATS
         },
         "appgen.contract-schema-catalog.v1": _json_object_schema(
             "appgen.contract-schema-catalog.v1",
@@ -21340,6 +21402,21 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
 
         studio_workspace = studio_semantic_service_workspace(source)
         studio_browser_smoke = studio_browser_smoke_ci_contract(repo_root)
+        from .agentic import (
+            agent_execution_matrix,
+            agent_tool_policy,
+            agentic_generation_smoke_audit,
+            coding_agent_backend_matrix,
+            coding_agent_development_workflow,
+            coding_agent_release_gate,
+            dsl_agentic_contract,
+            provider_connection_matrix,
+        )
+
+        agentic_env = {
+            "OPENAI_API_KEY": "configured-for-contract-schema",
+            "ANTHROPIC_API_KEY": "configured-for-contract-schema",
+        }
         format_write = _tooling_audit_format_write(tmp_path)
         implementation_phases = {
             "format": "appgen.tooling-implementation-phase-audit.v1",
@@ -21634,6 +21711,17 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
                 schema_format: _package_release_audit_schema_sample(schema_format)
                 for schema_format in PACKAGE_RELEASE_AUDIT_SCHEMA_FORMATS
             },
+            "appgen.package-agentic-dsl-contract.v1": dsl_agentic_contract(),
+            "appgen.package-agent-provider-matrix.v1": provider_connection_matrix(agentic_env),
+            "appgen.package-agent-tool-policy.v1": agent_tool_policy(),
+            "appgen.package-agent-execution-matrix.v1": agent_execution_matrix(environ=agentic_env),
+            "appgen.coding-agent-backend-matrix.v1": coding_agent_backend_matrix(agentic_env),
+            "appgen.coding-agent-development-workflow.v1": coding_agent_development_workflow(
+                "openai_codex",
+                backend="ollama",
+            ),
+            "appgen.coding-agent-release-gate.v1": coding_agent_release_gate(agentic_env),
+            "appgen.agentic-generation-smoke-audit.v1": agentic_generation_smoke_audit(),
             "appgen.contract-schema-catalog.v1": contract_schema_catalog_dsl("appgen.semantic-model.v1"),
         }
         validation_report = contract_validation_report_dsl(

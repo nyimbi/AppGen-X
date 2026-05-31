@@ -11694,6 +11694,14 @@ def test_contract_schema_catalog_exposes_core_json_schemas() -> None:
         "appgen.package-target-release-audit.v1",
         "appgen.nl-evolution-release-audit.v1",
         "appgen.erp-template-release-audit.v1",
+        "appgen.package-agentic-dsl-contract.v1",
+        "appgen.package-agent-provider-matrix.v1",
+        "appgen.package-agent-tool-policy.v1",
+        "appgen.package-agent-execution-matrix.v1",
+        "appgen.coding-agent-backend-matrix.v1",
+        "appgen.coding-agent-development-workflow.v1",
+        "appgen.coding-agent-release-gate.v1",
+        "appgen.agentic-generation-smoke-audit.v1",
     } <= set(catalog["required_schema_formats"])
     assert catalog["missing_required_schema_count"] == 0
     assert catalog["missing_required_schema_formats"] == ()
@@ -11711,6 +11719,8 @@ def test_contract_schema_catalog_exposes_core_json_schemas() -> None:
     assert {"code", "severity", "message"} <= set(diagnostic_schema["required"])
     package_schema = catalog["schemas"]["appgen.package-form-designer-release-audit.v1"]
     assert {"format", "ok", "decision", "gates", "blocking_gaps"} <= set(package_schema["required"])
+    coding_agent_schema = catalog["schemas"]["appgen.coding-agent-release-gate.v1"]
+    assert {"format", "ok", "decision", "gates", "blocking_gaps"} <= set(coding_agent_schema["required"])
     assert missing["ok"] is False
     assert missing["missing_requested_schema_formats"] == ("appgen.missing-contract.v1",)
 

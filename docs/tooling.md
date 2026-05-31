@@ -833,7 +833,16 @@ plus the package-level release audit family:
 `appgen.package-agentic-release-audit.v1`,
 `appgen.package-target-release-audit.v1`,
 `appgen.nl-evolution-release-audit.v1`, and
-`appgen.erp-template-release-audit.v1`. The catalog is intentionally complete:
+`appgen.erp-template-release-audit.v1`,
+plus the first-class agentic development-vector contracts:
+`appgen.package-agentic-dsl-contract.v1`,
+`appgen.package-agent-provider-matrix.v1`,
+`appgen.package-agent-tool-policy.v1`,
+`appgen.package-agent-execution-matrix.v1`,
+`appgen.coding-agent-backend-matrix.v1`,
+`appgen.coding-agent-development-workflow.v1`,
+`appgen.coding-agent-release-gate.v1`, and
+`appgen.agentic-generation-smoke-audit.v1`. The catalog is intentionally complete:
 every `appgen.*.v1` envelope named in this document, including IDE, frontend,
 visual designer, LSP hover-depth, migration, natural-language, packaging,
 release, component/PBC wrapper, and project-governance contracts, is exported as
@@ -845,6 +854,15 @@ gate counts, release evidence, and stop-condition fields. This keeps every
 top-level package release gate consumable by CI, IDE panels, and external coding
 agents without making the aggregate schema audit execute each heavyweight
 package verifier every time.
+
+Agentic development-vector schemas make Claude Code, OpenAI Codex, OpenCode,
+Ollama, vLLM, and API-key provider handoffs machine-validatable. The provider
+matrix proves local/API-key model posture and secret handling, the tool-policy
+and execution-matrix contracts prove generated agents are bounded by reviewed
+tools and human review gates, the coding-agent backend/workflow/release contracts
+prove `api-key`, `ollama`, and `vllm` development vectors, and the generated
+agentic smoke audit proves generated apps expose the same contracts without
+calling an external provider.
 
 The optional positional format selects one schema from the catalog. Unknown
 schema names return the same `appgen.contract-schema-catalog.v1` envelope with
@@ -2827,8 +2845,9 @@ Exit criteria:
   parser-golden, drift, migration, natural-language, release-verifier,
   package-manifest, component/PBC wrapper, doctor, tooling-audit,
   project-governance, schema-catalog, contract-validation, runtime inventory,
-  and package release-audit report schemas are available from CLI JSON and text
-  modes. The schema audit validates representative payloads for all 179
+  package release-audit, and agentic development-vector report schemas are
+  available from CLI JSON and text modes. The schema audit validates
+  representative payloads for all 187
   documented `appgen.*.v1` formats, so
   adding a documented contract without a matching runtime sample fails the
   release gate.
