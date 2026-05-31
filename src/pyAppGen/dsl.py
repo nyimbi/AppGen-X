@@ -1868,6 +1868,11 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
     contract_schema_parser.add_argument("format", nargs="?", default="all")
     contract_schema_parser.add_argument("--json", action="store_true")
 
+    contract_validate_parser = subparsers.add_parser("contract-validate")
+    contract_validate_parser.add_argument("path")
+    contract_validate_parser.add_argument("--format")
+    contract_validate_parser.add_argument("--json", action="store_true")
+
     drift_parser = subparsers.add_parser("drift")
     drift_parser.add_argument("path")
     drift_parser.add_argument("--json", action="store_true")
@@ -2074,6 +2079,10 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
     if args.command == "contract-schema":
         selected_format = None if args.format == "all" else args.format
         report = contract_schema_catalog_dsl(selected_format)
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "contract-validate":
+        report = contract_validation_report_json_text(source, schema_format=args.format, source_name=str(path))
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     if args.command == "drift":
@@ -2395,6 +2404,18 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
             print(f"schema {schema_format}: required={len(required)} properties={len(schema.get('properties', {}))}")
         for schema_format in missing:
             print(f"missing-schema {schema_format}")
+        return
+    if payload.get("format") == "appgen.contract-validation-report.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        diagnostics = tuple(payload.get("diagnostics", ()))
+        print(
+            f"contract-validate {status}: format={payload.get('format')} "
+            f"payload_format={payload.get('payload_format') or 'unknown'} "
+            f"schema_format={payload.get('schema_format') or 'unknown'} "
+            f"errors={len(diagnostics)}"
+        )
+        for diagnostic in diagnostics:
+            print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
         return
     if payload.get("format") == "appgen.explain-report.v1":
         _emit_explain_text(payload)
@@ -6570,7 +6591,7 @@ def _contract_schema_catalog() -> dict[str, dict]:
             required=("code", "severity", "message"),
             properties={
                 "code": {"type": "string", "pattern": "^AGX[0-9]{4}$"},
-                "severity": {"type": "string", "enum": ("error", "warning", "info")},
+                "severity": {"type": "string", "enum": ("error", "warning", "info", "hint")},
                 "message": {"type": "string"},
                 "range": {"type": "object"},
                 "fixes": {"type": "array", "items": {"type": "object"}},
@@ -6727,7 +6748,7 @@ def _diagnostic_schema_ref_target() -> dict:
         "required": ("code", "severity", "message"),
         "properties": {
             "code": {"type": "string", "pattern": "^AGX[0-9]{4}$"},
-            "severity": {"type": "string", "enum": ("error", "warning", "info")},
+            "severity": {"type": "string", "enum": ("error", "warning", "info", "hint")},
             "message": {"type": "string"},
             "range": {"type": "object"},
             "fixes": {"type": "array", "items": {"type": "object"}},
@@ -6735,6 +6756,218 @@ def _diagnostic_schema_ref_target() -> dict:
         },
         "additionalProperties": True,
     }
+
+
+def contract_validation_report_json_text(
+    payload_text: str,
+    *,
+    schema_format: str | None = None,
+    source_name: str | None = None,
+) -> dict:
+    """Validate a JSON tooling payload against the exported contract schema subset."""
+    try:
+        payload = json.loads(payload_text)
+    except json.JSONDecodeError as exc:
+        diagnostic = _spec_diagnostic(
+            payload_text,
+            "AGX0801",
+            "error",
+            f"Contract payload is not valid JSON: {exc.msg}",
+        )
+        return _contract_validation_report(
+            ok=False,
+            schema_format=schema_format,
+            payload_format=None,
+            source_name=source_name,
+            diagnostics=(diagnostic,),
+            schema_available=False,
+            payload_format_inferred=False,
+        )
+    return contract_validation_report_dsl(payload, schema_format=schema_format, source_name=source_name)
+
+
+def contract_validation_report_dsl(
+    payload: object,
+    *,
+    schema_format: str | None = None,
+    source_name: str | None = None,
+) -> dict:
+    """Validate an in-memory tooling payload against a catalog schema."""
+    payload_format = payload.get("format") if isinstance(payload, dict) else None
+    requested_schema_format = (schema_format or payload_format or "").strip() or None
+    payload_format_inferred = not bool(schema_format) and bool(payload_format)
+    schemas = _contract_schema_catalog()
+    schema = schemas.get(requested_schema_format or "")
+    diagnostics: list[dict] = []
+    if not isinstance(payload, dict):
+        diagnostics.append(
+            _spec_diagnostic(
+                "",
+                "AGX0801",
+                "error",
+                "Contract payload must be a JSON object.",
+            )
+        )
+    if not requested_schema_format:
+        diagnostics.append(
+            _spec_diagnostic(
+                "",
+                "AGX0801",
+                "error",
+                "Contract schema format is required when the payload has no format field.",
+            )
+        )
+    elif schema is None:
+        diagnostics.append(
+            _spec_diagnostic(
+                "",
+                "AGX0801",
+                "error",
+                f"Unknown contract schema format: {requested_schema_format}",
+            )
+        )
+    if isinstance(payload, dict) and schema is not None:
+        diagnostics.extend(_validate_contract_schema_value(payload, schema, path="$", root_schema=schema))
+    return _contract_validation_report(
+        ok=not diagnostics,
+        schema_format=requested_schema_format,
+        payload_format=payload_format,
+        source_name=source_name,
+        diagnostics=tuple(diagnostics),
+        schema_available=schema is not None,
+        payload_format_inferred=payload_format_inferred,
+    )
+
+
+def _contract_validation_report(
+    *,
+    ok: bool,
+    schema_format: str | None,
+    payload_format: str | None,
+    source_name: str | None,
+    diagnostics: tuple[dict, ...],
+    schema_available: bool,
+    payload_format_inferred: bool,
+) -> dict:
+    required_field_errors = tuple(
+        diagnostic["message"]
+        for diagnostic in diagnostics
+        if diagnostic.get("message", "").startswith("Missing required contract field")
+    )
+    type_errors = tuple(
+        diagnostic["message"]
+        for diagnostic in diagnostics
+        if "must be " in diagnostic.get("message", "")
+    )
+    const_errors = tuple(
+        diagnostic["message"]
+        for diagnostic in diagnostics
+        if "must equal" in diagnostic.get("message", "")
+    )
+    enum_errors = tuple(
+        diagnostic["message"]
+        for diagnostic in diagnostics
+        if "must be one of" in diagnostic.get("message", "")
+    )
+    pattern_errors = tuple(
+        diagnostic["message"]
+        for diagnostic in diagnostics
+        if "must match pattern" in diagnostic.get("message", "")
+    )
+    return {
+        "format": "appgen.contract-validation-report.v1",
+        "ok": ok,
+        "source": source_name,
+        "schema_format": schema_format,
+        "payload_format": payload_format,
+        "schema_available": schema_available,
+        "payload_format_inferred": payload_format_inferred,
+        "diagnostics": diagnostics,
+        "diagnostic_count": len(diagnostics),
+        "required_field_errors": required_field_errors,
+        "required_field_error_count": len(required_field_errors),
+        "type_errors": type_errors,
+        "type_error_count": len(type_errors),
+        "const_errors": const_errors,
+        "const_error_count": len(const_errors),
+        "enum_errors": enum_errors,
+        "enum_error_count": len(enum_errors),
+        "pattern_errors": pattern_errors,
+        "pattern_error_count": len(pattern_errors),
+    }
+
+
+def _validate_contract_schema_value(value: object, schema: dict, *, path: str, root_schema: dict) -> tuple[dict, ...]:
+    if "$ref" in schema:
+        schema = _resolve_contract_schema_ref(schema["$ref"], root_schema) or {}
+    diagnostics: list[dict] = []
+    expected_type = schema.get("type")
+    if expected_type and not _contract_schema_type_matches(value, expected_type):
+        diagnostics.append(_contract_schema_diagnostic(f"{path} must be {_contract_schema_type_label(expected_type)}."))
+        return tuple(diagnostics)
+    if "const" in schema and value != schema["const"]:
+        diagnostics.append(_contract_schema_diagnostic(f"{path} must equal {schema['const']!r}."))
+    if "enum" in schema and value not in set(schema["enum"]):
+        diagnostics.append(_contract_schema_diagnostic(f"{path} must be one of {tuple(schema['enum'])!r}."))
+    if "pattern" in schema and isinstance(value, str) and not re.search(schema["pattern"], value):
+        diagnostics.append(_contract_schema_diagnostic(f"{path} must match pattern {schema['pattern']!r}."))
+    if "minimum" in schema and isinstance(value, (int, float)) and value < schema["minimum"]:
+        diagnostics.append(_contract_schema_diagnostic(f"{path} must be >= {schema['minimum']}."))
+    if isinstance(value, dict):
+        for field in tuple(schema.get("required", ())):
+            if field not in value:
+                diagnostics.append(_contract_schema_diagnostic(f"Missing required contract field {path}.{field}."))
+        for field, field_schema in (schema.get("properties") or {}).items():
+            if field in value:
+                diagnostics.extend(
+                    _validate_contract_schema_value(value[field], field_schema, path=f"{path}.{field}", root_schema=root_schema)
+                )
+    if isinstance(value, list) and isinstance(schema.get("items"), dict):
+        item_schema = schema["items"]
+        for index, item in enumerate(value):
+            diagnostics.extend(
+                _validate_contract_schema_value(item, item_schema, path=f"{path}[{index}]", root_schema=root_schema)
+            )
+    return tuple(diagnostics)
+
+
+def _resolve_contract_schema_ref(ref: str, root_schema: dict) -> dict | None:
+    if not ref.startswith("#/$defs/"):
+        return None
+    return (root_schema.get("$defs") or {}).get(ref.removeprefix("#/$defs/"))
+
+
+def _contract_schema_type_matches(value: object, expected_type: object) -> bool:
+    expected_types = tuple(expected_type) if isinstance(expected_type, (tuple, list)) else (expected_type,)
+    return any(_contract_schema_single_type_matches(value, item) for item in expected_types)
+
+
+def _contract_schema_single_type_matches(value: object, expected_type: object) -> bool:
+    if expected_type == "object":
+        return isinstance(value, dict)
+    if expected_type == "array":
+        return isinstance(value, list)
+    if expected_type == "string":
+        return isinstance(value, str)
+    if expected_type == "boolean":
+        return isinstance(value, bool)
+    if expected_type == "integer":
+        return isinstance(value, int) and not isinstance(value, bool)
+    if expected_type == "number":
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    if expected_type == "null":
+        return value is None
+    return True
+
+
+def _contract_schema_type_label(expected_type: object) -> str:
+    if isinstance(expected_type, (tuple, list)):
+        return " or ".join(str(item) for item in expected_type)
+    return str(expected_type)
+
+
+def _contract_schema_diagnostic(message: str) -> dict:
+    return _spec_diagnostic("", "AGX0801", "error", message)
 
 
 def tooling_audit_report_dsl() -> dict:
@@ -6830,6 +7063,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         nl_plan_cli = _tooling_audit_nl_plan_cli(Path(tmp), source)
         dsl_language_cli = _tooling_audit_dsl_language_cli(Path(tmp), source)
         contract_schema_cli = _tooling_audit_contract_schema_cli()
+        contract_validation_cli = _tooling_audit_contract_validation_cli(Path(tmp))
         test_strategy_cli = _tooling_audit_test_strategy_cli(Path(tmp), source)
         generation = generate_report_dsl(
             source,
@@ -6900,6 +7134,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         semantic_source_set_cli=semantic_source_set_cli,
         dsl_language_cli=dsl_language_cli,
         contract_schema_cli=contract_schema_cli,
+        contract_validation_cli=contract_validation_cli,
         cli_help_surface=cli_help_surface,
         internal_error_exit=internal_error_exit,
         missing_input_exit=missing_input_exit,
@@ -6938,6 +7173,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         lint_directory_cli=lint_directory_cli,
         semantic_source_set_cli=semantic_source_set_cli,
         contract_schema_cli=contract_schema_cli,
+        contract_validation_cli=contract_validation_cli,
         validate_generate_cli=validate_generate_cli,
         graphs=graphs,
         graph_cli=graph_cli,
@@ -6970,6 +7206,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         formatter_contract=formatter_contract,
         dsl_language_cli=dsl_language_cli,
         contract_schema_cli=contract_schema_cli,
+        contract_validation_cli=contract_validation_cli,
         cli_help_surface=cli_help_surface,
         semantic_source_set_cli=semantic_source_set_cli,
         validate_generate_cli=validate_generate_cli,
@@ -7014,6 +7251,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         validate_generate_cli=validate_generate_cli,
         dsl_language_cli=dsl_language_cli,
         contract_schema_cli=contract_schema_cli,
+        contract_validation_cli=contract_validation_cli,
         internal_error_exit=internal_error_exit,
         missing_input_exit=missing_input_exit,
         missing_required_option_exit=missing_required_option_exit,
@@ -7129,6 +7367,24 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "Core diagnostic, semantic, lint, migration, NL, release, and tooling reports expose reusable JSON Schema contracts from the CLI.",
             "docs/tooling.md#appgen-contract-schema",
             contract_schema_cli,
+        ),
+        _tooling_audit_check(
+            "contract_validation_cli_contracts",
+            contract_validation_cli["ok"]
+            and contract_validation_cli.get("missing_case_count") == 0
+            and contract_validation_cli.get("missing_exit_code_case_count") == 0
+            and contract_validation_cli.get("missing_payload_format_case_count") == 0
+            and contract_validation_cli.get("missing_text_marker_count") == 0
+            and contract_validation_cli.get("text_json_fallback") is False
+            and contract_validation_cli.get("valid_report_format") == "appgen.contract-validation-report.v1"
+            and contract_validation_cli.get("valid_payload_format") == "appgen.semantic-model.v1"
+            and contract_validation_cli.get("valid_schema_format") == "appgen.semantic-model.v1"
+            and contract_validation_cli.get("missing_required_error_count", 0) >= 1
+            and contract_validation_cli.get("unknown_schema_available") is False
+            and contract_validation_cli.get("malformed_diagnostic_count", 0) >= 1,
+            "Contract payload validation accepts valid schema-bound payloads and rejects missing required fields, unknown schemas, malformed JSON, and text fallback.",
+            "docs/tooling.md#appgen-contract-validate",
+            contract_validation_cli,
         ),
         _tooling_audit_check(
             "diagnostic_registry_and_fixtures",
@@ -10349,7 +10605,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and section_coverage.get("required_section_count") == 18
             and section_coverage.get("covered_section_count") == section_coverage.get("required_section_count")
             and section_coverage.get("missing_section_count") == 0
-            and section_coverage.get("required_subsection_count") == 41
+            and section_coverage.get("required_subsection_count") == 42
             and section_coverage.get("covered_subsection_count") == section_coverage.get("required_subsection_count")
             and section_coverage.get("missing_subsection_count") == 0
             and section_coverage.get("stale_mapping_count") == 0
@@ -10899,12 +11155,18 @@ def _tooling_audit_section_coverage(root: Path, checks: Iterable[dict]) -> dict:
         "non-goals": ("non_goal_policy_guards",),
         "core-architecture": ("module_boundaries",),
         "semantic-model-contract": ("shared_semantic_model", "semantic_drift_surface_contracts", "contract_schema_cli_contracts"),
-        "diagnostic-specification": ("diagnostic_registry_and_fixtures", "diagnostic_catalog_fixture_contracts", "contract_schema_cli_contracts"),
+        "diagnostic-specification": (
+            "diagnostic_registry_and_fixtures",
+            "diagnostic_catalog_fixture_contracts",
+            "contract_schema_cli_contracts",
+            "contract_validation_cli_contracts",
+        ),
         "linter-specification": ("lint_directory_and_strict_profiles", "lint_cli_directory_contracts"),
         "formatter-specification": ("formatter_idempotent", "formatter_write_organize_contracts"),
         "cli-contracts": (
             "dsl_language_cli_contracts",
             "contract_schema_cli_contracts",
+            "contract_validation_cli_contracts",
             "cli_validation_and_generation_contracts",
             "cli_usage_failure_contracts",
             "cli_help_alias_contracts",
@@ -10973,6 +11235,7 @@ def _tooling_audit_section_coverage(root: Path, checks: Iterable[dict]) -> dict:
         "appgen-explain": ("explain_cli_contracts",),
         "appgen-doctor": ("doctor_cli_text_contracts",),
         "appgen-contract-schema": ("contract_schema_cli_contracts",),
+        "appgen-contract-validate": ("contract_validation_cli_contracts",),
         "appgen-tooling-audit": ("tooling_audit_text_renderer", "tooling_doc_anchor_integrity"),
         "appgen-package": ("package_manifest_handoff_contracts", "release_text_evidence_contracts"),
         "appgen-component-publish": ("component_publish_catalog_contracts",),
@@ -11142,6 +11405,7 @@ def _tooling_audit_test_family_contracts(**evidence: dict) -> dict:
             "required_coverage": "CLI exit codes, JSON schemas, text summaries, bad arguments, help, and aliases are covered.",
             "ok": evidence["dsl_language_cli"].get("ok") is True
             and evidence["contract_schema_cli"].get("ok") is True
+            and evidence["contract_validation_cli"].get("ok") is True
             and evidence["cli_help_surface"].get("ok") is True
             and evidence["internal_error_exit"].get("ok") is True
             and evidence["missing_input_exit"].get("ok") is True
@@ -11150,6 +11414,7 @@ def _tooling_audit_test_family_contracts(**evidence: dict) -> dict:
             "evidence_formats": (
                 evidence["dsl_language_cli"].get("format"),
                 evidence["contract_schema_cli"].get("format"),
+                evidence["contract_validation_cli"].get("format"),
                 evidence["cli_help_surface"].get("format"),
                 evidence["internal_error_exit"].get("format"),
                 evidence["missing_input_exit"].get("format"),
@@ -11411,7 +11676,7 @@ def _tooling_audit_priority_order_contracts(root: Path, **evidence: dict) -> dic
         _priority_contract("shared_parser_and_semantic_model", "Shared parser and semantic model.", evidence["semantic"].get("ok") is True and evidence["symbol_coverage"].get("missing") == () and evidence["semantic_source_set_cli"].get("ok") is True, evidence["semantic_source_set_cli"].get("format")),
         _priority_contract("diagnostic_registry_and_linter", "Diagnostic registry and linter.", evidence["diagnostics"].get("ok") is True and evidence["diagnostic_fixtures"].get("ok") is True and evidence["lint"].get("ok") is True, evidence["diagnostics"].get("format")),
         _priority_contract("formatter", "Formatter.", evidence["formatter_contract"].get("ok") is True, evidence["formatter_contract"].get("format")),
-        _priority_contract("cli_json_contracts", "CLI JSON contracts.", evidence["dsl_language_cli"].get("ok") is True and evidence["contract_schema_cli"].get("ok") is True and evidence["cli_help_surface"].get("ok") is True and evidence["validate_generate_cli"].get("ok") is True, evidence["contract_schema_cli"].get("format")),
+        _priority_contract("cli_json_contracts", "CLI JSON contracts.", evidence["dsl_language_cli"].get("ok") is True and evidence["contract_schema_cli"].get("ok") is True and evidence["contract_validation_cli"].get("ok") is True and evidence["cli_help_surface"].get("ok") is True and evidence["validate_generate_cli"].get("ok") is True, evidence["contract_validation_cli"].get("format")),
         _priority_contract("graph_and_explain_tooling", "Graph and explain tooling.", evidence["graphs"].get("ok") is True and evidence["graph_cli"].get("ok") is True and evidence["graph_suite_cli"].get("ok") is True and evidence["explain_cli"].get("ok") is True, evidence["graphs"].get("format")),
         _priority_contract("language_server", "Language server.", evidence["lsp"].get("ok") is True and evidence["lsp_rpc"].get("ok") is True and evidence["lsp_stdio"].get("ok") is True, evidence["lsp"].get("format")),
         _priority_contract("vscode_and_monaco_integration", "VS Code and Monaco integration.", evidence["vscode"].get("ok") is True and evidence["studio"].get("ok") is True, evidence["studio"].get("format")),
@@ -11628,8 +11893,12 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                 {
                     "id": "json_schema_contracts",
                     "ok": evidence["contract_schema_cli"].get("ok") is True
-                    and evidence["contract_schema_cli"].get("missing_required_schema_count") == 0,
-                    "evidence_format": evidence["contract_schema_cli"].get("format"),
+                    and evidence["contract_schema_cli"].get("missing_required_schema_count") == 0
+                    and evidence["contract_validation_cli"].get("ok") is True,
+                    "evidence_formats": (
+                        evidence["contract_schema_cli"].get("format"),
+                        evidence["contract_validation_cli"].get("format"),
+                    ),
                 },
                 {
                     "id": "fixture_catalogs_run_in_ci",
@@ -11887,12 +12156,14 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     and evidence["validate_generate_cli"].get("ok") is True
                     and evidence["dsl_language_cli"].get("ok") is True
                     and evidence["contract_schema_cli"].get("ok") is True
+                    and evidence["contract_validation_cli"].get("ok") is True
                     and evidence["cli_help_surface"].get("ok") is True,
                     "evidence_formats": (
                         evidence["validation"].get("format"),
                         evidence["validate_generate_cli"].get("format"),
                         evidence["dsl_language_cli"].get("format"),
                         evidence["contract_schema_cli"].get("format"),
+                        evidence["contract_validation_cli"].get("format"),
                         evidence["cli_help_surface"].get("format"),
                     ),
                 },
@@ -18053,6 +18324,180 @@ def _tooling_audit_contract_schema_cli() -> dict:
     }
 
 
+def _tooling_audit_contract_validation_cli(tmp: Path) -> dict:
+    semantic_payload = semantic_model_dsl(_tooling_audit_sample_dsl(), source_name="contract-validation.appgen")
+    valid_path = tmp / "semantic-contract.json"
+    valid_path.write_text(json.dumps(semantic_payload, default=list), encoding="utf-8")
+    missing_required_payload = {key: value for key, value in semantic_payload.items() if key != "tables"}
+    missing_required_path = tmp / "semantic-contract-missing-tables.json"
+    missing_required_path.write_text(json.dumps(missing_required_payload, default=list), encoding="utf-8")
+    wrong_format_payload = {**semantic_payload, "format": "appgen.missing-contract.v1"}
+    wrong_format_path = tmp / "semantic-contract-wrong-format.json"
+    wrong_format_path.write_text(json.dumps(wrong_format_payload, default=list), encoding="utf-8")
+    malformed_path = tmp / "malformed-contract.json"
+    malformed_path.write_text("{not-json", encoding="utf-8")
+
+    inferred_exit, inferred_payload = _tooling_cli_json_case(("contract-validate", str(valid_path), "--json"))
+    explicit_exit, explicit_payload = _tooling_cli_json_case(
+        ("contract-validate", str(valid_path), "--format", "appgen.semantic-model.v1", "--json")
+    )
+    missing_required_exit, missing_required_report = _tooling_cli_json_case(
+        ("contract-validate", str(missing_required_path), "--json")
+    )
+    unknown_schema_exit, unknown_schema_report = _tooling_cli_json_case(
+        ("contract-validate", str(wrong_format_path), "--json")
+    )
+    malformed_exit, malformed_report = _tooling_cli_json_case(("contract-validate", str(malformed_path), "--json"))
+    text_exit, text = _tooling_cli_text_case(("contract-validate", str(valid_path)))
+
+    cases = (
+        {
+            "case": "valid_inferred_json",
+            "ok": inferred_exit == 0
+            and inferred_payload.get("format") == "appgen.contract-validation-report.v1"
+            and inferred_payload.get("ok") is True
+            and inferred_payload.get("payload_format") == "appgen.semantic-model.v1"
+            and inferred_payload.get("schema_format") == "appgen.semantic-model.v1"
+            and inferred_payload.get("payload_format_inferred") is True,
+            "exit_code": inferred_exit,
+            "payload_format": inferred_payload.get("format"),
+            "contract_payload_format": inferred_payload.get("payload_format"),
+        },
+        {
+            "case": "valid_explicit_json",
+            "ok": explicit_exit == 0
+            and explicit_payload.get("format") == "appgen.contract-validation-report.v1"
+            and explicit_payload.get("ok") is True
+            and explicit_payload.get("payload_format_inferred") is False,
+            "exit_code": explicit_exit,
+            "payload_format": explicit_payload.get("format"),
+            "contract_payload_format": explicit_payload.get("payload_format"),
+        },
+        {
+            "case": "missing_required_json",
+            "ok": missing_required_exit == 1
+            and missing_required_report.get("format") == "appgen.contract-validation-report.v1"
+            and missing_required_report.get("ok") is False
+            and missing_required_report.get("required_field_error_count", 0) >= 1,
+            "exit_code": missing_required_exit,
+            "payload_format": missing_required_report.get("format"),
+            "contract_payload_format": missing_required_report.get("payload_format"),
+        },
+        {
+            "case": "unknown_schema_json",
+            "ok": unknown_schema_exit == 1
+            and unknown_schema_report.get("format") == "appgen.contract-validation-report.v1"
+            and unknown_schema_report.get("ok") is False
+            and unknown_schema_report.get("schema_available") is False,
+            "exit_code": unknown_schema_exit,
+            "payload_format": unknown_schema_report.get("format"),
+            "contract_payload_format": unknown_schema_report.get("payload_format"),
+        },
+        {
+            "case": "malformed_json",
+            "ok": malformed_exit == 1
+            and malformed_report.get("format") == "appgen.contract-validation-report.v1"
+            and malformed_report.get("ok") is False
+            and malformed_report.get("diagnostic_count", 0) >= 1,
+            "exit_code": malformed_exit,
+            "payload_format": malformed_report.get("format"),
+            "contract_payload_format": malformed_report.get("payload_format"),
+        },
+        {
+            "case": "valid_text",
+            "ok": text_exit == 0
+            and not text.lstrip().startswith("{")
+            and "contract-validate ok: format=appgen.contract-validation-report.v1" in text
+            and "payload_format=appgen.semantic-model.v1" in text,
+            "exit_code": text_exit,
+            "payload_format": "text",
+            "contract_payload_format": "appgen.semantic-model.v1",
+        },
+    )
+    required_case_ids = (
+        "valid_inferred_json",
+        "valid_explicit_json",
+        "missing_required_json",
+        "unknown_schema_json",
+        "malformed_json",
+        "valid_text",
+    )
+    expected_exit_codes_by_case = {
+        "valid_inferred_json": 0,
+        "valid_explicit_json": 0,
+        "missing_required_json": 1,
+        "unknown_schema_json": 1,
+        "malformed_json": 1,
+        "valid_text": 0,
+    }
+    expected_payload_formats_by_case = {
+        "valid_inferred_json": "appgen.contract-validation-report.v1",
+        "valid_explicit_json": "appgen.contract-validation-report.v1",
+        "missing_required_json": "appgen.contract-validation-report.v1",
+        "unknown_schema_json": "appgen.contract-validation-report.v1",
+        "malformed_json": "appgen.contract-validation-report.v1",
+        "valid_text": "text",
+    }
+    observed_case_ids = tuple(case["case"] for case in cases)
+    failing_cases = tuple(case["case"] for case in cases if not case["ok"])
+    missing_case_ids = tuple(case_id for case_id in required_case_ids if case_id not in observed_case_ids)
+    exit_codes_by_case = {case["case"]: case["exit_code"] for case in cases}
+    payload_formats_by_case = {case["case"]: case["payload_format"] for case in cases}
+    missing_exit_code_cases = tuple(
+        case_id
+        for case_id, expected_code in expected_exit_codes_by_case.items()
+        if exit_codes_by_case.get(case_id) != expected_code
+    )
+    missing_payload_format_cases = tuple(
+        case_id
+        for case_id, expected_format in expected_payload_formats_by_case.items()
+        if payload_formats_by_case.get(case_id) != expected_format
+    )
+    required_text_markers = (
+        "contract-validate ok: format=appgen.contract-validation-report.v1",
+        "payload_format=appgen.semantic-model.v1",
+        "schema_format=appgen.semantic-model.v1",
+    )
+    missing_text_markers = tuple(marker for marker in required_text_markers if marker not in text)
+    return {
+        "format": "appgen.contract-validation-cli-audit.v1",
+        "ok": not failing_cases
+        and not missing_case_ids
+        and not missing_exit_code_cases
+        and not missing_payload_format_cases
+        and not missing_text_markers
+        and not text.lstrip().startswith("{"),
+        "case_count": len(cases),
+        "passing_case_count": sum(1 for case in cases if case["ok"]),
+        "failing_case_count": len(failing_cases),
+        "failing_cases": failing_cases,
+        "required_case_ids": required_case_ids,
+        "observed_case_ids": observed_case_ids,
+        "missing_case_count": len(missing_case_ids),
+        "missing_case_ids": missing_case_ids,
+        "expected_exit_codes_by_case": expected_exit_codes_by_case,
+        "exit_codes_by_case": exit_codes_by_case,
+        "missing_exit_code_case_count": len(missing_exit_code_cases),
+        "missing_exit_code_cases": missing_exit_code_cases,
+        "expected_payload_formats_by_case": expected_payload_formats_by_case,
+        "payload_formats_by_case": payload_formats_by_case,
+        "missing_payload_format_case_count": len(missing_payload_format_cases),
+        "missing_payload_format_cases": missing_payload_format_cases,
+        "required_text_markers": required_text_markers,
+        "missing_text_markers": missing_text_markers,
+        "missing_text_marker_count": len(missing_text_markers),
+        "text_json_fallback": text.lstrip().startswith("{"),
+        "valid_report_format": inferred_payload.get("format"),
+        "valid_payload_format": inferred_payload.get("payload_format"),
+        "valid_schema_format": inferred_payload.get("schema_format"),
+        "missing_required_error_count": missing_required_report.get("required_field_error_count"),
+        "unknown_schema_available": unknown_schema_report.get("schema_available"),
+        "malformed_diagnostic_count": malformed_report.get("diagnostic_count"),
+        "text_prefix": text[:240],
+        "cases": cases,
+    }
+
+
 def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
     source_path = tmp / "designer-sync.appgen"
     source_path.write_text(source, encoding="utf-8")
@@ -20286,6 +20731,7 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         "dsl-authoring-gate",
         "dsl-language-service",
         "contract-schema",
+        "contract-validate",
         "drift",
         "doctor",
         "tooling-audit",
@@ -20328,6 +20774,7 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         ("dsl-authoring-gate",): ("--json",),
         ("dsl-language-service",): ("--prefix", "--json"),
         ("contract-schema",): ("--json",),
+        ("contract-validate",): ("--format", "--json"),
         ("drift",): ("--json",),
         ("doctor",): ("--json",),
         ("tooling-audit",): ("--json",),

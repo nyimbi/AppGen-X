@@ -728,6 +728,42 @@ schema disappears, the CLI stops exposing a selected semantic-model schema, a
 missing schema no longer returns a controlled contract payload, or human-readable
 schema output loses its named markers.
 
+### `appgen contract-validate`
+
+```console
+appgen contract-validate semantic.json --json
+appgen contract-validate semantic.json --format appgen.semantic-model.v1 --json
+appgen contract-validate semantic.json
+```
+
+`appgen contract-validate` validates a machine-readable tooling payload against
+the JSON Schema contracts exported by `appgen contract-schema`. When `--format`
+is omitted, the command infers the schema from the payload's `format` field. The
+command returns `appgen.contract-validation-report.v1` with the selected schema
+format, the observed payload format, whether the schema was available, whether
+the payload format was inferred, normalized diagnostics, and grouped counts for
+missing required fields, type errors, constant mismatches, enum mismatches, and
+pattern mismatches.
+
+Validation is intentionally dependency-light so coding agents and small local
+models can run it without installing a separate JSON Schema engine. It enforces
+the schema subset emitted by the platform catalog: object/array/string/boolean/
+integer/number/null types, `required`, `properties`, `items`, local `$defs`
+references, `const`, `enum`, `pattern`, and `minimum`. Unknown schema names,
+payloads with no inferrable format, malformed JSON, and missing required fields
+return the same report format with `ok: false` and exit code `1`.
+
+`appgen.contract-validation-cli-audit.v1` proves valid inferred JSON, valid
+explicit JSON, missing-required-field JSON, unknown-schema JSON, malformed JSON,
+and text modes. It reports required/observed case ids, expected/observed exit
+codes, expected/observed payload formats, required text markers, text
+JSON-fallback status, the validated payload/schema format pair, missing-field
+error counts, unknown-schema availability, and malformed-JSON diagnostic counts.
+The aggregate `contract_validation_cli_contracts` gate fails when contract
+validation stops rejecting broken payloads, exits with the wrong process status,
+falls back to raw JSON in text mode, or loses the stable markers external agents
+use to decide whether a generated contract is safe to consume.
+
 ### `appgen semantic`
 
 ```console
@@ -2485,6 +2521,9 @@ Exit criteria:
 - `appgen.contract-schema-cli-audit.v1` proves core diagnostic, lint,
   semantic-model, migration, natural-language, release-verifier, and tooling
   audit schemas are available from CLI JSON and text modes.
+- `appgen.contract-validation-cli-audit.v1` proves those JSON contracts can be
+  enforced against real payloads, including valid semantic-model payloads,
+  missing required fields, unknown schemas, malformed JSON, and text mode.
 - The test-strategy CLI audit requires `appgen drift` to prove CLI, LSP,
   Studio, graph, generator, and release-verifier surfaces share one semantic
   model, including `appgen.generate-report.v1` evidence.
