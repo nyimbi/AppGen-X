@@ -1864,6 +1864,10 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
     dsl_language_service_parser.add_argument("--prefix", default="")
     dsl_language_service_parser.add_argument("--json", action="store_true")
 
+    contract_schema_parser = subparsers.add_parser("contract-schema")
+    contract_schema_parser.add_argument("format", nargs="?", default="all")
+    contract_schema_parser.add_argument("--json", action="store_true")
+
     drift_parser = subparsers.add_parser("drift")
     drift_parser.add_argument("path")
     drift_parser.add_argument("--json", action="store_true")
@@ -2065,6 +2069,11 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
         return 0 if report["ok"] else 1
     if args.command == "dsl-language-service":
         report = dsl_language_service(source, source_name=str(path), prefix=args.prefix)
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "contract-schema":
+        selected_format = None if args.format == "all" else args.format
+        report = contract_schema_catalog_dsl(selected_format)
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     if args.command == "drift":
@@ -2370,6 +2379,22 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
             f"actions={counts.get('code_action_count', len(actions))} "
             f"quality_format={quality.get('format')}"
         )
+        return
+    if payload.get("format") == "appgen.contract-schema-catalog.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        selected = tuple(payload.get("selected_formats", ()))
+        missing = tuple(payload.get("missing_required_schema_formats", ()))
+        print(
+            f"contract-schema {status}: format={payload.get('format')} "
+            f"schemas={payload.get('schema_count', 0)} selected={len(selected)} "
+            f"missing={len(missing)}"
+        )
+        for schema_format in selected:
+            schema = (payload.get("schemas") or {}).get(schema_format, {})
+            required = tuple(schema.get("required", ()))
+            print(f"schema {schema_format}: required={len(required)} properties={len(schema.get('properties', {}))}")
+        for schema_format in missing:
+            print(f"missing-schema {schema_format}")
         return
     if payload.get("format") == "appgen.explain-report.v1":
         _emit_explain_text(payload)
@@ -6487,6 +6512,231 @@ def doctor_report_dsl() -> dict:
     }
 
 
+CONTRACT_SCHEMA_REQUIRED_FORMATS = (
+    "appgen.diagnostic.v1",
+    "appgen.lint-report.v1",
+    "appgen.semantic-model.v1",
+    "appgen.migration-plan.v1",
+    "appgen.nl-plan.v1",
+    "appgen.release-verifier-report.v1",
+    "appgen.tooling-audit.v1",
+)
+
+
+def contract_schema_catalog_dsl(selected_format: str | None = None) -> dict:
+    """Return JSON Schema contracts for core machine-readable tooling payloads."""
+    schemas = _contract_schema_catalog()
+    requested = selected_format.strip() if isinstance(selected_format, str) else None
+    if requested:
+        selected_formats = (requested,) if requested in schemas else ()
+        missing_requested = () if selected_formats else (requested,)
+    else:
+        selected_formats = tuple(CONTRACT_SCHEMA_REQUIRED_FORMATS)
+        missing_requested = ()
+    selected_schemas = {schema_format: schemas[schema_format] for schema_format in selected_formats if schema_format in schemas}
+    missing_required = tuple(schema_format for schema_format in CONTRACT_SCHEMA_REQUIRED_FORMATS if schema_format not in schemas)
+    return {
+        "format": "appgen.contract-schema-catalog.v1",
+        "ok": not missing_required and not missing_requested,
+        "schema_dialect": "https://json-schema.org/draft/2020-12/schema",
+        "required_schema_formats": CONTRACT_SCHEMA_REQUIRED_FORMATS,
+        "required_schema_count": len(CONTRACT_SCHEMA_REQUIRED_FORMATS),
+        "available_schema_formats": tuple(sorted(schemas)),
+        "available_schema_count": len(schemas),
+        "selected_formats": selected_formats,
+        "selected_format_count": len(selected_formats),
+        "requested_format": requested or "all",
+        "missing_required_schema_formats": missing_required,
+        "missing_required_schema_count": len(missing_required),
+        "missing_requested_schema_formats": missing_requested,
+        "missing_requested_schema_count": len(missing_requested),
+        "schema_count": len(selected_schemas),
+        "schemas": selected_schemas,
+        "schema_property_counts": {
+            schema_format: len(schema.get("properties", {}))
+            for schema_format, schema in selected_schemas.items()
+        },
+        "schema_required_counts": {
+            schema_format: len(schema.get("required", ()))
+            for schema_format, schema in selected_schemas.items()
+        },
+    }
+
+
+def _contract_schema_catalog() -> dict[str, dict]:
+    return {
+        "appgen.diagnostic.v1": _json_object_schema(
+            "appgen.diagnostic.v1",
+            required=("code", "severity", "message"),
+            properties={
+                "code": {"type": "string", "pattern": "^AGX[0-9]{4}$"},
+                "severity": {"type": "string", "enum": ("error", "warning", "info")},
+                "message": {"type": "string"},
+                "range": {"type": "object"},
+                "fixes": {"type": "array", "items": {"type": "object"}},
+                "docs_url": {"type": "string"},
+            },
+        ),
+        "appgen.lint-report.v1": _json_object_schema(
+            "appgen.lint-report.v1",
+            required=("format", "ok", "diagnostics", "summary", "severity_counts"),
+            properties={
+                "format": _const_schema("appgen.lint-report.v1"),
+                "ok": {"type": "boolean"},
+                "source": {"type": ("string", "null")},
+                "source_mode": {"type": "string"},
+                "files": {"type": "array", "items": {"type": "string"}},
+                "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}},
+                "summary": {"type": "object"},
+                "severity_counts": {"type": "object"},
+                "stages": {"type": "object"},
+                "migration_preview": {"type": "object"},
+            },
+            defs={"diagnostic": _diagnostic_schema_ref_target()},
+        ),
+        "appgen.semantic-model.v1": _json_object_schema(
+            "appgen.semantic-model.v1",
+            required=("format", "ok", "app", "symbols", "tables", "views", "diagnostics"),
+            properties={
+                "format": _const_schema("appgen.semantic-model.v1"),
+                "ok": {"type": "boolean"},
+                "source": {"type": ("string", "null")},
+                "source_mode": {"type": "string"},
+                "source_files": {"type": "array", "items": {"type": "string"}},
+                "app": {"type": "object"},
+                "symbols": {"type": "object"},
+                "tables": {"type": "object"},
+                "views": {"type": "object"},
+                "flows": {"type": "object"},
+                "operations": {"type": "object"},
+                "rules": {"type": "object"},
+                "roles": {"type": "object"},
+                "agents": {"type": "object"},
+                "llms": {"type": "object"},
+                "pbcs": {"type": "object"},
+                "composition": {"type": "object"},
+                "contracts": {"type": "object"},
+                "deployment": {"type": "object"},
+                "packages": {"type": "object"},
+                "graphs": {"type": "object"},
+                "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}},
+            },
+            defs={"diagnostic": _diagnostic_schema_ref_target()},
+        ),
+        "appgen.migration-plan.v1": _json_object_schema(
+            "appgen.migration-plan.v1",
+            required=("format", "ok", "backend", "changes", "coverage", "diagnostics"),
+            properties={
+                "format": _const_schema("appgen.migration-plan.v1"),
+                "ok": {"type": "boolean"},
+                "backend": {"type": "string", "enum": SUPPORTED_DATABASE_BACKENDS},
+                "allowed_backends": {"type": "array", "items": {"type": "string"}},
+                "source_files": {"type": "array", "items": {"type": "string"}},
+                "previous_input_format": {"type": "string"},
+                "current_input_format": {"type": "string"},
+                "semantic_input_count": {"type": "integer", "minimum": 0},
+                "changes": {"type": "array", "items": {"type": "object"}},
+                "change_count": {"type": "integer", "minimum": 0},
+                "coverage": {"type": "object"},
+                "destructive": {"type": "boolean"},
+                "requires_approval": {"type": "boolean"},
+                "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}},
+                "rename_hints": {"type": "array", "items": {"type": "object"}},
+            },
+            defs={"diagnostic": _diagnostic_schema_ref_target()},
+        ),
+        "appgen.nl-plan.v1": _json_object_schema(
+            "appgen.nl-plan.v1",
+            required=("format", "ok", "prompt", "intent", "edit_operations", "dsl_patch", "lint", "migration_preview"),
+            properties={
+                "format": _const_schema("appgen.nl-plan.v1"),
+                "ok": {"type": "boolean"},
+                "prompt": {"type": "string"},
+                "intent": {"type": "string"},
+                "edit_operations": {"type": "array", "items": {"type": "object"}},
+                "dsl_patch": {"type": "string"},
+                "patched_source": {"type": "string"},
+                "affected_symbols": {"type": "array", "items": {"type": "string"}},
+                "lint": {"type": "object"},
+                "migration_preview": {"type": "object"},
+                "test_plan": {"type": "array", "items": {"type": "object"}},
+                "token_budget_notes": {"type": "array", "items": {"type": "string"}},
+                "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}},
+            },
+            defs={"diagnostic": _diagnostic_schema_ref_target()},
+        ),
+        "appgen.release-verifier-report.v1": _json_object_schema(
+            "appgen.release-verifier-report.v1",
+            required=("format", "ok", "targets", "checks", "blocking_gaps", "evidence_bundle"),
+            properties={
+                "format": _const_schema("appgen.release-verifier-report.v1"),
+                "ok": {"type": "boolean"},
+                "targets": {"type": "array", "items": {"type": "string"}},
+                "checks": {"type": "array", "items": {"type": "object"}},
+                "blocking_gaps": {"type": "array", "items": {"type": "string"}},
+                "evidence_bundle": {"type": "object"},
+                "written_artifacts": {"type": "array", "items": {"type": "object"}},
+                "graph_suite_format": {"type": "string"},
+            },
+        ),
+        "appgen.tooling-audit.v1": _json_object_schema(
+            "appgen.tooling-audit.v1",
+            required=("format", "ok", "passed", "required", "checks", "blocking_gaps"),
+            properties={
+                "format": _const_schema("appgen.tooling-audit.v1"),
+                "ok": {"type": "boolean"},
+                "passed": {"type": "integer", "minimum": 0},
+                "required": {"type": "integer", "minimum": 0},
+                "checks": {"type": "array", "items": {"type": "object"}},
+                "blocking_gaps": {"type": "array", "items": {"type": "object"}},
+                "sections": {"type": "array", "items": {"type": "string"}},
+                "doc_anchor_integrity": {"type": "object"},
+            },
+        ),
+    }
+
+
+def _json_object_schema(
+    title: str,
+    *,
+    required: tuple[str, ...],
+    properties: dict,
+    defs: dict | None = None,
+) -> dict:
+    schema = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": f"https://appgen-x.local/schemas/{title}.schema.json",
+        "title": title,
+        "type": "object",
+        "required": required,
+        "properties": properties,
+        "additionalProperties": True,
+    }
+    if defs:
+        schema["$defs"] = defs
+    return schema
+
+
+def _const_schema(value: str) -> dict:
+    return {"type": "string", "const": value}
+
+
+def _diagnostic_schema_ref_target() -> dict:
+    return {
+        "type": "object",
+        "required": ("code", "severity", "message"),
+        "properties": {
+            "code": {"type": "string", "pattern": "^AGX[0-9]{4}$"},
+            "severity": {"type": "string", "enum": ("error", "warning", "info")},
+            "message": {"type": "string"},
+            "range": {"type": "object"},
+            "fixes": {"type": "array", "items": {"type": "object"}},
+            "docs_url": {"type": "string"},
+        },
+        "additionalProperties": True,
+    }
+
+
 def tooling_audit_report_dsl() -> dict:
     """Return one executable audit for the docs/tooling.md implementation surface."""
     root = Path(__file__).resolve().parents[2]
@@ -6579,6 +6829,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         migration_semantic_input_cli = _tooling_audit_migration_semantic_input_cli(Path(tmp))
         nl_plan_cli = _tooling_audit_nl_plan_cli(Path(tmp), source)
         dsl_language_cli = _tooling_audit_dsl_language_cli(Path(tmp), source)
+        contract_schema_cli = _tooling_audit_contract_schema_cli()
         test_strategy_cli = _tooling_audit_test_strategy_cli(Path(tmp), source)
         generation = generate_report_dsl(
             source,
@@ -6648,6 +6899,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         format_write=format_write,
         semantic_source_set_cli=semantic_source_set_cli,
         dsl_language_cli=dsl_language_cli,
+        contract_schema_cli=contract_schema_cli,
         cli_help_surface=cli_help_surface,
         internal_error_exit=internal_error_exit,
         missing_input_exit=missing_input_exit,
@@ -6685,6 +6937,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         formatter_contract=formatter_contract,
         lint_directory_cli=lint_directory_cli,
         semantic_source_set_cli=semantic_source_set_cli,
+        contract_schema_cli=contract_schema_cli,
         validate_generate_cli=validate_generate_cli,
         graphs=graphs,
         graph_cli=graph_cli,
@@ -6716,6 +6969,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         diagnostic_fixtures=diagnostic_fixtures,
         formatter_contract=formatter_contract,
         dsl_language_cli=dsl_language_cli,
+        contract_schema_cli=contract_schema_cli,
         cli_help_surface=cli_help_surface,
         semantic_source_set_cli=semantic_source_set_cli,
         validate_generate_cli=validate_generate_cli,
@@ -6759,6 +7013,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         validation=validation,
         validate_generate_cli=validate_generate_cli,
         dsl_language_cli=dsl_language_cli,
+        contract_schema_cli=contract_schema_cli,
         internal_error_exit=internal_error_exit,
         missing_input_exit=missing_input_exit,
         missing_required_option_exit=missing_required_option_exit,
@@ -6859,6 +7114,21 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "DSL language-quality, ANTLR integrity, authoring-gate, and language-service contracts are callable from CLI JSON and text modes.",
             "docs/tooling.md#cli-contracts",
             dsl_language_cli,
+        ),
+        _tooling_audit_check(
+            "contract_schema_cli_contracts",
+            contract_schema_cli["ok"]
+            and contract_schema_cli.get("missing_required_schema_count") == 0
+            and contract_schema_cli.get("missing_case_count") == 0
+            and contract_schema_cli.get("missing_exit_code_case_count") == 0
+            and contract_schema_cli.get("missing_payload_format_case_count") == 0
+            and contract_schema_cli.get("missing_text_marker_count") == 0
+            and contract_schema_cli.get("text_json_fallback") is False
+            and {"format", "ok", "app", "symbols", "tables", "views", "diagnostics"}
+            <= set(contract_schema_cli.get("semantic_required_fields", ())),
+            "Core diagnostic, semantic, lint, migration, NL, release, and tooling reports expose reusable JSON Schema contracts from the CLI.",
+            "docs/tooling.md#appgen-contract-schema",
+            contract_schema_cli,
         ),
         _tooling_audit_check(
             "diagnostic_registry_and_fixtures",
@@ -10079,7 +10349,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and section_coverage.get("required_section_count") == 18
             and section_coverage.get("covered_section_count") == section_coverage.get("required_section_count")
             and section_coverage.get("missing_section_count") == 0
-            and section_coverage.get("required_subsection_count") == 40
+            and section_coverage.get("required_subsection_count") == 41
             and section_coverage.get("covered_subsection_count") == section_coverage.get("required_subsection_count")
             and section_coverage.get("missing_subsection_count") == 0
             and section_coverage.get("stale_mapping_count") == 0
@@ -10628,12 +10898,13 @@ def _tooling_audit_section_coverage(root: Path, checks: Iterable[dict]) -> dict:
         "goals": ("shared_semantic_model", "implementation_phase_exit_criteria"),
         "non-goals": ("non_goal_policy_guards",),
         "core-architecture": ("module_boundaries",),
-        "semantic-model-contract": ("shared_semantic_model", "semantic_drift_surface_contracts"),
-        "diagnostic-specification": ("diagnostic_registry_and_fixtures", "diagnostic_catalog_fixture_contracts"),
+        "semantic-model-contract": ("shared_semantic_model", "semantic_drift_surface_contracts", "contract_schema_cli_contracts"),
+        "diagnostic-specification": ("diagnostic_registry_and_fixtures", "diagnostic_catalog_fixture_contracts", "contract_schema_cli_contracts"),
         "linter-specification": ("lint_directory_and_strict_profiles", "lint_cli_directory_contracts"),
         "formatter-specification": ("formatter_idempotent", "formatter_write_organize_contracts"),
         "cli-contracts": (
             "dsl_language_cli_contracts",
+            "contract_schema_cli_contracts",
             "cli_validation_and_generation_contracts",
             "cli_usage_failure_contracts",
             "cli_help_alias_contracts",
@@ -10701,6 +10972,7 @@ def _tooling_audit_section_coverage(root: Path, checks: Iterable[dict]) -> dict:
         "appgen-graph-suite": ("graph_rendering_contracts",),
         "appgen-explain": ("explain_cli_contracts",),
         "appgen-doctor": ("doctor_cli_text_contracts",),
+        "appgen-contract-schema": ("contract_schema_cli_contracts",),
         "appgen-tooling-audit": ("tooling_audit_text_renderer", "tooling_doc_anchor_integrity"),
         "appgen-package": ("package_manifest_handoff_contracts", "release_text_evidence_contracts"),
         "appgen-component-publish": ("component_publish_catalog_contracts",),
@@ -10869,6 +11141,7 @@ def _tooling_audit_test_family_contracts(**evidence: dict) -> dict:
             "family": "cli_contract_tests",
             "required_coverage": "CLI exit codes, JSON schemas, text summaries, bad arguments, help, and aliases are covered.",
             "ok": evidence["dsl_language_cli"].get("ok") is True
+            and evidence["contract_schema_cli"].get("ok") is True
             and evidence["cli_help_surface"].get("ok") is True
             and evidence["internal_error_exit"].get("ok") is True
             and evidence["missing_input_exit"].get("ok") is True
@@ -10876,6 +11149,7 @@ def _tooling_audit_test_family_contracts(**evidence: dict) -> dict:
             and evidence["invalid_choice_exit"].get("ok") is True,
             "evidence_formats": (
                 evidence["dsl_language_cli"].get("format"),
+                evidence["contract_schema_cli"].get("format"),
                 evidence["cli_help_surface"].get("format"),
                 evidence["internal_error_exit"].get("format"),
                 evidence["missing_input_exit"].get("format"),
@@ -11071,7 +11345,7 @@ def _tooling_audit_contributor_task_contracts(**evidence: dict) -> dict:
         "cross_tool_drift_tests",
     )
     tasks = (
-        _contributor_task("good_first", "define_diagnostic_dataclasses_and_json_schema", evidence["diagnostics"].get("ok") is True and evidence["diagnostics"].get("catalog_shape_gap_count") == 0, evidence["diagnostics"].get("format")),
+        _contributor_task("good_first", "define_diagnostic_dataclasses_and_json_schema", evidence["diagnostics"].get("ok") is True and evidence["diagnostics"].get("catalog_shape_gap_count") == 0 and evidence["contract_schema_cli"].get("ok") is True, evidence["contract_schema_cli"].get("format")),
         _contributor_task("good_first", "add_diagnostic_code_registry_tests", evidence["diagnostic_fixtures"].get("ok") is True and evidence["diagnostic_fixtures"].get("missing_code_count") == 0, evidence["diagnostic_fixtures"].get("format")),
         _contributor_task("good_first", "create_semantic_model_dataclasses", evidence["semantic"].get("ok") is True and evidence["semantic"].get("format") == "appgen.semantic-model.v1" and evidence["semantic_source_set_cli"].get("ok") is True, evidence["semantic_source_set_cli"].get("format")),
         _contributor_task("good_first", "write_table_field_symbol_extraction", evidence["symbol_coverage"].get("missing") == () and evidence["semantic"].get("tables") is not None, evidence["symbol_coverage"].get("format")),
@@ -11137,7 +11411,7 @@ def _tooling_audit_priority_order_contracts(root: Path, **evidence: dict) -> dic
         _priority_contract("shared_parser_and_semantic_model", "Shared parser and semantic model.", evidence["semantic"].get("ok") is True and evidence["symbol_coverage"].get("missing") == () and evidence["semantic_source_set_cli"].get("ok") is True, evidence["semantic_source_set_cli"].get("format")),
         _priority_contract("diagnostic_registry_and_linter", "Diagnostic registry and linter.", evidence["diagnostics"].get("ok") is True and evidence["diagnostic_fixtures"].get("ok") is True and evidence["lint"].get("ok") is True, evidence["diagnostics"].get("format")),
         _priority_contract("formatter", "Formatter.", evidence["formatter_contract"].get("ok") is True, evidence["formatter_contract"].get("format")),
-        _priority_contract("cli_json_contracts", "CLI JSON contracts.", evidence["dsl_language_cli"].get("ok") is True and evidence["cli_help_surface"].get("ok") is True and evidence["validate_generate_cli"].get("ok") is True, evidence["dsl_language_cli"].get("format")),
+        _priority_contract("cli_json_contracts", "CLI JSON contracts.", evidence["dsl_language_cli"].get("ok") is True and evidence["contract_schema_cli"].get("ok") is True and evidence["cli_help_surface"].get("ok") is True and evidence["validate_generate_cli"].get("ok") is True, evidence["contract_schema_cli"].get("format")),
         _priority_contract("graph_and_explain_tooling", "Graph and explain tooling.", evidence["graphs"].get("ok") is True and evidence["graph_cli"].get("ok") is True and evidence["graph_suite_cli"].get("ok") is True and evidence["explain_cli"].get("ok") is True, evidence["graphs"].get("format")),
         _priority_contract("language_server", "Language server.", evidence["lsp"].get("ok") is True and evidence["lsp_rpc"].get("ok") is True and evidence["lsp_stdio"].get("ok") is True, evidence["lsp"].get("format")),
         _priority_contract("vscode_and_monaco_integration", "VS Code and Monaco integration.", evidence["vscode"].get("ok") is True and evidence["studio"].get("ok") is True, evidence["studio"].get("format")),
@@ -11278,6 +11552,7 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
     required_exit_criteria_by_phase = {
         "phase_0_inventory_and_stabilization": (
             "current_behavior_documented",
+            "json_schema_contracts",
             "fixture_catalogs_run_in_ci",
             "parser_golden_fixture_contracts",
             "semantic_drift_surface_contracts",
@@ -11349,6 +11624,12 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     "id": "current_behavior_documented",
                     "ok": evidence["module_boundaries"].get("ok") is True,
                     "evidence_format": evidence["module_boundaries"].get("format"),
+                },
+                {
+                    "id": "json_schema_contracts",
+                    "ok": evidence["contract_schema_cli"].get("ok") is True
+                    and evidence["contract_schema_cli"].get("missing_required_schema_count") == 0,
+                    "evidence_format": evidence["contract_schema_cli"].get("format"),
                 },
                 {
                     "id": "fixture_catalogs_run_in_ci",
@@ -11605,11 +11886,13 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     "ok": evidence["validation"].get("ok") is True
                     and evidence["validate_generate_cli"].get("ok") is True
                     and evidence["dsl_language_cli"].get("ok") is True
+                    and evidence["contract_schema_cli"].get("ok") is True
                     and evidence["cli_help_surface"].get("ok") is True,
                     "evidence_formats": (
                         evidence["validation"].get("format"),
                         evidence["validate_generate_cli"].get("format"),
                         evidence["dsl_language_cli"].get("format"),
+                        evidence["contract_schema_cli"].get("format"),
                         evidence["cli_help_surface"].get("format"),
                     ),
                 },
@@ -17642,6 +17925,134 @@ def _tooling_audit_dsl_language_cli(tmp: Path, source: str) -> dict:
     }
 
 
+def _tooling_audit_contract_schema_cli() -> dict:
+    catalog_exit, catalog_payload = _tooling_cli_json_case(("contract-schema", "--json"))
+    semantic_exit, semantic_payload = _tooling_cli_json_case(("contract-schema", "appgen.semantic-model.v1", "--json"))
+    missing_exit, missing_payload = _tooling_cli_json_case(("contract-schema", "appgen.missing-contract.v1", "--json"))
+    text_exit, text = _tooling_cli_text_case(("contract-schema",))
+    semantic_schema = semantic_payload.get("schemas", {}).get("appgen.semantic-model.v1", {})
+    catalog_schema_formats = tuple(catalog_payload.get("available_schema_formats", ()))
+    required_schema_formats = tuple(catalog_payload.get("required_schema_formats", ()))
+    required_text_markers = (
+        "contract-schema ok: format=appgen.contract-schema-catalog.v1",
+        "schema appgen.semantic-model.v1:",
+        "schema appgen.lint-report.v1:",
+        "schema appgen.migration-plan.v1:",
+    )
+    missing_text_markers = tuple(marker for marker in required_text_markers if marker not in text)
+    cases = (
+        {
+            "case": "catalog_json",
+            "ok": catalog_exit == 0
+            and catalog_payload.get("format") == "appgen.contract-schema-catalog.v1"
+            and catalog_payload.get("ok") is True
+            and set(CONTRACT_SCHEMA_REQUIRED_FORMATS) <= set(catalog_schema_formats)
+            and catalog_payload.get("missing_required_schema_count") == 0,
+            "exit_code": catalog_exit,
+            "payload_format": catalog_payload.get("format"),
+        },
+        {
+            "case": "single_semantic_json",
+            "ok": semantic_exit == 0
+            and semantic_payload.get("format") == "appgen.contract-schema-catalog.v1"
+            and semantic_payload.get("ok") is True
+            and semantic_payload.get("selected_formats") == ["appgen.semantic-model.v1"]
+            and semantic_schema.get("title") == "appgen.semantic-model.v1"
+            and {"format", "ok", "app", "symbols", "tables", "views", "diagnostics"}
+            <= set(semantic_schema.get("required", ())),
+            "exit_code": semantic_exit,
+            "payload_format": semantic_payload.get("format"),
+        },
+        {
+            "case": "missing_schema_json",
+            "ok": missing_exit == 1
+            and missing_payload.get("format") == "appgen.contract-schema-catalog.v1"
+            and missing_payload.get("ok") is False
+            and missing_payload.get("missing_requested_schema_formats") == ["appgen.missing-contract.v1"],
+            "exit_code": missing_exit,
+            "payload_format": missing_payload.get("format"),
+        },
+        {
+            "case": "catalog_text",
+            "ok": text_exit == 0 and not text.lstrip().startswith("{") and not missing_text_markers,
+            "exit_code": text_exit,
+            "payload_format": "text",
+        },
+    )
+    required_case_ids = ("catalog_json", "single_semantic_json", "missing_schema_json", "catalog_text")
+    observed_case_ids = tuple(case["case"] for case in cases)
+    failing_cases = tuple(case["case"] for case in cases if not case["ok"])
+    missing_case_ids = tuple(case_id for case_id in required_case_ids if case_id not in observed_case_ids)
+    expected_exit_codes_by_case = {
+        "catalog_json": 0,
+        "single_semantic_json": 0,
+        "missing_schema_json": 1,
+        "catalog_text": 0,
+    }
+    exit_codes_by_case = {case["case"]: case["exit_code"] for case in cases}
+    missing_exit_code_cases = tuple(
+        case_id
+        for case_id, expected_code in expected_exit_codes_by_case.items()
+        if exit_codes_by_case.get(case_id) != expected_code
+    )
+    expected_payload_formats_by_case = {
+        "catalog_json": "appgen.contract-schema-catalog.v1",
+        "single_semantic_json": "appgen.contract-schema-catalog.v1",
+        "missing_schema_json": "appgen.contract-schema-catalog.v1",
+        "catalog_text": "text",
+    }
+    payload_formats_by_case = {case["case"]: case["payload_format"] for case in cases}
+    missing_payload_format_cases = tuple(
+        case_id
+        for case_id, expected_format in expected_payload_formats_by_case.items()
+        if payload_formats_by_case.get(case_id) != expected_format
+    )
+    missing_required_schema_formats = tuple(
+        schema_format for schema_format in CONTRACT_SCHEMA_REQUIRED_FORMATS if schema_format not in set(catalog_schema_formats)
+    )
+    return {
+        "format": "appgen.contract-schema-cli-audit.v1",
+        "ok": not failing_cases
+        and not missing_case_ids
+        and not missing_exit_code_cases
+        and not missing_payload_format_cases
+        and not missing_required_schema_formats
+        and not missing_text_markers,
+        "case_count": len(cases),
+        "passing_case_count": sum(1 for case in cases if case["ok"]),
+        "failing_case_count": len(failing_cases),
+        "failing_cases": failing_cases,
+        "required_case_ids": required_case_ids,
+        "observed_case_ids": observed_case_ids,
+        "missing_case_count": len(missing_case_ids),
+        "missing_case_ids": missing_case_ids,
+        "required_schema_formats": CONTRACT_SCHEMA_REQUIRED_FORMATS,
+        "required_schema_count": len(CONTRACT_SCHEMA_REQUIRED_FORMATS),
+        "available_schema_formats": catalog_schema_formats,
+        "available_schema_count": len(catalog_schema_formats),
+        "missing_required_schema_formats": missing_required_schema_formats,
+        "missing_required_schema_count": len(missing_required_schema_formats),
+        "semantic_required_fields": tuple(semantic_schema.get("required", ())),
+        "semantic_property_count": len(semantic_schema.get("properties", {})),
+        "catalog_schema_count": catalog_payload.get("schema_count"),
+        "catalog_available_schema_count": catalog_payload.get("available_schema_count"),
+        "expected_exit_codes_by_case": expected_exit_codes_by_case,
+        "exit_codes_by_case": exit_codes_by_case,
+        "missing_exit_code_case_count": len(missing_exit_code_cases),
+        "missing_exit_code_cases": missing_exit_code_cases,
+        "expected_payload_formats_by_case": expected_payload_formats_by_case,
+        "payload_formats_by_case": payload_formats_by_case,
+        "missing_payload_format_case_count": len(missing_payload_format_cases),
+        "missing_payload_format_cases": missing_payload_format_cases,
+        "required_text_markers": required_text_markers,
+        "missing_text_markers": missing_text_markers,
+        "missing_text_marker_count": len(missing_text_markers),
+        "text_json_fallback": text.lstrip().startswith("{"),
+        "text_prefix": text[:240],
+        "cases": cases,
+    }
+
+
 def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
     source_path = tmp / "designer-sync.appgen"
     source_path.write_text(source, encoding="utf-8")
@@ -19874,6 +20285,7 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         "dsl-antlr",
         "dsl-authoring-gate",
         "dsl-language-service",
+        "contract-schema",
         "drift",
         "doctor",
         "tooling-audit",
@@ -19915,6 +20327,7 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         ("dsl-antlr",): ("--json",),
         ("dsl-authoring-gate",): ("--json",),
         ("dsl-language-service",): ("--prefix", "--json"),
+        ("contract-schema",): ("--json",),
         ("drift",): ("--json",),
         ("doctor",): ("--json",),
         ("tooling-audit",): ("--json",),

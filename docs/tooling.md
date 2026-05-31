@@ -694,6 +694,40 @@ disappears, when JSON payload formats drift, when text commands return the wrong
 process status, when text output falls back to raw JSON, or when text logs lose
 the markers external coding agents rely on.
 
+### `appgen contract-schema`
+
+```console
+appgen contract-schema --json
+appgen contract-schema appgen.semantic-model.v1 --json
+appgen contract-schema
+```
+
+`appgen contract-schema` exports reusable JSON Schema documents for the core
+machine contracts that agents, IDEs, CI jobs, and downstream package verifiers
+consume. The command returns `appgen.contract-schema-catalog.v1`, using the
+JSON Schema 2020-12 dialect, and includes schemas for `appgen.diagnostic.v1`,
+`appgen.lint-report.v1`, `appgen.semantic-model.v1`,
+`appgen.migration-plan.v1`, `appgen.nl-plan.v1`,
+`appgen.release-verifier-report.v1`, and `appgen.tooling-audit.v1`.
+
+The optional positional format selects one schema from the catalog. Unknown
+schema names return the same `appgen.contract-schema-catalog.v1` envelope with
+`ok: false`, a named `missing_requested_schema_formats` entry, and exit code
+`1`, so callers can distinguish an unsupported contract name from a malformed
+CLI invocation. Text mode prints `contract-schema ...`, one `schema ...` line
+per selected contract, and named `missing-schema ...` lines without falling back
+to raw JSON.
+
+`appgen.contract-schema-cli-audit.v1` proves the schema catalog command in
+catalog JSON, single-schema JSON, missing-schema JSON, and text modes. It
+reports required, available, and missing schema formats; required/observed case
+ids; expected and observed exit codes; expected and observed payload formats;
+semantic-model required fields; required text markers; and text JSON-fallback
+status. The aggregate `contract_schema_cli_contracts` gate fails when any core
+schema disappears, the CLI stops exposing a selected semantic-model schema, a
+missing schema no longer returns a controlled contract payload, or human-readable
+schema output loses its named markers.
+
 ### `appgen semantic`
 
 ```console
@@ -2433,6 +2467,8 @@ criteria:` block in this document.
   generator code.
 - Identify duplicate semantic logic.
 - Define JSON schemas for diagnostics and semantic model.
+- Expose the reusable contract schema catalog through
+  `appgen contract-schema --json`.
 - Add fixture directories and built-in fixture catalogs for parser-golden,
   diagnostic-golden, formatter, semantic drift, graph, migration, generator,
   and verifier tests.
@@ -2446,6 +2482,9 @@ Exit criteria:
 - `appgen.dsl-language-quality.v1` proves grammar/parser synchronization,
   required enterprise grammar rules, keyword budget, authoring aliases, and the
   progressive learning path.
+- `appgen.contract-schema-cli-audit.v1` proves core diagnostic, lint,
+  semantic-model, migration, natural-language, release-verifier, and tooling
+  audit schemas are available from CLI JSON and text modes.
 - The test-strategy CLI audit requires `appgen drift` to prove CLI, LSP,
   Studio, graph, generator, and release-verifier surfaces share one semantic
   model, including `appgen.generate-report.v1` evidence.
@@ -2486,6 +2525,8 @@ Exit criteria:
 
 - Add subcommands for lint, semantic, format, validate, graph, explain, package, PBC, and
   natural-language planning.
+- Add `appgen contract-schema` so JSON contract schemas are discoverable without
+  reading source code.
 - Add graph builders.
 - Add explain output for symbols and diagnostics.
 
