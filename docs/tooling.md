@@ -1970,6 +1970,7 @@ patched DSL before the Studio accepts the visual operation.
 Designer edits may also be submitted as an atomic transaction with
 `kind: "transaction"` and an `edits` array. A transaction can span database
 field creation, form component placement, workflow transition edits,
+menu/context-menu edits, splash/startup asset edits, style-token edits,
 package/deployment edits, and other designer surfaces in one request. The
 transaction returns `appgen.designer-visual-transaction-result.v1`, per-edit
 patch evidence, combined DSL diff evidence, changed-surface evidence, and an
@@ -1992,6 +1993,12 @@ semantic-model format. The aggregate IDE and implementation-phase gates require
 the bulk transaction to round-trip with zero missing surface gaps, so Studio
 cannot claim visual-designer readiness while only supporting one edit at a
 time.
+The required visual edit matrix includes menu creation, context-menu creation,
+splash-screen package metadata, and style-token component contracts in addition
+to table fields, form placements, workflow transitions, PBC composition,
+packages, and deployment units. This is the executable tooling path for
+fine-tuning application menus, right-click menus, startup screens, and UI theme
+tokens from the IDE.
 The CLI audit also publishes expected and observed exit codes for valid and
 invalid designer-sync scenarios and expected versus observed payload formats for
 accepted visual edits, plus per-scenario `ok` status. The aggregate IDE gate

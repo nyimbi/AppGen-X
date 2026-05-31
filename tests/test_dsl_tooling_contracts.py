@@ -4298,6 +4298,13 @@ def test_designer_sync_applies_multi_surface_transactions_atomically() -> None:
                 {"kind": "add_flow_transition", "flow": "SubmitInvoice", "from": "posted", "to": "archived"},
                 {"kind": "add_package", "name": "WebBulkRelease", "target": "web"},
                 {"kind": "add_deployment_unit", "deployment": "Production", "target": "SubmitInvoice", "pattern": "worker"},
+                {"kind": "add_menu", "name": "BulkActions", "event": "Open", "target": "SubmitInvoice"},
+                {
+                    "kind": "set_splash_screen",
+                    "name": "BulkDesktopSplash",
+                    "target": "desktop",
+                    "asset": "assets/bulk-splash.png",
+                },
             ],
         },
     )
@@ -4327,13 +4334,15 @@ def test_designer_sync_applies_multi_surface_transactions_atomically() -> None:
     assert visual["format"] == "appgen.designer-visual-transaction-result.v1"
     assert visual["accepted"] is True
     assert visual["atomic"] is True
-    assert visual["operation_count"] == 5
+    assert visual["operation_count"] == 7
     assert visual["operations"] == (
         "add_field",
         "add_component",
         "add_flow_transition",
         "add_package",
         "add_deployment_unit",
+        "add_menu",
+        "set_splash_screen",
     )
     assert {"database_designer", "form_designer", "workflow_designer", "package_deployment_designer"} <= set(
         visual["changed_surfaces"]
@@ -4343,6 +4352,8 @@ def test_designer_sync_applies_multi_surface_transactions_atomically() -> None:
     assert "posted -> archived" in visual["patched_source"]
     assert "package WebBulkRelease" in visual["patched_source"]
     assert "unit SubmitInvoice as worker" in visual["patched_source"]
+    assert "menu BulkActions" in visual["patched_source"]
+    assert "splash: assets_bulk_splash_png" in visual["patched_source"]
 
     rejected_visual = rejected["visual_edit"]
     assert rejected["ok"] is False
@@ -4366,6 +4377,10 @@ def test_designer_visual_edit_matrix_covers_required_studio_edit_paths() -> None
         "pbc_composition_designer_add_include",
         "package_designer_add_package",
         "deployment_designer_add_unit",
+        "menu_designer_add_menu",
+        "menu_designer_add_context_menu",
+        "package_designer_set_splash_screen",
+        "style_designer_add_theme_token",
         "multi_surface_transaction_round_trip",
         "multi_surface_transaction_rejects_invalid_binding_atomically",
         "form_designer_reject_invalid_binding",
@@ -4399,6 +4414,13 @@ def test_appgen_designer_sync_subcommand_emits_json_and_text_contracts(tmp_path:
             {"kind": "add_flow_transition", "flow": "SubmitInvoice", "from": "posted", "to": "archived"},
             {"kind": "add_package", "name": "WebBulkRelease", "target": "web"},
             {"kind": "add_deployment_unit", "deployment": "Production", "target": "SubmitInvoice", "pattern": "worker"},
+            {"kind": "add_menu", "name": "BulkActions", "event": "Open", "target": "SubmitInvoice"},
+            {
+                "kind": "set_splash_screen",
+                "name": "BulkDesktopSplash",
+                "target": "desktop",
+                "asset": "assets/bulk-splash.png",
+            },
         ],
     }
 
@@ -4478,8 +4500,10 @@ def test_appgen_designer_sync_subcommand_emits_json_and_text_contracts(tmp_path:
     bulk_payload = json.loads(bulk_result.stdout)
     assert bulk_payload["visual_edit"]["format"] == "appgen.designer-visual-transaction-result.v1"
     assert bulk_payload["visual_edit"]["accepted"] is True
-    assert bulk_payload["visual_edit"]["operation_count"] == 5
+    assert bulk_payload["visual_edit"]["operation_count"] == 7
     assert "bulk_sync_note" in bulk_payload["visual_edit"]["patched_source"]
+    assert "menu BulkActions" in bulk_payload["visual_edit"]["patched_source"]
+    assert "splash: assets_bulk_splash_png" in bulk_payload["visual_edit"]["patched_source"]
     assert invalid_edit_result.returncode == 2
     assert "invalid JSON for --edit-json" in invalid_edit_result.stderr
     assert non_object_edit_result.returncode == 2
@@ -4562,18 +4586,20 @@ def test_designer_sync_cli_audit_proves_diff_semantic_and_projection_refresh(tmp
     assert report["bulk_result_format"] == "appgen.designer-visual-transaction-result.v1"
     assert report["bulk_atomic"] is True
     assert report["bulk_round_trip"] is True
-    assert report["bulk_operation_count"] == 5
+    assert report["bulk_operation_count"] == 7
     assert report["bulk_operations"] == (
         "add_field",
         "add_component",
         "add_flow_transition",
         "add_package",
         "add_deployment_unit",
+        "add_menu",
+        "set_splash_screen",
     )
     assert set(report["required_bulk_changed_surfaces"]) <= set(report["bulk_changed_surfaces"])
     assert report["missing_bulk_changed_surfaces"] == ()
     assert report["bulk_diff_lines"] > 0
-    assert report["bulk_patch_count"] == 5
+    assert report["bulk_patch_count"] == 7
     assert report["bulk_semantic_model_format"] == "appgen.semantic-model.v1"
 
 

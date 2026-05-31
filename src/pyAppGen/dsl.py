@@ -20557,6 +20557,13 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
             {"kind": "add_flow_transition", "flow": "SubmitInvoice", "from": "posted", "to": "archived"},
             {"kind": "add_package", "name": "WebBulkRelease", "target": "web"},
             {"kind": "add_deployment_unit", "deployment": "Production", "target": "SubmitInvoice", "pattern": "worker"},
+            {"kind": "add_menu", "name": "BulkActions", "event": "Open", "target": "SubmitInvoice"},
+            {
+                "kind": "set_splash_screen",
+                "name": "BulkDesktopSplash",
+                "target": "desktop",
+                "asset": "assets/bulk-splash.png",
+            },
         ),
     }
     bulk_output = io.StringIO()
@@ -20607,13 +20614,15 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
         and bulk_result.get("accepted") is True
         and bulk_result.get("atomic") is True
         and bulk_result.get("round_trip_ok") is True
-        and bulk_result.get("operation_count") == 5
+        and bulk_result.get("operation_count") == 7
         and set(required_bulk_surfaces) <= set(bulk_result.get("changed_surfaces", ()))
         and "bulk_sync_note" in bulk_result.get("patched_source", "")
         and "@ bulk_sync_note TextBox 2 3 5 1" in bulk_result.get("patched_source", "")
         and "posted -> archived" in bulk_result.get("patched_source", "")
         and "package WebBulkRelease" in bulk_result.get("patched_source", "")
         and "unit SubmitInvoice as worker" in bulk_result.get("patched_source", "")
+        and "menu BulkActions" in bulk_result.get("patched_source", "")
+        and "splash: assets_bulk_splash_png" in bulk_result.get("patched_source", "")
         and "bulk_sync_note"
         in bulk_result.get("semantic_after", {}).get("tables", {}).get("Invoice", {}).get("fields", {})
     )
@@ -26624,6 +26633,54 @@ def designer_visual_edit_matrix_dsl(text: str, *, source_name: str | None = None
             (),
         ),
         (
+            "menu_designer_add_menu",
+            {"kind": "add_menu", "name": "InvoiceActions", "event": "Open", "target": flow_name},
+            True,
+            "form_designer",
+            "menu InvoiceActions",
+            (),
+        ),
+        (
+            "menu_designer_add_context_menu",
+            {
+                "kind": "add_context_menu",
+                "name": "InvoiceRowMenu",
+                "surface": view_name,
+                "event": "ContextOpen",
+                "target": flow_name,
+            },
+            True,
+            "form_designer",
+            "context_surface: InvoiceForm",
+            (),
+        ),
+        (
+            "package_designer_set_splash_screen",
+            {
+                "kind": "set_splash_screen",
+                "name": "DesktopSplash",
+                "target": "desktop",
+                "asset": "assets/splash.png",
+            },
+            True,
+            "package_deployment_designer",
+            "splash: assets_splash_png",
+            (),
+        ),
+        (
+            "style_designer_add_theme_token",
+            {
+                "kind": "add_style_token",
+                "name": "EnterpriseTheme",
+                "token": "primary",
+                "value": "brand_primary",
+            },
+            True,
+            "form_designer",
+            "token_primary: brand_primary",
+            (),
+        ),
+        (
             "multi_surface_transaction_round_trip",
             {
                 "kind": "transaction",
@@ -26646,6 +26703,13 @@ def designer_visual_edit_matrix_dsl(text: str, *, source_name: str | None = None
                         "deployment": "Production",
                         "target": deployment_target,
                         "pattern": "worker",
+                    },
+                    {"kind": "add_menu", "name": "BulkActions", "event": "Open", "target": flow_name},
+                    {
+                        "kind": "set_splash_screen",
+                        "name": "BulkDesktopSplash",
+                        "target": "desktop",
+                        "asset": "assets/bulk-splash.png",
                     },
                 ),
             },
@@ -26999,6 +27063,27 @@ def _designer_edit_to_patch(source: str, edit: dict) -> str:
         target = str(edit.get("target") or edit.get("unit") or "app")
         pattern = str(edit.get("pattern") or "service")
         return f"deploy {deploy} {{\n  unit {target} as {pattern}\n  health {target} \"/health\"\n}}"
+    if kind == "add_menu":
+        name = _pascal_case(str(edit.get("name") or "MainMenu"))
+        event = _pascal_case(str(edit.get("event") or "Open"))
+        target = _pascal_case(str(edit.get("target") or "GeneratedOperation"))
+        return f"menu {name} {{\n  on {event} -> {target}\n}}"
+    if kind == "add_context_menu":
+        name = _pascal_case(str(edit.get("name") or "ContextMenu"))
+        surface = _pascal_case(str(edit.get("surface") or edit.get("view") or "Form"))
+        event = _pascal_case(str(edit.get("event") or "ContextOpen"))
+        target = _pascal_case(str(edit.get("target") or "GeneratedOperation"))
+        return f"menu {name} {{\n  context_surface: {surface}\n  on {event} -> {target}\n}}"
+    if kind == "set_splash_screen":
+        name = _pascal_case(str(edit.get("name") or "StartupAssets"))
+        target = str(edit.get("target") or "desktop").lower()
+        asset = _snake_case(str(edit.get("asset") or "assets splash"))
+        return f"package {name} {{\n  target: {target}\n  splash: {asset}\n  smoke: launch\n}}"
+    if kind == "add_style_token":
+        name = _pascal_case(str(edit.get("name") or "ThemeTokens"))
+        token = _snake_case(str(edit.get("token") or "primary"))
+        value = _snake_case(str(edit.get("value") or "brand_primary"))
+        return f"component {name} {{\n  token_{token}: {value}\n}}"
     return ""
 
 
@@ -27023,7 +27108,9 @@ def _designer_changed_surfaces(edit: dict) -> tuple[str, ...]:
         return ("workflow_designer", "graph_explain_panel")
     if kind == "add_pbc_include":
         return ("pbc_composition_designer", "graph_explain_panel")
-    if kind in {"add_package", "add_deployment_unit"}:
+    if kind in {"add_menu", "add_context_menu", "add_style_token"}:
+        return ("form_designer", "component_palette", "graph_explain_panel")
+    if kind in {"add_package", "add_deployment_unit", "set_splash_screen"}:
         return ("package_deployment_designer", "graph_explain_panel")
     return ()
 

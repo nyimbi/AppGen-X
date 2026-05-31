@@ -4479,3 +4479,8 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   qwen3.5 2B/4B and vLLM-local profiles. The CLI text audit now requires
   `agent-handoff` and `compact-model` markers so small local models and external
   coding agents can route work without expanding the full JSON payload.
+- Current designer-sync expansion adds round-trippable IDE edits for menus,
+  context menus, splash/startup package metadata, and style-token component
+  contracts. Bulk visual transactions now cover seven operations across database,
+  form, workflow, package/deployment, menu, and splash surfaces, while invalid
+  database-backed form bindings still reject atomically.
