@@ -6748,6 +6748,16 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.generate-report.v1",
     "appgen.validate-generate-text-renderer.v1",
     "appgen.validate-generate-cli-audit.v1",
+    "appgen.graph-report.v1",
+    "appgen.graph.er.v1",
+    "appgen.graph.lookup.v1",
+    "appgen.graph.workflow.v1",
+    "appgen.graph.handler.v1",
+    "appgen.graph.pbc.v1",
+    "appgen.graph.security.v1",
+    "appgen.graph.agent.v1",
+    "appgen.graph.deployment.v1",
+    "appgen.graph.package.v1",
     "appgen.graph-suite-report.v1",
     "appgen.graph-explain-text-renderer.v1",
     "appgen.graph-cli-format-audit.v1",
@@ -6927,6 +6937,18 @@ def _target_verifier_schema(title: str) -> dict:
             "passing_check_count": {"type": "integer", "minimum": 0},
             "blocking_gap_count": {"type": "integer", "minimum": 0},
             "blocking_gaps": {"type": "array", "items": {"type": "string"}},
+        },
+    )
+
+
+def _graph_contract_schema(title: str) -> dict:
+    return _json_object_schema(
+        title,
+        required=("format", "nodes", "edges"),
+        properties={
+            "format": _const_schema(title),
+            "nodes": {"type": "array", "items": {"type": "object"}},
+            "edges": {"type": "array", "items": {"type": "object"}},
         },
     )
 
@@ -7311,6 +7333,29 @@ def _contract_schema_catalog() -> dict[str, dict]:
             },
             defs={"diagnostic": _diagnostic_schema_ref_target()},
         ),
+        "appgen.graph-report.v1": _json_object_schema(
+            "appgen.graph-report.v1",
+            required=("format", "ok", "kind", "diagnostics"),
+            properties={
+                "format": _const_schema("appgen.graph-report.v1"),
+                "ok": {"type": "boolean"},
+                "source": {"type": ("string", "null")},
+                "kind": {"type": "string"},
+                "graph": {"type": "object"},
+                "available_kinds": {"type": "array", "items": {"type": "string"}},
+                "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}},
+            },
+            defs={"diagnostic": _diagnostic_schema_ref_target()},
+        ),
+        "appgen.graph.er.v1": _graph_contract_schema("appgen.graph.er.v1"),
+        "appgen.graph.lookup.v1": _graph_contract_schema("appgen.graph.lookup.v1"),
+        "appgen.graph.workflow.v1": _graph_contract_schema("appgen.graph.workflow.v1"),
+        "appgen.graph.handler.v1": _graph_contract_schema("appgen.graph.handler.v1"),
+        "appgen.graph.pbc.v1": _graph_contract_schema("appgen.graph.pbc.v1"),
+        "appgen.graph.security.v1": _graph_contract_schema("appgen.graph.security.v1"),
+        "appgen.graph.agent.v1": _graph_contract_schema("appgen.graph.agent.v1"),
+        "appgen.graph.deployment.v1": _graph_contract_schema("appgen.graph.deployment.v1"),
+        "appgen.graph.package.v1": _graph_contract_schema("appgen.graph.package.v1"),
         "appgen.graph-suite-report.v1": _json_object_schema(
             "appgen.graph-suite-report.v1",
             required=("format", "ok", "required_kinds", "formats", "graph_reports", "checks"),
@@ -20646,6 +20691,7 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             prompt="Add credit memo tracking to invoices",
             backend="postgresql",
         )
+        graph_suite = graph_suite_report_dsl(source, source_name="contract-schema.appgen")
         release_report = release_verifier_report_dsl(
             source,
             source_name="contract-schema.appgen",
@@ -20725,7 +20771,17 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             ),
             "appgen.validate-generate-text-renderer.v1": _validate_generate_text_renderer_contract(),
             "appgen.validate-generate-cli-audit.v1": _tooling_audit_validate_generate_cli(tmp_path, source),
-            "appgen.graph-suite-report.v1": graph_suite_report_dsl(source, source_name="contract-schema.appgen"),
+            "appgen.graph-report.v1": graph_suite["graph_reports"]["er"],
+            "appgen.graph.er.v1": graph_suite["graph_reports"]["er"]["graph"],
+            "appgen.graph.lookup.v1": graph_suite["graph_reports"]["lookup"]["graph"],
+            "appgen.graph.workflow.v1": graph_suite["graph_reports"]["workflow"]["graph"],
+            "appgen.graph.handler.v1": graph_suite["graph_reports"]["handler"]["graph"],
+            "appgen.graph.pbc.v1": graph_suite["graph_reports"]["pbc"]["graph"],
+            "appgen.graph.security.v1": graph_suite["graph_reports"]["security"]["graph"],
+            "appgen.graph.agent.v1": graph_suite["graph_reports"]["agent"]["graph"],
+            "appgen.graph.deployment.v1": graph_suite["graph_reports"]["deployment"]["graph"],
+            "appgen.graph.package.v1": graph_suite["graph_reports"]["package"]["graph"],
+            "appgen.graph-suite-report.v1": graph_suite,
             "appgen.graph-explain-text-renderer.v1": _graph_explain_text_renderer_contract(),
             "appgen.graph-cli-format-audit.v1": _tooling_audit_graph_cli_formats(tmp_path, source),
             "appgen.graph-suite-cli-audit.v1": _tooling_audit_graph_suite_cli(tmp_path, source),

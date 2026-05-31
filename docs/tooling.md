@@ -736,7 +736,12 @@ JSON Schema 2020-12 dialect, and includes schemas for `appgen.diagnostic.v1`,
 `appgen.format-result.v1`, `appgen.format-text-renderer.v1`,
 `appgen.formatter-contract-audit.v1`, `appgen.validate-report.v1`,
 `appgen.generate-report.v1`, `appgen.validate-generate-text-renderer.v1`,
-`appgen.validate-generate-cli-audit.v1`, `appgen.graph-suite-report.v1`,
+`appgen.validate-generate-cli-audit.v1`, `appgen.graph-report.v1`,
+`appgen.graph.er.v1`, `appgen.graph.lookup.v1`,
+`appgen.graph.workflow.v1`, `appgen.graph.handler.v1`,
+`appgen.graph.pbc.v1`, `appgen.graph.security.v1`,
+`appgen.graph.agent.v1`, `appgen.graph.deployment.v1`,
+`appgen.graph.package.v1`, `appgen.graph-suite-report.v1`,
 `appgen.graph-explain-text-renderer.v1`,
 `appgen.graph-cli-format-audit.v1`,
 `appgen.graph-suite-cli-audit.v1`, `appgen.explain-report.v1`,
@@ -1123,6 +1128,15 @@ documentation diagrams, release evidence, and downstream graph tooling all use
 the same semantic model. Text mode prints both the required graph kind names and
 the supported output format names, plus the `appgen.graph-suite-report.v1`
 envelope format, so release logs remain reviewable without parsing JSON.
+Every individual graph command emits `appgen.graph-report.v1`, whose nested
+`graph` object is one of the schema-backed graph contracts:
+`appgen.graph.er.v1`, `appgen.graph.lookup.v1`,
+`appgen.graph.workflow.v1`, `appgen.graph.handler.v1`,
+`appgen.graph.pbc.v1`, `appgen.graph.security.v1`,
+`appgen.graph.agent.v1`, `appgen.graph.deployment.v1`, or
+`appgen.graph.package.v1`. This lets IDE previews, release packages, and
+external agents validate graph payloads directly instead of trusting only the
+aggregate graph-suite envelope.
 `appgen.graph-suite-cli-audit.v1` reports `rendering_formats_by_kind` and
 `missing_renderings` so CI can prove every required graph kind has JSON,
 Mermaid, and DOT renderings rather than relying on a count alone. It also
@@ -2680,7 +2694,7 @@ Exit criteria:
   package-manifest, component/PBC wrapper, doctor, tooling-audit,
   project-governance, schema-catalog, and contract-validation report schemas are
   available from CLI JSON and text modes. The schema audit validates
-  representative payloads for all 127 documented `appgen.*.v1` formats, so
+  representative payloads for all 137 documented `appgen.*.v1` formats, so
   adding a documented contract without a matching runtime sample fails the
   release gate.
 - `appgen.contract-validation-cli-audit.v1` proves those JSON contracts can be
