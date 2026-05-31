@@ -1534,6 +1534,10 @@ falls back to JSON, publish stops attaching `appgen.pbc-package-verifier.v1`
 release evidence, catalog publication stops being side-effect-free, file
 catalog paths or catalog patches disappear from text output, or any PBC publish
 check reports a blocking gap.
+The same schema catalog exports `appgen.pbc-package-load-report.v1` and
+`appgen.pbc-publish-cli-audit.v1`, so agent runners can validate package-load,
+publish CLI, release-evidence, and catalog-patch envelopes without expanding
+the full aggregate audit.
 
 ### `appgen nl-plan`
 
@@ -2676,7 +2680,7 @@ Exit criteria:
   package-manifest, component/PBC wrapper, doctor, tooling-audit,
   project-governance, schema-catalog, and contract-validation report schemas are
   available from CLI JSON and text modes. The schema audit validates
-  representative payloads for all 122 documented `appgen.*.v1` formats, so
+  representative payloads for all 127 documented `appgen.*.v1` formats, so
   adding a documented contract without a matching runtime sample fails the
   release gate.
 - `appgen.contract-validation-cli-audit.v1` proves those JSON contracts can be

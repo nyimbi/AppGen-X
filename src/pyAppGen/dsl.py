@@ -6819,14 +6819,19 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.pbc-verifier.v1",
     "appgen.deployment-verifier.v1",
     "appgen.release-evidence-bundle.v1",
+    "appgen.release-evidence-file.v1",
     "appgen.release-verifier-text-renderer.v1",
     "appgen.package-manifest.v1",
     "appgen.package-verify-cli-audit.v1",
+    "appgen.package-invalid-target-audit.v1",
+    "appgen.component-publish-cli-audit.v1",
     "appgen.component-publish-report.v1",
     "appgen.component-catalog-patch.v1",
     "appgen.component-publish-text-renderer.v1",
     "appgen.pbc-verifier-catalog.v1",
+    "appgen.pbc-package-load-report.v1",
     "appgen.pbc-package-verifier.v1",
+    "appgen.pbc-publish-cli-audit.v1",
     "appgen.pbc-publish-report.v1",
     "appgen.pbc-publish-text-renderer.v1",
     "appgen.pbc-cli-text-audit.v1",
@@ -8257,6 +8262,15 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "graph_suite": {"type": "object"},
             },
         ),
+        "appgen.release-evidence-file.v1": _contract_format_schema(
+            "appgen.release-evidence-file.v1",
+            required=("format", "evidence_bundle", "checks", "reports"),
+            properties={
+                "evidence_bundle": {"type": "object"},
+                "checks": {"type": "array", "items": {"type": "object"}},
+                "reports": {"type": "object"},
+            },
+        ),
         "appgen.release-verifier-text-renderer.v1": _contract_format_schema(
             "appgen.release-verifier-text-renderer.v1",
             required=("format", "ok", "required_fragments", "missing_fragments"),
@@ -8288,6 +8302,39 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "expected_targets": {"type": "array", "items": {"type": "string"}},
                 "manifest_formats": {"type": "object"},
                 "readiness_matrix": {"type": "object"},
+            },
+        ),
+        "appgen.package-invalid-target-audit.v1": _contract_format_schema(
+            "appgen.package-invalid-target-audit.v1",
+            required=("format", "ok", "case_count", "passing_case_count", "required_case_ids"),
+            properties={
+                "case_count": {"type": "integer", "minimum": 0},
+                "passing_case_count": {"type": "integer", "minimum": 0},
+                "failing_case_count": {"type": "integer", "minimum": 0},
+                "required_case_ids": {"type": "array", "items": {"type": "string"}},
+                "observed_case_ids": {"type": "array", "items": {"type": "string"}},
+                "missing_case_ids": {"type": "array", "items": {"type": "string"}},
+                "expected_exit_code_by_case": {"type": "object"},
+                "exit_codes_by_case": {"type": "object"},
+                "missing_expected_exit_code_cases": {"type": "array", "items": {"type": "string"}},
+            },
+        ),
+        "appgen.component-publish-cli-audit.v1": _contract_format_schema(
+            "appgen.component-publish-cli-audit.v1",
+            required=("format", "ok", "case_count", "passing_case_count", "payload_format", "patch_format"),
+            properties={
+                "case_count": {"type": "integer", "minimum": 0},
+                "passing_case_count": {"type": "integer", "minimum": 0},
+                "failing_case_count": {"type": "integer", "minimum": 0},
+                "required_case_ids": {"type": "array", "items": {"type": "string"}},
+                "observed_case_ids": {"type": "array", "items": {"type": "string"}},
+                "payload_format": {"type": ("string", "null")},
+                "patch_format": {"type": ("string", "null")},
+                "component": {"type": ("string", "null")},
+                "side_effect_free": {"type": ("boolean", "null")},
+                "write_performed": {"type": ("boolean", "null")},
+                "missing_text_markers": {"type": "array", "items": {"type": "string"}},
+                "missing_catalog_blocking_gaps": {"type": "array", "items": {"type": "string"}},
             },
         ),
         "appgen.component-publish-report.v1": _json_object_schema(
@@ -8351,6 +8398,16 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 },
             },
         ),
+        "appgen.pbc-package-load-report.v1": _contract_format_schema(
+            "appgen.pbc-package-load-report.v1",
+            required=("format", "ok", "source"),
+            properties={
+                "source": {"type": "string"},
+                "manifest": {"type": "object"},
+                "registration": {"type": "object"},
+                "error": {"type": ("string", "null")},
+            },
+        ),
         "appgen.pbc-package-verifier.v1": _contract_format_schema(
             "appgen.pbc-package-verifier.v1",
             required=("format", "ok", "pbc", "checks"),
@@ -8358,6 +8415,25 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "pbc": {"type": "string"},
                 "release_evidence": {"type": "object"},
                 "checks": {"type": "array", "items": {"type": "object"}},
+            },
+        ),
+        "appgen.pbc-publish-cli-audit.v1": _contract_format_schema(
+            "appgen.pbc-publish-cli-audit.v1",
+            required=("format", "ok", "case_count", "passing_case_count", "payload_format"),
+            properties={
+                "case_count": {"type": "integer", "minimum": 0},
+                "passing_case_count": {"type": "integer", "minimum": 0},
+                "failing_case_count": {"type": "integer", "minimum": 0},
+                "payload_format": {"type": ("string", "null")},
+                "pbc": {"type": ("string", "null")},
+                "target_mode": {"type": ("string", "null")},
+                "catalog_path": {"type": ("string", "null")},
+                "side_effect_free": {"type": ("boolean", "null")},
+                "write_performed": {"type": ("boolean", "null")},
+                "catalog_patch_count": {"type": "integer", "minimum": 0},
+                "release_evidence_format": {"type": ("string", "null")},
+                "release_evidence_ok": {"type": ("boolean", "null")},
+                "blocking_gap_count": {"type": "integer", "minimum": 0},
             },
         ),
         "appgen.pbc-publish-report.v1": _contract_format_schema(
@@ -20554,8 +20630,10 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             return {"format": contract_format, "ok": False}
 
         component_publish = component_publish_report("TextBox")
+        component_publish_cli = _tooling_audit_component_publish_cli(tmp_path)
         pbc_catalog = pbc_verifier_catalog_report()
         pbc_publish = pbc_publish_report("gl_core")
+        pbc_publish_cli = _tooling_audit_pbc_publish_cli(tmp_path)
         migration_report = migration_plan_dsl(
             source,
             current_source,
@@ -20573,7 +20651,14 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             source_name="contract-schema.appgen",
             targets=("web", "mobile", "desktop", "pbc", "deployment"),
         )
+        release_evidence_file = {
+            "format": "appgen.release-evidence-file.v1",
+            "evidence_bundle": release_report["evidence_bundle"],
+            "checks": release_report["checks"],
+            "reports": release_report["reports"],
+        }
         package_cli = _tooling_audit_package_verify_cli(tmp_path, _tooling_audit_package_verify_sample())
+        package_invalid_target = _tooling_audit_package_invalid_target(tmp_path, source)
         designer_report = designer_sync_report_dsl(source, source_name="contract-schema.appgen")
         designer_visual_matrix = designer_visual_edit_matrix_dsl(source, source_name="contract-schema.appgen")
         designer_transaction = _designer_visual_edit_result(
@@ -20740,6 +20825,7 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             "appgen.pbc-verifier.v1": release_report["reports"]["pbc"],
             "appgen.deployment-verifier.v1": release_report["reports"]["deployment"],
             "appgen.release-evidence-bundle.v1": release_report["evidence_bundle"],
+            "appgen.release-evidence-file.v1": release_evidence_file,
             "appgen.release-verifier-text-renderer.v1": _release_verifier_text_renderer_contract(),
             "appgen.package-manifest.v1": {
                 "format": "appgen.package-manifest.v1",
@@ -20748,11 +20834,15 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
                 "handoff_artifacts": ("manifest", "routes", "forms", "handlers", "smoke"),
             },
             "appgen.package-verify-cli-audit.v1": package_cli,
+            "appgen.package-invalid-target-audit.v1": package_invalid_target,
+            "appgen.component-publish-cli-audit.v1": component_publish_cli,
             "appgen.component-publish-report.v1": component_publish,
             "appgen.component-catalog-patch.v1": component_publish["catalog_patch"],
             "appgen.component-publish-text-renderer.v1": _component_publish_text_renderer_contract(),
             "appgen.pbc-verifier-catalog.v1": pbc_catalog,
+            "appgen.pbc-package-load-report.v1": pbc_publish["load_report"],
             "appgen.pbc-package-verifier.v1": pbc_publish["release_evidence"],
+            "appgen.pbc-publish-cli-audit.v1": pbc_publish_cli,
             "appgen.pbc-publish-report.v1": pbc_publish,
             "appgen.pbc-publish-text-renderer.v1": _pbc_publish_text_renderer_contract(),
             "appgen.pbc-cli-text-audit.v1": _tooling_audit_pbc_cli_text(),
