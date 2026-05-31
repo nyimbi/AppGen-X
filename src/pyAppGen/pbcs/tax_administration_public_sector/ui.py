@@ -17,3 +17,35 @@ def tax_administration_public_sector_render_workbench():
 
 def smoke_test():
     return {'ok': tax_administration_public_sector_ui_contract()['ok'] and tax_administration_public_sector_render_workbench()['ok'], 'side_effects': ()}
+
+
+# Improve1 tax administration public sector control UI extension.
+from .tax_administration_public_sector_control import improve1_tax_administration_public_sector_control_contract as _improve1_tax_administration_public_sector_control_contract
+
+_TAX_ADMIN_CONTROL_BASE_UI_CONTRACT = tax_administration_public_sector_ui_contract
+_TAX_ADMIN_CONTROL_BASE_RENDER_WORKBENCH = tax_administration_public_sector_render_workbench
+
+
+def tax_administration_public_sector_ui_contract() -> dict:
+    ui = dict(_TAX_ADMIN_CONTROL_BASE_UI_CONTRACT())
+    control = _improve1_tax_administration_public_sector_control_contract()
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "tax_administration_public_sector_control_contract": control,
+        "tax_administration_public_sector_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "tax_administration_public_sector_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def tax_administration_public_sector_render_workbench(*args, **kwargs) -> dict:
+    workbench = dict(_TAX_ADMIN_CONTROL_BASE_RENDER_WORKBENCH(*args, **kwargs))
+    control = _improve1_tax_administration_public_sector_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "tax_administration_public_sector_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "tax_administration_public_sector_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "tax_administration_public_sector_control_agent_tools": tuple(f"tax_administration_public_sector.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench
