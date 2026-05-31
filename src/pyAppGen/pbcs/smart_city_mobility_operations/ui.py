@@ -190,3 +190,34 @@ def smoke_test():
     ui = smart_city_mobility_operations_ui_contract()
     rendered = smart_city_mobility_operations_render_workbench()
     return {"ok": ui["ok"] and rendered["ok"], "side_effects": ()}
+
+# Improve1 smart city mobility operations control UI extension.
+from .smart_city_mobility_operations_control import improve1_smart_city_mobility_operations_control_contract as _improve1_smart_city_mobility_operations_control_contract
+
+_MOBILITY_CONTROL_BASE_UI_CONTRACT = smart_city_mobility_operations_ui_contract
+_MOBILITY_CONTROL_BASE_RENDER_WORKBENCH = smart_city_mobility_operations_render_workbench
+
+
+def smart_city_mobility_operations_ui_contract() -> dict:
+    ui = dict(_MOBILITY_CONTROL_BASE_UI_CONTRACT())
+    control = _improve1_smart_city_mobility_operations_control_contract()
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "smart_city_mobility_operations_control_contract": control,
+        "smart_city_mobility_operations_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "smart_city_mobility_operations_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def smart_city_mobility_operations_render_workbench(*args, **kwargs) -> dict:
+    workbench = dict(_MOBILITY_CONTROL_BASE_RENDER_WORKBENCH(*args, **kwargs))
+    control = _improve1_smart_city_mobility_operations_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "smart_city_mobility_operations_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "smart_city_mobility_operations_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "smart_city_mobility_operations_control_agent_tools": tuple(f"smart_city_mobility_operations.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench

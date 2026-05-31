@@ -72,3 +72,31 @@ def smoke_test():
         "evidence": evidence,
         "side_effects": (),
     }
+
+# Improve1 smart city mobility operations control release extension.
+from .smart_city_mobility_operations_control import improve1_smart_city_mobility_operations_control_contract as _improve1_smart_city_mobility_operations_control_contract
+
+_MOBILITY_CONTROL_BASE_BUILD_RELEASE_EVIDENCE = build_release_evidence
+_MOBILITY_CONTROL_BASE_VALIDATE_RELEASE_EVIDENCE = validate_release_evidence
+
+
+def build_release_evidence() -> dict:
+    evidence = dict(_MOBILITY_CONTROL_BASE_BUILD_RELEASE_EVIDENCE())
+    control = _improve1_smart_city_mobility_operations_control_contract()
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_smart_city_mobility_operations_control", "ok": control["ok"]},)
+    evidence.update({
+        "ok": bool(evidence.get("ok")) and control["ok"],
+        "checks": checks,
+        "smart_city_mobility_operations_control": control,
+        "blocking_gaps": tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ())),
+    })
+    return evidence
+
+
+def validate_release_evidence() -> dict:
+    validation = dict(_MOBILITY_CONTROL_BASE_VALIDATE_RELEASE_EVIDENCE())
+    control = _improve1_smart_city_mobility_operations_control_contract()
+    validation["ok"] = validation.get("ok") is True and control["ok"]
+    validation["smart_city_mobility_operations_control"] = control
+    validation["blocking_gaps"] = tuple(validation.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ()))
+    return validation
