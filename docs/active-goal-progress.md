@@ -4357,3 +4357,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   deployment package handoff proof cannot pass while the executable verify or
   package path returns the wrong process status, wrong envelope, or failed case
   proof.
+- Current LSP code-action CLI hardening pass expands quick-fix application
+  evidence with expected and observed exit codes, expected and observed
+  `appgen.lsp-code-action-apply.v1` payload formats, and `ok` status by every
+  required quick-fix action case. The aggregate `lsp_quick_fix_application` and
+  `lsp_quick_fix_cli_contracts` gates now require those named missing lists to be
+  empty, so editor/agent quick fixes cannot pass by edit counts while a CLI case
+  returns the wrong status, wrong envelope, or failed case proof.

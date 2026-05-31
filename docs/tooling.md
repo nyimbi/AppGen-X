@@ -1693,9 +1693,12 @@ The CLI audit also reports case, passing-case, required-action, observed-action,
 missing-action, applied-edit, lint-passing-case, lint-failing-case,
 changed-case, unchanged-case, and blocking-gap counts so external agents can
 verify quick-fix coverage without expanding every case. It also reports
-case ids, failing-case names, expected-text match counts, forbidden-text removal
-counts, and lint-format counts so regressions can be traced to the exact
-quick-fix family and whether the patch, cleanup, or lint handoff failed.
+case ids, failing-case names, expected and observed exit codes by case, expected
+and observed `appgen.lsp-code-action-apply.v1` payload formats by case,
+per-case `ok` status, expected-text match counts, forbidden-text removal counts,
+and lint-format counts so regressions can be traced to the exact quick-fix
+family and whether the process status, report envelope, patch, cleanup, or lint
+handoff failed.
 It publishes required, observed, and missing case ids; expected text by case;
 expected-text matched cases; forbidden text by case; forbidden-removed cases;
 changed cases; applied-edit cases; lint-format cases; and lint-passing cases.

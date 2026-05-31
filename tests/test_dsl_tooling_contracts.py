@@ -2692,6 +2692,17 @@ def test_lsp_code_action_cli_audit_covers_required_agent_facing_quick_fixes(tmp_
     assert report["observed_case_ids"] == report["observed_action_ids"]
     assert report["missing_case_count"] == 0
     assert report["missing_case_ids"] == ()
+    assert report["exit_codes_by_case"] == report["expected_exit_codes_by_case"]
+    assert set(report["expected_exit_codes_by_case"].values()) == {0}
+    assert report["missing_exit_code_case_count"] == 0
+    assert report["missing_exit_code_cases"] == ()
+    assert report["payload_formats_by_case"] == report["expected_payload_formats_by_case"]
+    assert set(report["expected_payload_formats_by_case"].values()) == {"appgen.lsp-code-action-apply.v1"}
+    assert report["missing_payload_format_case_count"] == 0
+    assert report["missing_payload_format_cases"] == ()
+    assert report["ok_by_case"] == {case_id: True for case_id in report["required_case_ids"]}
+    assert report["missing_ok_case_count"] == 0
+    assert report["missing_ok_cases"] == ()
     assert report["required_action_count"] == len(report["required_action_ids"])
     assert report["observed_action_count"] == len(report["observed_action_ids"])
     assert report["missing_required_action_count"] == 0
@@ -6539,6 +6550,21 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         quick_fix_check["detail"]["application_audit"]["case_count"]
     )
     assert quick_fix_check["detail"]["cli"]["missing_required_action_ids"] == ()
+    assert quick_fix_check["detail"]["cli"]["exit_codes_by_case"] == (
+        quick_fix_check["detail"]["cli"]["expected_exit_codes_by_case"]
+    )
+    assert quick_fix_check["detail"]["cli"]["missing_exit_code_case_count"] == 0
+    assert quick_fix_check["detail"]["cli"]["missing_exit_code_cases"] == ()
+    assert quick_fix_check["detail"]["cli"]["payload_formats_by_case"] == (
+        quick_fix_check["detail"]["cli"]["expected_payload_formats_by_case"]
+    )
+    assert quick_fix_check["detail"]["cli"]["missing_payload_format_case_count"] == 0
+    assert quick_fix_check["detail"]["cli"]["missing_payload_format_cases"] == ()
+    assert quick_fix_check["detail"]["cli"]["ok_by_case"] == {
+        case_id: True for case_id in quick_fix_check["detail"]["cli"]["required_case_ids"]
+    }
+    assert quick_fix_check["detail"]["cli"]["missing_ok_case_count"] == 0
+    assert quick_fix_check["detail"]["cli"]["missing_ok_cases"] == ()
     assert tuple(quick_fix_check["detail"]["cli"]["required_action_ids"]) == tuple(
         quick_fix_check["detail"]["application_audit"]["required_action_ids"]
     )
@@ -6596,6 +6622,21 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert quick_fix_cli["detail"]["cli"]["failing_cases"] == ()
     assert quick_fix_cli["detail"]["cli"]["required_case_ids"] == quick_fix_cli["detail"]["cli"]["required_action_ids"]
     assert quick_fix_cli["detail"]["cli"]["observed_case_ids"] == quick_fix_cli["detail"]["cli"]["observed_action_ids"]
+    assert quick_fix_cli["detail"]["cli"]["exit_codes_by_case"] == (
+        quick_fix_cli["detail"]["cli"]["expected_exit_codes_by_case"]
+    )
+    assert quick_fix_cli["detail"]["cli"]["missing_exit_code_case_count"] == 0
+    assert quick_fix_cli["detail"]["cli"]["missing_exit_code_cases"] == ()
+    assert quick_fix_cli["detail"]["cli"]["payload_formats_by_case"] == (
+        quick_fix_cli["detail"]["cli"]["expected_payload_formats_by_case"]
+    )
+    assert quick_fix_cli["detail"]["cli"]["missing_payload_format_case_count"] == 0
+    assert quick_fix_cli["detail"]["cli"]["missing_payload_format_cases"] == ()
+    assert quick_fix_cli["detail"]["cli"]["ok_by_case"] == {
+        case_id: True for case_id in quick_fix_cli["detail"]["cli"]["required_case_ids"]
+    }
+    assert quick_fix_cli["detail"]["cli"]["missing_ok_case_count"] == 0
+    assert quick_fix_cli["detail"]["cli"]["missing_ok_cases"] == ()
     assert quick_fix_cli["detail"]["cli"]["changed_case_count"] == quick_fix_cli["detail"]["cli"]["case_count"]
     assert quick_fix_cli["detail"]["cli"]["changed_cases"] == quick_fix_cli["detail"]["cli"]["required_case_ids"]
     assert quick_fix_cli["detail"]["cli"]["missing_changed_case_count"] == 0

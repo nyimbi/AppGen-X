@@ -8310,6 +8310,9 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and code_action_apply_audit["ok"]
             and code_action_text_renderer["ok"]
             and lsp_apply_cli["ok"]
+            and lsp_apply_cli.get("missing_exit_code_case_count") == 0
+            and lsp_apply_cli.get("missing_payload_format_case_count") == 0
+            and lsp_apply_cli.get("missing_ok_case_count") == 0
             and tuple(lsp_apply_cli.get("required_action_ids", ()))
             == tuple(code_action_apply_audit.get("required_action_ids", ())),
             "LSP code actions are executable through deterministic DSL patch application contracts, text evidence, and the appgen lsp CLI.",
@@ -8353,6 +8356,9 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and lsp_apply_cli.get("passing_case_count") == lsp_apply_cli.get("case_count")
             and lsp_apply_cli.get("failing_case_count") == 0
             and lsp_apply_cli.get("missing_case_count") == 0
+            and lsp_apply_cli.get("missing_exit_code_case_count") == 0
+            and lsp_apply_cli.get("missing_payload_format_case_count") == 0
+            and lsp_apply_cli.get("missing_ok_case_count") == 0
             and lsp_apply_cli.get("missing_required_action_count") == 0
             and lsp_apply_cli.get("applied_edit_count", 0) >= lsp_apply_cli.get("case_count", 0)
             and lsp_apply_cli.get("missing_applied_edit_case_count") == 0
@@ -13748,6 +13754,41 @@ package WebPackage { target: web; smoke: launch }
     missing_lint_passing_cases = tuple(case_id for case_id in required_case_ids if case_id not in lint_passing_cases)
     applied_edit_cases = tuple(case["case"] for case in cases if case["applied_edit_count"] > 0)
     missing_applied_edit_cases = tuple(case_id for case_id in required_case_ids if case_id not in applied_edit_cases)
+    expected_exit_codes_by_case = {case_id: 0 for case_id in required_case_ids}
+    exit_codes_by_case = {
+        case["case"]: case.get("exit_code")
+        for case in cases
+        if case["case"] in expected_exit_codes_by_case
+    }
+    missing_exit_code_cases = tuple(
+        case_id
+        for case_id, expected_exit_code in expected_exit_codes_by_case.items()
+        if exit_codes_by_case.get(case_id) != expected_exit_code
+    )
+    expected_payload_formats_by_case = {
+        case_id: "appgen.lsp-code-action-apply.v1"
+        for case_id in required_case_ids
+    }
+    payload_formats_by_case = {
+        case["case"]: case.get("payload_format")
+        for case in cases
+        if case["case"] in expected_payload_formats_by_case
+    }
+    missing_payload_format_cases = tuple(
+        case_id
+        for case_id, expected_format in expected_payload_formats_by_case.items()
+        if payload_formats_by_case.get(case_id) != expected_format
+    )
+    ok_by_case = {
+        case["case"]: case.get("ok") is True
+        for case in cases
+        if case["case"] in required_case_ids
+    }
+    missing_ok_cases = tuple(
+        case_id
+        for case_id in required_case_ids
+        if ok_by_case.get(case_id) is not True
+    )
     failing_cases = tuple(case for case in cases if not case["ok"])
     return {
         "format": "appgen.lsp-code-action-cli-audit.v1",
@@ -13759,7 +13800,10 @@ package WebPackage { target: web; smoke: launch }
         and not missing_changed_cases
         and not missing_lint_format_cases
         and not missing_lint_passing_cases
-        and not missing_applied_edit_cases,
+        and not missing_applied_edit_cases
+        and not missing_exit_code_cases
+        and not missing_payload_format_cases
+        and not missing_ok_cases,
         "case_count": len(cases),
         "passing_case_count": sum(1 for case in cases if case["ok"]),
         "failing_case_count": len(failing_cases),
@@ -13769,6 +13813,17 @@ package WebPackage { target: web; smoke: launch }
         "observed_case_ids": observed_action_ids,
         "missing_case_count": len(missing_case_ids),
         "missing_case_ids": missing_case_ids,
+        "expected_exit_codes_by_case": expected_exit_codes_by_case,
+        "exit_codes_by_case": exit_codes_by_case,
+        "missing_exit_code_case_count": len(missing_exit_code_cases),
+        "missing_exit_code_cases": missing_exit_code_cases,
+        "expected_payload_formats_by_case": expected_payload_formats_by_case,
+        "payload_formats_by_case": payload_formats_by_case,
+        "missing_payload_format_case_count": len(missing_payload_format_cases),
+        "missing_payload_format_cases": missing_payload_format_cases,
+        "ok_by_case": ok_by_case,
+        "missing_ok_case_count": len(missing_ok_cases),
+        "missing_ok_cases": missing_ok_cases,
         "required_action_count": len(required_action_ids),
         "observed_action_count": len(observed_action_ids),
         "missing_required_action_count": len(missing_required_action_ids),
