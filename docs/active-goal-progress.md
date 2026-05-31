@@ -4201,3 +4201,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   aggregate tooling audit (`1 passed`, with the known active-PBC
   `datetime.utcnow()` warnings only), scoped diff whitespace check, and
   restricted-name scan outside archive, Git internals, and active PBC paths.
+- Current migration CLI safety hardening pass expands supported-backend
+  migration evidence with expected and observed exit codes, destructive-change
+  counts, safe-alternative counts, and required diagnostic codes by backend
+  case. The aggregate `migration_safety_text_contracts` gate now requires those
+  named missing lists to be empty, so every PostgreSQL/MySQL-compatible backend
+  proves approval posture, `AGX1101`, destructive migration evidence, and safe
+  alternatives instead of only returning a successful JSON envelope.
+  Verification passed: Python compile for the touched DSL and tests, focused
+  migration CLI audit (`1 passed`), aggregate tooling audit (`1 passed`, with
+  the known active-PBC `datetime.utcnow()` warnings only), scoped diff
+  whitespace check, and restricted-name scan outside archive, Git internals, and
+  active PBC paths.

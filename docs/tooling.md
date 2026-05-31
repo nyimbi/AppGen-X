@@ -1955,6 +1955,12 @@ and expected versus observed rename-hint counts by case. This makes a missing
 backend profile, wrong backend payload, missing migration family, lost approval
 posture, lost rename hint, or report-envelope regression fail by named case
 rather than only changing an aggregate count.
+The same CLI audit publishes expected and observed exit codes, destructive
+change counts, safe-alternative counts, and required diagnostic codes by backend
+case. The migration safety gate requires those named missing lists to be empty,
+so each supported backend must prove the destructive migration warning
+(`AGX1101`), an explicit approval posture, and at least one safe alternative
+instead of only returning a successful JSON envelope.
 The aggregate tooling audit exposes migration safety and text evidence as
 `migration_safety_text_contracts`. This gate fails independently when required
 detection families are missing, supported backend profiles fail, destructive

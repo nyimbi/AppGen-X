@@ -7763,6 +7763,21 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     ]
     assert migration_safety_check["detail"]["cli"]["missing_approval_required_case_count"] == 0
     assert migration_safety_check["detail"]["cli"]["missing_approval_required_cases"] == ()
+    assert migration_safety_check["detail"]["cli"]["exit_codes_by_case"] == migration_safety_check["detail"]["cli"][
+        "expected_exit_codes_by_case"
+    ]
+    assert migration_safety_check["detail"]["cli"]["missing_exit_code_case_count"] == 0
+    assert migration_safety_check["detail"]["cli"]["missing_exit_code_cases"] == ()
+    assert migration_safety_check["detail"]["cli"]["missing_destructive_change_case_count"] == 0
+    assert migration_safety_check["detail"]["cli"]["missing_destructive_change_cases"] == ()
+    assert migration_safety_check["detail"]["cli"]["missing_safe_alternative_case_count"] == 0
+    assert migration_safety_check["detail"]["cli"]["missing_safe_alternative_cases"] == ()
+    assert migration_safety_check["detail"]["cli"]["required_diagnostic_codes_by_case"] == {
+        case_id: ("AGX1101",)
+        for case_id in migration_safety_check["detail"]["cli"]["required_case_ids"]
+    }
+    assert migration_safety_check["detail"]["cli"]["missing_diagnostic_code_case_count"] == 0
+    assert migration_safety_check["detail"]["cli"]["missing_diagnostic_codes_by_case"] == {}
     assert migration_safety_check["detail"]["cli"]["rename_hint_cases"] == migration_safety_check["detail"]["cli"][
         "required_case_ids"
     ]
@@ -9252,6 +9267,22 @@ def test_migration_cli_audit_covers_supported_backends_and_rename_hints(tmp_path
     assert report["payload_formats_by_case"] == report["expected_payload_formats_by_case"]
     assert report["missing_payload_format_case_count"] == 0
     assert report["missing_payload_format_cases"] == ()
+    assert report["expected_exit_codes_by_case"] == {case_id: 0 for case_id in expected_case_ids}
+    assert report["exit_codes_by_case"] == report["expected_exit_codes_by_case"]
+    assert report["missing_exit_code_case_count"] == 0
+    assert report["missing_exit_code_cases"] == ()
+    assert all(report["destructive_change_counts_by_case"][case_id] >= 1 for case_id in expected_case_ids)
+    assert report["destructive_change_cases"] == expected_case_ids
+    assert report["missing_destructive_change_case_count"] == 0
+    assert report["missing_destructive_change_cases"] == ()
+    assert all(report["safe_alternative_counts_by_case"][case_id] >= 1 for case_id in expected_case_ids)
+    assert report["safe_alternative_cases"] == expected_case_ids
+    assert report["missing_safe_alternative_case_count"] == 0
+    assert report["missing_safe_alternative_cases"] == ()
+    assert report["required_diagnostic_codes_by_case"] == {case_id: ("AGX1101",) for case_id in expected_case_ids}
+    assert all("AGX1101" in report["diagnostic_codes_by_case"][case_id] for case_id in expected_case_ids)
+    assert report["missing_diagnostic_code_case_count"] == 0
+    assert report["missing_diagnostic_codes_by_case"] == {}
     assert all(case["exit_code"] == 0 for case in report["cases"])
     assert all(case["payload_format"] == "appgen.migration-plan.v1" for case in report["cases"])
     assert all(case["requires_approval"] is True for case in report["cases"])

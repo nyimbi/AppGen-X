@@ -8397,6 +8397,10 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and migration_cli.get("rename_hint_case_count") == migration_cli.get("case_count")
             and migration_cli.get("missing_rename_hint_case_count") == 0
             and migration_cli.get("missing_payload_format_case_count") == 0
+            and migration_cli.get("missing_exit_code_case_count") == 0
+            and migration_cli.get("missing_destructive_change_case_count") == 0
+            and migration_cli.get("missing_safe_alternative_case_count") == 0
+            and migration_cli.get("missing_diagnostic_code_case_count") == 0
             and all(case.get("requires_approval") is True for case in migration_cli.get("cases", ()))
             and migration_text_renderer["ok"]
             and migration_text_renderer.get("missing_text_surface_count") == 0
@@ -8452,6 +8456,28 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "payload_formats_by_case": migration_cli.get("payload_formats_by_case"),
                     "missing_payload_format_case_count": migration_cli.get("missing_payload_format_case_count"),
                     "missing_payload_format_cases": migration_cli.get("missing_payload_format_cases"),
+                    "expected_exit_codes_by_case": migration_cli.get("expected_exit_codes_by_case"),
+                    "exit_codes_by_case": migration_cli.get("exit_codes_by_case"),
+                    "missing_exit_code_case_count": migration_cli.get("missing_exit_code_case_count"),
+                    "missing_exit_code_cases": migration_cli.get("missing_exit_code_cases"),
+                    "destructive_change_counts_by_case": migration_cli.get("destructive_change_counts_by_case"),
+                    "destructive_change_cases": migration_cli.get("destructive_change_cases"),
+                    "missing_destructive_change_case_count": migration_cli.get(
+                        "missing_destructive_change_case_count"
+                    ),
+                    "missing_destructive_change_cases": migration_cli.get("missing_destructive_change_cases"),
+                    "safe_alternative_counts_by_case": migration_cli.get("safe_alternative_counts_by_case"),
+                    "safe_alternative_cases": migration_cli.get("safe_alternative_cases"),
+                    "missing_safe_alternative_case_count": migration_cli.get(
+                        "missing_safe_alternative_case_count"
+                    ),
+                    "missing_safe_alternative_cases": migration_cli.get("missing_safe_alternative_cases"),
+                    "required_diagnostic_codes_by_case": migration_cli.get("required_diagnostic_codes_by_case"),
+                    "diagnostic_codes_by_case": migration_cli.get("diagnostic_codes_by_case"),
+                    "missing_diagnostic_code_case_count": migration_cli.get(
+                        "missing_diagnostic_code_case_count"
+                    ),
+                    "missing_diagnostic_codes_by_case": migration_cli.get("missing_diagnostic_codes_by_case"),
                     "allowed_backends": migration_cli.get("allowed_backends"),
                     "observed_backends": migration_cli.get("observed_backends"),
                     "missing_allowed_backends": migration_cli.get("missing_allowed_backends"),
@@ -16427,6 +16453,8 @@ table Invoice {
         except json.JSONDecodeError:
             payload = {}
         change_kinds = {change.get("kind") for change in payload.get("changes", ())}
+        destructive_change_count = sum(1 for change in payload.get("changes", ()) if change.get("destructive") is True)
+        safe_alternative_count = sum(1 for change in payload.get("changes", ()) if change.get("safe_alternative"))
         ok = (
             exit_code == 0
             and payload.get("format") == "appgen.migration-plan.v1"
@@ -16434,6 +16462,9 @@ table Invoice {
             and payload.get("requires_approval") is True
             and set(required_change_kinds) <= change_kinds
             and bool(payload.get("rename_hints"))
+            and destructive_change_count >= 1
+            and safe_alternative_count >= 1
+            and any(item.get("code") == "AGX1101" for item in payload.get("diagnostics", ()))
         )
         cases.append(
             {
@@ -16445,6 +16476,8 @@ table Invoice {
                 "change_kinds": tuple(sorted(change_kinds)),
                 "requires_approval": payload.get("requires_approval"),
                 "rename_hint_count": len(payload.get("rename_hints", ())),
+                "destructive_change_count": destructive_change_count,
+                "safe_alternative_count": safe_alternative_count,
                 "diagnostic_codes": tuple(item.get("code") for item in payload.get("diagnostics", ())),
             }
         )
@@ -16482,10 +16515,38 @@ table Invoice {
         for case_id, expected_format in expected_payload_formats_by_case.items()
         if payload_formats_by_case.get(case_id) != expected_format
     )
+    expected_exit_codes_by_case = {case_id: 0 for case_id in required_case_ids}
+    exit_codes_by_case = {case["case"]: case["exit_code"] for case in cases}
+    missing_exit_code_cases = tuple(
+        case_id
+        for case_id, expected_code in expected_exit_codes_by_case.items()
+        if exit_codes_by_case.get(case_id) != expected_code
+    )
     approval_required_cases = tuple(case["case"] for case in cases if case["requires_approval"] is True)
     missing_approval_required_cases = tuple(
         case_id for case_id in required_case_ids if case_id not in approval_required_cases
     )
+    destructive_change_counts_by_case = {case["case"]: case["destructive_change_count"] for case in cases}
+    destructive_change_cases = tuple(case["case"] for case in cases if case["destructive_change_count"] >= 1)
+    missing_destructive_change_cases = tuple(
+        case_id for case_id in required_case_ids if case_id not in destructive_change_cases
+    )
+    safe_alternative_counts_by_case = {case["case"]: case["safe_alternative_count"] for case in cases}
+    safe_alternative_cases = tuple(case["case"] for case in cases if case["safe_alternative_count"] >= 1)
+    missing_safe_alternative_cases = tuple(
+        case_id for case_id in required_case_ids if case_id not in safe_alternative_cases
+    )
+    required_diagnostic_codes_by_case = {case_id: ("AGX1101",) for case_id in required_case_ids}
+    diagnostic_codes_by_case = {case["case"]: case["diagnostic_codes"] for case in cases}
+    missing_diagnostic_codes_by_case = {
+        case_id: tuple(
+            code
+            for code in required_codes
+            if code not in set(diagnostic_codes_by_case.get(case_id, ()))
+        )
+        for case_id, required_codes in required_diagnostic_codes_by_case.items()
+        if any(code not in set(diagnostic_codes_by_case.get(case_id, ())) for code in required_codes)
+    }
     expected_rename_hint_count_by_case = {case_id: 2 for case_id in required_case_ids}
     rename_hint_counts_by_case = {case["case"]: case["rename_hint_count"] for case in cases}
     rename_hint_cases = tuple(case["case"] for case in cases if case["rename_hint_count"] >= 2)
@@ -16499,7 +16560,11 @@ table Invoice {
         and not missing_required_change_kinds
         and not missing_change_kinds_by_case
         and not missing_payload_format_cases
+        and not missing_exit_code_cases
         and not missing_approval_required_cases
+        and not missing_destructive_change_cases
+        and not missing_safe_alternative_cases
+        and not missing_diagnostic_codes_by_case
         and not missing_rename_hint_cases,
         "case_count": len(cases),
         "passing_case_count": sum(1 for case in cases if case["ok"]),
@@ -16537,6 +16602,22 @@ table Invoice {
         "payload_formats_by_case": payload_formats_by_case,
         "missing_payload_format_case_count": len(missing_payload_format_cases),
         "missing_payload_format_cases": missing_payload_format_cases,
+        "expected_exit_codes_by_case": expected_exit_codes_by_case,
+        "exit_codes_by_case": exit_codes_by_case,
+        "missing_exit_code_case_count": len(missing_exit_code_cases),
+        "missing_exit_code_cases": missing_exit_code_cases,
+        "destructive_change_counts_by_case": destructive_change_counts_by_case,
+        "destructive_change_cases": destructive_change_cases,
+        "missing_destructive_change_case_count": len(missing_destructive_change_cases),
+        "missing_destructive_change_cases": missing_destructive_change_cases,
+        "safe_alternative_counts_by_case": safe_alternative_counts_by_case,
+        "safe_alternative_cases": safe_alternative_cases,
+        "missing_safe_alternative_case_count": len(missing_safe_alternative_cases),
+        "missing_safe_alternative_cases": missing_safe_alternative_cases,
+        "required_diagnostic_codes_by_case": required_diagnostic_codes_by_case,
+        "diagnostic_codes_by_case": diagnostic_codes_by_case,
+        "missing_diagnostic_code_case_count": len(missing_diagnostic_codes_by_case),
+        "missing_diagnostic_codes_by_case": missing_diagnostic_codes_by_case,
         "allowed_backends": SUPPORTED_DATABASE_BACKENDS,
         "observed_backends": observed_backends,
         "missing_allowed_backends": missing_allowed_backends,
