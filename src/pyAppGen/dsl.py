@@ -4586,6 +4586,50 @@ def _semantic_drift_text_renderer_contract() -> dict:
     missing_failing_check_ids = tuple(
         check_id for check_id in required_failing_check_ids if check_id not in emitted_failing_check_ids
     )
+    required_text_surfaces = (
+        "summary",
+        "surface_list",
+        "blocking_gaps",
+        "surface_evidence",
+        "check_results",
+        "semantic_digest",
+    )
+    emitted_text_surfaces = tuple(
+        surface
+        for surface, present in (
+            ("summary", bool(summary_lines)),
+            ("surface_list", bool(surface_lines)),
+            ("blocking_gaps", bool(gap_lines)),
+            ("surface_evidence", bool(evidence_lines)),
+            ("check_results", bool(check_lines)),
+            ("semantic_digest", any("digest=sha256:" in line for line in summary_lines)),
+        )
+        if present
+    )
+    missing_text_surfaces = tuple(
+        surface for surface in required_text_surfaces if surface not in emitted_text_surfaces
+    )
+    required_contract_formats = (
+        "appgen.semantic-drift-audit.v1",
+        "appgen.semantic-model.v1",
+        "appgen.generate-report.v1",
+        "appgen.lsp-service.v1",
+    )
+    emitted_contract_formats = tuple(
+        contract_format for contract_format in required_contract_formats if contract_format in text
+    )
+    missing_contract_formats = tuple(
+        contract_format for contract_format in required_contract_formats if contract_format not in emitted_contract_formats
+    )
+    required_semantic_digests = (str(payload["semantic_digest"]),)
+    emitted_semantic_digests = tuple(
+        digest
+        for digest in required_semantic_digests
+        if any(f"digest={digest}" in line for line in summary_lines)
+    )
+    missing_semantic_digests = tuple(
+        digest for digest in required_semantic_digests if digest not in emitted_semantic_digests
+    )
     return {
         "format": "appgen.semantic-drift-text-renderer.v1",
         "ok": not missing
@@ -4595,6 +4639,9 @@ def _semantic_drift_text_renderer_contract() -> dict:
         and not missing_check_ids
         and not missing_passing_check_ids
         and not missing_failing_check_ids
+        and not missing_text_surfaces
+        and not missing_contract_formats
+        and not missing_semantic_digests
         and not text.lstrip().startswith("{"),
         **_text_renderer_contract_counts(
             text,
@@ -4635,6 +4682,18 @@ def _semantic_drift_text_renderer_contract() -> dict:
         "emitted_failing_check_ids": emitted_failing_check_ids,
         "missing_failing_check_id_count": len(missing_failing_check_ids),
         "missing_failing_check_ids": missing_failing_check_ids,
+        "required_text_surfaces": required_text_surfaces,
+        "emitted_text_surfaces": emitted_text_surfaces,
+        "missing_text_surface_count": len(missing_text_surfaces),
+        "missing_text_surfaces": missing_text_surfaces,
+        "required_contract_formats": required_contract_formats,
+        "emitted_contract_formats": emitted_contract_formats,
+        "missing_contract_format_count": len(missing_contract_formats),
+        "missing_contract_formats": missing_contract_formats,
+        "required_semantic_digests": required_semantic_digests,
+        "emitted_semantic_digests": emitted_semantic_digests,
+        "missing_semantic_digest_count": len(missing_semantic_digests),
+        "missing_semantic_digests": missing_semantic_digests,
         "json_fallback": text.lstrip().startswith("{"),
         "text_prefix": text[:240],
     }
@@ -8579,16 +8638,15 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and all(check.get("ok") is True for check in drift.get("checks", ()))
             and drift.get("surface_evidence", {}).get("generate_report") == "appgen.generate-report.v1"
             and drift_text_renderer["ok"]
-            and drift_text_renderer.get("surface_line_count", 0) >= 1
-            and drift_text_renderer.get("evidence_line_count", 0) >= 3
-            and drift_text_renderer.get("check_line_count", 0) >= 2
-            and drift_text_renderer.get("digest_line_count", 0) >= 1
             and drift_text_renderer.get("missing_surface_count") == 0
             and drift_text_renderer.get("missing_gap_id_count") == 0
             and drift_text_renderer.get("missing_evidence_key_count") == 0
             and drift_text_renderer.get("missing_check_id_count") == 0
             and drift_text_renderer.get("missing_passing_check_id_count") == 0
             and drift_text_renderer.get("missing_failing_check_id_count") == 0
+            and drift_text_renderer.get("missing_text_surface_count") == 0
+            and drift_text_renderer.get("missing_contract_format_count") == 0
+            and drift_text_renderer.get("missing_semantic_digest_count") == 0
             and drift_text_renderer.get("json_fallback") is False
             and test_strategy_cli["ok"]
             and test_strategy_cli.get("missing_case_count") == 0
@@ -8640,6 +8698,18 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "emitted_failing_check_ids": drift_text_renderer.get("emitted_failing_check_ids"),
                     "missing_failing_check_id_count": drift_text_renderer.get("missing_failing_check_id_count"),
                     "missing_failing_check_ids": drift_text_renderer.get("missing_failing_check_ids"),
+                    "required_text_surfaces": drift_text_renderer.get("required_text_surfaces"),
+                    "emitted_text_surfaces": drift_text_renderer.get("emitted_text_surfaces"),
+                    "missing_text_surface_count": drift_text_renderer.get("missing_text_surface_count"),
+                    "missing_text_surfaces": drift_text_renderer.get("missing_text_surfaces"),
+                    "required_contract_formats": drift_text_renderer.get("required_contract_formats"),
+                    "emitted_contract_formats": drift_text_renderer.get("emitted_contract_formats"),
+                    "missing_contract_format_count": drift_text_renderer.get("missing_contract_format_count"),
+                    "missing_contract_formats": drift_text_renderer.get("missing_contract_formats"),
+                    "required_semantic_digests": drift_text_renderer.get("required_semantic_digests"),
+                    "emitted_semantic_digests": drift_text_renderer.get("emitted_semantic_digests"),
+                    "missing_semantic_digest_count": drift_text_renderer.get("missing_semantic_digest_count"),
+                    "missing_semantic_digests": drift_text_renderer.get("missing_semantic_digests"),
                     "json_fallback": drift_text_renderer.get("json_fallback"),
                 },
                 "cli": {

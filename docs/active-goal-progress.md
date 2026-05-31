@@ -4084,3 +4084,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   known active-PBC `datetime.utcnow()` warnings only), scoped diff whitespace
   check, and restricted-name scan outside archive, Git internals, and active
   PBC paths.
+- Current semantic-drift text audit hardening pass replaces generic
+  surface/evidence/check/digest line-count acceptance with named evidence for
+  shared-model drift logs. `appgen.semantic-drift-text-renderer.v1` now proves
+  required and emitted drift text surfaces, embedded drift/semantic/generator/
+  LSP contract formats, semantic digests, surface ids, gap ids, evidence keys,
+  and passing/failing check ids. Verification passed: Python compile for the
+  touched DSL and tests, focused semantic drift text renderer test (`1 passed`),
+  aggregate tooling audit (`1 passed`, with the known active-PBC
+  `datetime.utcnow()` warnings only), scoped diff whitespace check, and
+  restricted-name scan outside archive, Git internals, and active PBC paths.

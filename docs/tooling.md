@@ -2038,6 +2038,11 @@ It also reports required, observed, and missing case ids plus expected and
 observed payload formats by case, so diagnostics, parser-golden, drift, and
 doctor evidence cannot disappear or drift format while the aggregate case count
 still looks correct.
+The semantic drift text renderer also publishes required, emitted, missing, and
+missing-count evidence for drift text surfaces, embedded drift/semantic/generator
+contract formats, and semantic digests. The aggregate semantic gate requires
+zero named missing entries, so generic drift line counts cannot mask a hidden
+surface list, evidence line, check result, format marker, or model digest.
 This keeps agent-facing development paths honest; a capability is not counted
 as available just because an in-process helper can produce it.
 The aggregate tooling audit also publishes

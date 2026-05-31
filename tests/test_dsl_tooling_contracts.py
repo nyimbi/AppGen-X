@@ -7141,6 +7141,21 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     ]["required_failing_check_ids"]
     assert drift_gate["detail"]["text_renderer"]["missing_failing_check_id_count"] == 0
     assert drift_gate["detail"]["text_renderer"]["missing_failing_check_ids"] == ()
+    assert drift_gate["detail"]["text_renderer"]["emitted_text_surfaces"] == drift_gate["detail"][
+        "text_renderer"
+    ]["required_text_surfaces"]
+    assert drift_gate["detail"]["text_renderer"]["missing_text_surface_count"] == 0
+    assert drift_gate["detail"]["text_renderer"]["missing_text_surfaces"] == ()
+    assert drift_gate["detail"]["text_renderer"]["emitted_contract_formats"] == drift_gate["detail"][
+        "text_renderer"
+    ]["required_contract_formats"]
+    assert drift_gate["detail"]["text_renderer"]["missing_contract_format_count"] == 0
+    assert drift_gate["detail"]["text_renderer"]["missing_contract_formats"] == ()
+    assert drift_gate["detail"]["text_renderer"]["emitted_semantic_digests"] == drift_gate["detail"][
+        "text_renderer"
+    ]["required_semantic_digests"]
+    assert drift_gate["detail"]["text_renderer"]["missing_semantic_digest_count"] == 0
+    assert drift_gate["detail"]["text_renderer"]["missing_semantic_digests"] == ()
     assert drift_gate["detail"]["text_renderer"]["json_fallback"] is False
     assert drift_gate["detail"]["cli"]["observed_surface_count"] >= drift_gate["detail"]["cli"]["required_surface_count"]
     assert drift_gate["detail"]["cli"]["missing_surface_count"] == 0
@@ -8328,6 +8343,30 @@ def test_semantic_drift_text_renderer_contract_proves_shared_model_log_markers()
     assert report["emitted_failing_check_ids"] == report["required_failing_check_ids"]
     assert report["missing_failing_check_id_count"] == 0
     assert report["missing_failing_check_ids"] == ()
+    assert report["required_text_surfaces"] == (
+        "summary",
+        "surface_list",
+        "blocking_gaps",
+        "surface_evidence",
+        "check_results",
+        "semantic_digest",
+    )
+    assert report["emitted_text_surfaces"] == report["required_text_surfaces"]
+    assert report["missing_text_surface_count"] == 0
+    assert report["missing_text_surfaces"] == ()
+    assert report["required_contract_formats"] == (
+        "appgen.semantic-drift-audit.v1",
+        "appgen.semantic-model.v1",
+        "appgen.generate-report.v1",
+        "appgen.lsp-service.v1",
+    )
+    assert report["emitted_contract_formats"] == report["required_contract_formats"]
+    assert report["missing_contract_format_count"] == 0
+    assert report["missing_contract_formats"] == ()
+    assert report["required_semantic_digests"] == ("sha256:semantic-fixture",)
+    assert report["emitted_semantic_digests"] == report["required_semantic_digests"]
+    assert report["missing_semantic_digest_count"] == 0
+    assert report["missing_semantic_digests"] == ()
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(
