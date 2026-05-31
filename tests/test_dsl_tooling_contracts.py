@@ -3509,6 +3509,13 @@ def test_package_cli_audit_proves_all_target_handoff_contracts(tmp_path: Path) -
     assert report["passing_readiness_check_count"] == report["readiness_check_count"]
     assert report["missing_readiness_check_count"] == 0
     assert report["missing_readiness_checks"] == ()
+    assert report["missing_readiness_checks_by_target"] == {
+        "web": (),
+        "mobile": (),
+        "desktop": (),
+        "pbc": (),
+        "deployment": (),
+    }
     assert set(report["readiness_matrix"]) == {"web", "mobile", "desktop", "pbc", "deployment"}
     assert all(all(checks.values()) for checks in report["readiness_matrix"].values())
     assert report["readiness_matrix"]["web"]["smoke_entrypoint"] is True
@@ -7507,6 +7514,13 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert package_manifest_check["detail"]["missing_readiness_check_count"] == 0
     assert package_manifest_check["detail"]["missing_readiness_checks"] == ()
+    assert package_manifest_check["detail"]["missing_readiness_checks_by_target"] == {
+        "web": (),
+        "mobile": (),
+        "desktop": (),
+        "pbc": (),
+        "deployment": (),
+    }
     assert set(package_manifest_check["detail"]["readiness_matrix"]) == {
         "web",
         "mobile",

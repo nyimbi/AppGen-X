@@ -8702,6 +8702,10 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and package_verify_cli.get("missing_smoke_entrypoint_target_count") == 0
             and package_verify_cli.get("handoff_artifact_count", 0) >= 25
             and package_verify_cli.get("missing_handoff_artifact_count") == 0
+            and all(
+                not checks
+                for checks in package_verify_cli.get("missing_readiness_checks_by_target", {}).values()
+            )
             and package_verify_cli.get("release_evidence_report_count") == 5
             and package_verify_cli.get("missing_release_report_count") == 0
             and package_verify_cli.get("missing_release_graph_kind_count") == 0
@@ -8781,6 +8785,9 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "missing_handoff_artifacts": package_verify_cli.get("missing_handoff_artifacts"),
                 "readiness_matrix": package_verify_cli.get("readiness_matrix"),
                 "readiness_checks_by_target": package_verify_cli.get("readiness_checks_by_target"),
+                "missing_readiness_checks_by_target": package_verify_cli.get(
+                    "missing_readiness_checks_by_target"
+                ),
                 "readiness_check_count": package_verify_cli.get("readiness_check_count"),
                 "passing_readiness_check_count": package_verify_cli.get("passing_readiness_check_count"),
                 "missing_readiness_check_count": package_verify_cli.get("missing_readiness_check_count"),
@@ -16979,11 +16986,14 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
         target: tuple(checks)
         for target, checks in readiness_matrix.items()
     }
+    missing_readiness_checks_by_target = {
+        target: tuple(name for name, ok in checks.items() if not ok)
+        for target, checks in readiness_matrix.items()
+    }
     missing_readiness_checks = tuple(
         f"{target}.{name}"
-        for target, checks in readiness_matrix.items()
-        for name, ok in checks.items()
-        if not ok
+        for target, checks in missing_readiness_checks_by_target.items()
+        for name in checks
     )
     readiness_check_count = sum(len(checks) for checks in readiness_matrix.values())
     return {
@@ -16994,6 +17004,7 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
         and not missing_artifact_class_targets
         and not missing_smoke_entrypoint_targets
         and not missing_handoff_artifacts
+        and not missing_readiness_checks
         and not missing_release_reports
         and not missing_release_graph_kinds
         and not missing_release_graph_formats,
@@ -17037,6 +17048,7 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
         "missing_handoff_artifacts": missing_handoff_artifacts,
         "readiness_matrix": readiness_matrix,
         "readiness_checks_by_target": readiness_checks_by_target,
+        "missing_readiness_checks_by_target": missing_readiness_checks_by_target,
         "readiness_check_count": readiness_check_count,
         "passing_readiness_check_count": readiness_check_count - len(missing_readiness_checks),
         "missing_readiness_check_count": len(missing_readiness_checks),

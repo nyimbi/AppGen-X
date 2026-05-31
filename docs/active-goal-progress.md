@@ -4169,3 +4169,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   tests (`3 passed`), aggregate tooling audit (`1 passed`, with the known
   active-PBC `datetime.utcnow()` warnings only), scoped diff whitespace check,
   and restricted-name scan outside archive, Git internals, and active PBC paths.
+- Current package readiness-target hardening pass expands package verifier
+  readiness evidence with `missing_readiness_checks_by_target` and folds named
+  readiness gaps into the package audit `ok` status plus the aggregate
+  `package_manifest_handoff_contracts` gate. Mobile signing, desktop menu, web
+  handler, PBC registration, and deployment topology regressions now fail with
+  exact target/check names instead of only aggregate readiness counts.
+  Verification passed: Python compile for the touched DSL and tests, focused
+  package readiness tests (`4 passed`), aggregate tooling audit (`1 passed`,
+  with the known active-PBC `datetime.utcnow()` warnings only), scoped diff
+  whitespace check, and restricted-name scan outside archive, Git internals, and
+  active PBC paths.
