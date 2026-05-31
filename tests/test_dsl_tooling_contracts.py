@@ -3537,6 +3537,27 @@ def test_package_cli_audit_proves_all_target_handoff_contracts(tmp_path: Path) -
     assert report["failing_case_count"] == 0
     assert report["failing_cases"] == ()
     assert report["case_ids"] == ("verify_all_targets", "package_writes_target_manifests")
+    assert report["required_case_ids"] == ("verify_all_targets", "package_writes_target_manifests")
+    assert report["observed_case_ids"] == report["required_case_ids"]
+    assert report["missing_case_count"] == 0
+    assert report["missing_case_ids"] == ()
+    assert report["expected_exit_codes_by_case"] == {
+        "verify_all_targets": 0,
+        "package_writes_target_manifests": 0,
+    }
+    assert report["exit_codes_by_case"] == report["expected_exit_codes_by_case"]
+    assert report["missing_exit_code_case_count"] == 0
+    assert report["missing_exit_code_cases"] == ()
+    assert report["expected_payload_formats_by_case"] == {
+        "verify_all_targets": "appgen.release-verifier-report.v1",
+        "package_writes_target_manifests": "appgen.release-verifier-report.v1",
+    }
+    assert report["payload_formats_by_case"] == report["expected_payload_formats_by_case"]
+    assert report["missing_payload_format_case_count"] == 0
+    assert report["missing_payload_format_cases"] == ()
+    assert report["ok_by_case"] == {case_id: True for case_id in report["required_case_ids"]}
+    assert report["missing_ok_case_count"] == 0
+    assert report["missing_ok_cases"] == ()
     assert report["expected_targets"] == ("web", "mobile", "desktop", "pbc", "deployment")
     assert report["manifest_target_count"] == 5
     assert report["manifest_targets"] == report["expected_targets"]
@@ -7820,6 +7841,24 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert package_check["detail"]["cli"]["case_count"] == 2
     assert package_check["detail"]["cli"]["passing_case_count"] == 2
     assert package_check["detail"]["cli"]["failing_case_count"] == 0
+    assert package_check["detail"]["cli"]["observed_case_ids"] == package_check["detail"]["cli"]["required_case_ids"]
+    assert package_check["detail"]["cli"]["missing_case_count"] == 0
+    assert package_check["detail"]["cli"]["missing_case_ids"] == ()
+    assert package_check["detail"]["cli"]["exit_codes_by_case"] == (
+        package_check["detail"]["cli"]["expected_exit_codes_by_case"]
+    )
+    assert package_check["detail"]["cli"]["missing_exit_code_case_count"] == 0
+    assert package_check["detail"]["cli"]["missing_exit_code_cases"] == ()
+    assert package_check["detail"]["cli"]["payload_formats_by_case"] == (
+        package_check["detail"]["cli"]["expected_payload_formats_by_case"]
+    )
+    assert package_check["detail"]["cli"]["missing_payload_format_case_count"] == 0
+    assert package_check["detail"]["cli"]["missing_payload_format_cases"] == ()
+    assert package_check["detail"]["cli"]["ok_by_case"] == {
+        case_id: True for case_id in package_check["detail"]["cli"]["required_case_ids"]
+    }
+    assert package_check["detail"]["cli"]["missing_ok_case_count"] == 0
+    assert package_check["detail"]["cli"]["missing_ok_cases"] == ()
     assert package_check["detail"]["cli"]["missing_manifest_target_count"] == 0
     assert package_check["detail"]["cli"]["missing_release_report_count"] == 0
     assert package_check["detail"]["cli"]["target_count"] == 5
@@ -7869,6 +7908,24 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert package_manifest_check["detail"]["failing_case_count"] == 0
     assert package_manifest_check["detail"]["failing_cases"] == ()
     assert package_manifest_check["detail"]["case_ids"] == ("verify_all_targets", "package_writes_target_manifests")
+    assert package_manifest_check["detail"]["observed_case_ids"] == package_manifest_check["detail"]["required_case_ids"]
+    assert package_manifest_check["detail"]["missing_case_count"] == 0
+    assert package_manifest_check["detail"]["missing_case_ids"] == ()
+    assert package_manifest_check["detail"]["exit_codes_by_case"] == (
+        package_manifest_check["detail"]["expected_exit_codes_by_case"]
+    )
+    assert package_manifest_check["detail"]["missing_exit_code_case_count"] == 0
+    assert package_manifest_check["detail"]["missing_exit_code_cases"] == ()
+    assert package_manifest_check["detail"]["payload_formats_by_case"] == (
+        package_manifest_check["detail"]["expected_payload_formats_by_case"]
+    )
+    assert package_manifest_check["detail"]["missing_payload_format_case_count"] == 0
+    assert package_manifest_check["detail"]["missing_payload_format_cases"] == ()
+    assert package_manifest_check["detail"]["ok_by_case"] == {
+        case_id: True for case_id in package_manifest_check["detail"]["required_case_ids"]
+    }
+    assert package_manifest_check["detail"]["missing_ok_case_count"] == 0
+    assert package_manifest_check["detail"]["missing_ok_cases"] == ()
     assert package_manifest_check["detail"]["manifest_count"] == 5
     assert package_manifest_check["detail"]["manifest_target_count"] == 5
     assert package_manifest_check["detail"]["manifest_targets"] == ("web", "mobile", "desktop", "pbc", "deployment")

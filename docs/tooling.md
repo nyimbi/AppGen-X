@@ -1193,10 +1193,12 @@ startup assets, PBC publication, and deployment topology verification.
 It reports case, passing-case, target, manifest, and handoff-artifact counts so
 release evidence captures breadth across all package targets instead of only a
 single success boolean. It also reports failing-case names, case ids, expected
-targets, manifest target coverage, missing manifest targets, manifest formats,
-handoff counts by target, release-evidence report counts, missing release
-reports, and release graph kind/format gaps so package failures identify the
-missing target handoff directly.
+targets, required/observed/missing case ids, expected and observed exit codes by
+case, expected and observed release-verifier payload formats by case, per-case
+`ok` status, manifest target coverage, missing manifest targets, manifest
+formats, handoff counts by target, release-evidence report counts, missing
+release reports, and release graph kind/format gaps so package failures identify
+the missing target handoff directly.
 For package handoff artifacts, the audit reports required, emitted, and missing
 artifact names by target. This prevents a package from passing because it has
 the right number of handoff entries while omitting a named contract such as

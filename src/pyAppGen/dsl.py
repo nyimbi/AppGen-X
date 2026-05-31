@@ -8892,6 +8892,10 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             release["ok"]
             and package["ok"]
             and package_verify_cli["ok"]
+            and package_verify_cli.get("missing_case_count") == 0
+            and package_verify_cli.get("missing_exit_code_case_count") == 0
+            and package_verify_cli.get("missing_payload_format_case_count") == 0
+            and package_verify_cli.get("missing_ok_case_count") == 0
             and release_text_renderer["ok"]
             and package_invalid_target["ok"]
             and package_invalid_target.get("missing_case_count") == 0
@@ -8921,6 +8925,10 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "package_manifest_handoff_contracts",
             package_verify_cli["ok"]
             and package_verify_cli.get("failing_case_count") == 0
+            and package_verify_cli.get("missing_case_count") == 0
+            and package_verify_cli.get("missing_exit_code_case_count") == 0
+            and package_verify_cli.get("missing_payload_format_case_count") == 0
+            and package_verify_cli.get("missing_ok_case_count") == 0
             and package_verify_cli.get("target_count") == 5
             and package_verify_cli.get("manifest_count") == 5
             and package_verify_cli.get("manifest_target_count") == 5
@@ -8981,6 +8989,21 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "failing_case_count": package_verify_cli.get("failing_case_count"),
                 "failing_cases": package_verify_cli.get("failing_cases"),
                 "case_ids": package_verify_cli.get("case_ids"),
+                "required_case_ids": package_verify_cli.get("required_case_ids"),
+                "observed_case_ids": package_verify_cli.get("observed_case_ids"),
+                "missing_case_count": package_verify_cli.get("missing_case_count"),
+                "missing_case_ids": package_verify_cli.get("missing_case_ids"),
+                "expected_exit_codes_by_case": package_verify_cli.get("expected_exit_codes_by_case"),
+                "exit_codes_by_case": package_verify_cli.get("exit_codes_by_case"),
+                "missing_exit_code_case_count": package_verify_cli.get("missing_exit_code_case_count"),
+                "missing_exit_code_cases": package_verify_cli.get("missing_exit_code_cases"),
+                "expected_payload_formats_by_case": package_verify_cli.get("expected_payload_formats_by_case"),
+                "payload_formats_by_case": package_verify_cli.get("payload_formats_by_case"),
+                "missing_payload_format_case_count": package_verify_cli.get("missing_payload_format_case_count"),
+                "missing_payload_format_cases": package_verify_cli.get("missing_payload_format_cases"),
+                "ok_by_case": package_verify_cli.get("ok_by_case"),
+                "missing_ok_case_count": package_verify_cli.get("missing_ok_case_count"),
+                "missing_ok_cases": package_verify_cli.get("missing_ok_cases"),
                 "manifest_count": package_verify_cli.get("manifest_count"),
                 "manifest_target_count": package_verify_cli.get("manifest_target_count"),
                 "manifest_targets": package_verify_cli.get("manifest_targets"),
@@ -11533,7 +11556,11 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     "id": "release_and_package_verifiers",
                     "ok": evidence["release"].get("ok") is True
                     and evidence["package"].get("ok") is True
-                    and evidence["package_verify_cli"].get("ok") is True,
+                    and evidence["package_verify_cli"].get("ok") is True
+                    and evidence["package_verify_cli"].get("missing_case_count") == 0
+                    and evidence["package_verify_cli"].get("missing_exit_code_case_count") == 0
+                    and evidence["package_verify_cli"].get("missing_payload_format_case_count") == 0
+                    and evidence["package_verify_cli"].get("missing_ok_case_count") == 0,
                     "evidence_formats": (
                         evidence["release"].get("format"),
                         evidence["package"].get("format"),
@@ -11543,6 +11570,10 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                 {
                     "id": "package_manifest_handoff_contracts",
                     "ok": evidence["package_verify_cli"].get("ok") is True
+                    and evidence["package_verify_cli"].get("missing_case_count") == 0
+                    and evidence["package_verify_cli"].get("missing_exit_code_case_count") == 0
+                    and evidence["package_verify_cli"].get("missing_payload_format_case_count") == 0
+                    and evidence["package_verify_cli"].get("missing_ok_case_count") == 0
                     and evidence["package_verify_cli"].get("target_count") == 5
                     and evidence["package_verify_cli"].get("manifest_count") == 5
                     and evidence["package_verify_cli"].get("handoff_artifact_count", 0) >= 25,
@@ -18247,9 +18278,54 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
         for name in checks
     )
     readiness_check_count = sum(len(checks) for checks in readiness_matrix.values())
+    required_case_ids = ("verify_all_targets", "package_writes_target_manifests")
+    observed_case_ids = tuple(case["case"] for case in cases)
+    missing_case_ids = tuple(case_id for case_id in required_case_ids if case_id not in observed_case_ids)
+    expected_exit_codes_by_case = {
+        "verify_all_targets": 0,
+        "package_writes_target_manifests": 0,
+    }
+    exit_codes_by_case = {
+        case["case"]: case.get("exit_code")
+        for case in cases
+        if case["case"] in expected_exit_codes_by_case
+    }
+    missing_exit_code_cases = tuple(
+        case_id
+        for case_id, expected_exit_code in expected_exit_codes_by_case.items()
+        if exit_codes_by_case.get(case_id) != expected_exit_code
+    )
+    expected_payload_formats_by_case = {
+        "verify_all_targets": "appgen.release-verifier-report.v1",
+        "package_writes_target_manifests": "appgen.release-verifier-report.v1",
+    }
+    payload_formats_by_case = {
+        case["case"]: case.get("payload_format")
+        for case in cases
+        if case["case"] in expected_payload_formats_by_case
+    }
+    missing_payload_format_cases = tuple(
+        case_id
+        for case_id, expected_format in expected_payload_formats_by_case.items()
+        if payload_formats_by_case.get(case_id) != expected_format
+    )
+    ok_by_case = {
+        case["case"]: case.get("ok") is True
+        for case in cases
+        if case["case"] in required_case_ids
+    }
+    missing_ok_cases = tuple(
+        case_id
+        for case_id in required_case_ids
+        if ok_by_case.get(case_id) is not True
+    )
     return {
         "format": "appgen.package-verify-cli-audit.v1",
         "ok": all(case["ok"] for case in cases)
+        and not missing_case_ids
+        and not missing_exit_code_cases
+        and not missing_payload_format_cases
+        and not missing_ok_cases
         and not missing_manifest_targets
         and not missing_manifest_format_targets
         and not missing_artifact_class_targets
@@ -18268,6 +18344,21 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
         "failing_case_count": len(failing_cases),
         "failing_cases": failing_cases,
         "case_ids": case_ids,
+        "required_case_ids": required_case_ids,
+        "observed_case_ids": observed_case_ids,
+        "missing_case_count": len(missing_case_ids),
+        "missing_case_ids": missing_case_ids,
+        "expected_exit_codes_by_case": expected_exit_codes_by_case,
+        "exit_codes_by_case": exit_codes_by_case,
+        "missing_exit_code_case_count": len(missing_exit_code_cases),
+        "missing_exit_code_cases": missing_exit_code_cases,
+        "expected_payload_formats_by_case": expected_payload_formats_by_case,
+        "payload_formats_by_case": payload_formats_by_case,
+        "missing_payload_format_case_count": len(missing_payload_format_cases),
+        "missing_payload_format_cases": missing_payload_format_cases,
+        "ok_by_case": ok_by_case,
+        "missing_ok_case_count": len(missing_ok_cases),
+        "missing_ok_cases": missing_ok_cases,
         "target_count": len(expected_targets),
         "expected_targets": expected_targets,
         "manifest_target_count": len(manifest_targets),

@@ -4348,3 +4348,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   named missing lists to be empty, so side-effect-free component publication
   cannot pass by patch metadata and text markers while a CLI case returns the
   wrong process status or fails its own scenario proof.
+- Current package/verify CLI hardening pass expands package release evidence
+  with required/observed/missing case ids, expected and observed exit codes,
+  expected and observed release-verifier payload formats, and `ok` status by
+  named verify-all-targets and package-manifest-writing case. The aggregate
+  `package_and_release_verifiers` and `package_manifest_handoff_contracts` gates
+  now require those named missing lists to be empty, so web/mobile/desktop/PBC/
+  deployment package handoff proof cannot pass while the executable verify or
+  package path returns the wrong process status, wrong envelope, or failed case
+  proof.
