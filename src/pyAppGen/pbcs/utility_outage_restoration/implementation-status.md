@@ -28,3 +28,13 @@ Package-local uplift only. No global files, shared generator/language/docs, or s
 - Deployment-facing package contracts remain on the owned PostgreSQL/MySQL/MariaDB boundary.
 - AppGen-X is the only eventing contract exposed by this PBC, and all mutation-capable assistant skills remain confirmation-gated.
 - The temporary `.deps/` directory used for local focused audits was removed after verification so the worktree stays clean outside this PBC directory.
+
+
+## Improve1 Traceability Controls
+
+- Added `utility_outage_restoration_control.py` with executable controls for all 50 hand-curated improve1 features.
+- Added `IMPROVE1_TRACEABILITY.md` mapping each feature to code artifact/model, UI surface, service/API, test, and evidence hash.
+- Wired runtime, UI, and release evidence to expose the control contract and fail closed when required outage-domain evidence is absent.
+- Added `tests/test_domain_behavior.py` for owned-table boundaries, AppGen-X eventing, database backend limits, projection-only dependencies, governed AI assistance, human confirmation, separated approval, and domain-specific outage operations.
+
+Validation for this slice is tracked in the current branch commits and focused test output.

@@ -144,3 +144,35 @@ def utility_outage_restoration_render_standalone_workbench(workbench: dict) -> d
 
 def smoke_test():
     return {'ok': utility_outage_restoration_ui_contract()['ok'] and utility_outage_restoration_render_workbench()['ok'], 'side_effects': ()}
+
+
+# Improve1 utility outage restoration control UI extension.
+from .utility_outage_restoration_control import improve1_utility_outage_restoration_control_contract as _improve1_utility_outage_restoration_control_contract
+
+_OUTAGE_CONTROL_BASE_UI_CONTRACT = utility_outage_restoration_ui_contract
+_OUTAGE_CONTROL_BASE_RENDER_WORKBENCH = utility_outage_restoration_render_workbench
+
+
+def utility_outage_restoration_ui_contract() -> dict:
+    ui = dict(_OUTAGE_CONTROL_BASE_UI_CONTRACT())
+    control = _improve1_utility_outage_restoration_control_contract()
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "utility_outage_restoration_control_contract": control,
+        "utility_outage_restoration_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "utility_outage_restoration_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def utility_outage_restoration_render_workbench(*args, **kwargs) -> dict:
+    workbench = dict(_OUTAGE_CONTROL_BASE_RENDER_WORKBENCH(*args, **kwargs))
+    control = _improve1_utility_outage_restoration_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "utility_outage_restoration_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "utility_outage_restoration_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "utility_outage_restoration_control_agent_tools": tuple(f"utility_outage_restoration.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench
