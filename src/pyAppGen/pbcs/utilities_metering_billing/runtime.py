@@ -267,3 +267,45 @@ def utilities_metering_billing_runtime_smoke():
     }
 
 utilities_metering_billing_execute_domain_operation = execute_domain_operation
+
+
+# Improve1 utilities metering billing control extension.
+from .utilities_metering_billing_control import evaluate_utilities_metering_billing_control, improve1_utilities_metering_billing_control_contract
+
+_UTILITY_CONTROL_BASE_RUNTIME_CAPABILITIES = utilities_metering_billing_runtime_capabilities
+_UTILITY_CONTROL_BASE_BUILD_RELEASE_EVIDENCE = utilities_metering_billing_build_release_evidence
+
+
+def utilities_metering_billing_runtime_capabilities():
+    runtime = dict(_UTILITY_CONTROL_BASE_RUNTIME_CAPABILITIES())
+    control = improve1_utilities_metering_billing_control_contract()
+    runtime["ok"] = bool(runtime.get("ok")) and control["ok"]
+    runtime["utilities_metering_billing_control"] = control
+    runtime["operations"] = tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + ("evaluate_utilities_metering_billing_control", "improve1_utilities_metering_billing_control_contract")))
+    runtime["improve1_control_owned_tables"] = control["owned_tables"]
+    runtime["event_contract"] = "AppGen-X"
+    runtime["stream_engine_picker_visible"] = False
+    return runtime
+
+
+def utilities_metering_billing_build_release_evidence():
+    evidence = dict(_UTILITY_CONTROL_BASE_BUILD_RELEASE_EVIDENCE())
+    control = improve1_utilities_metering_billing_control_contract()
+    artifacts = dict(evidence.get("generated_artifacts", {}))
+    artifacts["utilities_metering_billing_control"] = {
+        "contract": control["format"],
+        "capability_count": control["capability_count"],
+        "owned_tables": control["owned_tables"],
+        "service_apis": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "ui_surfaces": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "test": "tests/test_domain_behavior.py",
+    }
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_utilities_metering_billing_control", "ok": control["ok"]},)
+    evidence.update({
+        "ok": bool(evidence.get("ok")) and control["ok"],
+        "checks": checks,
+        "generated_artifacts": artifacts,
+        "utilities_metering_billing_control": control,
+        "blocking_gaps": tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ())),
+    })
+    return evidence
