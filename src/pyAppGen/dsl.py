@@ -6741,6 +6741,15 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.dsl-antlr-integrity.v1",
     "appgen.dsl-language-quality.v1",
     "appgen.dsl-language-cli-audit.v1",
+    "appgen.dsl-fix-result.v1",
+    "appgen.dsl-format-result.v1",
+    "appgen.dsl-outline.v1",
+    "appgen.dsl-code-action.v1",
+    "appgen.dsl-authoring-score.v1",
+    "appgen.dsl-language-ergonomics.v1",
+    "appgen.dsl-language-experience-gate.v1",
+    "appgen.dsl-authoring-release-gate.v1",
+    "appgen.dsl-language-service.v1",
     "appgen.format-result.v1",
     "appgen.format-text-renderer.v1",
     "appgen.formatter-contract-audit.v1",
@@ -7245,6 +7254,115 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "language_quality_format": {"type": "string"},
                 "antlr_integrity_format": {"type": "string"},
                 "cases": {"type": "array", "items": {"type": "object"}},
+            },
+        ),
+        "appgen.dsl-fix-result.v1": _contract_format_schema(
+            "appgen.dsl-fix-result.v1",
+            required=("format", "changed", "applied", "before", "after"),
+            properties={
+                "changed": {"type": "boolean"},
+                "applied": {"type": "array", "items": {"type": "string"}},
+                "skipped": {"type": "array", "items": {"type": "object"}},
+                "original": {"type": "string"},
+                "fixed": {"type": "string"},
+                "before": {"type": "object"},
+                "after": {"type": "object"},
+            },
+        ),
+        "appgen.dsl-format-result.v1": _contract_format_schema(
+            "appgen.dsl-format-result.v1",
+            required=("format", "changed", "organize", "original", "formatted", "after"),
+            properties={
+                "changed": {"type": "boolean"},
+                "organize": {"type": "boolean"},
+                "original": {"type": "string"},
+                "formatted": {"type": "string"},
+                "before": {"type": "object"},
+                "after": {"type": "object"},
+            },
+        ),
+        "appgen.dsl-outline.v1": _contract_format_schema(
+            "appgen.dsl-outline.v1",
+            required=("format", "ok", "blocks", "summary"),
+            properties={
+                "app": {"type": ("string", "null")},
+                "targets": {"type": "array", "items": {"type": "string"}},
+                "blocks": {"type": "array", "items": {"type": "object"}},
+                "tables": {"type": "array", "items": {"type": "object"}},
+                "views": {"type": "array", "items": {"type": "object"}},
+                "flows": {"type": "array", "items": {"type": "object"}},
+                "summary": {"type": "object"},
+            },
+        ),
+        "appgen.dsl-code-action.v1": _contract_format_schema(
+            "appgen.dsl-code-action.v1",
+            required=("format", "id", "title", "kind", "changed"),
+            properties={
+                "id": {"type": "string"},
+                "title": {"type": "string"},
+                "kind": {"type": "string"},
+                "diagnostic_codes": {"type": "array", "items": {"type": "string"}},
+                "diagnostics": {"type": "array", "items": {"type": "object"}},
+                "edits": {"type": "array", "items": {"type": "object"}},
+                "command": {"type": "object"},
+                "changed": {"type": "boolean"},
+                "fixed_preview": {"type": "string"},
+            },
+        ),
+        "appgen.dsl-authoring-score.v1": _contract_format_schema(
+            "appgen.dsl-authoring-score.v1",
+            required=("format", "score", "ok", "checks", "next_actions"),
+            properties={
+                "score": {"type": "integer", "minimum": 0},
+                "checks": {"type": "array", "items": {"type": "object"}},
+                "next_actions": {"type": "array", "items": {"type": "string"}},
+                "quick_fix_ids": {"type": "array", "items": {"type": "string"}},
+                "summary": {"type": "object"},
+            },
+        ),
+        "appgen.dsl-language-ergonomics.v1": _contract_format_schema(
+            "appgen.dsl-language-ergonomics.v1",
+            required=("format", "ok", "checks", "sample", "blocking_gaps"),
+            properties={
+                "checks": {"type": "array", "items": {"type": "object"}},
+                "sample": {"type": "string"},
+                "blocking_gaps": {"type": "array", "items": {"type": "object"}},
+            },
+        ),
+        "appgen.dsl-language-experience-gate.v1": _contract_format_schema(
+            "appgen.dsl-language-experience-gate.v1",
+            required=("format", "ok", "language", "checks", "blocking_gaps"),
+            properties={
+                "language": {"type": "string"},
+                "checks": {"type": "array", "items": {"type": "object"}},
+                "blocking_gaps": {"type": "array", "items": {"type": "object"}},
+                "sample": {"type": "string"},
+            },
+        ),
+        "appgen.dsl-authoring-release-gate.v1": _contract_format_schema(
+            "appgen.dsl-authoring-release-gate.v1",
+            required=("format", "ok", "decision", "gates", "blocking_gaps"),
+            properties={
+                "language": {"type": "string"},
+                "decision": {"type": "string"},
+                "gates": {"type": "array", "items": {"type": "object"}},
+                "source_families": {"type": "array", "items": {"type": "object"}},
+                "summary": {"type": "object"},
+                "blocking_gaps": {"type": "array", "items": {"type": "object"}},
+            },
+        ),
+        "appgen.dsl-language-service.v1": _contract_format_schema(
+            "appgen.dsl-language-service.v1",
+            required=("format", "ok", "language", "lint", "outline", "completions", "code_actions"),
+            properties={
+                "language": {"type": "string"},
+                "lint": {"type": "object"},
+                "outline": {"type": "object"},
+                "completions": {"type": "array", "items": {"type": "object"}},
+                "code_actions": {"type": "array", "items": {"type": "object"}},
+                "formatting": {"type": "object"},
+                "authoring_score": {"type": "object"},
+                "language_quality": {"type": "object"},
             },
         ),
         "appgen.format-result.v1": _json_object_schema(
@@ -20804,6 +20922,26 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
                     return json.loads(str(content))
             return {"format": contract_format, "ok": False}
 
+        dsl_fix = apply_lint_fixes(
+            "entity Book { title: string searchable; secret: string hide }",
+            source_name="contract-schema-authoring.appgen",
+        )
+        dsl_actions = dsl_code_actions(
+            "app RefDemo { targets: web } table Author { id: int pk } table Book { author_id: int ref Author.id }",
+            source_name="contract-schema-authoring.appgen",
+        )
+        dsl_action = next(
+            (action for action in dsl_actions if action.get("format") == "appgen.dsl-code-action.v1"),
+            {
+                "format": "appgen.dsl-code-action.v1",
+                "id": "sample",
+                "title": "Sample action",
+                "kind": "quickfix",
+                "changed": False,
+                "diagnostics": (),
+                "edits": (),
+            },
+        )
         component_publish = component_publish_report("TextBox")
         component_publish_cli = _tooling_audit_component_publish_cli(tmp_path)
         pbc_catalog = pbc_verifier_catalog_report()
@@ -20894,6 +21032,19 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             "appgen.dsl-antlr-integrity.v1": dsl_antlr_integrity_report(),
             "appgen.dsl-language-quality.v1": dsl_language_quality_contract(),
             "appgen.dsl-language-cli-audit.v1": _tooling_audit_dsl_language_cli(tmp_path, source),
+            "appgen.dsl-fix-result.v1": dsl_fix,
+            "appgen.dsl-format-result.v1": format_dsl(source, source_name="contract-schema.appgen"),
+            "appgen.dsl-outline.v1": dsl_outline(source, source_name="contract-schema.appgen"),
+            "appgen.dsl-code-action.v1": dsl_action,
+            "appgen.dsl-authoring-score.v1": dsl_authoring_score(source, source_name="contract-schema.appgen"),
+            "appgen.dsl-language-ergonomics.v1": dsl_language_ergonomics_contract(source, source_name="contract-schema.appgen"),
+            "appgen.dsl-language-experience-gate.v1": dsl_language_experience_gate(source, source_name="contract-schema.appgen"),
+            "appgen.dsl-authoring-release-gate.v1": dsl_authoring_release_gate(source, source_name="contract-schema.appgen"),
+            "appgen.dsl-language-service.v1": dsl_language_service(
+                source,
+                source_name="contract-schema.appgen",
+                prefix="Inv",
+            ),
             "appgen.format-result.v1": format_report_dsl(source, source_name="contract-schema.appgen"),
             "appgen.format-text-renderer.v1": _format_text_renderer_contract(),
             "appgen.formatter-contract-audit.v1": formatter_contract_audit_dsl(),

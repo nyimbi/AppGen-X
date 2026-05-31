@@ -702,6 +702,17 @@ DSL language-quality commands are first-class CLI contracts: `appgen
 dsl-quality`, `appgen dsl-antlr`, `appgen dsl-authoring-gate <file>`, and
 `appgen dsl-language-service <file>` expose the same grammar, parser, keyword,
 authoring, and editor-service evidence used by the aggregate tooling audit.
+The package-level DSL authoring service also has schema-backed subcontracts for
+quick-fix application, formatting, outline/navigation, code actions, authoring
+score, ergonomics, experience, release gates, and the combined language-service
+payload: `appgen.dsl-fix-result.v1`, `appgen.dsl-format-result.v1`,
+`appgen.dsl-outline.v1`, `appgen.dsl-code-action.v1`,
+`appgen.dsl-authoring-score.v1`,
+`appgen.dsl-language-ergonomics.v1`,
+`appgen.dsl-language-experience-gate.v1`,
+`appgen.dsl-authoring-release-gate.v1`, and
+`appgen.dsl-language-service.v1`. Editors and coding agents should validate
+these direct payloads instead of relying on loosely shaped nested objects.
 `appgen.dsl-language-cli-audit.v1` exercises those commands in JSON and text
 modes, reports JSON/text case counts, payload formats, failing cases, and
 completion counts. It also reports required, observed, and missing JSON/text
@@ -733,6 +744,13 @@ JSON Schema 2020-12 dialect, and includes schemas for `appgen.diagnostic.v1`,
 `appgen.module-boundary-audit.v1`, `appgen.non-goal-policy-audit.v1`,
 `appgen.dsl-keyword-budget.v1`, `appgen.dsl-antlr-integrity.v1`,
 `appgen.dsl-language-quality.v1`, `appgen.dsl-language-cli-audit.v1`,
+`appgen.dsl-fix-result.v1`, `appgen.dsl-format-result.v1`,
+`appgen.dsl-outline.v1`, `appgen.dsl-code-action.v1`,
+`appgen.dsl-authoring-score.v1`,
+`appgen.dsl-language-ergonomics.v1`,
+`appgen.dsl-language-experience-gate.v1`,
+`appgen.dsl-authoring-release-gate.v1`,
+`appgen.dsl-language-service.v1`,
 `appgen.format-result.v1`, `appgen.format-text-renderer.v1`,
 `appgen.formatter-contract-audit.v1`, `appgen.validate-report.v1`,
 `appgen.generate-report.v1`, `appgen.validate-generate-text-renderer.v1`,
@@ -2718,7 +2736,7 @@ Exit criteria:
   package-manifest, component/PBC wrapper, doctor, tooling-audit,
   project-governance, schema-catalog, and contract-validation report schemas are
   available from CLI JSON and text modes. The schema audit validates
-  representative payloads for all 148 documented `appgen.*.v1` formats, so
+  representative payloads for all 157 documented `appgen.*.v1` formats, so
   adding a documented contract without a matching runtime sample fails the
   release gate.
 - `appgen.contract-validation-cli-audit.v1` proves those JSON contracts can be
