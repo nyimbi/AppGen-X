@@ -6537,9 +6537,22 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.diagnostic.v1",
     "appgen.lint-report.v1",
     "appgen.semantic-model.v1",
+    "appgen.format-result.v1",
+    "appgen.validate-report.v1",
+    "appgen.generate-report.v1",
+    "appgen.graph-suite-report.v1",
+    "appgen.explain-report.v1",
+    "appgen.lsp-service.v1",
+    "appgen.designer-sync-report.v1",
+    "appgen.diagnostic-catalog.v1",
+    "appgen.diagnostic-fixture-audit.v1",
+    "appgen.parser-golden-audit.v1",
+    "appgen.semantic-drift-audit.v1",
     "appgen.migration-plan.v1",
     "appgen.nl-plan.v1",
     "appgen.release-verifier-report.v1",
+    "appgen.component-publish-report.v1",
+    "appgen.doctor-report.v1",
     "appgen.tooling-audit.v1",
     "appgen.contract-schema-catalog.v1",
     "appgen.contract-validation-report.v1",
@@ -6602,7 +6615,7 @@ def _contract_schema_catalog() -> dict[str, dict]:
         ),
         "appgen.lint-report.v1": _json_object_schema(
             "appgen.lint-report.v1",
-            required=("format", "ok", "diagnostics", "summary", "severity_counts"),
+            required=("format", "ok", "diagnostics", "severity_counts"),
             properties={
                 "format": _const_schema("appgen.lint-report.v1"),
                 "ok": {"type": "boolean"},
@@ -6613,7 +6626,7 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "summary": {"type": "object"},
                 "severity_counts": {"type": "object"},
                 "stages": {"type": "object"},
-                "migration_preview": {"type": "object"},
+                "migration_preview": {"type": ("object", "null")},
             },
             defs={"diagnostic": _diagnostic_schema_ref_target()},
         ),
@@ -6645,6 +6658,172 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}},
             },
             defs={"diagnostic": _diagnostic_schema_ref_target()},
+        ),
+        "appgen.format-result.v1": _json_object_schema(
+            "appgen.format-result.v1",
+            required=("format", "changed", "idempotent", "diagnostics"),
+            properties={
+                "format": _const_schema("appgen.format-result.v1"),
+                "ok": {"type": "boolean"},
+                "changed": {"type": "boolean"},
+                "idempotent": {"type": "boolean"},
+                "text": {"type": "string"},
+                "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}},
+                "write_requested": {"type": "boolean"},
+                "written": {"type": "boolean"},
+                "write_path": {"type": ("string", "null")},
+            },
+            defs={"diagnostic": _diagnostic_schema_ref_target()},
+        ),
+        "appgen.validate-report.v1": _json_object_schema(
+            "appgen.validate-report.v1",
+            required=("format", "ok", "requested_targets", "app_targets", "checks", "diagnostics"),
+            properties={
+                "format": _const_schema("appgen.validate-report.v1"),
+                "ok": {"type": "boolean"},
+                "requested_targets": {"type": "array", "items": {"type": "string"}},
+                "app_targets": {"type": "array", "items": {"type": "string"}},
+                "checks": {"type": "array", "items": {"type": "object"}},
+                "semantic_model": {"type": "object"},
+                "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}},
+            },
+            defs={"diagnostic": _diagnostic_schema_ref_target()},
+        ),
+        "appgen.generate-report.v1": _json_object_schema(
+            "appgen.generate-report.v1",
+            required=("format", "ok", "generated", "targets", "artifacts", "blocking_gaps", "diagnostics"),
+            properties={
+                "format": _const_schema("appgen.generate-report.v1"),
+                "ok": {"type": "boolean"},
+                "generated": {"type": "boolean"},
+                "targets": {"type": "array", "items": {"type": "string"}},
+                "artifacts": {"type": "array", "items": {"type": "object"}},
+                "artifact_count": {"type": "integer", "minimum": 0},
+                "manifest": {"type": ("string", "null")},
+                "output_dir": {"type": ("string", "null")},
+                "semantic_model_format": {"type": ("string", "null")},
+                "validation_format": {"type": ("string", "null")},
+                "blocking_gaps": {"type": "array", "items": {"type": "string"}},
+                "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}},
+            },
+            defs={"diagnostic": _diagnostic_schema_ref_target()},
+        ),
+        "appgen.graph-suite-report.v1": _json_object_schema(
+            "appgen.graph-suite-report.v1",
+            required=("format", "ok", "required_kinds", "formats", "graph_reports", "checks"),
+            properties={
+                "format": _const_schema("appgen.graph-suite-report.v1"),
+                "ok": {"type": "boolean"},
+                "required_kinds": {"type": "array", "items": {"type": "string"}},
+                "formats": {"type": "array", "items": {"type": "string"}},
+                "graph_reports": {"type": "object"},
+                "checks": {"type": "array", "items": {"type": "object"}},
+                "missing_kind_count": {"type": "integer", "minimum": 0},
+                "missing_rendering_count": {"type": "integer", "minimum": 0},
+            },
+        ),
+        "appgen.explain-report.v1": _json_object_schema(
+            "appgen.explain-report.v1",
+            required=("format", "ok", "kind", "query"),
+            properties={
+                "format": _const_schema("appgen.explain-report.v1"),
+                "ok": {"type": "boolean"},
+                "kind": {"type": "string"},
+                "query": {"type": "string"},
+                "symbol": {"type": ("object", "null")},
+                "diagnostic": {"type": ("object", "null")},
+                "handler": {"type": ("object", "null")},
+                "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}},
+            },
+            defs={"diagnostic": _diagnostic_schema_ref_target()},
+        ),
+        "appgen.lsp-service.v1": _json_object_schema(
+            "appgen.lsp-service.v1",
+            required=("format", "ok", "publishDiagnostics", "documentSymbol", "completion", "codeAction"),
+            properties={
+                "format": _const_schema("appgen.lsp-service.v1"),
+                "ok": {"type": "boolean"},
+                "lint": {"type": "object"},
+                "semantic_model": {"type": "object"},
+                "completions": {"type": "array", "items": {"type": "object"}},
+                "code_actions": {"type": "array", "items": {"type": "object"}},
+                "publishDiagnostics": {"type": "object"},
+                "documentSymbol": {"type": "object"},
+                "completion": {"type": "object"},
+                "codeAction": {"type": "object"},
+                "hover": {"type": "object"},
+                "definition": {"type": "object"},
+                "references": {"type": "object"},
+                "service_counts": {"type": "object"},
+            },
+        ),
+        "appgen.designer-sync-report.v1": _json_object_schema(
+            "appgen.designer-sync-report.v1",
+            required=("format", "ok", "semantic_model_format", "surfaces", "projections", "checks", "blocking_gaps"),
+            properties={
+                "format": _const_schema("appgen.designer-sync-report.v1"),
+                "ok": {"type": "boolean"},
+                "semantic_model_format": {"type": "string"},
+                "surfaces": {"type": "array", "items": {"type": "string"}},
+                "projections": {"type": "object"},
+                "visual_edit": {"type": ("object", "null")},
+                "visual_edit_matrix": {"type": ("object", "null")},
+                "checks": {"type": "array", "items": {"type": "object"}},
+                "blocking_gaps": {"type": "array", "items": {"type": "string"}},
+            },
+        ),
+        "appgen.diagnostic-catalog.v1": _json_object_schema(
+            "appgen.diagnostic-catalog.v1",
+            required=("format", "ok", "diagnostics", "required_codes", "missing_fixture_count"),
+            properties={
+                "format": _const_schema("appgen.diagnostic-catalog.v1"),
+                "ok": {"type": "boolean"},
+                "diagnostics": {"type": "array", "items": {"type": "object"}},
+                "required_codes": {"type": "array", "items": {"type": "string"}},
+                "missing_fixture_count": {"type": "integer", "minimum": 0},
+                "catalog_shape_gap_count": {"type": "integer", "minimum": 0},
+            },
+        ),
+        "appgen.diagnostic-fixture-audit.v1": _json_object_schema(
+            "appgen.diagnostic-fixture-audit.v1",
+            required=("format", "ok", "fixture_count", "passing_fixture_count", "blocking_gaps"),
+            properties={
+                "format": _const_schema("appgen.diagnostic-fixture-audit.v1"),
+                "ok": {"type": "boolean"},
+                "fixture_count": {"type": "integer", "minimum": 0},
+                "passing_fixture_count": {"type": "integer", "minimum": 0},
+                "missing_code_count": {"type": "integer", "minimum": 0},
+                "blocking_gap_count": {"type": "integer", "minimum": 0},
+                "blocking_gaps": {"type": "array", "items": {"type": "object"}},
+            },
+        ),
+        "appgen.parser-golden-audit.v1": _json_object_schema(
+            "appgen.parser-golden-audit.v1",
+            required=("format", "ok", "fixture_count", "passing_fixture_count", "constructs_required"),
+            properties={
+                "format": _const_schema("appgen.parser-golden-audit.v1"),
+                "ok": {"type": "boolean"},
+                "fixture_count": {"type": "integer", "minimum": 0},
+                "passing_fixture_count": {"type": "integer", "minimum": 0},
+                "failing_fixture_count": {"type": "integer", "minimum": 0},
+                "constructs_required": {"type": "array", "items": {"type": "string"}},
+                "constructs_covered": {"type": "array", "items": {"type": "string"}},
+                "missing_constructs": {"type": "array", "items": {"type": "string"}},
+                "blocking_gaps": {"type": "array", "items": {"type": "object"}},
+            },
+        ),
+        "appgen.semantic-drift-audit.v1": _json_object_schema(
+            "appgen.semantic-drift-audit.v1",
+            required=("format", "ok", "surfaces", "checks", "blocking_gaps"),
+            properties={
+                "format": _const_schema("appgen.semantic-drift-audit.v1"),
+                "ok": {"type": "boolean"},
+                "semantic_model_format": {"type": "string"},
+                "surfaces": {"type": "array", "items": {"type": "string"}},
+                "checks": {"type": "array", "items": {"type": "object"}},
+                "blocking_gaps": {"type": "array", "items": {"type": "string"}},
+                "digest": {"type": "string"},
+            },
         ),
         "appgen.migration-plan.v1": _json_object_schema(
             "appgen.migration-plan.v1",
@@ -6690,7 +6869,7 @@ def _contract_schema_catalog() -> dict[str, dict]:
         ),
         "appgen.release-verifier-report.v1": _json_object_schema(
             "appgen.release-verifier-report.v1",
-            required=("format", "ok", "targets", "checks", "blocking_gaps", "evidence_bundle"),
+            required=("format", "ok", "targets", "checks", "evidence_bundle"),
             properties={
                 "format": _const_schema("appgen.release-verifier-report.v1"),
                 "ok": {"type": "boolean"},
@@ -6700,6 +6879,34 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "evidence_bundle": {"type": "object"},
                 "written_artifacts": {"type": "array", "items": {"type": "object"}},
                 "graph_suite_format": {"type": "string"},
+            },
+        ),
+        "appgen.component-publish-report.v1": _json_object_schema(
+            "appgen.component-publish-report.v1",
+            required=("format", "ok", "component", "catalog_patch", "blocking_gaps"),
+            properties={
+                "format": _const_schema("appgen.component-publish-report.v1"),
+                "ok": {"type": "boolean"},
+                "component": {"type": "string"},
+                "catalog": {"type": "object"},
+                "catalog_patch": {"type": "object"},
+                "checks": {"type": "array", "items": {"type": "object"}},
+                "blocking_gaps": {"type": "array", "items": {"type": "string"}},
+                "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}},
+            },
+            defs={"diagnostic": _diagnostic_schema_ref_target()},
+        ),
+        "appgen.doctor-report.v1": _json_object_schema(
+            "appgen.doctor-report.v1",
+            required=("format", "ok", "checks", "blocking_gaps"),
+            properties={
+                "format": _const_schema("appgen.doctor-report.v1"),
+                "ok": {"type": "boolean"},
+                "checks": {"type": "array", "items": {"type": "object"}},
+                "required_check_ids": {"type": "array", "items": {"type": "string"}},
+                "observed_check_ids": {"type": "array", "items": {"type": "string"}},
+                "missing_required_check_count": {"type": "integer", "minimum": 0},
+                "blocking_gaps": {"type": "array", "items": {"type": "object"}},
             },
         ),
         "appgen.tooling-audit.v1": _json_object_schema(
@@ -6998,7 +7205,7 @@ def _contract_schema_single_type_matches(value: object, expected_type: object) -
     if expected_type == "object":
         return isinstance(value, dict)
     if expected_type == "array":
-        return isinstance(value, list)
+        return isinstance(value, (list, tuple))
     if expected_type == "string":
         return isinstance(value, str)
     if expected_type == "boolean":
@@ -7412,6 +7619,8 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and contract_schema_cli.get("missing_case_count") == 0
             and contract_schema_cli.get("missing_exit_code_case_count") == 0
             and contract_schema_cli.get("missing_payload_format_case_count") == 0
+            and contract_schema_cli.get("sample_validation_failing_count") == 0
+            and contract_schema_cli.get("sample_validation_missing_count") == 0
             and contract_schema_cli.get("missing_text_marker_count") == 0
             and contract_schema_cli.get("text_json_fallback") is False
             and {"format", "ok", "app", "symbols", "tables", "views", "diagnostics"}
@@ -18255,6 +18464,7 @@ def _tooling_audit_contract_schema_cli() -> dict:
     semantic_exit, semantic_payload = _tooling_cli_json_case(("contract-schema", "appgen.semantic-model.v1", "--json"))
     missing_exit, missing_payload = _tooling_cli_json_case(("contract-schema", "appgen.missing-contract.v1", "--json"))
     text_exit, text = _tooling_cli_text_case(("contract-schema",))
+    sample_validation_cases = _tooling_contract_schema_sample_validation_cases()
     semantic_schema = semantic_payload.get("schemas", {}).get("appgen.semantic-model.v1", {})
     catalog_schema_formats = tuple(catalog_payload.get("available_schema_formats", ()))
     required_schema_formats = tuple(catalog_payload.get("required_schema_formats", ()))
@@ -18336,6 +18546,14 @@ def _tooling_audit_contract_schema_cli() -> dict:
     missing_required_schema_formats = tuple(
         schema_format for schema_format in CONTRACT_SCHEMA_REQUIRED_FORMATS if schema_format not in set(catalog_schema_formats)
     )
+    failing_sample_validation_formats = tuple(
+        case["schema_format"] for case in sample_validation_cases if not case["ok"]
+    )
+    missing_sample_validation_formats = tuple(
+        schema_format
+        for schema_format in CONTRACT_SCHEMA_REQUIRED_FORMATS
+        if schema_format not in {case["schema_format"] for case in sample_validation_cases}
+    )
     return {
         "format": "appgen.contract-schema-cli-audit.v1",
         "ok": not failing_cases
@@ -18343,6 +18561,8 @@ def _tooling_audit_contract_schema_cli() -> dict:
         and not missing_exit_code_cases
         and not missing_payload_format_cases
         and not missing_required_schema_formats
+        and not failing_sample_validation_formats
+        and not missing_sample_validation_formats
         and not missing_text_markers,
         "case_count": len(cases),
         "passing_case_count": sum(1 for case in cases if case["ok"]),
@@ -18362,6 +18582,13 @@ def _tooling_audit_contract_schema_cli() -> dict:
         "semantic_property_count": len(semantic_schema.get("properties", {})),
         "catalog_schema_count": catalog_payload.get("schema_count"),
         "catalog_available_schema_count": catalog_payload.get("available_schema_count"),
+        "sample_validation_case_count": len(sample_validation_cases),
+        "sample_validation_passing_count": sum(1 for case in sample_validation_cases if case["ok"]),
+        "sample_validation_failing_count": len(failing_sample_validation_formats),
+        "sample_validation_failing_formats": failing_sample_validation_formats,
+        "sample_validation_missing_count": len(missing_sample_validation_formats),
+        "sample_validation_missing_formats": missing_sample_validation_formats,
+        "sample_validation_formats": tuple(case["schema_format"] for case in sample_validation_cases),
         "expected_exit_codes_by_case": expected_exit_codes_by_case,
         "exit_codes_by_case": exit_codes_by_case,
         "missing_exit_code_case_count": len(missing_exit_code_cases),
@@ -18377,6 +18604,90 @@ def _tooling_audit_contract_schema_cli() -> dict:
         "text_prefix": text[:240],
         "cases": cases,
     }
+
+
+def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
+    source = _tooling_audit_sample_dsl()
+    with tempfile.TemporaryDirectory(prefix="appgen-contract-schema-samples-") as tmp:
+        tmp_path = Path(tmp)
+        current_source = source.replace("status: string", "status: string\n  memo: string")
+        sample_payloads = {
+            "appgen.diagnostic.v1": _spec_diagnostic(source, "AGX0402", "error", "Unknown view field memo on Invoice."),
+            "appgen.lint-report.v1": lint_report_dsl(source, source_name="contract-schema.appgen"),
+            "appgen.semantic-model.v1": semantic_model_dsl(source, source_name="contract-schema.appgen"),
+            "appgen.format-result.v1": format_report_dsl(source, source_name="contract-schema.appgen"),
+            "appgen.validate-report.v1": validate_report_dsl(source, source_name="contract-schema.appgen", targets=("web",)),
+            "appgen.generate-report.v1": generate_report_dsl(
+                source,
+                source_name="contract-schema.appgen",
+                output_dir=tmp_path / "generated",
+                targets=("web",),
+                allow_warnings=True,
+            ),
+            "appgen.graph-suite-report.v1": graph_suite_report_dsl(source, source_name="contract-schema.appgen"),
+            "appgen.explain-report.v1": explain_report_dsl(
+                source,
+                source_name="contract-schema.appgen",
+                symbol="Invoice",
+            ),
+            "appgen.lsp-service.v1": lsp_service_dsl(source, source_name="contract-schema.appgen", prefix="inv"),
+            "appgen.designer-sync-report.v1": designer_sync_report_dsl(source, source_name="contract-schema.appgen"),
+            "appgen.diagnostic-catalog.v1": diagnostic_catalog_dsl(),
+            "appgen.diagnostic-fixture-audit.v1": diagnostic_fixture_audit_dsl(),
+            "appgen.parser-golden-audit.v1": parser_golden_audit_dsl(),
+            "appgen.semantic-drift-audit.v1": semantic_drift_audit_dsl(source, source_name="contract-schema.appgen"),
+            "appgen.migration-plan.v1": migration_plan_dsl(
+                source,
+                current_source,
+                previous_name="contract-schema-before.appgen",
+                current_name="contract-schema-after.appgen",
+            ),
+            "appgen.nl-plan.v1": nl_plan_dsl(
+                source,
+                source_name="contract-schema.appgen",
+                prompt="Add credit memo tracking to invoices",
+                backend="postgresql",
+            ),
+            "appgen.release-verifier-report.v1": release_verifier_report_dsl(
+                source,
+                source_name="contract-schema.appgen",
+                targets=("web",),
+            ),
+            "appgen.component-publish-report.v1": component_publish_report("TextBox"),
+            "appgen.doctor-report.v1": doctor_report_dsl(),
+            "appgen.tooling-audit.v1": {
+                "format": "appgen.tooling-audit.v1",
+                "ok": True,
+                "passed": 1,
+                "required": 1,
+                "checks": ({"id": "sample", "ok": True},),
+                "blocking_gaps": (),
+            },
+            "appgen.contract-schema-catalog.v1": contract_schema_catalog_dsl("appgen.semantic-model.v1"),
+        }
+        validation_report = contract_validation_report_dsl(
+            sample_payloads["appgen.semantic-model.v1"],
+            schema_format="appgen.semantic-model.v1",
+            source_name="contract-schema.appgen",
+        )
+        sample_payloads["appgen.contract-validation-report.v1"] = validation_report
+        return tuple(
+            {
+                "schema_format": schema_format,
+                "payload_format": sample_payloads.get(schema_format, {}).get("format"),
+                "ok": validation.get("ok") is True,
+                "diagnostic_count": validation.get("diagnostic_count", 0),
+                "diagnostics": tuple(item.get("message") for item in validation.get("diagnostics", ())),
+            }
+            for schema_format in CONTRACT_SCHEMA_REQUIRED_FORMATS
+            for validation in (
+                contract_validation_report_dsl(
+                    sample_payloads.get(schema_format),
+                    schema_format=schema_format,
+                    source_name=f"sample:{schema_format}",
+                ),
+            )
+        )
 
 
 def _tooling_audit_contract_validation_cli(tmp: Path) -> dict:

@@ -6254,12 +6254,20 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     contract_schema_check = next(check for check in report["checks"] if check["id"] == "contract_schema_cli_contracts")
     assert contract_schema_check["detail"]["format"] == "appgen.contract-schema-cli-audit.v1"
     assert contract_schema_check["detail"]["ok"] is True
-    assert contract_schema_check["detail"]["required_schema_count"] == 9
+    assert contract_schema_check["detail"]["required_schema_count"] == len(appgen_dsl.CONTRACT_SCHEMA_REQUIRED_FORMATS)
     assert contract_schema_check["detail"]["missing_required_schema_count"] == 0
     assert contract_schema_check["detail"]["missing_required_schema_formats"] == ()
     assert contract_schema_check["detail"]["missing_case_count"] == 0
     assert contract_schema_check["detail"]["missing_exit_code_case_count"] == 0
     assert contract_schema_check["detail"]["missing_payload_format_case_count"] == 0
+    assert contract_schema_check["detail"]["sample_validation_case_count"] == len(
+        appgen_dsl.CONTRACT_SCHEMA_REQUIRED_FORMATS
+    )
+    assert contract_schema_check["detail"]["sample_validation_passing_count"] == contract_schema_check["detail"][
+        "sample_validation_case_count"
+    ]
+    assert contract_schema_check["detail"]["sample_validation_failing_count"] == 0
+    assert contract_schema_check["detail"]["sample_validation_missing_count"] == 0
     assert contract_schema_check["detail"]["missing_text_marker_count"] == 0
     assert contract_schema_check["detail"]["text_json_fallback"] is False
     assert {"format", "ok", "app", "symbols", "tables", "views", "diagnostics"} <= set(
@@ -11116,18 +11124,23 @@ def test_contract_schema_catalog_exposes_core_json_schemas() -> None:
     assert catalog["format"] == "appgen.contract-schema-catalog.v1"
     assert catalog["ok"] is True
     assert catalog["schema_dialect"] == "https://json-schema.org/draft/2020-12/schema"
-    assert catalog["required_schema_count"] == 9
-    assert set(catalog["required_schema_formats"]) == {
-        "appgen.diagnostic.v1",
-        "appgen.lint-report.v1",
-        "appgen.semantic-model.v1",
-        "appgen.migration-plan.v1",
-        "appgen.nl-plan.v1",
-        "appgen.release-verifier-report.v1",
-        "appgen.tooling-audit.v1",
-        "appgen.contract-schema-catalog.v1",
-        "appgen.contract-validation-report.v1",
-    }
+    assert catalog["required_schema_count"] == len(appgen_dsl.CONTRACT_SCHEMA_REQUIRED_FORMATS)
+    assert set(catalog["required_schema_formats"]) == set(appgen_dsl.CONTRACT_SCHEMA_REQUIRED_FORMATS)
+    assert {
+        "appgen.format-result.v1",
+        "appgen.validate-report.v1",
+        "appgen.generate-report.v1",
+        "appgen.graph-suite-report.v1",
+        "appgen.explain-report.v1",
+        "appgen.lsp-service.v1",
+        "appgen.designer-sync-report.v1",
+        "appgen.diagnostic-catalog.v1",
+        "appgen.diagnostic-fixture-audit.v1",
+        "appgen.parser-golden-audit.v1",
+        "appgen.semantic-drift-audit.v1",
+        "appgen.component-publish-report.v1",
+        "appgen.doctor-report.v1",
+    } <= set(catalog["required_schema_formats"])
     assert catalog["missing_required_schema_count"] == 0
     assert catalog["missing_required_schema_formats"] == ()
     assert catalog["schema_count"] == catalog["required_schema_count"]
@@ -11139,6 +11152,9 @@ def test_contract_schema_catalog_exposes_core_json_schemas() -> None:
     assert {"format", "ok", "app", "symbols", "tables", "views", "diagnostics"} <= set(
         semantic_schema["required"]
     )
+    diagnostic_schema = catalog["schemas"]["appgen.diagnostic.v1"]
+    assert diagnostic_schema["title"] == "appgen.diagnostic.v1"
+    assert {"code", "severity", "message"} <= set(diagnostic_schema["required"])
     assert missing["ok"] is False
     assert missing["missing_requested_schema_formats"] == ("appgen.missing-contract.v1",)
 
@@ -11160,9 +11176,15 @@ def test_contract_schema_cli_audit_proves_schema_command_modes() -> None:
     assert audit["observed_case_ids"] == audit["required_case_ids"]
     assert audit["missing_case_count"] == 0
     assert audit["missing_case_ids"] == ()
-    assert audit["required_schema_count"] == 9
+    assert audit["required_schema_count"] == len(appgen_dsl.CONTRACT_SCHEMA_REQUIRED_FORMATS)
     assert audit["missing_required_schema_count"] == 0
     assert audit["missing_required_schema_formats"] == ()
+    assert audit["sample_validation_case_count"] == len(appgen_dsl.CONTRACT_SCHEMA_REQUIRED_FORMATS)
+    assert audit["sample_validation_passing_count"] == audit["sample_validation_case_count"]
+    assert audit["sample_validation_failing_count"] == 0
+    assert audit["sample_validation_failing_formats"] == ()
+    assert audit["sample_validation_missing_count"] == 0
+    assert audit["sample_validation_missing_formats"] == ()
     assert {"format", "ok", "app", "symbols", "tables", "views", "diagnostics"} <= set(
         audit["semantic_required_fields"]
     )

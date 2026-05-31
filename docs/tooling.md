@@ -707,9 +707,14 @@ machine contracts that agents, IDEs, CI jobs, and downstream package verifiers
 consume. The command returns `appgen.contract-schema-catalog.v1`, using the
 JSON Schema 2020-12 dialect, and includes schemas for `appgen.diagnostic.v1`,
 `appgen.lint-report.v1`, `appgen.semantic-model.v1`,
-`appgen.migration-plan.v1`, `appgen.nl-plan.v1`,
-`appgen.release-verifier-report.v1`, `appgen.tooling-audit.v1`,
-`appgen.contract-schema-catalog.v1`, and
+`appgen.format-result.v1`, `appgen.validate-report.v1`,
+`appgen.generate-report.v1`, `appgen.graph-suite-report.v1`,
+`appgen.explain-report.v1`, `appgen.lsp-service.v1`,
+`appgen.designer-sync-report.v1`, diagnostic catalog and fixture audit reports,
+parser-golden and semantic-drift audits, `appgen.migration-plan.v1`,
+`appgen.nl-plan.v1`, `appgen.release-verifier-report.v1`,
+`appgen.component-publish-report.v1`, `appgen.doctor-report.v1`,
+`appgen.tooling-audit.v1`, `appgen.contract-schema-catalog.v1`, and
 `appgen.contract-validation-report.v1`.
 
 The optional positional format selects one schema from the catalog. Unknown
@@ -724,11 +729,17 @@ to raw JSON.
 catalog JSON, single-schema JSON, missing-schema JSON, and text modes. It
 reports required, available, and missing schema formats; required/observed case
 ids; expected and observed exit codes; expected and observed payload formats;
-semantic-model required fields; required text markers; and text JSON-fallback
-status. The aggregate `contract_schema_cli_contracts` gate fails when any core
+semantic-model required fields; representative payload validation counts;
+required text markers; and text JSON-fallback status. The representative
+payload validation pass validates live report payloads for every required schema
+format, including formatter, validation, generation, graph, explain, LSP,
+designer-sync, diagnostic, parser-golden, drift, migration, natural-language,
+release, component-publish, doctor, schema-catalog, and validation-report
+payloads. The aggregate `contract_schema_cli_contracts` gate fails when any core
 schema disappears, the CLI stops exposing a selected semantic-model schema, a
-missing schema no longer returns a controlled contract payload, or human-readable
-schema output loses its named markers.
+missing schema no longer returns a controlled contract payload, representative
+payload validation fails for any required format, or human-readable schema
+output loses its named markers.
 
 ### `appgen contract-validate`
 
@@ -2523,9 +2534,11 @@ Exit criteria:
   required enterprise grammar rules, keyword budget, authoring aliases, and the
   progressive learning path.
 - `appgen.contract-schema-cli-audit.v1` proves core diagnostic, lint,
-  semantic-model, migration, natural-language, release-verifier, and tooling
-  audit schemas, plus the schema-catalog and contract-validation report schemas,
-  are available from CLI JSON and text modes.
+  semantic-model, formatter, validate/generate, graph-suite, explain, LSP,
+  designer-sync, diagnostic catalog, parser-golden, drift, migration,
+  natural-language, release-verifier, component-publish, doctor, tooling-audit,
+  schema-catalog, and contract-validation report schemas are available from CLI
+  JSON and text modes.
 - `appgen.contract-validation-cli-audit.v1` proves those JSON contracts can be
   enforced against real payloads, including valid semantic-model payloads,
   missing required fields, unknown schemas, malformed JSON, and text mode.
