@@ -8249,6 +8249,39 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert graph_rendering_check["detail"]["cli"]["text_json_fallback_cases"] == ()
     assert all(value is False for value in graph_rendering_check["detail"]["cli"]["text_json_fallback_by_case"].values())
     assert graph_rendering_check["detail"]["suite_cli"]["format"] == "appgen.graph-suite-cli-audit.v1"
+    assert graph_rendering_check["detail"]["suite_cli"]["case_count"] == 2
+    assert graph_rendering_check["detail"]["suite_cli"]["passing_case_count"] == 2
+    assert graph_rendering_check["detail"]["suite_cli"]["failing_case_count"] == 0
+    assert graph_rendering_check["detail"]["suite_cli"]["failing_cases"] == ()
+    assert graph_rendering_check["detail"]["suite_cli"]["observed_case_ids"] == (
+        graph_rendering_check["detail"]["suite_cli"]["required_case_ids"]
+    )
+    assert graph_rendering_check["detail"]["suite_cli"]["missing_case_count"] == 0
+    assert graph_rendering_check["detail"]["suite_cli"]["missing_case_ids"] == ()
+    assert graph_rendering_check["detail"]["suite_cli"]["modes_by_case"] == (
+        graph_rendering_check["detail"]["suite_cli"]["expected_modes_by_case"]
+    )
+    assert graph_rendering_check["detail"]["suite_cli"]["missing_mode_case_count"] == 0
+    assert graph_rendering_check["detail"]["suite_cli"]["missing_mode_cases"] == ()
+    assert graph_rendering_check["detail"]["suite_cli"]["exit_codes_by_case"] == (
+        graph_rendering_check["detail"]["suite_cli"]["expected_exit_codes_by_case"]
+    )
+    assert graph_rendering_check["detail"]["suite_cli"]["missing_exit_code_case_count"] == 0
+    assert graph_rendering_check["detail"]["suite_cli"]["missing_exit_code_cases"] == ()
+    assert graph_rendering_check["detail"]["suite_cli"]["ok_by_case"] == {
+        "graph_suite_json": True,
+        "graph_suite_text": True,
+    }
+    assert graph_rendering_check["detail"]["suite_cli"]["missing_ok_case_count"] == 0
+    assert graph_rendering_check["detail"]["suite_cli"]["missing_ok_cases"] == ()
+    assert graph_rendering_check["detail"]["suite_cli"]["payload_formats_by_case"] == (
+        graph_rendering_check["detail"]["suite_cli"]["expected_payload_formats_by_case"]
+    )
+    assert graph_rendering_check["detail"]["suite_cli"]["missing_payload_format_case_count"] == 0
+    assert graph_rendering_check["detail"]["suite_cli"]["missing_payload_format_cases"] == ()
+    assert graph_rendering_check["detail"]["suite_cli"]["text_json_fallback_by_case"] == {"graph_suite_text": False}
+    assert graph_rendering_check["detail"]["suite_cli"]["text_json_fallback_case_count"] == 0
+    assert graph_rendering_check["detail"]["suite_cli"]["text_json_fallback_cases"] == ()
     assert graph_rendering_check["detail"]["suite_cli"]["missing_required_kind_count"] == 0
     assert graph_rendering_check["detail"]["suite_cli"]["present_rendering_count"] == (
         graph_rendering_check["detail"]["suite_cli"]["expected_rendering_count"]
@@ -10796,6 +10829,29 @@ def test_graph_suite_cli_audit_proves_all_required_renderings(tmp_path: Path) ->
 
     assert audit["format"] == "appgen.graph-suite-cli-audit.v1"
     assert audit["ok"] is True
+    assert audit["case_count"] == 2
+    assert audit["passing_case_count"] == audit["case_count"]
+    assert audit["failing_case_count"] == 0
+    assert audit["failing_cases"] == ()
+    assert audit["required_case_ids"] == ("graph_suite_json", "graph_suite_text")
+    assert audit["observed_case_ids"] == audit["required_case_ids"]
+    assert audit["missing_case_count"] == 0
+    assert audit["missing_case_ids"] == ()
+    assert audit["modes_by_case"] == audit["expected_modes_by_case"]
+    assert audit["missing_mode_case_count"] == 0
+    assert audit["missing_mode_cases"] == ()
+    assert audit["exit_codes_by_case"] == audit["expected_exit_codes_by_case"]
+    assert audit["missing_exit_code_case_count"] == 0
+    assert audit["missing_exit_code_cases"] == ()
+    assert audit["ok_by_case"] == {"graph_suite_json": True, "graph_suite_text": True}
+    assert audit["missing_ok_case_count"] == 0
+    assert audit["missing_ok_cases"] == ()
+    assert audit["payload_formats_by_case"] == audit["expected_payload_formats_by_case"]
+    assert audit["missing_payload_format_case_count"] == 0
+    assert audit["missing_payload_format_cases"] == ()
+    assert audit["text_json_fallback_by_case"] == {"graph_suite_text": False}
+    assert audit["text_json_fallback_case_count"] == 0
+    assert audit["text_json_fallback_cases"] == ()
     assert audit["required_kind_count"] == len(audit["required_kinds"])
     assert audit["missing_required_kind_count"] == 0
     assert audit["missing_required_kinds"] == ()

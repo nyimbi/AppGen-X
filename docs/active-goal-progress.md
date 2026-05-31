@@ -4322,3 +4322,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   aggregate tooling audit (`1 passed`, with the known active-PBC
   `datetime.utcnow()` warnings only), scoped diff whitespace check, and
   restricted-name scan outside archive, Git internals, and active PBC paths.
+- Current graph-suite CLI hardening pass expands graph-suite evidence with
+  required and observed JSON/text mode case ids, expected and observed modes,
+  exit codes, `ok` status, JSON payload format, and text-mode raw-JSON fallback
+  status. The aggregate `graph_rendering_contracts` gate now requires those
+  named missing lists to be empty, so graph-suite release evidence cannot pass
+  by rendering counts while the executable JSON or text mode regresses.
+  Verification passed: Python compile for the touched DSL and tests, focused
+  graph-suite CLI audit (`1 passed`), aggregate tooling audit (`1 passed`, with
+  the known active-PBC `datetime.utcnow()` warnings only), scoped diff
+  whitespace check, and restricted-name scan outside archive, Git internals, and
+  active PBC paths.

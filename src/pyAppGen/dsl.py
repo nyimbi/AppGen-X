@@ -7733,6 +7733,12 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and graph_cli.get("missing_text_marker_count") == 0
             and graph_cli.get("text_json_fallback_case_count") == 0
             and graph_suite_cli["ok"]
+            and graph_suite_cli.get("missing_case_count") == 0
+            and graph_suite_cli.get("missing_mode_case_count") == 0
+            and graph_suite_cli.get("missing_exit_code_case_count") == 0
+            and graph_suite_cli.get("missing_payload_format_case_count") == 0
+            and graph_suite_cli.get("missing_ok_case_count") == 0
+            and graph_suite_cli.get("text_json_fallback_case_count") == 0
             and graph_suite_cli.get("missing_required_kind_count") == 0
             and graph_suite_cli.get("missing_rendering_count") == 0
             and graph_suite_cli.get("missing_format_count") == 0
@@ -7789,6 +7795,32 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 },
                 "suite_cli": {
                     "format": graph_suite_cli.get("format"),
+                    "case_count": graph_suite_cli.get("case_count"),
+                    "passing_case_count": graph_suite_cli.get("passing_case_count"),
+                    "failing_case_count": graph_suite_cli.get("failing_case_count"),
+                    "failing_cases": graph_suite_cli.get("failing_cases"),
+                    "required_case_ids": graph_suite_cli.get("required_case_ids"),
+                    "observed_case_ids": graph_suite_cli.get("observed_case_ids"),
+                    "missing_case_count": graph_suite_cli.get("missing_case_count"),
+                    "missing_case_ids": graph_suite_cli.get("missing_case_ids"),
+                    "expected_modes_by_case": graph_suite_cli.get("expected_modes_by_case"),
+                    "modes_by_case": graph_suite_cli.get("modes_by_case"),
+                    "missing_mode_case_count": graph_suite_cli.get("missing_mode_case_count"),
+                    "missing_mode_cases": graph_suite_cli.get("missing_mode_cases"),
+                    "expected_exit_codes_by_case": graph_suite_cli.get("expected_exit_codes_by_case"),
+                    "exit_codes_by_case": graph_suite_cli.get("exit_codes_by_case"),
+                    "missing_exit_code_case_count": graph_suite_cli.get("missing_exit_code_case_count"),
+                    "missing_exit_code_cases": graph_suite_cli.get("missing_exit_code_cases"),
+                    "ok_by_case": graph_suite_cli.get("ok_by_case"),
+                    "missing_ok_case_count": graph_suite_cli.get("missing_ok_case_count"),
+                    "missing_ok_cases": graph_suite_cli.get("missing_ok_cases"),
+                    "expected_payload_formats_by_case": graph_suite_cli.get("expected_payload_formats_by_case"),
+                    "payload_formats_by_case": graph_suite_cli.get("payload_formats_by_case"),
+                    "missing_payload_format_case_count": graph_suite_cli.get("missing_payload_format_case_count"),
+                    "missing_payload_format_cases": graph_suite_cli.get("missing_payload_format_cases"),
+                    "text_json_fallback_by_case": graph_suite_cli.get("text_json_fallback_by_case"),
+                    "text_json_fallback_case_count": graph_suite_cli.get("text_json_fallback_case_count"),
+                    "text_json_fallback_cases": graph_suite_cli.get("text_json_fallback_cases"),
                     "required_kind_count": graph_suite_cli.get("required_kind_count"),
                     "missing_required_kind_count": graph_suite_cli.get("missing_required_kind_count"),
                     "output_format_count": graph_suite_cli.get("output_format_count"),
@@ -16809,6 +16841,40 @@ def _tooling_audit_graph_suite_cli(tmp: Path, source: str) -> dict:
         kind for kind, formats in rendering_formats_by_kind.items() if set(GRAPH_TEXT_FORMATS) <= set(formats)
     )
     missing_format_count = sum(len(item["missing_formats"]) for item in missing_renderings)
+    required_case_ids = ("graph_suite_json", "graph_suite_text")
+    expected_modes_by_case = {"graph_suite_json": "json", "graph_suite_text": "text"}
+    modes_by_case = expected_modes_by_case.copy()
+    expected_exit_codes_by_case = {case_id: 0 for case_id in required_case_ids}
+    exit_codes_by_case = {"graph_suite_json": json_exit_code, "graph_suite_text": text_exit_code}
+    missing_exit_code_cases = tuple(
+        case_id
+        for case_id, expected_exit_code in expected_exit_codes_by_case.items()
+        if exit_codes_by_case.get(case_id) != expected_exit_code
+    )
+    expected_payload_formats_by_case = {"graph_suite_json": "appgen.graph-suite-report.v1"}
+    payload_formats_by_case = {"graph_suite_json": json_payload.get("format")}
+    missing_payload_format_cases = tuple(
+        case_id
+        for case_id, expected_format in expected_payload_formats_by_case.items()
+        if payload_formats_by_case.get(case_id) != expected_format
+    )
+    ok_by_case = {
+        "graph_suite_json": json_exit_code == 0
+        and json_payload.get("format") == "appgen.graph-suite-report.v1"
+        and json_payload.get("ok") is True
+        and set(REQUIRED_GRAPH_KINDS) <= set(required_kinds)
+        and set(GRAPH_TEXT_FORMATS) <= set(output_formats)
+        and not missing_required_kinds
+        and not missing_renderings,
+        "graph_suite_text": text_exit_code == 0
+        and not missing_text_fragments
+        and not text_stdout.lstrip().startswith("{"),
+    }
+    missing_ok_cases = tuple(case_id for case_id in required_case_ids if ok_by_case.get(case_id) is not True)
+    text_json_fallback_by_case = {"graph_suite_text": text_stdout.lstrip().startswith("{")}
+    text_json_fallback_cases = tuple(
+        case_id for case_id, has_fallback in text_json_fallback_by_case.items() if has_fallback
+    )
     return {
         "format": "appgen.graph-suite-cli-audit.v1",
         "ok": json_exit_code == 0
@@ -16819,7 +16885,37 @@ def _tooling_audit_graph_suite_cli(tmp: Path, source: str) -> dict:
         and not missing_required_kinds
         and not missing_renderings
         and text_exit_code == 0
-        and not missing_text_fragments,
+        and not missing_text_fragments
+        and not missing_exit_code_cases
+        and not missing_payload_format_cases
+        and not missing_ok_cases
+        and not text_json_fallback_cases,
+        "case_count": len(required_case_ids),
+        "passing_case_count": sum(1 for ok in ok_by_case.values() if ok),
+        "failing_case_count": len(missing_ok_cases),
+        "failing_cases": missing_ok_cases,
+        "required_case_ids": required_case_ids,
+        "observed_case_ids": required_case_ids,
+        "missing_case_count": 0,
+        "missing_case_ids": (),
+        "expected_modes_by_case": expected_modes_by_case,
+        "modes_by_case": modes_by_case,
+        "missing_mode_case_count": 0,
+        "missing_mode_cases": (),
+        "expected_exit_codes_by_case": expected_exit_codes_by_case,
+        "exit_codes_by_case": exit_codes_by_case,
+        "missing_exit_code_case_count": len(missing_exit_code_cases),
+        "missing_exit_code_cases": missing_exit_code_cases,
+        "ok_by_case": ok_by_case,
+        "missing_ok_case_count": len(missing_ok_cases),
+        "missing_ok_cases": missing_ok_cases,
+        "expected_payload_formats_by_case": expected_payload_formats_by_case,
+        "payload_formats_by_case": payload_formats_by_case,
+        "missing_payload_format_case_count": len(missing_payload_format_cases),
+        "missing_payload_format_cases": missing_payload_format_cases,
+        "text_json_fallback_by_case": text_json_fallback_by_case,
+        "text_json_fallback_case_count": len(text_json_fallback_cases),
+        "text_json_fallback_cases": text_json_fallback_cases,
         "required_kind_count": len(required_kinds),
         "missing_required_kind_count": len(missing_required_kinds),
         "output_format_count": len(output_formats),
