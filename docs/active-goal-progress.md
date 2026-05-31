@@ -4527,3 +4527,8 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   visual schema/graph/export contracts, table/field/relationship proposals,
   migration previews, rollback plans, and generated visual-designer smoke
   evidence without touching active PBC work.
+- Current generated-app foundation expansion promotes generated security,
+  workflow, and health runtime payloads into the schema catalog. This covers
+  threat models, secret scans, dependency and API security plans, security gates
+  and signoff, workflow authorization/approval/SLA/runbook/workbench contracts,
+  and generated health summary/release evidence as machine-validatable outputs.

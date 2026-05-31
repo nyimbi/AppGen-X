@@ -157,6 +157,28 @@ VISUAL_MODELING_SCHEMA_FORMATS = (
 )
 
 
+GENERATED_APP_FOUNDATION_SCHEMA_FORMATS = (
+    "appgen.api-security-test-plan.v1",
+    "appgen.dependency-security-plan.v1",
+    "appgen.health-release-gate.v1",
+    "appgen.health-summary.v1",
+    "appgen.secret-exposure-scan.v1",
+    "appgen.security-gate-plan.v1",
+    "appgen.security-signoff.v1",
+    "appgen.security-threat-model.v1",
+    "appgen.security-workbench.v1",
+    "appgen.workflow-approval-route.v1",
+    "appgen.workflow-audit-event.v1",
+    "appgen.workflow-authorization-flow.v1",
+    "appgen.workflow-authorization.v1",
+    "appgen.workflow-release-gate.v1",
+    "appgen.workflow-sla.v1",
+    "appgen.workflow-transition-authorization.v1",
+    "appgen.workflow-transition-runbook.v1",
+    "appgen.workflow-workbench.v1",
+)
+
+
 TOOLING_SAMPLE = """
 app FinanceOps { targets: web, mobile, desktop }
 
@@ -11860,11 +11882,13 @@ def test_contract_schema_catalog_exposes_core_json_schemas() -> None:
         *PASCAL_RUNTIME_SCHEMA_FORMATS,
         *TARGET_PACKAGING_SCHEMA_FORMATS,
         *VISUAL_MODELING_SCHEMA_FORMATS,
+        *GENERATED_APP_FOUNDATION_SCHEMA_FORMATS,
     } <= set(catalog["required_schema_formats"])
     assert BINDING_DESIGNER_SCHEMA_FORMATS == appgen_dsl.BINDING_DESIGNER_SCHEMA_FORMATS
     assert PASCAL_RUNTIME_SCHEMA_FORMATS == appgen_dsl.PASCAL_RUNTIME_SCHEMA_FORMATS
     assert TARGET_PACKAGING_SCHEMA_FORMATS == appgen_dsl.TARGET_PACKAGING_SCHEMA_FORMATS
     assert VISUAL_MODELING_SCHEMA_FORMATS == appgen_dsl.VISUAL_MODELING_SCHEMA_FORMATS
+    assert GENERATED_APP_FOUNDATION_SCHEMA_FORMATS == appgen_dsl.GENERATED_APP_FOUNDATION_SCHEMA_FORMATS
     assert catalog["missing_required_schema_count"] == 0
     assert catalog["missing_required_schema_formats"] == ()
     assert catalog["schema_count"] == catalog["required_schema_count"]
@@ -11922,6 +11946,16 @@ def test_contract_schema_catalog_exposes_core_json_schemas() -> None:
     assert {"format", "operations", "requires_review", "rollback_plan"} <= set(
         visual_migration_schema["required"]
     )
+    security_workbench_schema = catalog["schemas"]["appgen.security-workbench.v1"]
+    assert {"format", "ok"} <= set(security_workbench_schema["required"])
+    assert {"policy_matrix", "authorization", "signoff"} <= set(security_workbench_schema["properties"])
+    workflow_runbook_schema = catalog["schemas"]["appgen.workflow-transition-runbook.v1"]
+    assert {"format", "workflow", "source", "target", "authorization", "checks", "requires_review"} <= set(
+        workflow_runbook_schema["required"]
+    )
+    health_summary_schema = catalog["schemas"]["appgen.health-summary.v1"]
+    assert {"format", "ok"} <= set(health_summary_schema["required"])
+    assert {"status", "checks"} <= set(health_summary_schema["properties"])
     package_goal_schema = catalog["schemas"]["appgen.package-goal-audit.v1"]
     assert {"format", "ok", "decision", "gates", "blocking_gaps"} <= set(package_goal_schema["required"])
     assert missing["ok"] is False

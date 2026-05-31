@@ -6944,6 +6944,28 @@ VISUAL_MODELING_SCHEMA_FORMATS = (
 )
 
 
+GENERATED_APP_FOUNDATION_SCHEMA_FORMATS = (
+    "appgen.api-security-test-plan.v1",
+    "appgen.dependency-security-plan.v1",
+    "appgen.health-release-gate.v1",
+    "appgen.health-summary.v1",
+    "appgen.secret-exposure-scan.v1",
+    "appgen.security-gate-plan.v1",
+    "appgen.security-signoff.v1",
+    "appgen.security-threat-model.v1",
+    "appgen.security-workbench.v1",
+    "appgen.workflow-approval-route.v1",
+    "appgen.workflow-audit-event.v1",
+    "appgen.workflow-authorization-flow.v1",
+    "appgen.workflow-authorization.v1",
+    "appgen.workflow-release-gate.v1",
+    "appgen.workflow-sla.v1",
+    "appgen.workflow-transition-authorization.v1",
+    "appgen.workflow-transition-runbook.v1",
+    "appgen.workflow-workbench.v1",
+)
+
+
 CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.diagnostic.v1",
     "appgen.lint-report.v1",
@@ -7115,6 +7137,7 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     *PASCAL_RUNTIME_SCHEMA_FORMATS,
     *TARGET_PACKAGING_SCHEMA_FORMATS,
     *VISUAL_MODELING_SCHEMA_FORMATS,
+    *GENERATED_APP_FOUNDATION_SCHEMA_FORMATS,
     "appgen.contract-schema-catalog.v1",
     "appgen.contract-validation-report.v1",
 )
@@ -7847,6 +7870,105 @@ def _visual_modeling_schema(title: str) -> dict:
             "required_artifacts": {"type": "array", "items": {"type": "string"}},
             "compiled_artifacts": {"type": "array", "items": {"type": "string"}},
             "blocking_gaps": common_array,
+        },
+    )
+
+
+def _generated_app_foundation_schema(title: str) -> dict:
+    common_array = {"type": "array", "items": {"type": ("object", "string", "array")}}
+    common_object = {"type": "object"}
+    required = ("format",)
+    if title in {
+        "appgen.health-release-gate.v1",
+        "appgen.health-summary.v1",
+        "appgen.secret-exposure-scan.v1",
+        "appgen.security-gate-plan.v1",
+        "appgen.security-signoff.v1",
+        "appgen.security-workbench.v1",
+        "appgen.workflow-release-gate.v1",
+        "appgen.workflow-workbench.v1",
+    }:
+        required = ("format", "ok")
+    elif title == "appgen.security-threat-model.v1":
+        required = ("format", "assets", "threats", "required_reviews")
+    elif title == "appgen.dependency-security-plan.v1":
+        required = ("format", "packages", "commands", "review_gates", "requires_review")
+    elif title == "appgen.api-security-test-plan.v1":
+        required = ("format", "cases", "checks")
+    elif title == "appgen.workflow-authorization.v1":
+        required = ("format", "workflow", "authorization_required", "roles")
+    elif title == "appgen.workflow-transition-authorization.v1":
+        required = ("format", "workflow", "source", "target", "allowed", "valid_transition")
+    elif title == "appgen.workflow-approval-route.v1":
+        required = ("format", "workflow", "authorization_required", "steps")
+    elif title == "appgen.workflow-sla.v1":
+        required = ("format", "workflow", "target_hours", "metrics", "alerts")
+    elif title == "appgen.workflow-audit-event.v1":
+        required = ("format", "workflow", "source", "target", "event", "decision")
+    elif title == "appgen.workflow-transition-runbook.v1":
+        required = ("format", "workflow", "source", "target", "authorization", "checks", "requires_review")
+    elif title == "appgen.workflow-authorization-flow.v1":
+        required = ("format", "workflow", "authorization_required", "transitions")
+    return _contract_format_schema(
+        title,
+        required=required,
+        properties={
+            "format": _const_schema(title),
+            "ok": {"type": "boolean"},
+            "decision": {"type": "string"},
+            "assets": {"type": "array", "items": {"type": "string"}},
+            "protected_fields": common_array,
+            "trust_boundaries": {"type": "array", "items": {"type": "string"}},
+            "threats": common_array,
+            "required_reviews": {"type": "array", "items": {"type": "string"}},
+            "findings": common_array,
+            "packages": {"type": "array", "items": {"type": "string"}},
+            "commands": {"type": "array", "items": {"type": "string"}},
+            "review_gates": {"type": "array", "items": {"type": "string"}},
+            "requires_review": {"type": "boolean"},
+            "cases": common_array,
+            "checks": {"type": ("array", "object"), "items": {"type": ("object", "string")}},
+            "missing_artifacts": {"type": "array", "items": {"type": "string"}},
+            "threat_model": common_object,
+            "secret_scan": common_object,
+            "dependency_security": common_object,
+            "api_security_tests": common_object,
+            "actor": {"type": ("string", "null")},
+            "gate": common_object,
+            "signoff": common_object,
+            "required_before_release": {"type": "boolean"},
+            "policy_matrix": common_array,
+            "authorization": common_object,
+            "audit": common_object,
+            "proposal": common_object,
+            "workflow": {"type": "string"},
+            "authorization_required": {"type": "boolean"},
+            "roles": {"type": "array", "items": {"type": "string"}},
+            "role_policies": common_array,
+            "bypass_roles": {"type": "array", "items": {"type": "string"}},
+            "source": {"type": "string"},
+            "target": {"type": "string"},
+            "valid_transition": {"type": "boolean"},
+            "allowed": {"type": "boolean"},
+            "principal_roles": {"type": "array", "items": {"type": "string"}},
+            "required_roles": {"type": "array", "items": {"type": "string"}},
+            "steps": common_array,
+            "target_hours": {"type": "integer", "minimum": 0},
+            "escalation_after_hours": {"type": "integer", "minimum": 0},
+            "notify_roles": {"type": "array", "items": {"type": "string"}},
+            "metrics": {"type": "array", "items": {"type": "string"}},
+            "alerts": common_array,
+            "event": {"type": "string"},
+            "transitions": common_array,
+            "approval_route": common_object,
+            "sla": common_object,
+            "audit_event": common_object,
+            "diagnostics": common_array,
+            "workflows": common_array,
+            "routes": {"type": "array", "items": {"type": "string"}},
+            "release_gate": common_object,
+            "status": common_object,
+            "summary": common_object,
         },
     )
 
@@ -9987,6 +10109,10 @@ def _contract_schema_catalog() -> dict[str, dict]:
         **{
             schema_format: _visual_modeling_schema(schema_format)
             for schema_format in VISUAL_MODELING_SCHEMA_FORMATS
+        },
+        **{
+            schema_format: _generated_app_foundation_schema(schema_format)
+            for schema_format in GENERATED_APP_FOUNDATION_SCHEMA_FORMATS
         },
         "appgen.contract-schema-catalog.v1": _json_object_schema(
             "appgen.contract-schema-catalog.v1",
@@ -22495,6 +22621,200 @@ def _visual_modeling_schema_sample(schema_format: str) -> dict:
     return sample_by_format[schema_format]()
 
 
+def _generated_app_foundation_schema_sample(schema_format: str) -> dict:
+    workflow_auth = {
+        "format": "appgen.workflow-authorization.v1",
+        "workflow": "ApproveInvoice",
+        "authorization_required": True,
+        "roles": ("Manager",),
+        "role_policies": ({"role": "Manager", "resources": ("Invoice",), "actions": ("approve",)},),
+        "bypass_roles": ("Admin", "SecurityManager"),
+    }
+    transition_auth = {
+        "format": "appgen.workflow-transition-authorization.v1",
+        "workflow": "ApproveInvoice",
+        "source": "draft",
+        "target": "approved",
+        "valid_transition": True,
+        "allowed": True,
+        "authorization_required": True,
+        "principal_roles": ("Manager",),
+        "required_roles": ("Manager",),
+        "bypass_roles": ("Admin", "SecurityManager"),
+        "role_policies": workflow_auth["role_policies"],
+    }
+    approval_route = {
+        "format": "appgen.workflow-approval-route.v1",
+        "workflow": "ApproveInvoice",
+        "authorization_required": True,
+        "steps": (
+            {
+                "source": "draft",
+                "target": "approved",
+                "event": "draft_to_approved",
+                "approval_roles": ("Manager",),
+                "decision": ("approve", "reject", "request_changes"),
+                "audit_required": True,
+            },
+        ),
+    }
+    workflow_sla = {
+        "format": "appgen.workflow-sla.v1",
+        "workflow": "ApproveInvoice",
+        "target_hours": 24,
+        "escalation_after_hours": 48,
+        "notify_roles": ("Manager",),
+        "metrics": ("age_hours", "overdue_count", "transition_latency_p95"),
+        "alerts": ({"event": "draft_to_approved", "when": "overdue", "severity": "warning"},),
+    }
+    workflow_audit = {
+        "format": "appgen.workflow-audit-event.v1",
+        "workflow": "ApproveInvoice",
+        "source": "draft",
+        "target": "approved",
+        "event": "ApproveInvoice.draft.approved",
+        "actor": "Manager",
+        "decision": "approve",
+        "valid_transition": True,
+        "allowed": True,
+        "required_roles": ("Manager",),
+        "principal_roles": ("Manager",),
+    }
+    runbook = {
+        "format": "appgen.workflow-transition-runbook.v1",
+        "workflow": "ApproveInvoice",
+        "source": "draft",
+        "target": "approved",
+        "authorization": transition_auth,
+        "approval_route": approval_route,
+        "sla": workflow_sla,
+        "audit_event": workflow_audit,
+        "checks": ("valid_transition", "authorization", "approval_recorded", "audit_logged"),
+        "requires_review": True,
+    }
+    authorization_flow = {
+        "format": "appgen.workflow-authorization-flow.v1",
+        "workflow": "ApproveInvoice",
+        "authorization_required": True,
+        "roles": ("Manager",),
+        "bypass_roles": ("Admin", "SecurityManager"),
+        "role_policies": workflow_auth["role_policies"],
+        "transitions": (
+            {
+                "source": "draft",
+                "target": "approved",
+                "event": "draft_to_approved",
+                "roles": ("Manager",),
+                "bypass_roles": ("Admin", "SecurityManager"),
+            },
+        ),
+    }
+    threat_model = {
+        "format": "appgen.security-threat-model.v1",
+        "assets": ("Invoice",),
+        "protected_fields": (("Invoice", "amount"),),
+        "trust_boundaries": ("browser_session", "rest_api", "database"),
+        "threats": (
+            {"id": "authz-bypass", "risk": "high", "surface": "rest_api", "mitigation": "authorize every action"},
+        ),
+        "required_reviews": ("rbac_matrix", "secret_scan", "api_contract_auth"),
+    }
+    secret_scan = {
+        "format": "appgen.secret-exposure-scan.v1",
+        "ok": True,
+        "findings": (),
+    }
+    dependency_plan = {
+        "format": "appgen.dependency-security-plan.v1",
+        "packages": ("flask-appbuilder", "sqlalchemy"),
+        "commands": ("python -m pip-audit -r requirements.txt", "python -m pip check"),
+        "review_gates": ("no_known_critical_vulnerabilities", "pinned_runtime_dependencies"),
+        "requires_review": True,
+    }
+    api_tests = {
+        "format": "appgen.api-security-test-plan.v1",
+        "cases": (
+            {"name": "unauthenticated_invoice_list", "resource": "Invoice", "action": "read", "expected": (401, 403)},
+        ),
+        "checks": ("unauthenticated_denied", "forbidden_action_denied", "protected_fields_hidden"),
+    }
+    security_gate = {
+        "format": "appgen.security-gate-plan.v1",
+        "ok": True,
+        "missing_artifacts": (),
+        "threat_model": threat_model,
+        "secret_scan": secret_scan,
+        "dependency_security": dependency_plan,
+        "api_security_tests": api_tests,
+        "review_gates": ("threat_model_reviewed", "no_default_secrets"),
+    }
+    signoff = {
+        "format": "appgen.security-signoff.v1",
+        "actor": "security-reviewer",
+        "ok": True,
+        "gate": security_gate,
+        "decision": "approved",
+        "required_before_release": False,
+    }
+    health_summary = {
+        "format": "appgen.health-summary.v1",
+        "ok": True,
+        "status": {"app": "FinanceOps", "ok": True, "tables": 1, "relations": 0, "views": 1, "flows": 1, "roles": 1},
+        "checks": {"app_name": True, "schema_counts": True, "ui_counts": True, "automation_counts": True},
+    }
+    sample_by_format = {
+        "appgen.api-security-test-plan.v1": lambda: api_tests,
+        "appgen.dependency-security-plan.v1": lambda: dependency_plan,
+        "appgen.health-release-gate.v1": lambda: {
+            "format": "appgen.health-release-gate.v1",
+            "ok": True,
+            "checks": ({"gate": "artifact_coverage", "ok": True, "required": ("app/health.py",), "missing": ()},),
+            "summary": health_summary,
+        },
+        "appgen.health-summary.v1": lambda: health_summary,
+        "appgen.secret-exposure-scan.v1": lambda: secret_scan,
+        "appgen.security-gate-plan.v1": lambda: security_gate,
+        "appgen.security-signoff.v1": lambda: signoff,
+        "appgen.security-threat-model.v1": lambda: threat_model,
+        "appgen.security-workbench.v1": lambda: {
+            "format": "appgen.security-workbench.v1",
+            "ok": True,
+            "decision": "approved",
+            "checks": ({"id": "security_gate", "ok": True, "evidence": security_gate},),
+            "policy_matrix": ({"role": "Manager", "resource": "Invoice", "actions": ("read", "approve")},),
+            "authorization": {"ok": True, "resource": "Invoice", "action": "approve"},
+            "audit": {"event": "security.authorization.allowed", "ok": True},
+            "proposal": {"kind": "rbac_policy_change", "review_required": True},
+            "gate": security_gate,
+            "signoff": signoff,
+        },
+        "appgen.workflow-approval-route.v1": lambda: approval_route,
+        "appgen.workflow-audit-event.v1": lambda: workflow_audit,
+        "appgen.workflow-authorization-flow.v1": lambda: authorization_flow,
+        "appgen.workflow-authorization.v1": lambda: workflow_auth,
+        "appgen.workflow-release-gate.v1": lambda: {
+            "format": "appgen.workflow-release-gate.v1",
+            "ok": True,
+            "decision": "approved",
+            "checks": ({"gate": "authorization_flows", "ok": True},),
+            "diagnostics": ({"flow": "ApproveInvoice", "ok": True, "reachable": ("draft", "approved")},),
+        },
+        "appgen.workflow-sla.v1": lambda: workflow_sla,
+        "appgen.workflow-transition-authorization.v1": lambda: transition_auth,
+        "appgen.workflow-transition-runbook.v1": lambda: runbook,
+        "appgen.workflow-workbench.v1": lambda: {
+            "format": "appgen.workflow-workbench.v1",
+            "ok": True,
+            "decision": "approved",
+            "workflows": ({"flow": "ApproveInvoice", "authorization": authorization_flow},),
+            "routes": ("/workflows/workbench.json", "/workflows/release-gate.json"),
+            "release_gate": {"format": "appgen.workflow-release-gate.v1", "ok": True},
+            "checks": ({"id": "release_gate", "ok": True},),
+        },
+    }
+    return sample_by_format[schema_format]()
+
+
 def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
     source = _tooling_audit_sample_dsl()
     with tempfile.TemporaryDirectory(prefix="appgen-contract-schema-samples-") as tmp:
@@ -22993,6 +23313,10 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             **{
                 schema_format: _visual_modeling_schema_sample(schema_format)
                 for schema_format in VISUAL_MODELING_SCHEMA_FORMATS
+            },
+            **{
+                schema_format: _generated_app_foundation_schema_sample(schema_format)
+                for schema_format in GENERATED_APP_FOUNDATION_SCHEMA_FORMATS
             },
             "appgen.contract-schema-catalog.v1": contract_schema_catalog_dsl("appgen.semantic-model.v1"),
         }

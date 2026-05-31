@@ -986,7 +986,26 @@ plus visual database/modeling contracts:
 `appgen.package-visual-relationship-proposal.v1`,
 `appgen.package-visual-schema.v1`,
 `appgen.package-visual-table-proposal.v1`, and
-`appgen.visual-modeling-generation-smoke-audit.v1`. The catalog is intentionally complete:
+`appgen.visual-modeling-generation-smoke-audit.v1`,
+plus generated application foundation contracts:
+`appgen.api-security-test-plan.v1`,
+`appgen.dependency-security-plan.v1`,
+`appgen.health-release-gate.v1`,
+`appgen.health-summary.v1`,
+`appgen.secret-exposure-scan.v1`,
+`appgen.security-gate-plan.v1`,
+`appgen.security-signoff.v1`,
+`appgen.security-threat-model.v1`,
+`appgen.security-workbench.v1`,
+`appgen.workflow-approval-route.v1`,
+`appgen.workflow-audit-event.v1`,
+`appgen.workflow-authorization-flow.v1`,
+`appgen.workflow-authorization.v1`,
+`appgen.workflow-release-gate.v1`,
+`appgen.workflow-sla.v1`,
+`appgen.workflow-transition-authorization.v1`,
+`appgen.workflow-transition-runbook.v1`, and
+`appgen.workflow-workbench.v1`. The catalog is intentionally complete:
 every `appgen.*.v1` envelope named in this document, including IDE, frontend,
 visual designer, LSP hover-depth, migration, natural-language, packaging,
 release, component/PBC wrapper, and project-governance contracts, is exported as
@@ -1048,6 +1067,13 @@ IDEs and agents can validate schema graphs, visual table/field/relationship
 proposals, migration previews, rollback plans, generated-code plans, DBML/SQL/
 PonyORM exports, and generated visual-designer smoke evidence before applying
 database-backed form or schema changes.
+
+Generated application foundation schemas make security, workflow, and health
+runtime evidence validate like every other first-class tooling contract. Release
+automation can now inspect threat models, secret scans, dependency/security test
+plans, security signoff/workbench payloads, workflow authorization and runbooks,
+approval routes, SLA metadata, workflow workbench/release gates, and generated
+health summaries without scraping generated source files.
 
 The optional positional format selects one schema from the catalog. Unknown
 schema names return the same `appgen.contract-schema-catalog.v1` envelope with
