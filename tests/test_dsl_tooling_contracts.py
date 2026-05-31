@@ -3501,6 +3501,31 @@ def test_package_cli_audit_proves_all_target_handoff_contracts(tmp_path: Path) -
     assert set(report["release_evidence_reports"]) == set(report["expected_targets"])
     assert report["missing_release_report_count"] == 0
     assert report["missing_release_reports"] == ()
+    assert report["required_release_report_formats_by_target"] == {
+        "web": "appgen.web-verifier.v1",
+        "mobile": "appgen.mobile-verifier.v1",
+        "desktop": "appgen.desktop-verifier.v1",
+        "pbc": "appgen.pbc-verifier.v1",
+        "deployment": "appgen.deployment-verifier.v1",
+    }
+    assert report["release_report_formats_by_target"] == report["required_release_report_formats_by_target"]
+    assert report["missing_release_report_format_target_count"] == 0
+    assert report["missing_release_report_format_targets"] == ()
+    assert report["release_report_kinds_by_target"] == {
+        target: target for target in report["expected_targets"]
+    }
+    assert report["missing_release_report_kind_target_count"] == 0
+    assert report["missing_release_report_kind_targets"] == ()
+    assert report["release_report_ok_by_target"] == {
+        target: True for target in report["expected_targets"]
+    }
+    assert report["failing_release_report_target_count"] == 0
+    assert report["failing_release_report_targets"] == ()
+    assert report["release_report_blocking_gap_counts_by_target"] == {
+        target: 0 for target in report["expected_targets"]
+    }
+    assert report["release_report_blocking_gap_target_count"] == 0
+    assert report["release_report_blocking_gap_targets"] == ()
     assert report["missing_release_graph_kind_count"] == 0
     assert report["missing_release_graph_kinds"] == ()
     assert report["missing_release_graph_format_count"] == 0
@@ -7537,6 +7562,29 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert package_manifest_check["detail"]["release_evidence_report_count"] == 5
     assert package_manifest_check["detail"]["missing_release_report_count"] == 0
     assert package_manifest_check["detail"]["missing_release_reports"] == ()
+    assert package_manifest_check["detail"]["release_report_formats_by_target"] == (
+        package_manifest_check["detail"]["required_release_report_formats_by_target"]
+    )
+    assert package_manifest_check["detail"]["missing_release_report_format_target_count"] == 0
+    assert package_manifest_check["detail"]["missing_release_report_format_targets"] == ()
+    assert package_manifest_check["detail"]["release_report_kinds_by_target"] == {
+        target: target
+        for target in package_manifest_check["detail"]["expected_targets"]
+    }
+    assert package_manifest_check["detail"]["missing_release_report_kind_target_count"] == 0
+    assert package_manifest_check["detail"]["missing_release_report_kind_targets"] == ()
+    assert package_manifest_check["detail"]["release_report_ok_by_target"] == {
+        target: True
+        for target in package_manifest_check["detail"]["expected_targets"]
+    }
+    assert package_manifest_check["detail"]["failing_release_report_target_count"] == 0
+    assert package_manifest_check["detail"]["failing_release_report_targets"] == ()
+    assert package_manifest_check["detail"]["release_report_blocking_gap_counts_by_target"] == {
+        target: 0
+        for target in package_manifest_check["detail"]["expected_targets"]
+    }
+    assert package_manifest_check["detail"]["release_report_blocking_gap_target_count"] == 0
+    assert package_manifest_check["detail"]["release_report_blocking_gap_targets"] == ()
     assert set(package_manifest_check["detail"]["release_evidence_reports"]) == {
         "web",
         "mobile",

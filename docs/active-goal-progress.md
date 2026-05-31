@@ -4180,3 +4180,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   with the known active-PBC `datetime.utcnow()` warnings only), scoped diff
   whitespace check, and restricted-name scan outside archive, Git internals, and
   active PBC paths.
+- Current release-evidence target hardening pass expands package verifier
+  evidence with required and observed release report formats, report kinds, ok
+  flags, and blocking-gap counts by target. The aggregate
+  `package_manifest_handoff_contracts` gate now rejects missing release report
+  formats, wrong report kinds, failing target reports, and target reports with
+  blocking gaps, so writing five report keys is not enough to satisfy package
+  release evidence. Verification passed: Python compile for the touched DSL and
+  tests, focused package release-evidence tests (`4 passed`), aggregate tooling
+  audit (`1 passed`, with the known active-PBC `datetime.utcnow()` warnings
+  only), scoped diff whitespace check, and restricted-name scan outside archive,
+  Git internals, and active PBC paths.

@@ -2158,6 +2158,11 @@ and folded into the package audit `ok` status, so a mobile signing, desktop
 menu, web handler, PBC registration, or deployment topology regression fails
 with the exact target/check pair instead of only changing aggregate readiness
 counts.
+Release evidence reports publish target-specific verifier formats, verifier
+kinds, ok flags, and blocking-gap counts. The aggregate package manifest gate
+requires all release report format, kind, ok, and blocking-gap target lists to
+pass, so a generated package cannot claim release evidence by only writing five
+report keys with incomplete verifier payloads.
 
 ## Test Strategy
 

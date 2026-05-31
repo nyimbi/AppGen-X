@@ -8708,6 +8708,10 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             )
             and package_verify_cli.get("release_evidence_report_count") == 5
             and package_verify_cli.get("missing_release_report_count") == 0
+            and package_verify_cli.get("missing_release_report_format_target_count") == 0
+            and package_verify_cli.get("missing_release_report_kind_target_count") == 0
+            and package_verify_cli.get("failing_release_report_target_count") == 0
+            and package_verify_cli.get("release_report_blocking_gap_target_count") == 0
             and package_verify_cli.get("missing_release_graph_kind_count") == 0
             and package_verify_cli.get("missing_release_graph_format_count") == 0
             and set(package_manifest_case.get("release_evidence_reports", ())) == {"web", "mobile", "desktop", "pbc", "deployment"}
@@ -8796,6 +8800,37 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "release_evidence_reports": package_manifest_case.get("release_evidence_reports"),
                 "missing_release_report_count": package_verify_cli.get("missing_release_report_count"),
                 "missing_release_reports": package_verify_cli.get("missing_release_reports"),
+                "release_report_formats_by_target": package_verify_cli.get("release_report_formats_by_target"),
+                "required_release_report_formats_by_target": package_verify_cli.get(
+                    "required_release_report_formats_by_target"
+                ),
+                "missing_release_report_format_target_count": package_verify_cli.get(
+                    "missing_release_report_format_target_count"
+                ),
+                "missing_release_report_format_targets": package_verify_cli.get(
+                    "missing_release_report_format_targets"
+                ),
+                "release_report_kinds_by_target": package_verify_cli.get("release_report_kinds_by_target"),
+                "missing_release_report_kind_target_count": package_verify_cli.get(
+                    "missing_release_report_kind_target_count"
+                ),
+                "missing_release_report_kind_targets": package_verify_cli.get(
+                    "missing_release_report_kind_targets"
+                ),
+                "release_report_ok_by_target": package_verify_cli.get("release_report_ok_by_target"),
+                "failing_release_report_target_count": package_verify_cli.get(
+                    "failing_release_report_target_count"
+                ),
+                "failing_release_report_targets": package_verify_cli.get("failing_release_report_targets"),
+                "release_report_blocking_gap_counts_by_target": package_verify_cli.get(
+                    "release_report_blocking_gap_counts_by_target"
+                ),
+                "release_report_blocking_gap_target_count": package_verify_cli.get(
+                    "release_report_blocking_gap_target_count"
+                ),
+                "release_report_blocking_gap_targets": package_verify_cli.get(
+                    "release_report_blocking_gap_targets"
+                ),
                 "release_graph_suite_format": package_manifest_case.get("release_graph_suite_format"),
                 "release_graph_formats": package_manifest_case.get("release_graph_formats"),
                 "release_graph_kind_count": package_verify_cli.get("release_graph_kind_count"),
@@ -16937,6 +16972,48 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
     )
     release_reports = tuple(evidence_payload.get("reports", {}).keys())
     missing_release_reports = tuple(target for target in expected_targets if target not in release_reports)
+    release_reports_by_target = evidence_payload.get("reports", {})
+    required_release_report_formats_by_target = {
+        "web": "appgen.web-verifier.v1",
+        "mobile": "appgen.mobile-verifier.v1",
+        "desktop": "appgen.desktop-verifier.v1",
+        "pbc": "appgen.pbc-verifier.v1",
+        "deployment": "appgen.deployment-verifier.v1",
+    }
+    release_report_formats_by_target = {
+        target: release_reports_by_target.get(target, {}).get("format")
+        for target in expected_targets
+    }
+    missing_release_report_format_targets = tuple(
+        target
+        for target, expected_format in required_release_report_formats_by_target.items()
+        if release_report_formats_by_target.get(target) != expected_format
+    )
+    release_report_kinds_by_target = {
+        target: release_reports_by_target.get(target, {}).get("kind")
+        for target in expected_targets
+    }
+    missing_release_report_kind_targets = tuple(
+        target
+        for target in expected_targets
+        if release_report_kinds_by_target.get(target) != target
+    )
+    release_report_ok_by_target = {
+        target: release_reports_by_target.get(target, {}).get("ok") is True
+        for target in expected_targets
+    }
+    failing_release_report_targets = tuple(
+        target for target, ok in release_report_ok_by_target.items() if not ok
+    )
+    release_report_blocking_gap_counts_by_target = {
+        target: release_reports_by_target.get(target, {}).get("blocking_gap_count")
+        for target in expected_targets
+    }
+    release_report_blocking_gap_targets = tuple(
+        target
+        for target, gap_count in release_report_blocking_gap_counts_by_target.items()
+        if gap_count != 0
+    )
     release_graph_kinds = tuple(evidence_graph_suite.get("required_kinds", ()))
     release_graph_formats = tuple(evidence_graph_suite.get("formats", ()))
     missing_release_graph_kinds = tuple(kind for kind in REQUIRED_GRAPH_KINDS if kind not in release_graph_kinds)
@@ -17006,6 +17083,10 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
         and not missing_handoff_artifacts
         and not missing_readiness_checks
         and not missing_release_reports
+        and not missing_release_report_format_targets
+        and not missing_release_report_kind_targets
+        and not failing_release_report_targets
+        and not release_report_blocking_gap_targets
         and not missing_release_graph_kinds
         and not missing_release_graph_formats,
         "case_count": len(cases),
@@ -17057,6 +17138,19 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
         "release_evidence_reports": release_reports,
         "missing_release_report_count": len(missing_release_reports),
         "missing_release_reports": missing_release_reports,
+        "release_report_formats_by_target": release_report_formats_by_target,
+        "required_release_report_formats_by_target": required_release_report_formats_by_target,
+        "missing_release_report_format_target_count": len(missing_release_report_format_targets),
+        "missing_release_report_format_targets": missing_release_report_format_targets,
+        "release_report_kinds_by_target": release_report_kinds_by_target,
+        "missing_release_report_kind_target_count": len(missing_release_report_kind_targets),
+        "missing_release_report_kind_targets": missing_release_report_kind_targets,
+        "release_report_ok_by_target": release_report_ok_by_target,
+        "failing_release_report_target_count": len(failing_release_report_targets),
+        "failing_release_report_targets": failing_release_report_targets,
+        "release_report_blocking_gap_counts_by_target": release_report_blocking_gap_counts_by_target,
+        "release_report_blocking_gap_target_count": len(release_report_blocking_gap_targets),
+        "release_report_blocking_gap_targets": release_report_blocking_gap_targets,
         "release_graph_kind_count": len(release_graph_kinds),
         "missing_release_graph_kind_count": len(missing_release_graph_kinds),
         "missing_release_graph_kinds": missing_release_graph_kinds,
