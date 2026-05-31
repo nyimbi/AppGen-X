@@ -962,7 +962,31 @@ plus the native Pascal/runtime workbench contracts:
 `appgen.pascal-static-analysis-contract.v1`,
 `appgen.pascal-toolchain-adapter-contract.v1`,
 `appgen.pascal-unit-contract.v1`, and
-`appgen.pascal-unit-parse-contract.v1`. The catalog is intentionally complete:
+`appgen.pascal-unit-parse-contract.v1`,
+plus the target packaging and native binary adapter contracts:
+`appgen.package-desktop-target-contract.v1`,
+`appgen.package-mobile-target-contract.v1`,
+`appgen.package-target-dsl-contract.v1`,
+`appgen.package-target-generation-smoke-audit.v1`,
+`appgen.package-target-matrix.v1`,
+`appgen.target-binary-adapter-ci-contract.v1`,
+`appgen.target-binary-adapter-execution-audit.v1`,
+`appgen.target-binary-adapter-transcript-schema.v1`,
+`appgen.target-generated-runtime-smoke.v1`,
+`appgen.target-package-artifact-audit.v1`,
+`appgen.target-packager-execution-preflight.v1`, and
+`appgen.target-runtime-packaging-proof.v1`,
+plus visual database/modeling contracts:
+`appgen.migration-preview.v1`,
+`appgen.package-visual-code-generation-plan.v1`,
+`appgen.package-visual-field-proposal.v1`,
+`appgen.package-visual-graph.v1`,
+`appgen.package-visual-migration-preview.v1`,
+`appgen.package-visual-model-exports.v1`,
+`appgen.package-visual-relationship-proposal.v1`,
+`appgen.package-visual-schema.v1`,
+`appgen.package-visual-table-proposal.v1`, and
+`appgen.visual-modeling-generation-smoke-audit.v1`. The catalog is intentionally complete:
 every `appgen.*.v1` envelope named in this document, including IDE, frontend,
 visual designer, LSP hover-depth, migration, natural-language, packaging,
 release, component/PBC wrapper, and project-governance contracts, is exported as
@@ -1011,6 +1035,19 @@ planning, package target matrices, event handler wiring, resource hashes,
 incremental invalidation, debugging previews, runtime reloads, and authoring
 replay matrices machine-validatable. IDEs and package verifiers can now consume
 these payloads directly instead of mining the aggregate form-designer workbench.
+
+Target packaging schemas make web, PWA, mobile, desktop, chatbot, native
+packager preflight, produced-artifact audits, binary adapter execution
+transcripts, and runtime packaging proofs machine-validatable. CI and external
+agents can validate host-packager readiness, mobile/desktop package plans,
+generated runtime smoke checks, and native binary handoff evidence without
+re-running the whole package release audit.
+
+Visual modeling schemas make database designer edits first-class contracts.
+IDEs and agents can validate schema graphs, visual table/field/relationship
+proposals, migration previews, rollback plans, generated-code plans, DBML/SQL/
+PonyORM exports, and generated visual-designer smoke evidence before applying
+database-backed form or schema changes.
 
 The optional positional format selects one schema from the catalog. Unknown
 schema names return the same `appgen.contract-schema-catalog.v1` envelope with

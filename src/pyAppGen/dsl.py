@@ -6914,6 +6914,36 @@ PASCAL_RUNTIME_SCHEMA_FORMATS = (
 )
 
 
+TARGET_PACKAGING_SCHEMA_FORMATS = (
+    "appgen.package-desktop-target-contract.v1",
+    "appgen.package-mobile-target-contract.v1",
+    "appgen.package-target-dsl-contract.v1",
+    "appgen.package-target-generation-smoke-audit.v1",
+    "appgen.package-target-matrix.v1",
+    "appgen.target-binary-adapter-ci-contract.v1",
+    "appgen.target-binary-adapter-execution-audit.v1",
+    "appgen.target-binary-adapter-transcript-schema.v1",
+    "appgen.target-generated-runtime-smoke.v1",
+    "appgen.target-package-artifact-audit.v1",
+    "appgen.target-packager-execution-preflight.v1",
+    "appgen.target-runtime-packaging-proof.v1",
+)
+
+
+VISUAL_MODELING_SCHEMA_FORMATS = (
+    "appgen.migration-preview.v1",
+    "appgen.package-visual-code-generation-plan.v1",
+    "appgen.package-visual-field-proposal.v1",
+    "appgen.package-visual-graph.v1",
+    "appgen.package-visual-migration-preview.v1",
+    "appgen.package-visual-model-exports.v1",
+    "appgen.package-visual-relationship-proposal.v1",
+    "appgen.package-visual-schema.v1",
+    "appgen.package-visual-table-proposal.v1",
+    "appgen.visual-modeling-generation-smoke-audit.v1",
+)
+
+
 CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.diagnostic.v1",
     "appgen.lint-report.v1",
@@ -7083,6 +7113,8 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     *TOP_LEVEL_PACKAGE_SUPPORT_SCHEMA_FORMATS,
     *BINDING_DESIGNER_SCHEMA_FORMATS,
     *PASCAL_RUNTIME_SCHEMA_FORMATS,
+    *TARGET_PACKAGING_SCHEMA_FORMATS,
+    *VISUAL_MODELING_SCHEMA_FORMATS,
     "appgen.contract-schema-catalog.v1",
     "appgen.contract-validation-report.v1",
 )
@@ -7675,6 +7707,145 @@ def _pascal_runtime_schema(title: str) -> dict:
             "workbench": {"type": "object"},
             "guards": {"type": "array", "items": {"type": "string"}},
             "side_effects": common_array,
+            "blocking_gaps": common_array,
+        },
+    )
+
+
+def _target_packaging_schema(title: str) -> dict:
+    common_array = {"type": "array", "items": {"type": ("object", "string", "array")}}
+    common_object = {"type": "object"}
+    required = ("format",)
+    if title in {
+        "appgen.package-target-generation-smoke-audit.v1",
+        "appgen.target-binary-adapter-execution-audit.v1",
+        "appgen.target-generated-runtime-smoke.v1",
+        "appgen.target-package-artifact-audit.v1",
+        "appgen.target-packager-execution-preflight.v1",
+        "appgen.target-runtime-packaging-proof.v1",
+    }:
+        required = ("format", "ok", "checks")
+    elif title in {
+        "appgen.package-desktop-target-contract.v1",
+        "appgen.package-mobile-target-contract.v1",
+        "appgen.package-target-dsl-contract.v1",
+        "appgen.package-target-matrix.v1",
+        "appgen.target-binary-adapter-ci-contract.v1",
+    }:
+        required = ("format", "ok")
+    elif title == "appgen.target-binary-adapter-transcript-schema.v1":
+        required = ("format", "required_execution_fields", "required_artifact_fields", "rules")
+    return _contract_format_schema(
+        title,
+        required=required,
+        properties={
+            "format": _const_schema(title),
+            "ok": {"type": "boolean"},
+            "scope": {"type": "string"},
+            "decision": {"type": "string"},
+            "app": {"type": "string"},
+            "target": {"type": ("object", "string")},
+            "targets": {"type": "array", "items": {"type": "string"}},
+            "rows": common_array,
+            "checks": common_array,
+            "artifacts": {"type": "array", "items": {"type": ("object", "string")}},
+            "missing": common_array,
+            "compiled": common_array,
+            "json_artifacts": common_array,
+            "manifest_targets": {"type": "array", "items": {"type": "string"}},
+            "packages": common_array,
+            "packaging": common_object,
+            "native_release_gate": common_object,
+            "native_packaging": common_object,
+            "runtime_smoke": common_object,
+            "mobile": common_object,
+            "desktop": common_object,
+            "chatbot": common_object,
+            "permissions": {"type": "array", "items": {"type": "string"}},
+            "offline": common_object,
+            "local_cache": {"type": "string"},
+            "file_actions_review_required": {"type": "boolean"},
+            "sync_conflict_policy": {"type": "string"},
+            "execution_plans": common_array,
+            "artifact_gate": common_object,
+            "schema": common_object,
+            "executions": common_array,
+            "transcript_rows": common_array,
+            "artifact_audit": common_object,
+            "required_execution_fields": {"type": "array", "items": {"type": "string"}},
+            "required_artifact_fields": {"type": "array", "items": {"type": "string"}},
+            "rules": {"type": "array", "items": {"type": "string"}},
+            "workflow": {"type": "string"},
+            "command": {"type": "string"},
+            "existing_paths": {"type": "array", "items": {"type": "string"}},
+            "blocking_gaps": common_array,
+            "stop_condition": {"type": "string"},
+        },
+    )
+
+
+def _visual_modeling_schema(title: str) -> dict:
+    common_array = {"type": "array", "items": {"type": ("object", "string", "array")}}
+    common_object = {"type": "object"}
+    required = ("format",)
+    if title in {
+        "appgen.package-visual-graph.v1",
+        "appgen.visual-modeling-generation-smoke-audit.v1",
+    }:
+        required = ("format", "ok")
+    elif title == "appgen.package-visual-schema.v1":
+        required = ("format", "app", "tables", "flows", "relations")
+    elif title == "appgen.package-visual-model-exports.v1":
+        required = ("format", "dsl", "dbml", "sql", "ponyorm", "ok")
+    elif title in {
+        "appgen.package-visual-field-proposal.v1",
+        "appgen.package-visual-relationship-proposal.v1",
+        "appgen.package-visual-table-proposal.v1",
+    }:
+        required = ("format", "kind", "dsl", "review_required")
+    elif title in {
+        "appgen.migration-preview.v1",
+        "appgen.package-visual-migration-preview.v1",
+    }:
+        required = ("format", "operations", "requires_review", "rollback_plan")
+    elif title == "appgen.package-visual-code-generation-plan.v1":
+        required = ("format", "proposal", "artifacts", "checks", "review_required")
+    return _contract_format_schema(
+        title,
+        required=required,
+        properties={
+            "format": _const_schema(title),
+            "ok": {"type": "boolean"},
+            "decision": {"type": "string"},
+            "app": {"type": "string"},
+            "tables": common_array,
+            "fields": common_array,
+            "flows": common_array,
+            "relations": common_array,
+            "nodes": common_array,
+            "edges": common_array,
+            "dsl": {"type": "string"},
+            "dbml": {"type": "string"},
+            "sql": {"type": "string"},
+            "ponyorm": {"type": "string"},
+            "kind": {"type": "string"},
+            "name": {"type": "string"},
+            "table": {"type": "string"},
+            "type": {"type": "string"},
+            "source_table": {"type": "string"},
+            "source_field": {"type": "string"},
+            "target_table": {"type": "string"},
+            "target_field": {"type": "string"},
+            "cardinality": {"type": "string"},
+            "operations": common_array,
+            "requires_review": {"type": "boolean"},
+            "review_required": {"type": "boolean"},
+            "rollback_plan": {"type": "array", "items": {"type": "string"}},
+            "proposal": common_object,
+            "artifacts": {"type": "array", "items": {"type": "string"}},
+            "checks": common_array,
+            "required_artifacts": {"type": "array", "items": {"type": "string"}},
+            "compiled_artifacts": {"type": "array", "items": {"type": "string"}},
             "blocking_gaps": common_array,
         },
     )
@@ -9808,6 +9979,14 @@ def _contract_schema_catalog() -> dict[str, dict]:
         **{
             schema_format: _pascal_runtime_schema(schema_format)
             for schema_format in PASCAL_RUNTIME_SCHEMA_FORMATS
+        },
+        **{
+            schema_format: _target_packaging_schema(schema_format)
+            for schema_format in TARGET_PACKAGING_SCHEMA_FORMATS
+        },
+        **{
+            schema_format: _visual_modeling_schema(schema_format)
+            for schema_format in VISUAL_MODELING_SCHEMA_FORMATS
         },
         "appgen.contract-schema-catalog.v1": _json_object_schema(
             "appgen.contract-schema-catalog.v1",
@@ -22153,6 +22332,169 @@ def _pascal_runtime_schema_sample(schema_format: str) -> dict:
     return sample_by_format[schema_format]()
 
 
+def _target_packaging_schema_sample(schema_format: str) -> dict:
+    from .targets import (
+        desktop_capability_contract,
+        dsl_target_contract,
+        mobile_capability_contract,
+        target_binary_adapter_ci_contract,
+        target_binary_adapter_transcript_schema,
+        target_package_matrix,
+        target_sample_binary_adapter_artifacts,
+        target_sample_binary_adapter_executions,
+    )
+
+    sample_artifacts = target_sample_binary_adapter_artifacts()
+    sample_executions = target_sample_binary_adapter_executions()
+    sample_by_format = {
+        "appgen.package-desktop-target-contract.v1": desktop_capability_contract,
+        "appgen.package-mobile-target-contract.v1": mobile_capability_contract,
+        "appgen.package-target-dsl-contract.v1": dsl_target_contract,
+        "appgen.package-target-generation-smoke-audit.v1": lambda: {
+            "format": "appgen.package-target-generation-smoke-audit.v1",
+            "scope": "package",
+            "ok": True,
+            "rows": (
+                {"target": "web", "artifacts": ("app/__init__.py",), "missing": ()},
+                {"target": "mobile", "artifacts": ("native/mobile/app.py",), "missing": ()},
+                {"target": "desktop", "artifacts": ("native/desktop/app.py",), "missing": ()},
+            ),
+            "compiled": ({"path": "native/mobile/app.py", "ok": True},),
+            "json_artifacts": ({"path": "app/static/appgen.webmanifest", "ok": True},),
+            "checks": ({"check": "target_artifacts", "ok": True},),
+        },
+        "appgen.package-target-matrix.v1": target_package_matrix,
+        "appgen.target-binary-adapter-ci-contract.v1": target_binary_adapter_ci_contract,
+        "appgen.target-binary-adapter-execution-audit.v1": lambda: {
+            "format": "appgen.target-binary-adapter-execution-audit.v1",
+            "scope": "package",
+            "ok": True,
+            "schema": target_binary_adapter_transcript_schema(),
+            "executions": sample_executions,
+            "artifacts": sample_artifacts,
+            "transcript_rows": (
+                {
+                    "target": "mobile",
+                    "tool": "buildozer",
+                    "command": "buildozer android release",
+                    "exit_code": 0,
+                    "planned": True,
+                    "artifact_paths": ("dist/native/mobile/android-release.aab",),
+                    "missing_artifacts": (),
+                    "ok": True,
+                },
+            ),
+            "artifact_audit": {"format": "appgen.target-package-artifact-audit.v1", "ok": True},
+            "checks": ({"id": "commands_succeeded", "ok": True},),
+            "blocking_gaps": (),
+        },
+        "appgen.target-binary-adapter-transcript-schema.v1": target_binary_adapter_transcript_schema,
+        "appgen.target-generated-runtime-smoke.v1": lambda: {
+            "format": "appgen.target-generated-runtime-smoke.v1",
+            "scope": "package",
+            "ok": True,
+            "checks": ({"id": "mobile_runtime_contract", "ok": True},),
+            "mobile": {"contract": {"framework": "kivy"}},
+            "desktop": {"contract": {"framework": "beeware"}},
+            "chatbot": {"conversation_plan": {"ready": False}},
+            "stop_condition": "do-not-claim-generated-target-runtime-unless-ok-is-true",
+        },
+        "appgen.target-package-artifact-audit.v1": lambda: {
+            "format": "appgen.target-package-artifact-audit.v1",
+            "scope": "package",
+            "ok": True,
+            "execution_plans": (
+                {"target": "mobile", "commands": (), "expected_artifacts": ("android-release.aab",)},
+            ),
+            "artifact_gate": {"ok": True, "checks": ()},
+            "checks": ({"id": "artifact_plan_alignment", "ok": True},),
+            "blocking_gaps": (),
+        },
+        "appgen.target-packager-execution-preflight.v1": lambda: {
+            "format": "appgen.target-packager-execution-preflight.v1",
+            "scope": "package",
+            "ok": True,
+            "packaging": {"ok": True, "checks": ()},
+            "rows": (
+                {
+                    "target": "desktop",
+                    "working_dir": "native/desktop",
+                    "commands": ({"command": "briefcase package", "requires_review": True},),
+                    "expected_artifacts": ("macOS app bundle",),
+                    "tools": ({"tool": "python", "available": True},),
+                    "plan_ok": True,
+                },
+            ),
+            "checks": ({"id": "execution_plans", "ok": True},),
+            "blocking_gaps": (),
+        },
+        "appgen.target-runtime-packaging-proof.v1": lambda: {
+            "format": "appgen.target-runtime-packaging-proof.v1",
+            "scope": "package",
+            "ok": True,
+            "manifest_targets": ("web", "pwa", "mobile", "desktop", "chatbot"),
+            "packages": (
+                {"target": "web", "ok": True},
+                {"target": "mobile", "ok": True},
+                {"target": "desktop", "ok": True},
+            ),
+            "native_release_gate": {"ok": True, "checks": ()},
+            "native_packaging": {"ok": True, "checks": ()},
+            "runtime_smoke": {"format": "appgen.target-generated-runtime-smoke.v1", "ok": True},
+            "checks": ({"id": "generated_runtime_smoke", "ok": True},),
+            "existing_paths": ("app/__init__.py", "native/mobile/app.py", "native/desktop/app.py"),
+            "stop_condition": "do-not-claim-target-packaging-unless-ok-is-true",
+        },
+    }
+    return sample_by_format[schema_format]()
+
+
+def _visual_modeling_schema_sample(schema_format: str) -> dict:
+    from .visual_modeling import (
+        code_generation_plan,
+        field_proposal,
+        migration_preview,
+        relationship_proposal,
+        table_proposal,
+        visual_graph,
+        visual_model_exports,
+        visual_schema,
+    )
+
+    relation = relationship_proposal("Book", "publisher_id", "Author")
+    package_migration = migration_preview(relation)
+    sample_by_format = {
+        "appgen.migration-preview.v1": lambda: {
+            "format": "appgen.migration-preview.v1",
+            "operations": package_migration["operations"],
+            "requires_review": True,
+            "rollback_plan": package_migration["rollback_plan"],
+        },
+        "appgen.package-visual-code-generation-plan.v1": lambda: code_generation_plan(relation),
+        "appgen.package-visual-field-proposal.v1": lambda: field_proposal("Book", "subtitle"),
+        "appgen.package-visual-graph.v1": visual_graph,
+        "appgen.package-visual-migration-preview.v1": lambda: package_migration,
+        "appgen.package-visual-model-exports.v1": visual_model_exports,
+        "appgen.package-visual-relationship-proposal.v1": lambda: relation,
+        "appgen.package-visual-schema.v1": visual_schema,
+        "appgen.package-visual-table-proposal.v1": lambda: table_proposal("Publisher"),
+        "appgen.visual-modeling-generation-smoke-audit.v1": lambda: {
+            "format": "appgen.visual-modeling-generation-smoke-audit.v1",
+            "ok": True,
+            "decision": "approved",
+            "required_artifacts": (
+                "app/designer.py",
+                "app/templates/appgen_designer.html",
+                "app/appgen.json",
+            ),
+            "compiled_artifacts": ("app/designer.py", "app/models.py", "app/views.py"),
+            "checks": ({"id": "generated_artifacts", "ok": True},),
+            "blocking_gaps": (),
+        },
+    }
+    return sample_by_format[schema_format]()
+
+
 def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
     source = _tooling_audit_sample_dsl()
     with tempfile.TemporaryDirectory(prefix="appgen-contract-schema-samples-") as tmp:
@@ -22643,6 +22985,14 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             **{
                 schema_format: _pascal_runtime_schema_sample(schema_format)
                 for schema_format in PASCAL_RUNTIME_SCHEMA_FORMATS
+            },
+            **{
+                schema_format: _target_packaging_schema_sample(schema_format)
+                for schema_format in TARGET_PACKAGING_SCHEMA_FORMATS
+            },
+            **{
+                schema_format: _visual_modeling_schema_sample(schema_format)
+                for schema_format in VISUAL_MODELING_SCHEMA_FORMATS
             },
             "appgen.contract-schema-catalog.v1": contract_schema_catalog_dsl("appgen.semantic-model.v1"),
         }

@@ -4520,3 +4520,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `appgen.frontend-dsl-editor-audit.v1`, and the aggregate tooling audit has a
   dedicated `frontend_dsl_editor_bridge` gate for diagnostics, completions,
   quick fixes, outline, helper functions, and workbench markers.
+- Current contract-schema expansion promotes target packaging and visual
+  database/modeling payloads into first-class schemas. The catalog now includes
+  mobile/desktop target contracts, native packager preflight, produced package
+  artifact audits, binary adapter transcripts, generated runtime smoke proofs,
+  visual schema/graph/export contracts, table/field/relationship proposals,
+  migration previews, rollback plans, and generated visual-designer smoke
+  evidence without touching active PBC work.

@@ -127,6 +127,36 @@ PASCAL_RUNTIME_SCHEMA_FORMATS = (
 )
 
 
+TARGET_PACKAGING_SCHEMA_FORMATS = (
+    "appgen.package-desktop-target-contract.v1",
+    "appgen.package-mobile-target-contract.v1",
+    "appgen.package-target-dsl-contract.v1",
+    "appgen.package-target-generation-smoke-audit.v1",
+    "appgen.package-target-matrix.v1",
+    "appgen.target-binary-adapter-ci-contract.v1",
+    "appgen.target-binary-adapter-execution-audit.v1",
+    "appgen.target-binary-adapter-transcript-schema.v1",
+    "appgen.target-generated-runtime-smoke.v1",
+    "appgen.target-package-artifact-audit.v1",
+    "appgen.target-packager-execution-preflight.v1",
+    "appgen.target-runtime-packaging-proof.v1",
+)
+
+
+VISUAL_MODELING_SCHEMA_FORMATS = (
+    "appgen.migration-preview.v1",
+    "appgen.package-visual-code-generation-plan.v1",
+    "appgen.package-visual-field-proposal.v1",
+    "appgen.package-visual-graph.v1",
+    "appgen.package-visual-migration-preview.v1",
+    "appgen.package-visual-model-exports.v1",
+    "appgen.package-visual-relationship-proposal.v1",
+    "appgen.package-visual-schema.v1",
+    "appgen.package-visual-table-proposal.v1",
+    "appgen.visual-modeling-generation-smoke-audit.v1",
+)
+
+
 TOOLING_SAMPLE = """
 app FinanceOps { targets: web, mobile, desktop }
 
@@ -11828,9 +11858,13 @@ def test_contract_schema_catalog_exposes_core_json_schemas() -> None:
         "appgen.roadmap-release-audit.v1",
         *BINDING_DESIGNER_SCHEMA_FORMATS,
         *PASCAL_RUNTIME_SCHEMA_FORMATS,
+        *TARGET_PACKAGING_SCHEMA_FORMATS,
+        *VISUAL_MODELING_SCHEMA_FORMATS,
     } <= set(catalog["required_schema_formats"])
     assert BINDING_DESIGNER_SCHEMA_FORMATS == appgen_dsl.BINDING_DESIGNER_SCHEMA_FORMATS
     assert PASCAL_RUNTIME_SCHEMA_FORMATS == appgen_dsl.PASCAL_RUNTIME_SCHEMA_FORMATS
+    assert TARGET_PACKAGING_SCHEMA_FORMATS == appgen_dsl.TARGET_PACKAGING_SCHEMA_FORMATS
+    assert VISUAL_MODELING_SCHEMA_FORMATS == appgen_dsl.VISUAL_MODELING_SCHEMA_FORMATS
     assert catalog["missing_required_schema_count"] == 0
     assert catalog["missing_required_schema_formats"] == ()
     assert catalog["schema_count"] == catalog["required_schema_count"]
@@ -11872,6 +11906,22 @@ def test_contract_schema_catalog_exposes_core_json_schemas() -> None:
     pascal_workbench_schema = catalog["schemas"]["appgen.pascal-runtime-workbench.v1"]
     assert pascal_workbench_schema["properties"]["format"]["const"] == "appgen.pascal-runtime-workbench.v1"
     assert "checks" in pascal_workbench_schema["properties"]
+    target_packaging_schema = catalog["schemas"]["appgen.target-runtime-packaging-proof.v1"]
+    assert {"format", "ok", "checks"} <= set(target_packaging_schema["required"])
+    assert {"packages", "runtime_smoke", "native_packaging"} <= set(target_packaging_schema["properties"])
+    target_transcript_schema = catalog["schemas"]["appgen.target-binary-adapter-transcript-schema.v1"]
+    assert {
+        "format",
+        "required_execution_fields",
+        "required_artifact_fields",
+        "rules",
+    } <= set(target_transcript_schema["required"])
+    visual_schema = catalog["schemas"]["appgen.package-visual-schema.v1"]
+    assert {"format", "app", "tables", "flows", "relations"} <= set(visual_schema["required"])
+    visual_migration_schema = catalog["schemas"]["appgen.package-visual-migration-preview.v1"]
+    assert {"format", "operations", "requires_review", "rollback_plan"} <= set(
+        visual_migration_schema["required"]
+    )
     package_goal_schema = catalog["schemas"]["appgen.package-goal-audit.v1"]
     assert {"format", "ok", "decision", "gates", "blocking_gaps"} <= set(package_goal_schema["required"])
     assert missing["ok"] is False
