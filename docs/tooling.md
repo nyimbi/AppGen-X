@@ -2172,6 +2172,12 @@ present, and blocking fixture gaps. JSON remains the
 machine-readable source of truth.
 
 `appgen.parser-golden-text-renderer.v1` is embedded in the tooling audit to prove parser-golden text logs keep fixture counts, covered construct names, missing construct names, and blocking gap evidence visible without JSON parsing. The parser-golden renderer contract reports fragment and marker counts for the header, covered/missing construct lines, and blocking fixture gaps.
+It also publishes required, emitted, missing, and missing-count evidence for
+covered constructs, intentionally missing constructs, blocking gap ids, text
+surfaces, report formats, and exact fixture-count markers. The aggregate parser
+golden gate requires zero named missing entries, so generic parser-golden lines
+cannot mask a hidden construct list, gap id, report format, or fixture summary
+marker.
 The aggregate tooling audit exposes this proof independently as
 `parser_golden_fixture_contracts`. That gate fails when any required construct
 lacks a valid fixture, invalid fixtures stop rejecting, blocking parser gaps

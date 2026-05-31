@@ -2351,9 +2351,80 @@ def _parser_golden_text_renderer_contract() -> dict:
         "fail packages_valid_fixture: Missing valid fixture for package declarations.",
     )
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
+    lines = tuple(line for line in text.splitlines() if line.strip())
+    summary_lines = tuple(line for line in lines if line.startswith("parser-golden "))
+    covered_construct_lines = tuple(line for line in lines if line.startswith("covered-constructs "))
+    missing_construct_lines = tuple(line for line in lines if line.startswith("missing-constructs "))
+    gap_lines = tuple(line for line in lines if line.startswith("fail "))
+    emitted_covered_constructs = tuple(
+        construct.strip()
+        for line in covered_construct_lines
+        for construct in line.removeprefix("covered-constructs ").split(",")
+        if construct.strip()
+    )
+    emitted_missing_constructs = tuple(
+        construct.strip()
+        for line in missing_construct_lines
+        for construct in line.removeprefix("missing-constructs ").split(",")
+        if construct.strip()
+    )
+    emitted_gap_ids = tuple(line.removeprefix("fail ").split(":", 1)[0].strip() for line in gap_lines)
+    required_covered_constructs = tuple(payload["constructs_covered"])
+    required_missing_constructs = tuple(payload["missing_constructs"])
+    required_gap_ids = tuple(gap["name"] for gap in payload["blocking_gaps"])
+    missing_covered_constructs = tuple(
+        construct for construct in required_covered_constructs if construct not in emitted_covered_constructs
+    )
+    missing_missing_constructs = tuple(
+        construct for construct in required_missing_constructs if construct not in emitted_missing_constructs
+    )
+    missing_gap_ids = tuple(gap_id for gap_id in required_gap_ids if gap_id not in emitted_gap_ids)
+    required_text_surfaces = (
+        "summary",
+        "covered_constructs",
+        "missing_constructs",
+        "blocking_gaps",
+    )
+    emitted_text_surfaces = tuple(
+        surface
+        for surface, present in (
+            ("summary", bool(summary_lines)),
+            ("covered_constructs", bool(covered_construct_lines)),
+            ("missing_constructs", bool(missing_construct_lines)),
+            ("blocking_gaps", bool(gap_lines)),
+        )
+        if present
+    )
+    missing_text_surfaces = tuple(
+        surface for surface in required_text_surfaces if surface not in emitted_text_surfaces
+    )
+    required_report_formats = (str(payload["format"]),)
+    emitted_report_formats = tuple(
+        report_format for report_format in required_report_formats if report_format in text
+    )
+    missing_report_formats = tuple(
+        report_format for report_format in required_report_formats if report_format not in emitted_report_formats
+    )
+    required_count_markers = (
+        "fixtures=4",
+        "valid=3",
+        "invalid=1",
+        "required=4",
+        "constructs=3",
+        "missing=1",
+    )
+    emitted_count_markers = tuple(marker for marker in required_count_markers if marker in text)
+    missing_count_markers = tuple(marker for marker in required_count_markers if marker not in emitted_count_markers)
     return {
         "format": "appgen.parser-golden-text-renderer.v1",
-        "ok": not missing and not text.lstrip().startswith("{"),
+        "ok": not missing
+        and not missing_covered_constructs
+        and not missing_missing_constructs
+        and not missing_gap_ids
+        and not missing_text_surfaces
+        and not missing_report_formats
+        and not missing_count_markers
+        and not text.lstrip().startswith("{"),
         **_text_renderer_contract_counts(
             text,
             required_fragments,
@@ -2361,6 +2432,34 @@ def _parser_golden_text_renderer_contract() -> dict:
         ),
         "required_fragments": required_fragments,
         "missing_fragments": missing,
+        "summary_line_count": len(summary_lines),
+        "covered_construct_line_count": len(covered_construct_lines),
+        "missing_construct_line_count": len(missing_construct_lines),
+        "blocking_gap_line_count": len(gap_lines),
+        "required_covered_constructs": required_covered_constructs,
+        "emitted_covered_constructs": emitted_covered_constructs,
+        "missing_covered_construct_count": len(missing_covered_constructs),
+        "missing_covered_constructs": missing_covered_constructs,
+        "required_missing_constructs": required_missing_constructs,
+        "emitted_missing_constructs": emitted_missing_constructs,
+        "missing_missing_construct_count": len(missing_missing_constructs),
+        "missing_missing_constructs": missing_missing_constructs,
+        "required_gap_ids": required_gap_ids,
+        "emitted_gap_ids": emitted_gap_ids,
+        "missing_gap_id_count": len(missing_gap_ids),
+        "missing_gap_ids": missing_gap_ids,
+        "required_text_surfaces": required_text_surfaces,
+        "emitted_text_surfaces": emitted_text_surfaces,
+        "missing_text_surface_count": len(missing_text_surfaces),
+        "missing_text_surfaces": missing_text_surfaces,
+        "required_report_formats": required_report_formats,
+        "emitted_report_formats": emitted_report_formats,
+        "missing_report_format_count": len(missing_report_formats),
+        "missing_report_formats": missing_report_formats,
+        "required_count_markers": required_count_markers,
+        "emitted_count_markers": emitted_count_markers,
+        "missing_count_marker_count": len(missing_count_markers),
+        "missing_count_markers": missing_count_markers,
         "json_fallback": text.lstrip().startswith("{"),
         "text_prefix": text[:240],
     }
@@ -8644,6 +8743,12 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and set(parser_golden.get("constructs_required", ())) <= set(parser_golden.get("constructs_covered", ()))
             and parser_golden_text_renderer["ok"]
             and parser_golden_text_renderer.get("missing_fragment_count") == 0
+            and parser_golden_text_renderer.get("missing_covered_construct_count") == 0
+            and parser_golden_text_renderer.get("missing_missing_construct_count") == 0
+            and parser_golden_text_renderer.get("missing_gap_id_count") == 0
+            and parser_golden_text_renderer.get("missing_text_surface_count") == 0
+            and parser_golden_text_renderer.get("missing_report_format_count") == 0
+            and parser_golden_text_renderer.get("missing_count_marker_count") == 0
             and parser_golden_text_renderer.get("json_fallback") is False,
             "Parser golden contracts prove every required grammar construct has valid fixtures, invalid fixtures still reject, and text logs expose construct/gap evidence.",
             "docs/tooling.md#parser-golden-audit",
@@ -8665,6 +8770,30 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "required_fragment_count": parser_golden_text_renderer.get("required_fragment_count"),
                     "missing_fragment_count": parser_golden_text_renderer.get("missing_fragment_count"),
                     "marker_line_count": parser_golden_text_renderer.get("marker_line_count"),
+                    "required_covered_constructs": parser_golden_text_renderer.get("required_covered_constructs"),
+                    "emitted_covered_constructs": parser_golden_text_renderer.get("emitted_covered_constructs"),
+                    "missing_covered_construct_count": parser_golden_text_renderer.get("missing_covered_construct_count"),
+                    "missing_covered_constructs": parser_golden_text_renderer.get("missing_covered_constructs"),
+                    "required_missing_constructs": parser_golden_text_renderer.get("required_missing_constructs"),
+                    "emitted_missing_constructs": parser_golden_text_renderer.get("emitted_missing_constructs"),
+                    "missing_missing_construct_count": parser_golden_text_renderer.get("missing_missing_construct_count"),
+                    "missing_missing_constructs": parser_golden_text_renderer.get("missing_missing_constructs"),
+                    "required_gap_ids": parser_golden_text_renderer.get("required_gap_ids"),
+                    "emitted_gap_ids": parser_golden_text_renderer.get("emitted_gap_ids"),
+                    "missing_gap_id_count": parser_golden_text_renderer.get("missing_gap_id_count"),
+                    "missing_gap_ids": parser_golden_text_renderer.get("missing_gap_ids"),
+                    "required_text_surfaces": parser_golden_text_renderer.get("required_text_surfaces"),
+                    "emitted_text_surfaces": parser_golden_text_renderer.get("emitted_text_surfaces"),
+                    "missing_text_surface_count": parser_golden_text_renderer.get("missing_text_surface_count"),
+                    "missing_text_surfaces": parser_golden_text_renderer.get("missing_text_surfaces"),
+                    "required_report_formats": parser_golden_text_renderer.get("required_report_formats"),
+                    "emitted_report_formats": parser_golden_text_renderer.get("emitted_report_formats"),
+                    "missing_report_format_count": parser_golden_text_renderer.get("missing_report_format_count"),
+                    "missing_report_formats": parser_golden_text_renderer.get("missing_report_formats"),
+                    "required_count_markers": parser_golden_text_renderer.get("required_count_markers"),
+                    "emitted_count_markers": parser_golden_text_renderer.get("emitted_count_markers"),
+                    "missing_count_marker_count": parser_golden_text_renderer.get("missing_count_marker_count"),
+                    "missing_count_markers": parser_golden_text_renderer.get("missing_count_markers"),
                     "json_fallback": parser_golden_text_renderer.get("json_fallback"),
                 },
             },
@@ -10112,7 +10241,13 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     == evidence["parser_golden"].get("fixture_count")
                     and evidence["parser_golden"].get("failing_fixture_count") == 0
                     and evidence["parser_golden"].get("blocking_gap_count") == 0
-                    and evidence["parser_golden_text_renderer"].get("ok") is True,
+                    and evidence["parser_golden_text_renderer"].get("ok") is True
+                    and evidence["parser_golden_text_renderer"].get("missing_covered_construct_count", 0) == 0
+                    and evidence["parser_golden_text_renderer"].get("missing_missing_construct_count", 0) == 0
+                    and evidence["parser_golden_text_renderer"].get("missing_gap_id_count", 0) == 0
+                    and evidence["parser_golden_text_renderer"].get("missing_text_surface_count", 0) == 0
+                    and evidence["parser_golden_text_renderer"].get("missing_report_format_count", 0) == 0
+                    and evidence["parser_golden_text_renderer"].get("missing_count_marker_count", 0) == 0,
                     "evidence_formats": (
                         evidence["parser_golden"].get("format"),
                         evidence["parser_golden_text_renderer"].get("format"),

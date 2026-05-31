@@ -7099,6 +7099,36 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert parser_gate["detail"]["text_renderer"]["format"] == "appgen.parser-golden-text-renderer.v1"
     assert parser_gate["detail"]["text_renderer"]["missing_fragment_count"] == 0
     assert parser_gate["detail"]["text_renderer"]["marker_line_count"] >= 4
+    assert parser_gate["detail"]["text_renderer"]["emitted_covered_constructs"] == parser_gate["detail"][
+        "text_renderer"
+    ]["required_covered_constructs"]
+    assert parser_gate["detail"]["text_renderer"]["missing_covered_construct_count"] == 0
+    assert parser_gate["detail"]["text_renderer"]["missing_covered_constructs"] == ()
+    assert parser_gate["detail"]["text_renderer"]["emitted_missing_constructs"] == parser_gate["detail"][
+        "text_renderer"
+    ]["required_missing_constructs"]
+    assert parser_gate["detail"]["text_renderer"]["missing_missing_construct_count"] == 0
+    assert parser_gate["detail"]["text_renderer"]["missing_missing_constructs"] == ()
+    assert parser_gate["detail"]["text_renderer"]["emitted_gap_ids"] == parser_gate["detail"]["text_renderer"][
+        "required_gap_ids"
+    ]
+    assert parser_gate["detail"]["text_renderer"]["missing_gap_id_count"] == 0
+    assert parser_gate["detail"]["text_renderer"]["missing_gap_ids"] == ()
+    assert parser_gate["detail"]["text_renderer"]["emitted_text_surfaces"] == parser_gate["detail"][
+        "text_renderer"
+    ]["required_text_surfaces"]
+    assert parser_gate["detail"]["text_renderer"]["missing_text_surface_count"] == 0
+    assert parser_gate["detail"]["text_renderer"]["missing_text_surfaces"] == ()
+    assert parser_gate["detail"]["text_renderer"]["emitted_report_formats"] == parser_gate["detail"][
+        "text_renderer"
+    ]["required_report_formats"]
+    assert parser_gate["detail"]["text_renderer"]["missing_report_format_count"] == 0
+    assert parser_gate["detail"]["text_renderer"]["missing_report_formats"] == ()
+    assert parser_gate["detail"]["text_renderer"]["emitted_count_markers"] == parser_gate["detail"][
+        "text_renderer"
+    ]["required_count_markers"]
+    assert parser_gate["detail"]["text_renderer"]["missing_count_marker_count"] == 0
+    assert parser_gate["detail"]["text_renderer"]["missing_count_markers"] == ()
     assert parser_gate["detail"]["text_renderer"]["json_fallback"] is False
     drift_gate = next(check for check in report["checks"] if check["id"] == "semantic_drift_surface_contracts")
     assert drift_gate["detail"]["drift"]["format"] == "appgen.semantic-drift-audit.v1"
@@ -9041,6 +9071,46 @@ def test_parser_golden_text_renderer_contract_proves_fixture_log_markers() -> No
     assert report["required_fragment_count"] == len(report["required_fragments"])
     assert report["missing_fragment_count"] == 0
     assert report["marker_line_count"] >= 4
+    assert report["summary_line_count"] == 1
+    assert report["covered_construct_line_count"] == 1
+    assert report["missing_construct_line_count"] == 1
+    assert report["blocking_gap_line_count"] == 1
+    assert report["required_covered_constructs"] == ("apps", "tables", "agents")
+    assert report["emitted_covered_constructs"] == report["required_covered_constructs"]
+    assert report["missing_covered_construct_count"] == 0
+    assert report["missing_covered_constructs"] == ()
+    assert report["required_missing_constructs"] == ("packages",)
+    assert report["emitted_missing_constructs"] == report["required_missing_constructs"]
+    assert report["missing_missing_construct_count"] == 0
+    assert report["missing_missing_constructs"] == ()
+    assert report["required_gap_ids"] == ("packages_valid_fixture",)
+    assert report["emitted_gap_ids"] == report["required_gap_ids"]
+    assert report["missing_gap_id_count"] == 0
+    assert report["missing_gap_ids"] == ()
+    assert report["required_text_surfaces"] == (
+        "summary",
+        "covered_constructs",
+        "missing_constructs",
+        "blocking_gaps",
+    )
+    assert report["emitted_text_surfaces"] == report["required_text_surfaces"]
+    assert report["missing_text_surface_count"] == 0
+    assert report["missing_text_surfaces"] == ()
+    assert report["required_report_formats"] == ("appgen.parser-golden-audit.v1",)
+    assert report["emitted_report_formats"] == report["required_report_formats"]
+    assert report["missing_report_format_count"] == 0
+    assert report["missing_report_formats"] == ()
+    assert report["required_count_markers"] == (
+        "fixtures=4",
+        "valid=3",
+        "invalid=1",
+        "required=4",
+        "constructs=3",
+        "missing=1",
+    )
+    assert report["emitted_count_markers"] == report["required_count_markers"]
+    assert report["missing_count_marker_count"] == 0
+    assert report["missing_count_markers"] == ()
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(

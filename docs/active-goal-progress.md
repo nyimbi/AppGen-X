@@ -4104,3 +4104,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   (`1 passed`, with the known active-PBC `datetime.utcnow()` warnings only),
   scoped diff whitespace check, and restricted-name scan outside archive, Git
   internals, and active PBC paths.
+- Current parser-golden text audit hardening pass replaces fragment-only
+  parser-golden text acceptance with named evidence for grammar fixture release
+  logs. `appgen.parser-golden-text-renderer.v1` now proves required and emitted
+  covered constructs, intentionally missing constructs, blocking gap ids, text
+  surfaces, embedded report formats, and exact fixture-count markers as part of
+  its own `ok` condition and the aggregate parser-golden gate. Verification
+  passed: Python compile for the touched DSL and tests, focused parser-golden
+  text renderer test (`1 passed`), aggregate tooling audit (`1 passed`, with
+  the known active-PBC `datetime.utcnow()` warnings only), scoped diff
+  whitespace check, and restricted-name scan outside archive, Git internals,
+  and active PBC paths.
