@@ -4532,3 +4532,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   threat models, secret scans, dependency and API security plans, security gates
   and signoff, workflow authorization/approval/SLA/runbook/workbench contracts,
   and generated health summary/release evidence as machine-validatable outputs.
+- Current generated-module expansion promotes the first 177 generated module
+  contracts from `gen.py` into the schema catalog. Native form, runtime,
+  compiler/deep runtime, UI chrome, wizard, database/data, integration,
+  platform/PWA/microservice/realtime/event/RPA, diagnostics, API-testing,
+  code-review, collaboration, and devtools modules now have schema-backed
+  manifests, operations, release contexts, smoke tests, and generated-test
+  evidence.

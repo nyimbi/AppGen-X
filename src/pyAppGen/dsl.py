@@ -6966,6 +6966,187 @@ GENERATED_APP_FOUNDATION_SCHEMA_FORMATS = (
 )
 
 
+GENERATED_MODULE_SCHEMA_FORMATS = (
+    "appgen.native-form-module-contract.v1",
+    "appgen.native-form-module-manifest.v1",
+    "appgen.native-form-module-operation.v1",
+    "appgen.native-form-module-operation-steps.v1",
+    "appgen.native-form-module-validation-steps.v1",
+    "appgen.native-form-module-smoke-test.v1",
+    "appgen.native-form-module-generated-test-smoke.v1",
+    "appgen.runtime-operation-module-contract.v1",
+    "appgen.runtime-operation-module-manifest.v1",
+    "appgen.runtime-operation-module-result.v1",
+    "appgen.runtime-operation-module-operation-steps.v1",
+    "appgen.runtime-operation-module-validation-steps.v1",
+    "appgen.runtime-operation-module-smoke-test.v1",
+    "appgen.runtime-operation-module-generated-test-smoke.v1",
+    "appgen.compiler-runtime-module-contract.v1",
+    "appgen.compiler-runtime-module-manifest.v1",
+    "appgen.compiler-runtime-module-result.v1",
+    "appgen.compiler-runtime-module-operation-steps.v1",
+    "appgen.compiler-runtime-module-validation-steps.v1",
+    "appgen.compiler-runtime-module-smoke-test.v1",
+    "appgen.compiler-runtime-module-generated-test-smoke.v1",
+    "appgen.deep-runtime-module-contract.v1",
+    "appgen.deep-runtime-module-manifest.v1",
+    "appgen.deep-runtime-module-result.v1",
+    "appgen.deep-runtime-module-operation-steps.v1",
+    "appgen.deep-runtime-module-validation-steps.v1",
+    "appgen.deep-runtime-module-smoke-test.v1",
+    "appgen.deep-runtime-module-generated-test-smoke.v1",
+    "appgen.ui-chrome-module-contract.v1",
+    "appgen.ui-chrome-module-operation.v1",
+    "appgen.ui-chrome-module-runtime-manifest.v1",
+    "appgen.ui-chrome-module-operation-steps.v1",
+    "appgen.ui-chrome-module-validation-steps.v1",
+    "appgen.ui-chrome-module-smoke-test.v1",
+    "appgen.ui-chrome-module-generated-test-smoke.v1",
+    "appgen.wizard-module-contract.v1",
+    "appgen.wizard-module-manifest.v1",
+    "appgen.wizard-module-operation.v1",
+    "appgen.wizard-module-operation-steps.v1",
+    "appgen.wizard-module-validation-steps.v1",
+    "appgen.wizard-module-release-context.v1",
+    "appgen.wizard-module-smoke-test.v1",
+    "appgen.wizard-module-generated-test-smoke.v1",
+    "appgen.database-ops-module-contract.v1",
+    "appgen.database-ops-module-manifest.v1",
+    "appgen.database-ops-module-operation.v1",
+    "appgen.database-ops-module-release-context.v1",
+    "appgen.database-ops-module-operation-steps.v1",
+    "appgen.database-ops-module-validation-steps.v1",
+    "appgen.database-ops-module-smoke-test.v1",
+    "appgen.database-ops-module-generated-test-smoke.v1",
+    "appgen.data-access-module-contract.v1",
+    "appgen.data-access-module-manifest.v1",
+    "appgen.data-access-module-operation.v1",
+    "appgen.data-access-module-release-context.v1",
+    "appgen.data-access-module-operation-steps.v1",
+    "appgen.data-access-module-validation-steps.v1",
+    "appgen.data-access-module-smoke-test.v1",
+    "appgen.data-access-module-generated-test-smoke.v1",
+    "appgen.data-exchange-module-contract.v1",
+    "appgen.data-exchange-module-manifest.v1",
+    "appgen.data-exchange-module-operation.v1",
+    "appgen.data-exchange-module-release-context.v1",
+    "appgen.data-exchange-module-operation-steps.v1",
+    "appgen.data-exchange-module-validation-steps.v1",
+    "appgen.data-exchange-module-smoke-test.v1",
+    "appgen.data-exchange-module-generated-test-smoke.v1",
+    "appgen.schema-import-module-contract.v1",
+    "appgen.schema-import-module-manifest.v1",
+    "appgen.schema-import-module-operation.v1",
+    "appgen.schema-import-module-release-context.v1",
+    "appgen.schema-import-module-smoke-test.v1",
+    "appgen.schema-import-module-generated-test-smoke.v1",
+    "appgen.backup-module-contract.v1",
+    "appgen.backup-module-manifest.v1",
+    "appgen.backup-module-operation.v1",
+    "appgen.backup-module-release-context.v1",
+    "appgen.backup-module-smoke-test.v1",
+    "appgen.backup-module-generated-test-smoke.v1",
+    "appgen.seed-module-contract.v1",
+    "appgen.seed-module-manifest.v1",
+    "appgen.seed-module-operation.v1",
+    "appgen.seed-module-release-context.v1",
+    "appgen.seed-module-smoke-test.v1",
+    "appgen.seed-module-generated-test-smoke.v1",
+    "appgen.integration-module-contract.v1",
+    "appgen.integration-module-manifest.v1",
+    "appgen.integration-module-operation.v1",
+    "appgen.integration-module-release-context.v1",
+    "appgen.integration-module-smoke-test.v1",
+    "appgen.integration-module-generated-test-smoke.v1",
+    "appgen.productivity-module-contract.v1",
+    "appgen.productivity-module-manifest.v1",
+    "appgen.productivity-module-operation.v1",
+    "appgen.productivity-module-release-context.v1",
+    "appgen.productivity-module-smoke-test.v1",
+    "appgen.productivity-module-generated-test-smoke.v1",
+    "appgen.lifecycle-module-contract.v1",
+    "appgen.lifecycle-module-manifest.v1",
+    "appgen.lifecycle-module-operation.v1",
+    "appgen.lifecycle-module-release-context.v1",
+    "appgen.lifecycle-module-smoke-test.v1",
+    "appgen.lifecycle-module-generated-test-smoke.v1",
+    "appgen.emerging-module-contract.v1",
+    "appgen.emerging-module-manifest.v1",
+    "appgen.emerging-module-operation.v1",
+    "appgen.emerging-module-release-context.v1",
+    "appgen.emerging-module-smoke-test.v1",
+    "appgen.emerging-module-generated-test-smoke.v1",
+    "appgen.platform-module-contract.v1",
+    "appgen.platform-module-manifest.v1",
+    "appgen.platform-module-operation.v1",
+    "appgen.platform-module-release-context.v1",
+    "appgen.platform-module-smoke-test.v1",
+    "appgen.platform-module-generated-test-smoke.v1",
+    "appgen.pwa-module-contract.v1",
+    "appgen.pwa-module-manifest.v1",
+    "appgen.pwa-module-operation.v1",
+    "appgen.pwa-module-release-context.v1",
+    "appgen.pwa-module-smoke-test.v1",
+    "appgen.pwa-module-generated-test-smoke.v1",
+    "appgen.microservice-module-contract.v1",
+    "appgen.microservice-module-manifest.v1",
+    "appgen.microservice-module-operation.v1",
+    "appgen.microservice-module-release-context.v1",
+    "appgen.microservice-module-smoke-test.v1",
+    "appgen.microservice-module-generated-test-smoke.v1",
+    "appgen.realtime-module-contract.v1",
+    "appgen.realtime-module-manifest.v1",
+    "appgen.realtime-module-operation.v1",
+    "appgen.realtime-module-release-context.v1",
+    "appgen.realtime-module-smoke-test.v1",
+    "appgen.realtime-module-generated-test-smoke.v1",
+    "appgen.event-module-contract.v1",
+    "appgen.event-module-manifest.v1",
+    "appgen.event-module-operation.v1",
+    "appgen.event-module-release-context.v1",
+    "appgen.event-module-smoke-test.v1",
+    "appgen.event-module-generated-test-smoke.v1",
+    "appgen.rpa-module-contract.v1",
+    "appgen.rpa-module-manifest.v1",
+    "appgen.rpa-module-operation.v1",
+    "appgen.rpa-module-release-context.v1",
+    "appgen.rpa-module-smoke-test.v1",
+    "appgen.rpa-module-generated-test-smoke.v1",
+    "appgen.diagnostics-module-contract.v1",
+    "appgen.diagnostics-module-manifest.v1",
+    "appgen.diagnostics-module-operation.v1",
+    "appgen.diagnostics-module-release-context.v1",
+    "appgen.diagnostics-module-smoke-test.v1",
+    "appgen.diagnostics-module-generated-test-smoke.v1",
+    "appgen.api-testing-module-contract.v1",
+    "appgen.api-testing-module-manifest.v1",
+    "appgen.api-testing-module-operation.v1",
+    "appgen.api-testing-module-release-context.v1",
+    "appgen.api-testing-module-smoke-test.v1",
+    "appgen.api-testing-module-generated-test-smoke.v1",
+    "appgen.code-review-module-contract.v1",
+    "appgen.code-review-module-manifest.v1",
+    "appgen.code-review-module-operation.v1",
+    "appgen.code-review-module-release-context.v1",
+    "appgen.code-review-module-smoke-test.v1",
+    "appgen.code-review-module-generated-test-smoke.v1",
+    "appgen.collaboration-module-contract.v1",
+    "appgen.collaboration-module-manifest.v1",
+    "appgen.collaboration-module-operation.v1",
+    "appgen.collaboration-module-release-context.v1",
+    "appgen.collaboration-module-smoke-test.v1",
+    "appgen.collaboration-module-generated-test-smoke.v1",
+    "appgen.devtools-module-contract.v1",
+    "appgen.devtools-module-manifest.v1",
+    "appgen.devtools-module-operation.v1",
+    "appgen.devtools-module-operation-steps.v1",
+    "appgen.devtools-module-validation-steps.v1",
+    "appgen.devtools-module-release-context.v1",
+    "appgen.devtools-module-smoke-test.v1",
+    "appgen.devtools-module-generated-test-smoke.v1",
+)
+
+
 CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.diagnostic.v1",
     "appgen.lint-report.v1",
@@ -7138,6 +7319,7 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     *TARGET_PACKAGING_SCHEMA_FORMATS,
     *VISUAL_MODELING_SCHEMA_FORMATS,
     *GENERATED_APP_FOUNDATION_SCHEMA_FORMATS,
+    *GENERATED_MODULE_SCHEMA_FORMATS,
     "appgen.contract-schema-catalog.v1",
     "appgen.contract-validation-report.v1",
 )
@@ -7969,6 +8151,49 @@ def _generated_app_foundation_schema(title: str) -> dict:
             "release_gate": common_object,
             "status": common_object,
             "summary": common_object,
+        },
+    )
+
+
+def _generated_module_schema(title: str) -> dict:
+    common_array = {"type": "array", "items": {"type": ("object", "string", "array")}}
+    common_object = {"type": "object"}
+    return _contract_format_schema(
+        title,
+        required=("format",),
+        properties={
+            "format": _const_schema(title),
+            "ok": {"type": "boolean"},
+            "module": {"type": "string"},
+            "kind": {"type": "string"},
+            "name": {"type": "string"},
+            "contract": common_object,
+            "manifest": common_object,
+            "operation": {"type": ("object", "string")},
+            "result": common_object,
+            "release_context": common_object,
+            "runtime_manifest": common_object,
+            "files": {"type": "array", "items": {"type": "string"}},
+            "generated_files": {"type": "array", "items": {"type": "string"}},
+            "test_files": {"type": "array", "items": {"type": "string"}},
+            "required_artifacts": {"type": "array", "items": {"type": "string"}},
+            "missing_artifacts": {"type": "array", "items": {"type": "string"}},
+            "capabilities": {"type": "array", "items": {"type": "string"}},
+            "commands": {"type": "array", "items": {"type": "string"}},
+            "routes": {"type": "array", "items": {"type": "string"}},
+            "steps": common_array,
+            "validation_steps": common_array,
+            "checks": common_array,
+            "diagnostics": {"type": ("array", "object"), "items": {"type": "object"}},
+            "smoke": common_object,
+            "release_gate": common_object,
+            "fixtures": common_array,
+            "artifacts": common_array,
+            "metadata": common_object,
+            "scope": {"type": "string"},
+            "decision": {"type": "string"},
+            "blocking_gaps": common_array,
+            "stop_condition": {"type": "string"},
         },
     )
 
@@ -10113,6 +10338,10 @@ def _contract_schema_catalog() -> dict[str, dict]:
         **{
             schema_format: _generated_app_foundation_schema(schema_format)
             for schema_format in GENERATED_APP_FOUNDATION_SCHEMA_FORMATS
+        },
+        **{
+            schema_format: _generated_module_schema(schema_format)
+            for schema_format in GENERATED_MODULE_SCHEMA_FORMATS
         },
         "appgen.contract-schema-catalog.v1": _json_object_schema(
             "appgen.contract-schema-catalog.v1",
@@ -22815,6 +23044,91 @@ def _generated_app_foundation_schema_sample(schema_format: str) -> dict:
     return sample_by_format[schema_format]()
 
 
+def _generated_module_schema_sample(schema_format: str) -> dict:
+    module = schema_format.removeprefix("appgen.").removesuffix(".v1")
+    base = {
+        "format": schema_format,
+        "ok": True,
+        "module": module,
+        "kind": "generated_module_contract",
+        "capabilities": ("runtime_contract", "release_evidence", "generated_tests"),
+        "checks": ({"id": "schema_backed", "ok": True},),
+        "metadata": {"schema_family": "generated_module"},
+    }
+    if schema_format.endswith("-manifest.v1") or schema_format.endswith("-runtime-manifest.v1"):
+        return {
+            **base,
+            "kind": "module_manifest",
+            "files": (f"app/{module.replace('-', '_')}.py",),
+            "generated_files": (f"app/{module.replace('-', '_')}.py",),
+            "required_artifacts": (f"app/{module.replace('-', '_')}.py",),
+            "missing_artifacts": (),
+            "manifest": {"module": module, "ready": True},
+        }
+    if schema_format.endswith("-operation.v1"):
+        return {
+            **base,
+            "kind": "module_operation",
+            "operation": {"name": "sample_operation", "requires_review": True},
+            "steps": ({"step": "prepare", "ok": True}, {"step": "execute", "ok": True}),
+            "result": {"changed": True, "review_required": True},
+        }
+    if schema_format.endswith("-operation-steps.v1"):
+        return {
+            **base,
+            "kind": "operation_steps",
+            "steps": (
+                {"step": "validate_input", "ok": True},
+                {"step": "execute_operation", "ok": True},
+                {"step": "record_evidence", "ok": True},
+            ),
+        }
+    if schema_format.endswith("-validation-steps.v1"):
+        return {
+            **base,
+            "kind": "validation_steps",
+            "validation_steps": (
+                {"step": "contract_shape", "ok": True},
+                {"step": "artifact_presence", "ok": True},
+            ),
+            "diagnostics": (),
+        }
+    if schema_format.endswith("-release-context.v1"):
+        return {
+            **base,
+            "kind": "release_context",
+            "release_context": {
+                "required_artifacts": (f"app/{module.replace('-', '_')}.py",),
+                "review_required": True,
+            },
+            "decision": "approved",
+            "blocking_gaps": (),
+        }
+    if schema_format.endswith("-smoke-test.v1") or schema_format.endswith("-generated-test-smoke.v1"):
+        return {
+            **base,
+            "kind": "module_smoke_test",
+            "smoke": {"compiled": True, "tests_generated": True},
+            "fixtures": ({"name": "sample", "ok": True},),
+            "artifacts": ({"path": f"tests/test_{module.replace('-', '_')}.py", "ok": True},),
+            "stop_condition": "generated module smoke evidence remains schema-backed",
+        }
+    if schema_format.endswith("-result.v1"):
+        return {
+            **base,
+            "kind": "module_result",
+            "result": {"status": "ok", "changed": True},
+            "decision": "approved",
+        }
+    return {
+        **base,
+        "kind": "module_contract",
+        "contract": {"module": module, "version": "1.0.0", "stable": True},
+        "routes": (f"/appgen/{module}",),
+        "commands": ("validate", "generate", "verify"),
+    }
+
+
 def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
     source = _tooling_audit_sample_dsl()
     with tempfile.TemporaryDirectory(prefix="appgen-contract-schema-samples-") as tmp:
@@ -23317,6 +23631,10 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             **{
                 schema_format: _generated_app_foundation_schema_sample(schema_format)
                 for schema_format in GENERATED_APP_FOUNDATION_SCHEMA_FORMATS
+            },
+            **{
+                schema_format: _generated_module_schema_sample(schema_format)
+                for schema_format in GENERATED_MODULE_SCHEMA_FORMATS
             },
             "appgen.contract-schema-catalog.v1": contract_schema_catalog_dsl("appgen.semantic-model.v1"),
         }
