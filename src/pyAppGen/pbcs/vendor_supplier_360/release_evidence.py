@@ -43,3 +43,32 @@ def build_release_evidence():
 
 def vendor_supplier_360_build_release_evidence():
     return build_release_evidence()
+
+
+# Improve1 vendor supplier 360 control release extension.
+from .vendor_supplier_360_control import improve1_vendor_supplier_360_control_contract as _improve1_vendor_supplier_360_control_contract
+
+_VENDOR_CONTROL_BASE_BUILD_RELEASE_EVIDENCE = build_release_evidence
+_VENDOR_CONTROL_BASE_VALIDATE_RELEASE_EVIDENCE = validate_release_evidence
+
+
+def build_release_evidence() -> dict:
+    evidence = dict(_VENDOR_CONTROL_BASE_BUILD_RELEASE_EVIDENCE())
+    control = _improve1_vendor_supplier_360_control_contract()
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_vendor_supplier_360_control", "ok": control["ok"]},)
+    evidence.update({
+        "ok": bool(evidence.get("ok")) and control["ok"],
+        "checks": checks,
+        "vendor_supplier_360_control": control,
+        "blocking_gaps": tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ())),
+    })
+    return evidence
+
+
+def validate_release_evidence() -> dict:
+    validation = dict(_VENDOR_CONTROL_BASE_VALIDATE_RELEASE_EVIDENCE())
+    control = _improve1_vendor_supplier_360_control_contract()
+    validation["ok"] = validation.get("ok") is True and control["ok"]
+    validation["vendor_supplier_360_control"] = control
+    validation["blocking_gaps"] = tuple(validation.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ()))
+    return validation

@@ -72,3 +72,35 @@ def standalone_ui_smoke_test():
     contract = vendor_supplier_360_ui_contract()
     rendered = vendor_supplier_360_render_workbench()
     return {'ok': contract['ok'] and rendered['ok'] and bool(contract['forms']) and bool(contract['wizards']) and bool(contract['controls']) and contract['single_pbc_app']['ok'], 'contract': contract, 'rendered': rendered, 'side_effects': ()}
+
+
+# Improve1 vendor supplier 360 control UI extension.
+from .vendor_supplier_360_control import improve1_vendor_supplier_360_control_contract as _improve1_vendor_supplier_360_control_contract
+
+_VENDOR_CONTROL_BASE_UI_CONTRACT = vendor_supplier_360_ui_contract
+_VENDOR_CONTROL_BASE_RENDER_WORKBENCH = vendor_supplier_360_render_workbench
+
+
+def vendor_supplier_360_ui_contract() -> dict:
+    ui = dict(_VENDOR_CONTROL_BASE_UI_CONTRACT())
+    control = _improve1_vendor_supplier_360_control_contract()
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "vendor_supplier_360_control_contract": control,
+        "vendor_supplier_360_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "vendor_supplier_360_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def vendor_supplier_360_render_workbench(*args, **kwargs) -> dict:
+    workbench = dict(_VENDOR_CONTROL_BASE_RENDER_WORKBENCH(*args, **kwargs))
+    control = _improve1_vendor_supplier_360_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "vendor_supplier_360_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "vendor_supplier_360_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "vendor_supplier_360_control_agent_tools": tuple(f"vendor_supplier_360.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench
