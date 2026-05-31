@@ -4386,3 +4386,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   syntax, semantic, and policy stage profile. The aggregate lint directory gates
   now require those named missing lists to be empty, so lint cannot pass by broad
   scenario or stage counts while a CLI status, envelope, or stage proof regresses.
+- Current LSP lifecycle hardening pass adds a named editor-workflow contract to
+  `appgen.lsp-json-rpc-audit.v1`. The workflow executes initialize, open,
+  completion, hover, definition, references, document symbols, rename, changed
+  diagnostics, code actions, formatting, workspace symbols, shutdown, and exit
+  as one session, then publishes required/observed/missing case ids, methods,
+  result shapes, diagnostic-transition status, and shutdown/exit status. The
+  aggregate LSP transport and implementation-phase gates now require those
+  workflow gaps to be empty so IDE readiness cannot be inferred from isolated
+  one-off requests alone.

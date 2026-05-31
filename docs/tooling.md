@@ -1397,6 +1397,15 @@ exercised status, backing check id, passing method count, and missing method
 count. The aggregate `lsp_transport_rpc_contracts` gate fails if any documented
 method is not both advertised where applicable and exercised by the JSON-RPC
 audit.
+The same audit now carries a named editor-lifecycle workflow contract that
+executes initialize, open diagnostics, completion, hover, definition,
+references, document symbols, rename, changed-buffer diagnostics, code actions,
+formatting, workspace symbol search, shutdown, and exit as one continuous
+session. It reports required/observed/missing case ids, expected/observed
+methods by case, expected/observed result shapes by case, failing cases,
+diagnostic-transition status, and shutdown/exit status. The aggregate transport
+gate requires all of those named gaps to be empty, so the IDE path cannot pass by
+testing isolated requests while the actual editing lifecycle is broken.
 It also checks
 `workspace_document_scan_and_rename`, which opens multiple DSL buffers and
 proves definition, references, completion, workspace symbol, and rename

@@ -8099,6 +8099,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and lsp_rpc.get("request_check_count", 0) >= 8
             and lsp_rpc.get("method_contract_count") == lsp_rpc.get("passing_method_contract_count")
             and lsp_rpc.get("missing_method_contract_count") == 0
+            and lsp_rpc.get("editor_workflow_passing_case_count") == lsp_rpc.get("editor_workflow_case_count")
+            and lsp_rpc.get("editor_workflow_failing_case_count") == 0
+            and lsp_rpc.get("missing_editor_workflow_case_count") == 0
+            and lsp_rpc.get("missing_editor_workflow_method_case_count") == 0
+            and lsp_rpc.get("missing_editor_workflow_shape_case_count") == 0
+            and lsp_rpc.get("editor_workflow_diagnostic_transition_ok") is True
+            and lsp_rpc.get("editor_workflow_shutdown_exit_ok") is True
             and lsp_rpc.get("blocking_gap_count") == 0
             and lsp_stdio["ok"]
             and lsp_stdio.get("missing_response_ids") == ()
@@ -8128,6 +8135,36 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "code_action_count": lsp_rpc.get("code_action_count"),
                     "formatting_edit_count": lsp_rpc.get("formatting_edit_count"),
                     "blocking_gap_count": lsp_rpc.get("blocking_gap_count"),
+                    "editor_workflow_case_count": lsp_rpc.get("editor_workflow_case_count"),
+                    "editor_workflow_passing_case_count": lsp_rpc.get("editor_workflow_passing_case_count"),
+                    "editor_workflow_failing_case_count": lsp_rpc.get("editor_workflow_failing_case_count"),
+                    "editor_workflow_failing_cases": lsp_rpc.get("editor_workflow_failing_cases"),
+                    "required_editor_workflow_case_ids": lsp_rpc.get("required_editor_workflow_case_ids"),
+                    "editor_workflow_case_ids": lsp_rpc.get("editor_workflow_case_ids"),
+                    "missing_editor_workflow_case_count": lsp_rpc.get("missing_editor_workflow_case_count"),
+                    "missing_editor_workflow_cases": lsp_rpc.get("missing_editor_workflow_cases"),
+                    "expected_editor_workflow_methods_by_case": lsp_rpc.get(
+                        "expected_editor_workflow_methods_by_case"
+                    ),
+                    "editor_workflow_methods_by_case": lsp_rpc.get("editor_workflow_methods_by_case"),
+                    "missing_editor_workflow_method_case_count": lsp_rpc.get(
+                        "missing_editor_workflow_method_case_count"
+                    ),
+                    "missing_editor_workflow_method_cases": lsp_rpc.get("missing_editor_workflow_method_cases"),
+                    "expected_editor_workflow_result_shapes_by_case": lsp_rpc.get(
+                        "expected_editor_workflow_result_shapes_by_case"
+                    ),
+                    "editor_workflow_result_shapes_by_case": lsp_rpc.get(
+                        "editor_workflow_result_shapes_by_case"
+                    ),
+                    "missing_editor_workflow_shape_case_count": lsp_rpc.get(
+                        "missing_editor_workflow_shape_case_count"
+                    ),
+                    "missing_editor_workflow_shape_cases": lsp_rpc.get("missing_editor_workflow_shape_cases"),
+                    "editor_workflow_diagnostic_transition_ok": lsp_rpc.get(
+                        "editor_workflow_diagnostic_transition_ok"
+                    ),
+                    "editor_workflow_shutdown_exit_ok": lsp_rpc.get("editor_workflow_shutdown_exit_ok"),
                 },
                 "stdio": {
                     "format": lsp_stdio.get("format"),
@@ -11404,6 +11441,14 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     "ok": evidence["lsp_rpc"].get("ok") is True
                     and evidence["lsp_rpc"].get("provider_count") == evidence["lsp_rpc"].get("enabled_provider_count")
                     and evidence["lsp_rpc"].get("request_check_count") == evidence["lsp_rpc"].get("passing_request_check_count")
+                    and evidence["lsp_rpc"].get("editor_workflow_passing_case_count")
+                    == evidence["lsp_rpc"].get("editor_workflow_case_count")
+                    and evidence["lsp_rpc"].get("editor_workflow_failing_case_count") == 0
+                    and evidence["lsp_rpc"].get("missing_editor_workflow_case_count") == 0
+                    and evidence["lsp_rpc"].get("missing_editor_workflow_method_case_count") == 0
+                    and evidence["lsp_rpc"].get("missing_editor_workflow_shape_case_count") == 0
+                    and evidence["lsp_rpc"].get("editor_workflow_diagnostic_transition_ok") is True
+                    and evidence["lsp_rpc"].get("editor_workflow_shutdown_exit_ok") is True
                     and evidence["lsp_stdio"].get("ok") is True
                     and evidence["lsp_stdio"].get("missing_response_ids") == (),
                     "evidence_formats": (evidence["lsp_rpc"].get("format"), evidence["lsp_stdio"].get("format")),
@@ -13252,6 +13297,297 @@ composition Suite {
             bool(formatting_edits) and "table Invoice" in formatting_edits[0].get("newText", ""),
         )
     )
+
+    editor_workflow_documents: dict[str, str] = {}
+    editor_workflow_uri = "memory://editor-workflow.appgen"
+    editor_workflow_source = """
+app EditorWorkflow { targets: web }
+table Customer { id: int pk; name: string }
+table Invoice {
+  id: int pk
+  customer_id: int -> Customer.id
+}
+view InvoiceForm for Invoice {
+  Main: customer_id
+  on Save -> SubmitInvoice
+}
+operation SubmitInvoice { draft -> posted }
+"""
+    editor_workflow_changed_source = editor_workflow_source.replace("Main: customer_id", "Main: missing_field")
+
+    def editor_position(marker: str, offset: int = 0) -> dict:
+        index = editor_workflow_source.index(marker) + offset
+        return {
+            "line": editor_workflow_source.count("\n", 0, index),
+            "character": index - editor_workflow_source.rfind("\n", 0, index) - 1,
+        }
+
+    editor_workflow_steps = (
+        (
+            "initialize",
+            {"jsonrpc": "2.0", "id": 101, "method": "initialize", "params": {}},
+            lambda responses, should_exit: bool(responses)
+            and responses[0].get("result", {}).get("capabilities", {}).get("completionProvider")
+            and should_exit is False,
+            "capabilities",
+        ),
+        (
+            "open_diagnostics",
+            {
+                "jsonrpc": "2.0",
+                "method": "textDocument/didOpen",
+                "params": {
+                    "textDocument": {
+                        "uri": editor_workflow_uri,
+                        "languageId": "appgen",
+                        "version": 1,
+                        "text": editor_workflow_source,
+                    }
+                },
+            },
+            lambda responses, should_exit: bool(responses)
+            and responses[0].get("method") == "textDocument/publishDiagnostics"
+            and not any(item.get("severity") == 1 for item in responses[0].get("params", {}).get("diagnostics", ()))
+            and should_exit is False,
+            "diagnostics",
+        ),
+        (
+            "completion",
+            {
+                "jsonrpc": "2.0",
+                "id": 102,
+                "method": "textDocument/completion",
+                "params": {
+                    "textDocument": {"uri": editor_workflow_uri},
+                    "position": editor_position("Main: customer_id", len("Main: ")),
+                },
+            },
+            lambda responses, should_exit: bool(responses)
+            and any(item.get("label") == "customer_id" for item in responses[0].get("result", {}).get("items", ()))
+            and should_exit is False,
+            "completion_items",
+        ),
+        (
+            "hover",
+            {
+                "jsonrpc": "2.0",
+                "id": 103,
+                "method": "textDocument/hover",
+                "params": {
+                    "textDocument": {"uri": editor_workflow_uri},
+                    "position": editor_position("customer_id: int"),
+                },
+            },
+            lambda responses, should_exit: bool(responses)
+            and "appgen.lsp-relationship-hover.v1" in responses[0].get("result", {}).get("contents", {}).get("value", "")
+            and should_exit is False,
+            "hover_relationship",
+        ),
+        (
+            "definition",
+            {
+                "jsonrpc": "2.0",
+                "id": 104,
+                "method": "textDocument/definition",
+                "params": {
+                    "textDocument": {"uri": editor_workflow_uri},
+                    "position": editor_position("Customer.id"),
+                },
+            },
+            lambda responses, should_exit: bool(responses)
+            and responses[0].get("result", {}).get("uri") == editor_workflow_uri
+            and should_exit is False,
+            "definition_location",
+        ),
+        (
+            "references",
+            {
+                "jsonrpc": "2.0",
+                "id": 105,
+                "method": "textDocument/references",
+                "params": {
+                    "textDocument": {"uri": editor_workflow_uri},
+                    "position": editor_position("Invoice {"),
+                },
+            },
+            lambda responses, should_exit: bool(responses)
+            and len(responses[0].get("result", ())) >= 2
+            and should_exit is False,
+            "reference_locations",
+        ),
+        (
+            "document_symbols",
+            {
+                "jsonrpc": "2.0",
+                "id": 106,
+                "method": "textDocument/documentSymbol",
+                "params": {"textDocument": {"uri": editor_workflow_uri}},
+            },
+            lambda responses, should_exit: bool(responses)
+            and any(item.get("name") == "InvoiceForm" for item in responses[0].get("result", ()))
+            and should_exit is False,
+            "document_symbols",
+        ),
+        (
+            "rename",
+            {
+                "jsonrpc": "2.0",
+                "id": 107,
+                "method": "textDocument/rename",
+                "params": {
+                    "textDocument": {"uri": editor_workflow_uri},
+                    "position": editor_position("SubmitInvoice {", len("")),
+                    "newName": "PostInvoice",
+                },
+            },
+            lambda responses, should_exit: bool(responses)
+            and "PostInvoice" in responses[0].get("result", {}).get("changes", {}).get(editor_workflow_uri, ({},))[0].get("newText", "")
+            and should_exit is False,
+            "workspace_edit",
+        ),
+        (
+            "workspace_symbol",
+            {"jsonrpc": "2.0", "id": 110, "method": "workspace/symbol", "params": {"query": "Invoice"}},
+            lambda responses, should_exit: bool(responses)
+            and any(item.get("name") == "Invoice" for item in responses[0].get("result", ()))
+            and should_exit is False,
+            "workspace_symbols",
+        ),
+        (
+            "change_diagnostics",
+            {
+                "jsonrpc": "2.0",
+                "method": "textDocument/didChange",
+                "params": {
+                    "textDocument": {"uri": editor_workflow_uri, "version": 2},
+                    "contentChanges": ({"text": editor_workflow_changed_source},),
+                },
+            },
+            lambda responses, should_exit: bool(responses)
+            and responses[0].get("method") == "textDocument/publishDiagnostics"
+            and any(item.get("severity") == 1 for item in responses[0].get("params", {}).get("diagnostics", ()))
+            and should_exit is False,
+            "changed_diagnostics",
+        ),
+        (
+            "code_action",
+            {
+                "jsonrpc": "2.0",
+                "id": 108,
+                "method": "textDocument/codeAction",
+                "params": {
+                    "textDocument": {"uri": editor_workflow_uri},
+                    "range": _lsp_full_document_range(editor_workflow_changed_source),
+                },
+            },
+            lambda responses, should_exit: bool(responses)
+            and any(item.get("data", {}).get("id") == "create_missing_field" for item in responses[0].get("result", ()))
+            and should_exit is False,
+            "quick_fixes",
+        ),
+        (
+            "formatting",
+            {
+                "jsonrpc": "2.0",
+                "id": 109,
+                "method": "textDocument/formatting",
+                "params": {
+                    "textDocument": {"uri": editor_workflow_uri},
+                    "options": {"tabSize": 2, "insertSpaces": True},
+                },
+            },
+            lambda responses, should_exit: bool(responses)
+            and bool(responses[0].get("result"))
+            and "missing_field" in responses[0].get("result", ({},))[0].get("newText", "")
+            and should_exit is False,
+            "formatting_edits",
+        ),
+        (
+            "shutdown",
+            {"jsonrpc": "2.0", "id": 111, "method": "shutdown", "params": {}},
+            lambda responses, should_exit: bool(responses)
+            and responses[0].get("result") is None
+            and should_exit is False,
+            "shutdown_ack",
+        ),
+        (
+            "exit",
+            {"jsonrpc": "2.0", "method": "exit", "params": {}},
+            lambda responses, should_exit: responses == () and should_exit is True,
+            "exit_signal",
+        ),
+    )
+    editor_workflow_results = []
+    for case_id, message, predicate, result_shape in editor_workflow_steps:
+        responses, should_exit = lsp_server_handle_message(message, editor_workflow_documents)
+        editor_workflow_results.append(
+            {
+                "id": case_id,
+                "ok": bool(predicate(responses, should_exit)),
+                "method": message.get("method"),
+                "response_count": len(responses),
+                "request_id": message.get("id"),
+                "response_id": responses[0].get("id") if responses and "id" in responses[0] else None,
+                "notification_method": responses[0].get("method") if responses and "method" in responses[0] else None,
+                "result_shape": result_shape,
+                "should_exit": should_exit,
+            }
+        )
+    editor_workflow_case_ids = tuple(result["id"] for result in editor_workflow_results)
+    editor_workflow_failing_cases = tuple(
+        result["id"] for result in editor_workflow_results if not result["ok"]
+    )
+    expected_editor_workflow_case_ids = tuple(case_id for case_id, _, _, _ in editor_workflow_steps)
+    missing_editor_workflow_cases = tuple(
+        case_id for case_id in expected_editor_workflow_case_ids if case_id not in editor_workflow_case_ids
+    )
+    editor_workflow_methods_by_case = {result["id"]: result["method"] for result in editor_workflow_results}
+    editor_workflow_result_shapes_by_case = {
+        result["id"]: result["result_shape"] for result in editor_workflow_results
+    }
+    expected_editor_workflow_methods_by_case = {
+        case_id: message.get("method") for case_id, message, _, _ in editor_workflow_steps
+    }
+    expected_editor_workflow_result_shapes_by_case = {
+        case_id: result_shape for case_id, _, _, result_shape in editor_workflow_steps
+    }
+    missing_editor_workflow_method_cases = tuple(
+        case_id
+        for case_id, expected_method in expected_editor_workflow_methods_by_case.items()
+        if editor_workflow_methods_by_case.get(case_id) != expected_method
+    )
+    missing_editor_workflow_shape_cases = tuple(
+        case_id
+        for case_id, expected_shape in expected_editor_workflow_result_shapes_by_case.items()
+        if editor_workflow_result_shapes_by_case.get(case_id) != expected_shape
+    )
+    editor_workflow_diagnostic_transition_ok = (
+        next((item for item in editor_workflow_results if item["id"] == "open_diagnostics"), {}).get("ok") is True
+        and next((item for item in editor_workflow_results if item["id"] == "change_diagnostics"), {}).get("ok") is True
+        and editor_workflow_documents.get(editor_workflow_uri) == editor_workflow_changed_source
+    )
+    editor_workflow_shutdown_exit_ok = (
+        next((item for item in editor_workflow_results if item["id"] == "shutdown"), {}).get("ok") is True
+        and next((item for item in editor_workflow_results if item["id"] == "exit"), {}).get("ok") is True
+    )
+    checks.append(
+        _release_check(
+            "editor_lifecycle_workflow",
+            not editor_workflow_failing_cases
+            and not missing_editor_workflow_cases
+            and not missing_editor_workflow_method_cases
+            and not missing_editor_workflow_shape_cases
+            and editor_workflow_diagnostic_transition_ok
+            and editor_workflow_shutdown_exit_ok,
+            detail={
+                "case_ids": editor_workflow_case_ids,
+                "failing_cases": editor_workflow_failing_cases,
+                "missing_cases": missing_editor_workflow_cases,
+                "missing_method_cases": missing_editor_workflow_method_cases,
+                "missing_shape_cases": missing_editor_workflow_shape_cases,
+            },
+        )
+    )
     provider_flags = {
         "completion": bool(capabilities.get("completionProvider", {}).get("triggerCharacters")),
         "hover": capabilities.get("hoverProvider") is True,
@@ -13422,6 +13758,25 @@ composition Suite {
         "required_hover_surface_count": len(required_hover_surfaces),
         "observed_hover_surface_count": len(observed_hover_surfaces),
         "missing_hover_surface_count": len(missing_hover_surfaces),
+        "editor_workflow_case_count": len(editor_workflow_results),
+        "editor_workflow_passing_case_count": sum(1 for result in editor_workflow_results if result["ok"]),
+        "editor_workflow_failing_case_count": len(editor_workflow_failing_cases),
+        "editor_workflow_failing_cases": editor_workflow_failing_cases,
+        "editor_workflow_case_ids": editor_workflow_case_ids,
+        "required_editor_workflow_case_ids": expected_editor_workflow_case_ids,
+        "missing_editor_workflow_case_count": len(missing_editor_workflow_cases),
+        "missing_editor_workflow_cases": missing_editor_workflow_cases,
+        "expected_editor_workflow_methods_by_case": expected_editor_workflow_methods_by_case,
+        "editor_workflow_methods_by_case": editor_workflow_methods_by_case,
+        "missing_editor_workflow_method_case_count": len(missing_editor_workflow_method_cases),
+        "missing_editor_workflow_method_cases": missing_editor_workflow_method_cases,
+        "expected_editor_workflow_result_shapes_by_case": expected_editor_workflow_result_shapes_by_case,
+        "editor_workflow_result_shapes_by_case": editor_workflow_result_shapes_by_case,
+        "missing_editor_workflow_shape_case_count": len(missing_editor_workflow_shape_cases),
+        "missing_editor_workflow_shape_cases": missing_editor_workflow_shape_cases,
+        "editor_workflow_diagnostic_transition_ok": editor_workflow_diagnostic_transition_ok,
+        "editor_workflow_shutdown_exit_ok": editor_workflow_shutdown_exit_ok,
+        "editor_workflow_results": tuple(editor_workflow_results),
         "code_action_count": len(code_actions),
         "formatting_edit_count": len(formatting_edits),
         "checks": checks,

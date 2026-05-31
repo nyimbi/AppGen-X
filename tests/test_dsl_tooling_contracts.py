@@ -1845,6 +1845,42 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     assert audit["method_contracts"]["textDocument/didChange"]["provider"] == "notification"
     assert audit["method_contracts"]["textDocument/codeAction"]["check"] == "code_action_request"
     assert audit["method_contracts"]["textDocument/formatting"]["check"] == "formatting_request"
+    assert audit["editor_workflow_case_count"] == 14
+    assert audit["editor_workflow_passing_case_count"] == audit["editor_workflow_case_count"]
+    assert audit["editor_workflow_failing_case_count"] == 0
+    assert audit["editor_workflow_failing_cases"] == ()
+    assert audit["required_editor_workflow_case_ids"] == (
+        "initialize",
+        "open_diagnostics",
+        "completion",
+        "hover",
+        "definition",
+        "references",
+        "document_symbols",
+        "rename",
+        "workspace_symbol",
+        "change_diagnostics",
+        "code_action",
+        "formatting",
+        "shutdown",
+        "exit",
+    )
+    assert audit["editor_workflow_case_ids"] == audit["required_editor_workflow_case_ids"]
+    assert audit["missing_editor_workflow_case_count"] == 0
+    assert audit["missing_editor_workflow_cases"] == ()
+    assert audit["editor_workflow_methods_by_case"] == audit["expected_editor_workflow_methods_by_case"]
+    assert audit["missing_editor_workflow_method_case_count"] == 0
+    assert audit["missing_editor_workflow_method_cases"] == ()
+    assert audit["editor_workflow_result_shapes_by_case"] == audit["expected_editor_workflow_result_shapes_by_case"]
+    assert audit["missing_editor_workflow_shape_case_count"] == 0
+    assert audit["missing_editor_workflow_shape_cases"] == ()
+    assert audit["editor_workflow_diagnostic_transition_ok"] is True
+    assert audit["editor_workflow_shutdown_exit_ok"] is True
+    workflow_cases = {case["id"]: case for case in audit["editor_workflow_results"]}
+    assert workflow_cases["open_diagnostics"]["notification_method"] == "textDocument/publishDiagnostics"
+    assert workflow_cases["change_diagnostics"]["notification_method"] == "textDocument/publishDiagnostics"
+    assert workflow_cases["rename"]["result_shape"] == "workspace_edit"
+    assert workflow_cases["exit"]["should_exit"] is True
     assert "enterprise_definition_context" in {check["check"] for check in audit["checks"]}
     assert "lexical_reference_scope" in {check["check"] for check in audit["checks"]}
     assert audit["lexical_reference_scope_ok"] is True
@@ -6379,6 +6415,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "workspace_symbol_catalog_result_depth",
         "reference_catalog_index_depth",
         "workspace_document_scan_and_rename",
+        "editor_lifecycle_workflow",
         "enterprise_definition_context",
         "lexical_reference_scope",
         "code_action_request",
@@ -6396,6 +6433,29 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert lsp_transport_check["detail"]["rpc"]["missing_method_contract_count"] == 0
     assert lsp_transport_check["detail"]["rpc"]["missing_method_contracts"] == ()
+    assert lsp_transport_check["detail"]["rpc"]["editor_workflow_case_count"] == 14
+    assert lsp_transport_check["detail"]["rpc"]["editor_workflow_passing_case_count"] == (
+        lsp_transport_check["detail"]["rpc"]["editor_workflow_case_count"]
+    )
+    assert lsp_transport_check["detail"]["rpc"]["editor_workflow_failing_case_count"] == 0
+    assert lsp_transport_check["detail"]["rpc"]["editor_workflow_failing_cases"] == ()
+    assert lsp_transport_check["detail"]["rpc"]["editor_workflow_case_ids"] == (
+        lsp_transport_check["detail"]["rpc"]["required_editor_workflow_case_ids"]
+    )
+    assert lsp_transport_check["detail"]["rpc"]["missing_editor_workflow_case_count"] == 0
+    assert lsp_transport_check["detail"]["rpc"]["missing_editor_workflow_cases"] == ()
+    assert lsp_transport_check["detail"]["rpc"]["editor_workflow_methods_by_case"] == (
+        lsp_transport_check["detail"]["rpc"]["expected_editor_workflow_methods_by_case"]
+    )
+    assert lsp_transport_check["detail"]["rpc"]["missing_editor_workflow_method_case_count"] == 0
+    assert lsp_transport_check["detail"]["rpc"]["missing_editor_workflow_method_cases"] == ()
+    assert lsp_transport_check["detail"]["rpc"]["editor_workflow_result_shapes_by_case"] == (
+        lsp_transport_check["detail"]["rpc"]["expected_editor_workflow_result_shapes_by_case"]
+    )
+    assert lsp_transport_check["detail"]["rpc"]["missing_editor_workflow_shape_case_count"] == 0
+    assert lsp_transport_check["detail"]["rpc"]["missing_editor_workflow_shape_cases"] == ()
+    assert lsp_transport_check["detail"]["rpc"]["editor_workflow_diagnostic_transition_ok"] is True
+    assert lsp_transport_check["detail"]["rpc"]["editor_workflow_shutdown_exit_ok"] is True
     assert set(lsp_transport_check["detail"]["rpc"]["method_contracts"]) == {
         "textDocument/didOpen",
         "textDocument/didChange",
