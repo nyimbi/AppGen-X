@@ -6827,6 +6827,44 @@ TOP_LEVEL_PACKAGE_SUPPORT_SCHEMA_FORMATS = (
 )
 
 
+BINDING_DESIGNER_SCHEMA_FORMATS = (
+    "appgen.binding-accessibility-contract.v1",
+    "appgen.binding-authoring-session.v1",
+    "appgen.binding-bulk-edit-contract.v1",
+    "appgen.binding-conflict-resolution-workflow.v1",
+    "appgen.binding-conflict-validation-contract.v1",
+    "appgen.binding-dataset-cursor-sync-contract.v1",
+    "appgen.binding-dependency-execution-plan-contract.v1",
+    "appgen.binding-design-runtime-session-replay-contract.v1",
+    "appgen.binding-designer-family-contract.v1",
+    "appgen.binding-designer-transaction-replay-contract.v1",
+    "appgen.binding-diagnostics-contract.v1",
+    "appgen.binding-edit-transaction-contract.v1",
+    "appgen.binding-expression-editor-transaction-replay.v1",
+    "appgen.binding-expression-sandbox-contract.v1",
+    "appgen.binding-expression-validation.v1",
+    "appgen.binding-graph-editing-surface-contract.v1",
+    "appgen.binding-graph-json.v1",
+    "appgen.binding-graph-validation-contract.v1",
+    "appgen.binding-history-contract.v1",
+    "appgen.binding-hit-testing-contract.v1",
+    "appgen.binding-lifecycle-release-replay.v1",
+    "appgen.binding-lookup-contract.v1",
+    "appgen.binding-master-detail-contract.v1",
+    "appgen.binding-offline-replay-contract.v1",
+    "appgen.binding-pipeline-contract.v1",
+    "appgen.binding-preview-evaluation-contract.v1",
+    "appgen.binding-preview-runtime-parity-contract.v1",
+    "appgen.binding-round-trip-contract.v1",
+    "appgen.binding-runtime-failure-recovery-contract.v1",
+    "appgen.binding-runtime-gate-contract.v1",
+    "appgen.binding-runtime-propagation-replay-contract.v1",
+    "appgen.binding-runtime-wiring-contract.v1",
+    "appgen.binding-scope-context-contract.v1",
+    "appgen.binding-update-scheduler-contract.v1",
+)
+
+
 CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.diagnostic.v1",
     "appgen.lint-report.v1",
@@ -6994,6 +7032,7 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     *AGENTIC_DEVELOPMENT_SCHEMA_FORMATS,
     *ACP_COMPOSITION_SCHEMA_FORMATS,
     *TOP_LEVEL_PACKAGE_SUPPORT_SCHEMA_FORMATS,
+    *BINDING_DESIGNER_SCHEMA_FORMATS,
     "appgen.contract-schema-catalog.v1",
     "appgen.contract-validation-report.v1",
 )
@@ -7394,6 +7433,110 @@ def _top_level_package_support_schema(title: str) -> dict:
             "baseline": {"type": "array", "items": {"type": "object"}},
             "advantages": {"type": "array", "items": {"type": "object"}},
             "stop_condition": {"type": "string"},
+        },
+    )
+
+
+def _binding_designer_schema(title: str) -> dict:
+    required_by_format = {
+        "appgen.binding-accessibility-contract.v1": ("format", "ok", "shortcuts", "announcements"),
+        "appgen.binding-authoring-session.v1": ("format", "operations", "undo_redo"),
+        "appgen.binding-bulk-edit-contract.v1": ("format", "ok", "operations", "validation"),
+        "appgen.binding-conflict-resolution-workflow.v1": ("format", "ok", "resolutions"),
+        "appgen.binding-conflict-validation-contract.v1": ("format", "ok", "checks"),
+        "appgen.binding-dataset-cursor-sync-contract.v1": ("format", "ok", "dataset", "fields", "flows"),
+        "appgen.binding-dependency-execution-plan-contract.v1": ("format", "ok", "execution_plan"),
+        "appgen.binding-design-runtime-session-replay-contract.v1": ("format", "ok", "replay", "final_state"),
+        "appgen.binding-designer-family-contract.v1": ("format", "ok", "decision", "families", "checks"),
+        "appgen.binding-designer-transaction-replay-contract.v1": ("format", "ok", "replay", "final_state"),
+        "appgen.binding-diagnostics-contract.v1": ("format", "ok", "diagnostics"),
+        "appgen.binding-edit-transaction-contract.v1": ("format", "graph_snapshot", "operations", "validation"),
+        "appgen.binding-expression-editor-transaction-replay.v1": ("format", "ok", "decision", "replay", "checks"),
+        "appgen.binding-expression-sandbox-contract.v1": ("format", "ok", "safe_expressions", "blocked_probe", "sandbox"),
+        "appgen.binding-expression-validation.v1": ("format", "expression", "ok", "functions", "blocked_tokens"),
+        "appgen.binding-graph-editing-surface-contract.v1": ("format", "ok", "operations"),
+        "appgen.binding-graph-json.v1": ("format", "nodes", "edges"),
+        "appgen.binding-graph-validation-contract.v1": ("format", "ok", "node_count", "edge_count"),
+        "appgen.binding-history-contract.v1": ("format", "commands", "undo_stack", "redo_stack"),
+        "appgen.binding-hit-testing-contract.v1": ("format", "ok", "hit_targets"),
+        "appgen.binding-lifecycle-release-replay.v1": ("format", "ok", "decision", "replay", "checks"),
+        "appgen.binding-lookup-contract.v1": ("format", "ok", "table", "nodes", "edges"),
+        "appgen.binding-master-detail-contract.v1": ("format", "ok", "links"),
+        "appgen.binding-offline-replay-contract.v1": ("format", "ok", "queue_items", "conflict_policy"),
+        "appgen.binding-pipeline-contract.v1": ("format", "ok", "pipelines"),
+        "appgen.binding-preview-evaluation-contract.v1": ("format", "previews", "evaluation_mode"),
+        "appgen.binding-preview-runtime-parity-contract.v1": ("format", "ok", "preview_nodes", "runtime_expression_sources"),
+        "appgen.binding-round-trip-contract.v1": ("format", "ok", "exported", "imported"),
+        "appgen.binding-runtime-failure-recovery-contract.v1": ("format", "ok", "scenarios", "runtime_artifacts"),
+        "appgen.binding-runtime-gate-contract.v1": ("format", "ok", "gates"),
+        "appgen.binding-runtime-propagation-replay-contract.v1": ("format", "ok", "field", "trace", "final_state"),
+        "appgen.binding-runtime-wiring-contract.v1": ("format", "artifacts", "triggers", "edges"),
+        "appgen.binding-scope-context-contract.v1": ("format", "ok", "contexts", "resolution_order"),
+        "appgen.binding-update-scheduler-contract.v1": ("format", "ok", "phases", "queue_policy"),
+    }
+    common_array = {"type": "array", "items": {"type": ("object", "string", "array")}}
+    return _contract_format_schema(
+        title,
+        required=required_by_format[title],
+        properties={
+            "decision": {"type": "string"},
+            "expression": {"type": "string"},
+            "functions": {"type": "array", "items": {"type": "string"}},
+            "unknown_functions": {"type": "array", "items": {"type": "string"}},
+            "blocked_tokens": {"type": "array", "items": {"type": "string"}},
+            "operations": common_array,
+            "undo_redo": {"type": "array", "items": {"type": "string"}},
+            "redo_stack": common_array,
+            "undo_stack": common_array,
+            "checks": common_array,
+            "resolutions": common_array,
+            "duplicate_edges": common_array,
+            "duplicate_writes": common_array,
+            "dataset": {"type": "string"},
+            "fields": common_array,
+            "flows": common_array,
+            "execution_plan": common_array,
+            "replay": common_array,
+            "final_state": {"type": "object"},
+            "families": common_array,
+            "required_families": {"type": "array", "items": {"type": "string"}},
+            "diagnostics": common_array,
+            "graph_snapshot": {"type": "object"},
+            "safe_expressions": common_array,
+            "blocked_probe": {"type": "object"},
+            "sandbox": {"type": "object"},
+            "nodes": common_array,
+            "edges": common_array,
+            "node_count": {"type": "integer", "minimum": 0},
+            "edge_count": {"type": "integer", "minimum": 0},
+            "commands": {"type": "array", "items": {"type": "string"}},
+            "checkpoints": {"type": "array", "items": {"type": "string"}},
+            "hit_targets": common_array,
+            "table": {"type": "string"},
+            "links": common_array,
+            "queue_items": common_array,
+            "conflict_policy": {"type": "array", "items": {"type": "string"}},
+            "pipelines": common_array,
+            "previews": common_array,
+            "evaluation_mode": {"type": "string"},
+            "preview_nodes": {"type": "array", "items": {"type": "string"}},
+            "runtime_expression_sources": {"type": "array", "items": {"type": "string"}},
+            "exported": {"type": "object"},
+            "imported": {"type": "object"},
+            "scenarios": common_array,
+            "runtime_artifacts": {"type": "array", "items": {"type": "string"}},
+            "gates": common_array,
+            "field": {"type": "string"},
+            "trace": common_array,
+            "artifacts": {"type": "array", "items": {"type": "string"}},
+            "triggers": {"type": "array", "items": {"type": "string"}},
+            "error_surfaces": {"type": "array", "items": {"type": "string"}},
+            "contexts": common_array,
+            "resolution_order": {"type": "array", "items": {"type": "string"}},
+            "phases": common_array,
+            "queue_policy": {"type": "array", "items": {"type": "string"}},
+            "guards": {"type": "array", "items": {"type": "string"}},
+            "side_effects": common_array,
         },
     )
 
@@ -9518,6 +9661,10 @@ def _contract_schema_catalog() -> dict[str, dict]:
         **{
             schema_format: _top_level_package_support_schema(schema_format)
             for schema_format in TOP_LEVEL_PACKAGE_SUPPORT_SCHEMA_FORMATS
+        },
+        **{
+            schema_format: _binding_designer_schema(schema_format)
+            for schema_format in BINDING_DESIGNER_SCHEMA_FORMATS
         },
         "appgen.contract-schema-catalog.v1": _json_object_schema(
             "appgen.contract-schema-catalog.v1",
@@ -21688,6 +21835,82 @@ def _top_level_package_support_schema_sample(schema_format: str) -> dict:
     raise KeyError(schema_format)
 
 
+def _binding_designer_schema_sample(schema_format: str) -> dict:
+    from .form_designer import (
+        binding_accessibility_contract,
+        binding_authoring_session,
+        binding_bulk_edit_contract,
+        binding_conflict_resolution_workflow,
+        binding_conflict_validation_contract,
+        binding_dataset_cursor_sync_contract,
+        binding_dependency_execution_plan_contract,
+        binding_design_runtime_session_replay_contract,
+        binding_designer_family_contract,
+        binding_designer_transaction_replay_contract,
+        binding_diagnostics_contract,
+        binding_edit_transaction_contract,
+        binding_expression_editor_transaction_replay_contract,
+        binding_expression_sandbox_contract,
+        binding_graph_editing_surface_contract,
+        binding_graph_validation_contract,
+        binding_history_contract,
+        binding_hit_testing_contract,
+        binding_lifecycle_release_replay_contract,
+        binding_lookup_contract,
+        binding_master_detail_contract,
+        binding_offline_replay_contract,
+        binding_pipeline_contract,
+        binding_preview_evaluation_contract,
+        binding_preview_runtime_parity_contract,
+        binding_round_trip_contract,
+        binding_runtime_failure_recovery_contract,
+        binding_runtime_gate_contract,
+        binding_runtime_propagation_replay_contract,
+        binding_runtime_wiring_contract,
+        binding_scope_context_contract,
+        binding_update_scheduler_contract,
+        validate_binding_expression,
+    )
+
+    sample_by_format = {
+        "appgen.binding-accessibility-contract.v1": binding_accessibility_contract,
+        "appgen.binding-authoring-session.v1": binding_authoring_session,
+        "appgen.binding-bulk-edit-contract.v1": binding_bulk_edit_contract,
+        "appgen.binding-conflict-resolution-workflow.v1": binding_conflict_resolution_workflow,
+        "appgen.binding-conflict-validation-contract.v1": binding_conflict_validation_contract,
+        "appgen.binding-dataset-cursor-sync-contract.v1": binding_dataset_cursor_sync_contract,
+        "appgen.binding-dependency-execution-plan-contract.v1": binding_dependency_execution_plan_contract,
+        "appgen.binding-design-runtime-session-replay-contract.v1": binding_design_runtime_session_replay_contract,
+        "appgen.binding-designer-family-contract.v1": binding_designer_family_contract,
+        "appgen.binding-designer-transaction-replay-contract.v1": binding_designer_transaction_replay_contract,
+        "appgen.binding-diagnostics-contract.v1": binding_diagnostics_contract,
+        "appgen.binding-edit-transaction-contract.v1": binding_edit_transaction_contract,
+        "appgen.binding-expression-editor-transaction-replay.v1": binding_expression_editor_transaction_replay_contract,
+        "appgen.binding-expression-sandbox-contract.v1": binding_expression_sandbox_contract,
+        "appgen.binding-expression-validation.v1": lambda: validate_binding_expression("concat(name, ' / ', email)"),
+        "appgen.binding-graph-editing-surface-contract.v1": binding_graph_editing_surface_contract,
+        "appgen.binding-graph-json.v1": lambda: binding_round_trip_contract()["exported"],
+        "appgen.binding-graph-validation-contract.v1": binding_graph_validation_contract,
+        "appgen.binding-history-contract.v1": binding_history_contract,
+        "appgen.binding-hit-testing-contract.v1": binding_hit_testing_contract,
+        "appgen.binding-lifecycle-release-replay.v1": binding_lifecycle_release_replay_contract,
+        "appgen.binding-lookup-contract.v1": binding_lookup_contract,
+        "appgen.binding-master-detail-contract.v1": binding_master_detail_contract,
+        "appgen.binding-offline-replay-contract.v1": binding_offline_replay_contract,
+        "appgen.binding-pipeline-contract.v1": binding_pipeline_contract,
+        "appgen.binding-preview-evaluation-contract.v1": binding_preview_evaluation_contract,
+        "appgen.binding-preview-runtime-parity-contract.v1": binding_preview_runtime_parity_contract,
+        "appgen.binding-round-trip-contract.v1": binding_round_trip_contract,
+        "appgen.binding-runtime-failure-recovery-contract.v1": binding_runtime_failure_recovery_contract,
+        "appgen.binding-runtime-gate-contract.v1": binding_runtime_gate_contract,
+        "appgen.binding-runtime-propagation-replay-contract.v1": binding_runtime_propagation_replay_contract,
+        "appgen.binding-runtime-wiring-contract.v1": binding_runtime_wiring_contract,
+        "appgen.binding-scope-context-contract.v1": binding_scope_context_contract,
+        "appgen.binding-update-scheduler-contract.v1": binding_update_scheduler_contract,
+    }
+    return sample_by_format[schema_format]()
+
+
 def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
     source = _tooling_audit_sample_dsl()
     with tempfile.TemporaryDirectory(prefix="appgen-contract-schema-samples-") as tmp:
@@ -22170,6 +22393,10 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             **{
                 schema_format: _top_level_package_support_schema_sample(schema_format)
                 for schema_format in TOP_LEVEL_PACKAGE_SUPPORT_SCHEMA_FORMATS
+            },
+            **{
+                schema_format: _binding_designer_schema_sample(schema_format)
+                for schema_format in BINDING_DESIGNER_SCHEMA_FORMATS
             },
             "appgen.contract-schema-catalog.v1": contract_schema_catalog_dsl("appgen.semantic-model.v1"),
         }

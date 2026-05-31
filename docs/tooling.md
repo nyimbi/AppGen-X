@@ -881,7 +881,42 @@ plus the top-level package support contracts:
 `appgen.jhipster-superiority-audit.v1`,
 `appgen.low-code-roadmap-generation-smoke-audit.v1`,
 `appgen.package-goal-audit.v1`, and
-`appgen.roadmap-release-audit.v1`. The catalog is intentionally complete:
+`appgen.roadmap-release-audit.v1`,
+plus the binding-designer runtime contracts:
+`appgen.binding-accessibility-contract.v1`,
+`appgen.binding-authoring-session.v1`,
+`appgen.binding-bulk-edit-contract.v1`,
+`appgen.binding-conflict-resolution-workflow.v1`,
+`appgen.binding-conflict-validation-contract.v1`,
+`appgen.binding-dataset-cursor-sync-contract.v1`,
+`appgen.binding-dependency-execution-plan-contract.v1`,
+`appgen.binding-design-runtime-session-replay-contract.v1`,
+`appgen.binding-designer-family-contract.v1`,
+`appgen.binding-designer-transaction-replay-contract.v1`,
+`appgen.binding-diagnostics-contract.v1`,
+`appgen.binding-edit-transaction-contract.v1`,
+`appgen.binding-expression-editor-transaction-replay.v1`,
+`appgen.binding-expression-sandbox-contract.v1`,
+`appgen.binding-expression-validation.v1`,
+`appgen.binding-graph-editing-surface-contract.v1`,
+`appgen.binding-graph-json.v1`,
+`appgen.binding-graph-validation-contract.v1`,
+`appgen.binding-history-contract.v1`,
+`appgen.binding-hit-testing-contract.v1`,
+`appgen.binding-lifecycle-release-replay.v1`,
+`appgen.binding-lookup-contract.v1`,
+`appgen.binding-master-detail-contract.v1`,
+`appgen.binding-offline-replay-contract.v1`,
+`appgen.binding-pipeline-contract.v1`,
+`appgen.binding-preview-evaluation-contract.v1`,
+`appgen.binding-preview-runtime-parity-contract.v1`,
+`appgen.binding-round-trip-contract.v1`,
+`appgen.binding-runtime-failure-recovery-contract.v1`,
+`appgen.binding-runtime-gate-contract.v1`,
+`appgen.binding-runtime-propagation-replay-contract.v1`,
+`appgen.binding-runtime-wiring-contract.v1`,
+`appgen.binding-scope-context-contract.v1`, and
+`appgen.binding-update-scheduler-contract.v1`. The catalog is intentionally complete:
 every `appgen.*.v1` envelope named in this document, including IDE, frontend,
 visual designer, LSP hover-depth, migration, natural-language, packaging,
 release, component/PBC wrapper, and project-governance contracts, is exported as
@@ -918,6 +953,12 @@ running heavyweight generated-app smoke checks during every schema audit. These
 schemas keep package release gates, generated smoke envelopes, template
 manifests, seed fixtures, and goal-readiness audits visible to CI and external
 agents while the runtime inventory continues to expose the larger backlog.
+
+Binding-designer schemas make visual data-binding handoffs reusable without
+scraping generated release audits. IDEs and agents can validate graph JSON,
+expression validation, staged graph edits, lookup and master-detail wiring,
+runtime propagation, offline replay, diagnostics, accessibility routes, and
+full lifecycle replay from the same `appgen contract-schema` catalog used by CI.
 
 The optional positional format selects one schema from the catalog. Unknown
 schema names return the same `appgen.contract-schema-catalog.v1` envelope with
@@ -2903,7 +2944,7 @@ Exit criteria:
   package release-audit, agentic development-vector, ACP composition, compact
   generation, and top-level package support report schemas are available from CLI
   JSON and text modes. The schema audit validates representative payloads for all
-  224
+  258
   documented `appgen.*.v1` formats, so
   adding a documented contract without a matching runtime sample fails the
   release gate.
