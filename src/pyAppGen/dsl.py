@@ -6751,6 +6751,25 @@ def doctor_report_dsl() -> dict:
     }
 
 
+PACKAGE_RELEASE_AUDIT_SCHEMA_FORMATS = (
+    "appgen.package-dsl-release-audit.v1",
+    "appgen.package-studio-release-audit.v1",
+    "appgen.package-form-designer-release-audit.v1",
+    "appgen.package-visual-modeling-release-audit.v1",
+    "appgen.package-security-release-audit.v1",
+    "appgen.package-source-intake-release-audit.v1",
+    "appgen.package-config-editor-release-audit.v1",
+    "appgen.package-distribution-release-audit.v1",
+    "appgen.package-reporting-release-audit.v1",
+    "appgen.package-ops-release-audit.v1",
+    "appgen.package-integration-release-audit.v1",
+    "appgen.package-agentic-release-audit.v1",
+    "appgen.package-target-release-audit.v1",
+    "appgen.nl-evolution-release-audit.v1",
+    "appgen.erp-template-release-audit.v1",
+)
+
+
 CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.diagnostic.v1",
     "appgen.lint-report.v1",
@@ -6914,6 +6933,7 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.contract-validation-cli-audit.v1",
     "appgen.runtime-contract-inventory.v1",
     "appgen.runtime-contract-inventory-cli-audit.v1",
+    *PACKAGE_RELEASE_AUDIT_SCHEMA_FORMATS,
     "appgen.contract-schema-catalog.v1",
     "appgen.contract-validation-report.v1",
 )
@@ -6988,6 +7008,23 @@ def _target_verifier_schema(title: str) -> dict:
             "passing_check_count": {"type": "integer", "minimum": 0},
             "blocking_gap_count": {"type": "integer", "minimum": 0},
             "blocking_gaps": {"type": "array", "items": {"type": "string"}},
+        },
+    )
+
+
+def _package_release_audit_schema(title: str) -> dict:
+    return _contract_format_schema(
+        title,
+        required=("format", "ok", "decision", "gates", "blocking_gaps"),
+        properties={
+            "scope": {"type": "string"},
+            "decision": {"type": "string", "enum": ("approved", "blocked")},
+            "gates": {"type": "array", "items": {"type": "object"}},
+            "gate_count": {"type": "integer", "minimum": 0},
+            "passing_gate_count": {"type": "integer", "minimum": 0},
+            "blocking_gap_count": {"type": "integer", "minimum": 0},
+            "release_evidence": {"type": "object"},
+            "stop_condition": {"type": "string"},
         },
     )
 
@@ -9097,6 +9134,10 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "text_json_fallback": {"type": "boolean"},
             },
         ),
+        **{
+            schema_format: _package_release_audit_schema(schema_format)
+            for schema_format in PACKAGE_RELEASE_AUDIT_SCHEMA_FORMATS
+        },
         "appgen.contract-schema-catalog.v1": _json_object_schema(
             "appgen.contract-schema-catalog.v1",
             required=("format", "ok", "schema_dialect", "required_schema_formats", "available_schema_formats", "schemas"),
@@ -21137,6 +21178,32 @@ def _tooling_audit_contract_schema_cli() -> dict:
     }
 
 
+def _package_release_audit_schema_sample(schema_format: str) -> dict:
+    scope = schema_format.removeprefix("appgen.").removesuffix("-release-audit.v1")
+    return {
+        "format": schema_format,
+        "ok": True,
+        "scope": scope,
+        "decision": "approved",
+        "gates": (
+            {
+                "id": "schema_backed_release_envelope",
+                "ok": True,
+                "evidence": schema_format,
+            },
+        ),
+        "gate_count": 1,
+        "passing_gate_count": 1,
+        "blocking_gap_count": 0,
+        "blocking_gaps": (),
+        "release_evidence": {
+            "contract_family": "package_release_audit",
+            "schema_format": schema_format,
+        },
+        "stop_condition": "package release audit envelope remains schema-backed and selectable",
+    }
+
+
 def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
     source = _tooling_audit_sample_dsl()
     with tempfile.TemporaryDirectory(prefix="appgen-contract-schema-samples-") as tmp:
@@ -21563,6 +21630,10 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             "appgen.contract-validation-cli-audit.v1": _tooling_audit_contract_validation_cli(tmp_path),
             "appgen.runtime-contract-inventory.v1": runtime_contract_inventory,
             "appgen.runtime-contract-inventory-cli-audit.v1": runtime_contract_inventory_cli,
+            **{
+                schema_format: _package_release_audit_schema_sample(schema_format)
+                for schema_format in PACKAGE_RELEASE_AUDIT_SCHEMA_FORMATS
+            },
             "appgen.contract-schema-catalog.v1": contract_schema_catalog_dsl("appgen.semantic-model.v1"),
         }
         validation_report = contract_validation_report_dsl(

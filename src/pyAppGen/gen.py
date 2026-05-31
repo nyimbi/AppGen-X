@@ -17143,6 +17143,7 @@ def operation_steps():
         "validate_default_props",
         "request_permission",
         "load_simulator_fixture",
+        "check_permission",
         "check_target_bridge",
         "invoke_platform_adapter",
         "normalize_payload",
@@ -24005,7 +24006,7 @@ def replay_device_api(api, target="android"):
         and bool(permissions.get(api))
         and bool(fixtures.get(api))
         and bool(runtime.get(api))
-        and "dispatch_component_events" in runtime[api]["phases"],
+        and "dispatch_component_events" in runtime.get(api, {}).get("phases", ()),
         "api": api,
         "target": target,
         "target_supported": target_supported,
@@ -24099,12 +24100,12 @@ def smoke_test():
                 *(
                     phase
                     for item in manifest["runtime_replay"]["replay"]
-                    for phase in item["phases"]
+                    for phase in item.get("phases", ())
                 ),
                 *(
                     phase
                     for item in manifest["designer_transaction_replay"]["replay"]
-                    for phase in item["phases"]
+                    for phase in item.get("phases", ())
                 ),
                 *(
                     phase

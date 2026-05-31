@@ -817,11 +817,34 @@ audits, semantic-drift and semantic-drift text-renderer audits,
 `appgen.tooling-audit.v1`, `appgen.contract-schema-catalog.v1`, and
 `appgen.contract-validation-report.v1`,
 `appgen.runtime-contract-inventory.v1`, and
-`appgen.runtime-contract-inventory-cli-audit.v1`. The catalog is intentionally complete:
+`appgen.runtime-contract-inventory-cli-audit.v1`,
+plus the package-level release audit family:
+`appgen.package-dsl-release-audit.v1`,
+`appgen.package-studio-release-audit.v1`,
+`appgen.package-form-designer-release-audit.v1`,
+`appgen.package-visual-modeling-release-audit.v1`,
+`appgen.package-security-release-audit.v1`,
+`appgen.package-source-intake-release-audit.v1`,
+`appgen.package-config-editor-release-audit.v1`,
+`appgen.package-distribution-release-audit.v1`,
+`appgen.package-reporting-release-audit.v1`,
+`appgen.package-ops-release-audit.v1`,
+`appgen.package-integration-release-audit.v1`,
+`appgen.package-agentic-release-audit.v1`,
+`appgen.package-target-release-audit.v1`,
+`appgen.nl-evolution-release-audit.v1`, and
+`appgen.erp-template-release-audit.v1`. The catalog is intentionally complete:
 every `appgen.*.v1` envelope named in this document, including IDE, frontend,
 visual designer, LSP hover-depth, migration, natural-language, packaging,
 release, component/PBC wrapper, and project-governance contracts, is exported as
 a selectable schema and covered by representative sample validation.
+
+Package release-audit schemas share one envelope shape: `format`, `ok`,
+`decision`, `gates`, and `blocking_gaps` are required, with optional `scope`,
+gate counts, release evidence, and stop-condition fields. This keeps every
+top-level package release gate consumable by CI, IDE panels, and external coding
+agents without making the aggregate schema audit execute each heavyweight
+package verifier every time.
 
 The optional positional format selects one schema from the catalog. Unknown
 schema names return the same `appgen.contract-schema-catalog.v1` envelope with
@@ -2803,9 +2826,10 @@ Exit criteria:
   designer-sync, visual designer, Studio/frontend bridge, diagnostic catalog,
   parser-golden, drift, migration, natural-language, release-verifier,
   package-manifest, component/PBC wrapper, doctor, tooling-audit,
-  project-governance, schema-catalog, and contract-validation report schemas are
-  available from CLI JSON and text modes. The schema audit validates
-  representative payloads for all 164 documented `appgen.*.v1` formats, so
+  project-governance, schema-catalog, contract-validation, runtime inventory,
+  and package release-audit report schemas are available from CLI JSON and text
+  modes. The schema audit validates representative payloads for all 179
+  documented `appgen.*.v1` formats, so
   adding a documented contract without a matching runtime sample fails the
   release gate.
 - `appgen.contract-validation-cli-audit.v1` proves those JSON contracts can be
