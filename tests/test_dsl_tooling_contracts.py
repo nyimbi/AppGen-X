@@ -6916,6 +6916,26 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_help_gate["detail"]["command_alias_count"] == 2
     assert cli_help_gate["detail"]["entrypoint_dispatch_count"] == 2
     assert cli_help_gate["detail"]["failing_entrypoint_dispatch_count"] == 0
+    assert cli_help_gate["detail"]["required_entrypoint_ids"] == ("python_module", "repo_alias")
+    assert cli_help_gate["detail"]["observed_entrypoint_ids"] == cli_help_gate["detail"]["required_entrypoint_ids"]
+    assert cli_help_gate["detail"]["missing_entrypoint_ids"] == ()
+    assert cli_help_gate["detail"]["missing_entrypoint_id_count"] == 0
+    assert cli_help_gate["detail"]["entrypoint_dispatch_ok_by_id"] == {"python_module": True, "repo_alias": True}
+    assert cli_help_gate["detail"]["missing_entrypoint_dispatch_ids"] == ()
+    assert cli_help_gate["detail"]["missing_entrypoint_dispatch_count"] == 0
+    assert cli_help_gate["detail"]["entrypoint_exit_codes_by_id"] == (
+        cli_help_gate["detail"]["expected_entrypoint_exit_codes_by_id"]
+    )
+    assert cli_help_gate["detail"]["missing_entrypoint_exit_code_ids"] == ()
+    assert cli_help_gate["detail"]["missing_entrypoint_exit_code_count"] == 0
+    assert cli_help_gate["detail"]["entrypoint_payload_formats_by_id"] == (
+        cli_help_gate["detail"]["expected_entrypoint_payload_formats_by_id"]
+    )
+    assert cli_help_gate["detail"]["missing_entrypoint_payload_format_ids"] == ()
+    assert cli_help_gate["detail"]["missing_entrypoint_payload_format_count"] == 0
+    assert cli_help_gate["detail"]["entrypoint_traceback_free_by_id"] == {"python_module": True, "repo_alias": True}
+    assert cli_help_gate["detail"]["missing_entrypoint_traceback_free_ids"] == ()
+    assert cli_help_gate["detail"]["missing_entrypoint_traceback_free_count"] == 0
     assert cli_help_gate["detail"]["alias_contract"]["format"] == "appgen.cli-alias-contract.v1"
     assert cli_help_gate["detail"]["alias_contract"]["shared_target"] == "pyAppGen.__main__:main"
     assert cli_help_gate["detail"]["module_entrypoint"]["ok"] is True
@@ -9845,10 +9865,44 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert audit["command_alias_count"] == 2
     assert audit["entrypoint_dispatch_count"] == 2
     assert audit["failing_entrypoint_dispatch_count"] == 0
+    assert audit["required_entrypoint_ids"] == ("python_module", "repo_alias")
+    assert audit["observed_entrypoint_ids"] == audit["required_entrypoint_ids"]
+    assert audit["missing_entrypoint_ids"] == ()
+    assert audit["missing_entrypoint_id_count"] == 0
+    assert audit["entrypoint_dispatch_ok_by_id"] == {"python_module": True, "repo_alias": True}
+    assert audit["missing_entrypoint_dispatch_ids"] == ()
+    assert audit["missing_entrypoint_dispatch_count"] == 0
+    assert audit["expected_entrypoint_exit_codes_by_id"] == {"python_module": 0, "repo_alias": 0}
+    assert audit["entrypoint_exit_codes_by_id"] == audit["expected_entrypoint_exit_codes_by_id"]
+    assert audit["missing_entrypoint_exit_code_ids"] == ()
+    assert audit["missing_entrypoint_exit_code_count"] == 0
+    assert audit["expected_entrypoint_payload_formats_by_id"] == {
+        "python_module": "appgen.lint-report.v1",
+        "repo_alias": "appgen.lint-report.v1",
+    }
+    assert audit["entrypoint_payload_formats_by_id"] == audit["expected_entrypoint_payload_formats_by_id"]
+    assert audit["missing_entrypoint_payload_format_ids"] == ()
+    assert audit["missing_entrypoint_payload_format_count"] == 0
+    assert audit["entrypoint_traceback_free_by_id"] == {"python_module": True, "repo_alias": True}
+    assert audit["missing_entrypoint_traceback_free_ids"] == ()
+    assert audit["missing_entrypoint_traceback_free_count"] == 0
     assert audit["alias_contract"]["format"] == "appgen.cli-alias-contract.v1"
     assert audit["alias_contract"]["ok"] is True
     assert audit["alias_contract"]["commands"] == ("appgen", "apg")
     assert audit["alias_contract"]["shared_target"] == "pyAppGen.__main__:main"
+    assert audit["alias_contract"]["required_entrypoint_ids"] == audit["required_entrypoint_ids"]
+    assert audit["alias_contract"]["observed_entrypoint_ids"] == audit["required_entrypoint_ids"]
+    assert audit["alias_contract"]["missing_entrypoint_ids"] == ()
+    assert audit["alias_contract"]["entrypoint_dispatch_ok_by_id"] == audit["entrypoint_dispatch_ok_by_id"]
+    assert audit["alias_contract"]["missing_entrypoint_dispatch_ids"] == ()
+    assert audit["alias_contract"]["entrypoint_exit_codes_by_id"] == audit["expected_entrypoint_exit_codes_by_id"]
+    assert audit["alias_contract"]["missing_entrypoint_exit_code_ids"] == ()
+    assert audit["alias_contract"]["entrypoint_payload_formats_by_id"] == (
+        audit["expected_entrypoint_payload_formats_by_id"]
+    )
+    assert audit["alias_contract"]["missing_entrypoint_payload_format_ids"] == ()
+    assert audit["alias_contract"]["entrypoint_traceback_free_by_id"] == audit["entrypoint_traceback_free_by_id"]
+    assert audit["alias_contract"]["missing_entrypoint_traceback_free_ids"] == ()
     assert audit["alias_contract"]["module_dispatches_tooling"] is True
     assert audit["alias_contract"]["module_payload_format"] == "appgen.lint-report.v1"
     assert audit["alias_contract"]["repo_alias_dispatches_tooling"] is True

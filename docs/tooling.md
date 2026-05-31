@@ -599,11 +599,16 @@ entrypoint, and repo-alias execution evidence, so release evidence can prove CLI
 discoverability breadth without scraping nested help payloads.
 The audit also emits missing documented-subcommand details, option help
 exit-failure details, per-command missing-option details, command-alias counts,
-entrypoint-dispatch counts, failing-entrypoint-dispatch counts,
-failing-option-surface counts, listed-subcommand counts, and top-level help byte
-counts. These detail lists must be empty, `entrypoint_dispatch_count` must prove
-both module and repo-local alias dispatch,
-`failing_entrypoint_dispatch_count` must be zero, and
+entrypoint-dispatch counts, failing-entrypoint-dispatch counts, named
+entrypoint ids, per-entrypoint dispatch booleans, expected and observed
+per-entrypoint exit codes, expected and observed per-entrypoint payload formats,
+per-entrypoint traceback-free status, failing-option-surface counts,
+listed-subcommand counts, and top-level help byte counts. These detail lists
+must be empty, `entrypoint_dispatch_count` must prove both module and repo-local
+alias dispatch, `failing_entrypoint_dispatch_count` must be zero, every
+entrypoint id must be observed, every entrypoint must exit with code `0`, every
+entrypoint must emit `appgen.lint-report.v1`, every entrypoint must be
+traceback-free, and
 `passing_option_surface_count` must equal `subcommand_option_surface_count`,
 before the CLI help surface is considered tooling-complete.
 `appgen.missing-required-option-exit-audit.v1` covers required command options,

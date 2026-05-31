@@ -4248,3 +4248,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   audit (`1 passed`, with the known active-PBC `datetime.utcnow()` warnings
   only), scoped diff whitespace check, and restricted-name scan outside archive,
   Git internals, and active PBC paths.
+- Current CLI help/alias entrypoint hardening pass expands CLI alias evidence
+  with required and observed entrypoint ids, per-entrypoint dispatch booleans,
+  expected and observed exit codes, expected and observed payload formats, and
+  traceback-free status by entrypoint. The aggregate
+  `cli_help_alias_contracts` gate now requires all named entrypoint gap lists to
+  be empty, so `python -m pyAppGen` and repo-local `./apg` regressions fail by
+  entrypoint id and reason instead of only aggregate dispatch counts.
+  Verification passed: Python compile for the touched DSL and tests, focused CLI
+  help/alias audit (`1 passed`), aggregate tooling audit (`1 passed`, with the
+  known active-PBC `datetime.utcnow()` warnings only), scoped diff whitespace
+  check, and restricted-name scan outside archive, Git internals, and active PBC
+  paths.

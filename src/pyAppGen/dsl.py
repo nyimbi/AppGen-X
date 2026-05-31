@@ -7627,6 +7627,12 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and cli_help_surface.get("entrypoint_dispatch_count") == 2
             and cli_help_surface.get("alias_contract", {}).get("ok") is True
             and cli_help_surface.get("alias_contract", {}).get("shared_target") == "pyAppGen.__main__:main"
+            and cli_help_surface.get("observed_entrypoint_ids") == cli_help_surface.get("required_entrypoint_ids")
+            and cli_help_surface.get("missing_entrypoint_id_count") == 0
+            and cli_help_surface.get("missing_entrypoint_dispatch_count") == 0
+            and cli_help_surface.get("missing_entrypoint_exit_code_count") == 0
+            and cli_help_surface.get("missing_entrypoint_payload_format_count") == 0
+            and cli_help_surface.get("missing_entrypoint_traceback_free_count") == 0
             and cli_help_surface.get("module_entrypoint", {}).get("ok") is True
             and cli_help_surface.get("repo_alias_command", {}).get("ok") is True,
             "CLI help, subcommand option surfaces, module dispatch, and the apg alias are independently discoverable and executable.",
@@ -7647,6 +7653,34 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "command_alias_count": cli_help_surface.get("command_alias_count"),
                 "entrypoint_dispatch_count": cli_help_surface.get("entrypoint_dispatch_count"),
                 "failing_entrypoint_dispatch_count": cli_help_surface.get("failing_entrypoint_dispatch_count"),
+                "required_entrypoint_ids": cli_help_surface.get("required_entrypoint_ids"),
+                "observed_entrypoint_ids": cli_help_surface.get("observed_entrypoint_ids"),
+                "missing_entrypoint_ids": cli_help_surface.get("missing_entrypoint_ids"),
+                "missing_entrypoint_id_count": cli_help_surface.get("missing_entrypoint_id_count"),
+                "entrypoint_dispatch_ok_by_id": cli_help_surface.get("entrypoint_dispatch_ok_by_id"),
+                "missing_entrypoint_dispatch_ids": cli_help_surface.get("missing_entrypoint_dispatch_ids"),
+                "missing_entrypoint_dispatch_count": cli_help_surface.get("missing_entrypoint_dispatch_count"),
+                "expected_entrypoint_exit_codes_by_id": cli_help_surface.get("expected_entrypoint_exit_codes_by_id"),
+                "entrypoint_exit_codes_by_id": cli_help_surface.get("entrypoint_exit_codes_by_id"),
+                "missing_entrypoint_exit_code_ids": cli_help_surface.get("missing_entrypoint_exit_code_ids"),
+                "missing_entrypoint_exit_code_count": cli_help_surface.get("missing_entrypoint_exit_code_count"),
+                "expected_entrypoint_payload_formats_by_id": cli_help_surface.get(
+                    "expected_entrypoint_payload_formats_by_id"
+                ),
+                "entrypoint_payload_formats_by_id": cli_help_surface.get("entrypoint_payload_formats_by_id"),
+                "missing_entrypoint_payload_format_ids": cli_help_surface.get(
+                    "missing_entrypoint_payload_format_ids"
+                ),
+                "missing_entrypoint_payload_format_count": cli_help_surface.get(
+                    "missing_entrypoint_payload_format_count"
+                ),
+                "entrypoint_traceback_free_by_id": cli_help_surface.get("entrypoint_traceback_free_by_id"),
+                "missing_entrypoint_traceback_free_ids": cli_help_surface.get(
+                    "missing_entrypoint_traceback_free_ids"
+                ),
+                "missing_entrypoint_traceback_free_count": cli_help_surface.get(
+                    "missing_entrypoint_traceback_free_count"
+                ),
                 "alias_contract": cli_help_surface.get("alias_contract"),
                 "module_entrypoint": cli_help_surface.get("module_entrypoint"),
                 "repo_alias_command": cli_help_surface.get("repo_alias_command"),
@@ -17854,14 +17888,22 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
             timeout=10,
         )
         repo_alias_path = root / "apg"
-        repo_alias_lint = subprocess.run(
-            [str(repo_alias_path), "lint", str(source_path), "--json"],
-            check=False,
-            cwd=root,
-            text=True,
-            capture_output=True,
-            timeout=10,
-        )
+        if repo_alias_path.exists():
+            repo_alias_lint = subprocess.run(
+                [str(repo_alias_path), "lint", str(source_path), "--json"],
+                check=False,
+                cwd=root,
+                text=True,
+                capture_output=True,
+                timeout=10,
+            )
+        else:
+            repo_alias_lint = subprocess.CompletedProcess(
+                [str(repo_alias_path), "lint", str(source_path), "--json"],
+                127,
+                "",
+                "missing executable",
+            )
     try:
         module_lint_payload = json.loads(module_lint.stdout)
     except json.JSONDecodeError:
@@ -17870,19 +17912,64 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         repo_alias_lint_payload = json.loads(repo_alias_lint.stdout)
     except json.JSONDecodeError:
         repo_alias_lint_payload = {}
-    module_dispatches_tooling = (
-        "_run_tooling" in module_entrypoint
-        and "dsl_tooling_cli" in module_entrypoint
-        and module_lint.returncode == 0
-        and module_lint_payload.get("format") == "appgen.lint-report.v1"
-        and "Traceback" not in module_lint.stderr
+    required_entrypoint_ids = ("python_module", "repo_alias")
+    expected_entrypoint_exit_codes_by_id = {entrypoint_id: 0 for entrypoint_id in required_entrypoint_ids}
+    expected_entrypoint_payload_formats_by_id = {
+        entrypoint_id: "appgen.lint-report.v1" for entrypoint_id in required_entrypoint_ids
+    }
+    entrypoint_declared_by_id = {
+        "python_module": "_run_tooling" in module_entrypoint and "dsl_tooling_cli" in module_entrypoint,
+        "repo_alias": repo_alias_path.exists(),
+    }
+    entrypoint_exit_codes_by_id = {
+        "python_module": module_lint.returncode,
+        "repo_alias": repo_alias_lint.returncode,
+    }
+    entrypoint_payload_formats_by_id = {
+        "python_module": module_lint_payload.get("format"),
+        "repo_alias": repo_alias_lint_payload.get("format"),
+    }
+    entrypoint_traceback_free_by_id = {
+        "python_module": "Traceback" not in module_lint.stderr,
+        "repo_alias": "Traceback" not in repo_alias_lint.stderr,
+    }
+    observed_entrypoint_ids = tuple(
+        entrypoint_id for entrypoint_id in required_entrypoint_ids if entrypoint_declared_by_id.get(entrypoint_id) is True
     )
-    repo_alias_dispatches_tooling = (
-        repo_alias_path.exists()
-        and repo_alias_lint.returncode == 0
-        and repo_alias_lint_payload.get("format") == "appgen.lint-report.v1"
-        and "Traceback" not in repo_alias_lint.stderr
+    missing_entrypoint_ids = tuple(
+        entrypoint_id for entrypoint_id in required_entrypoint_ids if entrypoint_id not in observed_entrypoint_ids
     )
+    missing_entrypoint_exit_code_ids = tuple(
+        entrypoint_id
+        for entrypoint_id in required_entrypoint_ids
+        if entrypoint_exit_codes_by_id.get(entrypoint_id) != expected_entrypoint_exit_codes_by_id[entrypoint_id]
+    )
+    missing_entrypoint_payload_format_ids = tuple(
+        entrypoint_id
+        for entrypoint_id in required_entrypoint_ids
+        if entrypoint_payload_formats_by_id.get(entrypoint_id)
+        != expected_entrypoint_payload_formats_by_id[entrypoint_id]
+    )
+    missing_entrypoint_traceback_free_ids = tuple(
+        entrypoint_id
+        for entrypoint_id in required_entrypoint_ids
+        if entrypoint_traceback_free_by_id.get(entrypoint_id) is not True
+    )
+    entrypoint_dispatch_ok_by_id = {
+        entrypoint_id: entrypoint_declared_by_id.get(entrypoint_id) is True
+        and entrypoint_exit_codes_by_id.get(entrypoint_id) == expected_entrypoint_exit_codes_by_id[entrypoint_id]
+        and entrypoint_payload_formats_by_id.get(entrypoint_id)
+        == expected_entrypoint_payload_formats_by_id[entrypoint_id]
+        and entrypoint_traceback_free_by_id.get(entrypoint_id) is True
+        for entrypoint_id in required_entrypoint_ids
+    }
+    missing_entrypoint_dispatch_ids = tuple(
+        entrypoint_id
+        for entrypoint_id in required_entrypoint_ids
+        if entrypoint_dispatch_ok_by_id.get(entrypoint_id) is not True
+    )
+    module_dispatches_tooling = entrypoint_dispatch_ok_by_id["python_module"]
+    repo_alias_dispatches_tooling = entrypoint_dispatch_ok_by_id["repo_alias"]
     return {
         "format": "appgen.cli-help-surface-audit.v1",
         "ok": help_exit_code == 0
@@ -17898,10 +17985,41 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         "failing_entrypoint_dispatch_count": sum(
             1 for ok in (module_dispatches_tooling, repo_alias_dispatches_tooling) if not ok
         ),
+        "required_entrypoint_ids": required_entrypoint_ids,
+        "observed_entrypoint_ids": observed_entrypoint_ids,
+        "missing_entrypoint_ids": missing_entrypoint_ids,
+        "missing_entrypoint_id_count": len(missing_entrypoint_ids),
+        "entrypoint_dispatch_ok_by_id": entrypoint_dispatch_ok_by_id,
+        "missing_entrypoint_dispatch_ids": missing_entrypoint_dispatch_ids,
+        "missing_entrypoint_dispatch_count": len(missing_entrypoint_dispatch_ids),
+        "expected_entrypoint_exit_codes_by_id": expected_entrypoint_exit_codes_by_id,
+        "entrypoint_exit_codes_by_id": entrypoint_exit_codes_by_id,
+        "missing_entrypoint_exit_code_ids": missing_entrypoint_exit_code_ids,
+        "missing_entrypoint_exit_code_count": len(missing_entrypoint_exit_code_ids),
+        "expected_entrypoint_payload_formats_by_id": expected_entrypoint_payload_formats_by_id,
+        "entrypoint_payload_formats_by_id": entrypoint_payload_formats_by_id,
+        "missing_entrypoint_payload_format_ids": missing_entrypoint_payload_format_ids,
+        "missing_entrypoint_payload_format_count": len(missing_entrypoint_payload_format_ids),
+        "entrypoint_traceback_free_by_id": entrypoint_traceback_free_by_id,
+        "missing_entrypoint_traceback_free_ids": missing_entrypoint_traceback_free_ids,
+        "missing_entrypoint_traceback_free_count": len(missing_entrypoint_traceback_free_ids),
         "script_targets": {"appgen": scripts.get("appgen"), "apg": scripts.get("apg")},
         "alias_contract": {
             **alias_contract,
             "ok": alias_declared and module_dispatches_tooling and repo_alias_dispatches_tooling,
+            "required_entrypoint_ids": required_entrypoint_ids,
+            "observed_entrypoint_ids": observed_entrypoint_ids,
+            "missing_entrypoint_ids": missing_entrypoint_ids,
+            "entrypoint_dispatch_ok_by_id": entrypoint_dispatch_ok_by_id,
+            "missing_entrypoint_dispatch_ids": missing_entrypoint_dispatch_ids,
+            "expected_entrypoint_exit_codes_by_id": expected_entrypoint_exit_codes_by_id,
+            "entrypoint_exit_codes_by_id": entrypoint_exit_codes_by_id,
+            "missing_entrypoint_exit_code_ids": missing_entrypoint_exit_code_ids,
+            "expected_entrypoint_payload_formats_by_id": expected_entrypoint_payload_formats_by_id,
+            "entrypoint_payload_formats_by_id": entrypoint_payload_formats_by_id,
+            "missing_entrypoint_payload_format_ids": missing_entrypoint_payload_format_ids,
+            "entrypoint_traceback_free_by_id": entrypoint_traceback_free_by_id,
+            "missing_entrypoint_traceback_free_ids": missing_entrypoint_traceback_free_ids,
             "module_dispatches_tooling": module_dispatches_tooling,
             "module_payload_format": module_lint_payload.get("format"),
             "repo_alias_dispatches_tooling": repo_alias_dispatches_tooling,
