@@ -97828,7 +97828,7 @@ def main(
     """Generate a Flask-AppBuilder app package from a database schema.
 
     Tooling subcommands are also available through this command and the `apg`
-    alias: lint, format, validate, generate, graph, graph-suite, explain,
+    alias: lint, semantic, format, validate, generate, graph, graph-suite, explain,
     migration-plan, nl-plan, lsp, verify, package, component-publish, pbc,
     designer-sync, diagnostics, parser-golden, dsl-quality, dsl-antlr,
     dsl-authoring-gate, dsl-language-service, drift, doctor, and tooling-audit.

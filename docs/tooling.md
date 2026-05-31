@@ -194,6 +194,33 @@ coverage reports required/detected/missing kind counts plus per-kind symbol
 counts so shared-model release evidence can be reviewed without expanding the
 full symbol table.
 
+### Source Sets
+
+Real applications are usually split across many `.appgen` files. The semantic
+model therefore treats a file or directory as one source set and emits
+`appgen.semantic-source-set.v1` inside the `source_set` field. Directory mode
+loads every nested `.appgen` file in sorted order, parses the combined workspace
+as one application, keeps `source_files` stable, and rewrites declaration
+symbols back to the file that actually owns each app, table, view, flow, package,
+agent, rule, deployment, or nested field declaration.
+
+Source-set metadata includes:
+
+- `source_mode`: `file` or `directory`;
+- `file_count` and ordered `source_files`;
+- per-file `appgen.semantic-file-report.v1` parse summaries;
+- `source_file_symbol_counts`, so agents can tell which file owns each edit;
+- `file_diagnostic_counts`, so CI can surface noisy files without reparsing the
+  full JSON model.
+
+The executable contract `appgen.semantic-source-set-cli-audit.v1` proves that a
+directory workspace resolves cross-file table relationships, lookup paths,
+database-backed form bindings, and workflow handlers into one
+`appgen.semantic-model.v1` payload. The audit also proves text mode lists every
+`source-file`, every `symbol-file`, the embedded
+`appgen.semantic-source-set.v1` format, symbol coverage, and contract counts, so
+external coding agents can operate without consuming the full JSON payload.
+
 ### Table Model
 
 Each table should normalize fields, directives, relationships, calculated
@@ -667,6 +694,23 @@ disappears, when JSON payload formats drift, when text commands return the wrong
 process status, when text output falls back to raw JSON, or when text logs lose
 the markers external coding agents rely on.
 
+### `appgen semantic`
+
+```console
+appgen semantic app.appgen
+appgen semantic app.appgen --json
+appgen semantic src/appgen --json
+```
+
+`appgen semantic` emits the shared `appgen.semantic-model.v1` contract directly.
+When the input path is a directory it loads all nested `.appgen` files as one
+source set, resolves cross-file references, and reports
+`appgen.semantic-source-set.v1` metadata. Text mode prints a compact summary
+with source mode, file count, symbol count, table/view counts, diagnostic count,
+every source file, per-file symbol counts, symbol-coverage totals, and semantic
+contract counts. JSON mode is the full machine contract for IDEs, CI, graphing,
+release verification, and agentic application editing.
+
 ### `appgen lint`
 
 ```console
@@ -699,7 +743,7 @@ code, error type, and message.
 Argparse usage/configuration failures remain exit code `2`. Missing
 user-supplied input paths are treated as configuration errors and return exit
 code `2` before the tooling engine reads or generates artifacts; the executable
-missing-input audit covers lint, format, validate, graph, graph-suite, explain,
+missing-input audit covers lint, semantic, format, validate, graph, graph-suite, explain,
 generate, migration-plan, nl-plan, lsp, verify, package, designer-sync, drift,
 previous-semantic baseline paths, and component-catalog paths. The audit also
 proves these failures emit no stdout payload, so agents do not mistake a usage
@@ -1752,7 +1796,7 @@ The VS Code extension should provide:
 - outline tree;
 - graph previews;
 - generated artifact preview;
-- command palette actions for lint, format, graph, explain, generate, and
+- command palette actions for lint, semantic, format, graph, explain, generate, and
   package;
 - PBC catalog browser.
 
@@ -2401,10 +2445,13 @@ Exit criteria:
 - Resolve tables, fields, relationships, lookup paths, views, handlers, flows,
   operations, PBC includes, packages, and deployment units.
 - Emit `appgen.semantic-model.v1`.
+- Load directory source sets and attribute symbols back to owning files.
 
 Exit criteria:
 
 - CLI and tests can load the same semantic model.
+- `appgen semantic <directory> --json` emits `appgen.semantic-source-set.v1`
+  metadata and per-file symbol ownership.
 - Database-backed form field validation uses the shared model.
 - PBC catalog validation uses the shared model.
 
@@ -2424,7 +2471,7 @@ Exit criteria:
 
 ### Phase 3: CLI And Graph Tooling
 
-- Add subcommands for lint, format, validate, graph, explain, package, PBC, and
+- Add subcommands for lint, semantic, format, validate, graph, explain, package, PBC, and
   natural-language planning.
 - Add graph builders.
 - Add explain output for symbols and diagnostics.

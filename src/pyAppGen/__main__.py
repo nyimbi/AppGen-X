@@ -6,6 +6,7 @@ import sys
 
 _TOOLING_SUBCOMMANDS = {
     "lint",
+    "semantic",
     "format",
     "validate",
     "generate",
@@ -40,7 +41,7 @@ def _print_help() -> None:
 AppGen-X application generator and DSL tooling.
 
 Tooling subcommands are also available:
-  lint, format, validate, generate, graph, graph-suite, explain,
+  lint, semantic, format, validate, generate, graph, graph-suite, explain,
   migration-plan, nl-plan, lsp, verify, package, component-publish, pbc, designer-sync,
   diagnostics, parser-golden, dsl-quality, dsl-antlr, dsl-authoring-gate,
   dsl-language-service, drift, doctor, and tooling-audit

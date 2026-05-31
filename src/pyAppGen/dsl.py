@@ -18,6 +18,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Callable
 from typing import Iterable
+from typing import Mapping
 from urllib.parse import quote
 
 from antlr4 import CommonTokenStream
@@ -792,6 +793,179 @@ def symbol_coverage_dsl(text: str, *, source_name: str | None = None, model: dic
 def semantic_model_dsl_file(path: str | Path) -> dict:
     path = Path(path)
     return semantic_model_dsl(path.read_text(encoding="utf-8"), source_name=str(path))
+
+
+def semantic_model_dsl_sources(
+    sources: Mapping[str, str],
+    *,
+    source_name: str | None = None,
+) -> dict:
+    """Return one shared semantic model for a multi-file AppGen-X source set."""
+    ordered_sources = tuple((str(name), text or "") for name, text in sorted(sources.items()))
+    if not ordered_sources:
+        diagnostic = _spec_diagnostic("", "AGX0001", "error", "No .appgen files found in semantic source set.")
+        model = semantic_model_dsl("", source_name=source_name or "source-set")
+        model.update(
+            {
+                "source_files": (),
+                "source_mode": "directory",
+                "file_count": 0,
+                "diagnostics": (diagnostic,),
+                "ok": False,
+                "source_set": {
+                    "format": "appgen.semantic-source-set.v1",
+                    "source_name": source_name,
+                    "source_files": (),
+                    "file_count": 0,
+                    "source_mode": "directory",
+                },
+                "file_diagnostic_counts": {},
+                "source_file_symbol_counts": {},
+            }
+        )
+        return model
+
+    combined_source = "\n\n".join(text for _, text in ordered_sources)
+    model = semantic_model_dsl(
+        combined_source,
+        source_name=source_name or ";".join(name for name, _ in ordered_sources),
+    )
+    files = tuple(name for name, _ in ordered_sources)
+    source_map = dict(ordered_sources)
+    file_models = tuple((name, semantic_model_dsl(text, source_name=name)) for name, text in ordered_sources)
+    file_reports = tuple(
+        {
+            "file": name,
+            "format": "appgen.semantic-file-report.v1",
+            "ok": file_model.get("ok") is True,
+            "diagnostic_count": len(file_model.get("diagnostics", ())),
+        }
+        for name, file_model in file_models
+    )
+    symbols = _semantic_symbols_with_source_files(model.get("symbols", {}), source_map)
+    file_diagnostic_counts = {
+        report["file"]: report["diagnostic_count"]
+        for report in file_reports
+    }
+    source_file_symbol_counts = {
+        file_name: sum(1 for symbol in symbols.values() if symbol.get("file") == file_name)
+        for file_name in files
+    }
+    model.update(
+        {
+            "source_files": files,
+            "source_mode": "directory" if len(files) != 1 else "file",
+            "file_count": len(files),
+            "symbols": symbols,
+            "source_set": {
+                "format": "appgen.semantic-source-set.v1",
+                "source_name": source_name,
+                "source_files": files,
+                "file_count": len(files),
+                "source_mode": "directory" if len(files) != 1 else "file",
+                "file_reports": file_reports,
+            },
+            "file_reports": file_reports,
+            "file_diagnostic_counts": file_diagnostic_counts,
+            "source_file_symbol_counts": source_file_symbol_counts,
+        }
+    )
+    model["symbol_coverage"] = symbol_coverage_dsl(combined_source, source_name=source_name, model=model)
+    counts = dict(model.get("contract_counts") or {})
+    counts.update(
+        {
+            "source_file_count": len(files),
+            "source_file_symbol_file_count": sum(1 for count in source_file_symbol_counts.values() if count),
+            "file_report_count": len(file_reports),
+        }
+    )
+    model["contract_counts"] = counts
+    return model
+
+
+def semantic_model_dsl_path(path: str | Path) -> dict:
+    path = Path(path)
+    if path.is_dir():
+        return semantic_model_dsl_sources(_dsl_sources_from_path(path), source_name=str(path))
+    return semantic_model_dsl_file(path)
+
+
+def _dsl_sources_from_path(path: str | Path) -> dict[str, str]:
+    path = Path(path)
+    if path.is_dir():
+        return {
+            str(item): item.read_text(encoding="utf-8")
+            for item in sorted(path.rglob("*.appgen"))
+            if item.is_file()
+        }
+    return {str(path): path.read_text(encoding="utf-8")}
+
+
+def _semantic_symbols_with_source_files(symbols: dict, sources: Mapping[str, str]) -> dict:
+    attributed = {}
+    for symbol_id, symbol in symbols.items():
+        located_file = None
+        located_range = symbol.get("range")
+        for file_name, source in sources.items():
+            line, column = _locate_symbol_declaration_in_source_file(
+                source,
+                str(symbol.get("kind") or ""),
+                str(symbol.get("name") or ""),
+                parent=symbol.get("parent"),
+            )
+            if line is not None and column is not None:
+                located_file = file_name
+                located_range = _semantic_range(line, column, str(symbol.get("name") or ""))
+                break
+        attributed[symbol_id] = {
+            **symbol,
+            "file": located_file or symbol.get("file"),
+            "range": located_range,
+        }
+    return attributed
+
+
+def _locate_symbol_declaration_in_source_file(
+    source: str,
+    kind: str,
+    name: str,
+    *,
+    parent: str | None = None,
+) -> tuple[int | None, int | None]:
+    top_level_kinds = {
+        "app",
+        "group",
+        "table",
+        "enum",
+        "view",
+        "flow",
+        "role",
+        "rule",
+        "llm",
+        "agent",
+        "pbc",
+        "composition",
+        "audit",
+        "deploy",
+        "version",
+        "operation",
+        "security",
+        "api",
+        "event",
+        "job",
+        "report",
+        "menu",
+        "component",
+        "package",
+        "test",
+    }
+    if parent is None and kind in top_level_kinds:
+        match = re.search(rf"\b{re.escape(kind)}\s+{re.escape(name)}\b", source or "")
+        if not match:
+            return None, None
+        line, column = _line_column_for_index(source, match.start() + len(kind) + 1)
+        return line + 1, column
+    return _locate_symbol_declaration(source, kind, name, parent=parent)
 
 
 def lint_report_dsl(
@@ -1572,6 +1746,10 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
     lint_parser.add_argument("--previous-semantic")
     lint_parser.add_argument("--backend", default="postgresql", choices=SUPPORTED_DATABASE_BACKENDS)
 
+    semantic_parser = subparsers.add_parser("semantic")
+    semantic_parser.add_argument("path")
+    semantic_parser.add_argument("--json", action="store_true")
+
     format_parser = subparsers.add_parser("format")
     format_parser.add_argument("path")
     format_parser.add_argument("--check", action="store_true")
@@ -1725,6 +1903,10 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
                 migration_backend=args.backend,
             )
         )
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "semantic":
+        report = semantic_model_dsl_path(path)
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     if args.command == "format":
@@ -1910,7 +2092,7 @@ def _validate_tooling_cli_paths(parser: argparse.ArgumentParser, args: argparse.
         candidate = Path(value)
         if not candidate.exists():
             parser.error(f"{args.command}: path does not exist: {value}")
-        if attr == "path" and args.command != "lint" and candidate.is_dir():
+        if attr == "path" and args.command not in {"lint", "semantic"} and candidate.is_dir():
             parser.error(f"{args.command}: expected a file path, got directory: {value}")
     if args.command == "lint" and getattr(args, "catalog", None):
         catalog_path = Path(args.catalog)
@@ -1965,6 +2147,43 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
             if detected:
                 print(f"migration-detected {', '.join(sorted(detected))}")
         for diagnostic in payload.get("diagnostics", ()):
+            print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
+        return
+    if payload.get("format") == "appgen.semantic-model.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        source_files = tuple(payload.get("source_files", ()))
+        symbols = payload.get("symbols", {}) or {}
+        diagnostics = tuple(payload.get("diagnostics", ()))
+        source_set = payload.get("source_set") or {}
+        symbol_coverage = payload.get("symbol_coverage") or {}
+        print(
+            f"semantic {status}: format={payload.get('format')} "
+            f"source_mode={payload.get('source_mode', 'file')} "
+            f"files={len(source_files)} symbols={len(symbols)} "
+            f"tables={len(payload.get('tables', {}) or {})} views={len(payload.get('views', {}) or {})} "
+            f"diagnostics={len(diagnostics)} source_set_format={source_set.get('format')}"
+        )
+        for file_name in source_files:
+            print(f"source-file {file_name}")
+        for file_name, count in sorted((payload.get("source_file_symbol_counts") or {}).items()):
+            print(f"symbol-file {file_name} symbols={count}")
+        if symbol_coverage:
+            print(
+                f"symbol-coverage format={symbol_coverage.get('format')} "
+                f"required={symbol_coverage.get('required_kind_count', 0)} "
+                f"detected={symbol_coverage.get('detected_kind_count', 0)} "
+                f"missing={symbol_coverage.get('missing_kind_count', 0)}"
+            )
+        counts = payload.get("contract_counts") or {}
+        if counts:
+            print(
+                "contract-counts "
+                f"top_level={counts.get('present_top_level_field_count', 0)}/"
+                f"{counts.get('required_top_level_field_count', 0)} "
+                f"source_files={counts.get('source_file_count', len(source_files))} "
+                f"symbol_files={counts.get('source_file_symbol_file_count', 0)}"
+            )
+        for diagnostic in diagnostics:
             print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
         return
     if payload.get("format") == "appgen.format-result.v1":
@@ -6325,6 +6544,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         missing_required_option_exit = _tooling_audit_missing_required_option_exit(Path(tmp))
         invalid_choice_exit = _tooling_audit_invalid_choice_exit(Path(tmp))
         lint_directory_cli = _tooling_audit_lint_directory_cli(Path(tmp), source)
+        semantic_source_set_cli = _tooling_audit_semantic_source_set_cli(Path(tmp))
         component_publish_cli = _tooling_audit_component_publish_cli(Path(tmp))
         pbc_publish_cli = _tooling_audit_pbc_publish_cli(Path(tmp))
         validate_generate_cli = _tooling_audit_validate_generate_cli(Path(tmp), source)
@@ -6403,6 +6623,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         formatter_contract=formatter_contract,
         formatted=formatted,
         format_write=format_write,
+        semantic_source_set_cli=semantic_source_set_cli,
         dsl_language_cli=dsl_language_cli,
         cli_help_surface=cli_help_surface,
         internal_error_exit=internal_error_exit,
@@ -6439,6 +6660,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         diagnostic_fixtures=diagnostic_fixtures,
         formatter_contract=formatter_contract,
         lint_directory_cli=lint_directory_cli,
+        semantic_source_set_cli=semantic_source_set_cli,
         validate_generate_cli=validate_generate_cli,
         graphs=graphs,
         graph_cli=graph_cli,
@@ -6470,6 +6692,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         formatter_contract=formatter_contract,
         dsl_language_cli=dsl_language_cli,
         cli_help_surface=cli_help_surface,
+        semantic_source_set_cli=semantic_source_set_cli,
         validate_generate_cli=validate_generate_cli,
         graphs=graphs,
         graph_cli=graph_cli,
@@ -6502,6 +6725,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         strict_lint=strict_lint,
         catalog_lint=catalog_lint,
         lint_directory_cli=lint_directory_cli,
+        semantic_source_set_cli=semantic_source_set_cli,
         component_publish_cli=component_publish_cli,
         formatted=formatted,
         formatter_contract=formatter_contract,
@@ -6560,8 +6784,9 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             semantic["format"] == "appgen.semantic-model.v1"
             and semantic["ok"]
             and _tooling_audit_semantic_keys_present(semantic)
-            and symbol_coverage.get("missing") == (),
-            "Semantic model emits required top-level sections and complete required symbol coverage.",
+            and symbol_coverage.get("missing") == ()
+            and semantic_source_set_cli.get("ok") is True,
+            "Semantic model emits required top-level sections, complete required symbol coverage, and directory source-set contracts.",
             "docs/tooling.md#semantic-model-contract",
             {
                 "format": semantic.get("format"),
@@ -6575,6 +6800,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "missing_kind_count": symbol_coverage.get("missing_kind_count"),
                     "symbol_count": symbol_coverage.get("symbol_count"),
                 },
+                "source_set_cli": semantic_source_set_cli,
             },
         ),
         _tooling_audit_check(
@@ -10567,14 +10793,16 @@ def _tooling_audit_test_family_contracts(**evidence: dict) -> dict:
         },
         {
             "family": "semantic_tests",
-            "required_coverage": "Symbol table, lookup paths, handler targets, PBC catalog binding, workflows, packages, and deployments use the shared semantic model.",
+            "required_coverage": "Symbol table, source sets, lookup paths, handler targets, PBC catalog binding, workflows, packages, and deployments use the shared semantic model.",
             "ok": evidence["semantic"].get("ok") is True
             and evidence["symbol_coverage"].get("missing") == ()
-            and evidence["drift"].get("ok") is True,
+            and evidence["drift"].get("ok") is True
+            and evidence["semantic_source_set_cli"].get("ok") is True,
             "evidence_formats": (
                 evidence["semantic"].get("format"),
                 evidence["symbol_coverage"].get("format"),
                 evidence["drift"].get("format"),
+                evidence["semantic_source_set_cli"].get("format"),
             ),
         },
         {
@@ -10809,7 +11037,7 @@ def _tooling_audit_contributor_task_contracts(**evidence: dict) -> dict:
     tasks = (
         _contributor_task("good_first", "define_diagnostic_dataclasses_and_json_schema", evidence["diagnostics"].get("ok") is True and evidence["diagnostics"].get("catalog_shape_gap_count") == 0, evidence["diagnostics"].get("format")),
         _contributor_task("good_first", "add_diagnostic_code_registry_tests", evidence["diagnostic_fixtures"].get("ok") is True and evidence["diagnostic_fixtures"].get("missing_code_count") == 0, evidence["diagnostic_fixtures"].get("format")),
-        _contributor_task("good_first", "create_semantic_model_dataclasses", evidence["semantic"].get("ok") is True and evidence["semantic"].get("format") == "appgen.semantic-model.v1", evidence["semantic"].get("format")),
+        _contributor_task("good_first", "create_semantic_model_dataclasses", evidence["semantic"].get("ok") is True and evidence["semantic"].get("format") == "appgen.semantic-model.v1" and evidence["semantic_source_set_cli"].get("ok") is True, evidence["semantic_source_set_cli"].get("format")),
         _contributor_task("good_first", "write_table_field_symbol_extraction", evidence["symbol_coverage"].get("missing") == () and evidence["semantic"].get("tables") is not None, evidence["symbol_coverage"].get("format")),
         _contributor_task("good_first", "write_relationship_target_resolution", evidence["semantic"].get("ok") is True and evidence["lint"].get("ok") is True, evidence["semantic"].get("format")),
         _contributor_task("good_first", "write_lookup_path_resolution", evidence["lint"].get("ok") is True and evidence["graphs"].get("ok") is True, evidence["graphs"].get("format")),
@@ -10870,7 +11098,7 @@ def _tooling_audit_priority_order_contracts(root: Path, **evidence: dict) -> dic
         "package_and_release_verifiers",
     )
     priorities = (
-        _priority_contract("shared_parser_and_semantic_model", "Shared parser and semantic model.", evidence["semantic"].get("ok") is True and evidence["symbol_coverage"].get("missing") == (), evidence["semantic"].get("format")),
+        _priority_contract("shared_parser_and_semantic_model", "Shared parser and semantic model.", evidence["semantic"].get("ok") is True and evidence["symbol_coverage"].get("missing") == () and evidence["semantic_source_set_cli"].get("ok") is True, evidence["semantic_source_set_cli"].get("format")),
         _priority_contract("diagnostic_registry_and_linter", "Diagnostic registry and linter.", evidence["diagnostics"].get("ok") is True and evidence["diagnostic_fixtures"].get("ok") is True and evidence["lint"].get("ok") is True, evidence["diagnostics"].get("format")),
         _priority_contract("formatter", "Formatter.", evidence["formatter_contract"].get("ok") is True, evidence["formatter_contract"].get("format")),
         _priority_contract("cli_json_contracts", "CLI JSON contracts.", evidence["dsl_language_cli"].get("ok") is True and evidence["cli_help_surface"].get("ok") is True and evidence["validate_generate_cli"].get("ok") is True, evidence["dsl_language_cli"].get("format")),
@@ -11027,6 +11255,7 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
         "phase_1_shared_semantic_model_mvp": (
             "semantic_model_contract",
             "symbol_coverage_complete",
+            "semantic_source_set_cli_contract",
             "database_backed_form_validation",
         ),
         "phase_2_linter_and_formatter": (
@@ -11212,6 +11441,15 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     "id": "symbol_coverage_complete",
                     "ok": evidence["symbol_coverage"].get("missing") == (),
                     "evidence_format": evidence["symbol_coverage"].get("format"),
+                },
+                {
+                    "id": "semantic_source_set_cli_contract",
+                    "ok": evidence["semantic_source_set_cli"].get("ok") is True
+                    and evidence["semantic_source_set_cli"].get("source_set_format")
+                    == "appgen.semantic-source-set.v1"
+                    and evidence["semantic_source_set_cli"].get("missing_symbol_file_count") == 0
+                    and evidence["semantic_source_set_cli"].get("missing_text_marker_count") == 0,
+                    "evidence_format": evidence["semantic_source_set_cli"].get("format"),
                 },
                 {
                     "id": "database_backed_form_validation",
@@ -15321,6 +15559,7 @@ def _tooling_audit_missing_input_exit(tmp: Path) -> dict:
         ("lint_missing_path", ("lint", str(missing_path))),
         ("lint_missing_previous_semantic", ("lint", str(current_path), "--previous-semantic", str(missing_path))),
         ("lint_missing_catalog", ("lint", str(current_path), "--catalog", str(missing_path))),
+        ("semantic_missing_path", ("semantic", str(missing_path))),
         ("format_missing_path", ("format", str(missing_path), "--check")),
         ("validate_missing_path", ("validate", str(missing_path))),
         ("graph_missing_path", ("graph", str(missing_path), "--format", "json")),
@@ -15371,6 +15610,7 @@ def _tooling_audit_missing_input_exit(tmp: Path) -> dict:
     command_families = tuple(dict.fromkeys(str(argv[0]) for _, argv in cases))
     required_command_families = (
         "lint",
+        "semantic",
         "format",
         "validate",
         "graph",
@@ -16447,6 +16687,148 @@ def _tooling_audit_validate_generate_cli(tmp: Path, source: str) -> dict:
         "payload_format_count": len(payload_formats),
         "payload_formats": payload_formats,
         "cases": cases,
+    }
+
+
+def _tooling_audit_semantic_source_set_cli(tmp: Path) -> dict:
+    source_dir = tmp / "semantic-source-set"
+    (source_dir / "data").mkdir(parents=True, exist_ok=True)
+    (source_dir / "ui").mkdir(parents=True, exist_ok=True)
+    (source_dir / "workflow").mkdir(parents=True, exist_ok=True)
+    app_path = source_dir / "app.appgen"
+    customer_path = source_dir / "data" / "customer.appgen"
+    invoice_path = source_dir / "data" / "invoice.appgen"
+    form_path = source_dir / "ui" / "invoice-form.appgen"
+    flow_path = source_dir / "workflow" / "submit-invoice.appgen"
+    app_path.write_text("app WorkspaceFinance { targets: web, mobile, desktop }\n", encoding="utf-8")
+    customer_path.write_text(
+        "table Customer { id: int pk; name: string required search; email: string }\n",
+        encoding="utf-8",
+    )
+    invoice_path.write_text(
+        """
+table Invoice {
+  id: int pk
+  customer_id: int -> Customer.id [many-to-one]
+  subtotal: decimal default 0
+  tax: decimal default 0
+  total: decimal = subtotal + tax
+  lookup customer_name (customer.name)
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    form_path.write_text(
+        """
+view InvoiceForm for Invoice {
+  Main: customer.name, total
+  @ customer.name Lookup 0 0 6 1
+  on Save -> SubmitInvoice
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    flow_path.write_text("flow SubmitInvoice { draft -> reviewed; reviewed -> posted }\n", encoding="utf-8")
+    json_exit, payload = _tooling_cli_json_case(("semantic", str(source_dir), "--json"))
+    text_exit, text_output = _tooling_cli_text_case(("semantic", str(source_dir)))
+    expected_files = tuple(str(path) for path in (app_path, customer_path, invoice_path, form_path, flow_path))
+    symbols = payload.get("symbols") or {}
+    source_file_symbol_counts = payload.get("source_file_symbol_counts") or {}
+    symbol_files_by_id = {
+        symbol_id: symbol.get("file")
+        for symbol_id, symbol in symbols.items()
+        if symbol_id in {"app.WorkspaceFinance", "table.Customer", "table.Invoice", "view.InvoiceForm", "flow.SubmitInvoice"}
+    }
+    required_symbol_files_by_id = {
+        "app.WorkspaceFinance": str(app_path),
+        "table.Customer": str(customer_path),
+        "table.Invoice": str(invoice_path),
+        "view.InvoiceForm": str(form_path),
+        "flow.SubmitInvoice": str(flow_path),
+    }
+    missing_symbol_file_ids = tuple(
+        symbol_id
+        for symbol_id, expected_file in required_symbol_files_by_id.items()
+        if symbol_files_by_id.get(symbol_id) != expected_file
+    )
+    required_text_markers = (
+        "semantic ok: format=appgen.semantic-model.v1",
+        "source_mode=directory",
+        "source_set_format=appgen.semantic-source-set.v1",
+        "symbol-coverage format=appgen.symbol-coverage.v1",
+        "contract-counts",
+        *tuple(f"source-file {file_name}" for file_name in expected_files),
+        *tuple(f"symbol-file {file_name}" for file_name in expected_files),
+    )
+    missing_text_markers = tuple(marker for marker in required_text_markers if marker not in text_output)
+    diagnostics = tuple(payload.get("diagnostics", ()))
+    error_diagnostics = tuple(item for item in diagnostics if item.get("severity") == "error")
+    required_tables = ("Customer", "Invoice")
+    required_views = ("InvoiceForm",)
+    required_flows = ("SubmitInvoice",)
+    missing_tables = tuple(name for name in required_tables if name not in (payload.get("tables") or {}))
+    missing_views = tuple(name for name in required_views if name not in (payload.get("views") or {}))
+    missing_flows = tuple(name for name in required_flows if name not in (payload.get("flows") or {}))
+    source_files = tuple(payload.get("source_files", ()))
+    missing_files = tuple(file_name for file_name in expected_files if file_name not in source_files)
+    files_without_symbols = tuple(file_name for file_name in expected_files if source_file_symbol_counts.get(file_name, 0) < 1)
+    ok = (
+        json_exit == 0
+        and text_exit == 0
+        and payload.get("format") == "appgen.semantic-model.v1"
+        and payload.get("ok") is True
+        and payload.get("source_mode") == "directory"
+        and payload.get("source_set", {}).get("format") == "appgen.semantic-source-set.v1"
+        and payload.get("file_count") == len(expected_files)
+        and not missing_files
+        and not error_diagnostics
+        and not missing_tables
+        and not missing_views
+        and not missing_flows
+        and not missing_symbol_file_ids
+        and not files_without_symbols
+        and not missing_text_markers
+        and not text_output.lstrip().startswith("{")
+    )
+    return {
+        "format": "appgen.semantic-source-set-cli-audit.v1",
+        "ok": ok,
+        "json_exit_code": json_exit,
+        "text_exit_code": text_exit,
+        "payload_format": payload.get("format"),
+        "source_set_format": payload.get("source_set", {}).get("format"),
+        "source_mode": payload.get("source_mode"),
+        "file_count": payload.get("file_count"),
+        "expected_file_count": len(expected_files),
+        "source_files": source_files,
+        "expected_files": expected_files,
+        "missing_files": missing_files,
+        "missing_file_count": len(missing_files),
+        "required_tables": required_tables,
+        "missing_tables": missing_tables,
+        "missing_table_count": len(missing_tables),
+        "required_views": required_views,
+        "missing_views": missing_views,
+        "missing_view_count": len(missing_views),
+        "required_flows": required_flows,
+        "missing_flows": missing_flows,
+        "missing_flow_count": len(missing_flows),
+        "symbol_files_by_id": symbol_files_by_id,
+        "required_symbol_files_by_id": required_symbol_files_by_id,
+        "missing_symbol_file_ids": missing_symbol_file_ids,
+        "missing_symbol_file_count": len(missing_symbol_file_ids),
+        "source_file_symbol_counts": source_file_symbol_counts,
+        "files_without_symbols": files_without_symbols,
+        "files_without_symbols_count": len(files_without_symbols),
+        "diagnostic_count": len(diagnostics),
+        "error_diagnostic_count": len(error_diagnostics),
+        "required_text_markers": required_text_markers,
+        "missing_text_markers": missing_text_markers,
+        "missing_text_marker_count": len(missing_text_markers),
+        "text_json_fallback": text_output.lstrip().startswith("{"),
+        "text_output_line_count": len(text_output.splitlines()),
     }
 
 
@@ -19299,6 +19681,7 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
     module_entrypoint = (root / "src/pyAppGen/__main__.py").read_text(encoding="utf-8")
     required_subcommands = (
         "lint",
+        "semantic",
         "format",
         "validate",
         "generate",
@@ -19338,6 +19721,7 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
     documented_missing_subcommands = tuple(command for command in required_subcommands if command not in entrypoint)
     required_option_help = {
         ("lint",): ("--json", "--strict", "--catalog", "--previous-semantic", "--backend"),
+        ("semantic",): ("--json",),
         ("format",): ("--check", "--write", "--organize", "--json"),
         ("validate",): ("--targets", "--json"),
         ("generate",): ("--out", "--target", "--allow-warnings", "--json"),

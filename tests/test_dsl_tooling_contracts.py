@@ -30,6 +30,8 @@ from pyAppGen.dsl import pbc_verifier_report
 from pyAppGen.dsl import release_verifier_report_dsl
 from pyAppGen.dsl import semantic_drift_audit_dsl
 from pyAppGen.dsl import semantic_model_dsl
+from pyAppGen.dsl import semantic_model_dsl_path
+from pyAppGen.dsl import semantic_model_dsl_sources
 from pyAppGen.dsl import symbol_coverage_dsl
 from pyAppGen.dsl import tooling_audit_report_dsl
 from pyAppGen.dsl import validate_report_dsl
@@ -181,6 +183,84 @@ def test_semantic_model_exposes_spec_contract_for_tables_views_flows_and_pbcs() 
     assert model["contract_counts"]["symbol_count"] == len(model["symbols"])
     assert model["contract_counts"]["symbol_kind_count"] > 0
     assert model["missing_top_level_fields"] == ()
+
+
+def test_semantic_model_sources_resolve_workspace_files_and_symbol_attribution(tmp_path: Path) -> None:
+    app_path = tmp_path / "app.appgen"
+    data_dir = tmp_path / "data"
+    ui_dir = tmp_path / "ui"
+    workflow_dir = tmp_path / "workflow"
+    data_dir.mkdir()
+    ui_dir.mkdir()
+    workflow_dir.mkdir()
+    customer_path = data_dir / "customer.appgen"
+    invoice_path = data_dir / "invoice.appgen"
+    form_path = ui_dir / "invoice-form.appgen"
+    flow_path = workflow_dir / "submit-invoice.appgen"
+    app_path.write_text("app SourceSet { targets: web, mobile, desktop }\n", encoding="utf-8")
+    customer_path.write_text("table Customer { id: int pk; name: string required search }\n", encoding="utf-8")
+    invoice_path.write_text(
+        """
+table Invoice {
+  id: int pk
+  customer_id: int -> Customer.id [many-to-one]
+  subtotal: decimal default 0
+  tax: decimal default 0
+  total: decimal = subtotal + tax
+  lookup customer_name (customer.name)
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    form_path.write_text(
+        """
+view InvoiceForm for Invoice {
+  Main: customer.name, total
+  @ customer.name Lookup 0 0 6 1
+  on Save -> SubmitInvoice
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    flow_path.write_text("flow SubmitInvoice { draft -> reviewed; reviewed -> posted }\n", encoding="utf-8")
+
+    model = semantic_model_dsl_path(tmp_path)
+
+    assert model["format"] == "appgen.semantic-model.v1"
+    assert model["ok"] is True
+    assert model["source_set"]["format"] == "appgen.semantic-source-set.v1"
+    assert {report["format"] for report in model["file_reports"]} == {"appgen.semantic-file-report.v1"}
+    assert model["source_mode"] == "directory"
+    assert model["file_count"] == 5
+    assert set(model["source_files"]) == {str(app_path), str(customer_path), str(invoice_path), str(form_path), str(flow_path)}
+    assert model["tables"]["Invoice"]["fields"]["customer_id"]["relationship"]["target_table"] == "Customer"
+    assert model["tables"]["Invoice"]["lookup_paths"]["customer.name"]["valid"] is True
+    assert model["views"]["InvoiceForm"]["table"] == "Invoice"
+    assert "SubmitInvoice" in model["flows"]
+    assert model["symbols"]["table.Customer"]["file"] == str(customer_path)
+    assert model["symbols"]["table.Invoice"]["file"] == str(invoice_path)
+    assert model["symbols"]["view.InvoiceForm"]["file"] == str(form_path)
+    assert model["symbols"]["flow.SubmitInvoice"]["file"] == str(flow_path)
+    assert model["source_file_symbol_counts"][str(app_path)] >= 1
+    assert model["source_file_symbol_counts"][str(customer_path)] >= 1
+    assert model["source_file_symbol_counts"][str(invoice_path)] >= 1
+    assert model["source_file_symbol_counts"][str(form_path)] >= 1
+    assert model["source_file_symbol_counts"][str(flow_path)] >= 1
+    assert model["contract_counts"]["source_file_count"] == 5
+    assert model["contract_counts"]["source_file_symbol_file_count"] == 5
+
+
+def test_semantic_model_sources_empty_source_set_reports_contract_error() -> None:
+    model = semantic_model_dsl_sources({}, source_name="empty-workspace")
+
+    assert model["format"] == "appgen.semantic-model.v1"
+    assert model["ok"] is False
+    assert model["source_set"]["format"] == "appgen.semantic-source-set.v1"
+    assert model["source_mode"] == "directory"
+    assert model["file_count"] == 0
+    assert model["diagnostics"][0]["code"] == "AGX0001"
 
 
 def test_semantic_symbol_coverage_proves_required_nested_symbol_kinds() -> None:
@@ -5458,17 +5538,30 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
             "stage_profile_count": 3,
             "passing_stage_profile_count": 3,
             "failing_stage_profile_count": 0,
+            "missing_exit_code_scenario_count": 0,
+            "missing_payload_format_scenario_count": 0,
+            "missing_ok_scenario_count": 0,
+            "missing_stage_profile_exit_code_count": 0,
+            "missing_ok_stage_profile_count": 0,
             "missing_stage_name_count": 0,
             "missing_severity_name_count": 0,
             "file_order_sorted": True,
             "diagnostics_have_files": True,
             "stage_separation": {"ok": True},
         },
+        semantic_source_set_cli={
+            **ok("appgen.semantic-source-set-cli-audit.v1"),
+            "source_set_format": "appgen.semantic-source-set.v1",
+            "missing_symbol_file_count": 0,
+            "missing_text_marker_count": 0,
+        },
         component_publish_cli={
             **ok("appgen.component-publish-cli-audit.v1"),
             "case_count": 3,
             "passing_case_count": 3,
             "failing_case_count": 0,
+            "missing_exit_code_case_count": 0,
+            "missing_ok_case_count": 0,
             "patch_format": "appgen.component-catalog-patch.v1",
             "side_effect_free": True,
             "write_performed": False,
@@ -5548,11 +5641,19 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         },
         lsp_rpc={
             **ok("appgen.lsp-json-rpc-audit.v1"),
-            "provider_count": 9,
-            "enabled_provider_count": 9,
-            "request_check_count": 8,
-            "passing_request_check_count": 8,
-        },
+                "provider_count": 9,
+                "enabled_provider_count": 9,
+                "request_check_count": 8,
+                "passing_request_check_count": 8,
+                "editor_workflow_case_count": 8,
+                "editor_workflow_passing_case_count": 8,
+                "editor_workflow_failing_case_count": 0,
+                "missing_editor_workflow_case_count": 0,
+                "missing_editor_workflow_method_case_count": 0,
+                "missing_editor_workflow_shape_case_count": 0,
+                "editor_workflow_diagnostic_transition_ok": True,
+                "editor_workflow_shutdown_exit_ok": True,
+            },
         lsp_stdio={
             **ok("appgen.lsp-stdio-transport-audit.v1"),
             "missing_response_ids": (),
@@ -5569,7 +5670,12 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
             "missing_rename_blocker_code_count": 0,
             "missing_rename_fix_id_count": 0,
         },
-        lsp_rename_cli=ok("appgen.lsp-rename-cli-audit.v1"),
+        lsp_rename_cli={
+            **ok("appgen.lsp-rename-cli-audit.v1"),
+            "missing_exit_code_scenario_count": 0,
+            "missing_payload_format_scenario_count": 0,
+            "missing_ok_scenario_count": 0,
+        },
         quick_fix=ok("appgen.lsp-code-action-apply.v1"),
         code_action_apply_audit={
             **ok("appgen.lsp-code-action-apply-audit.v1"),
@@ -5631,7 +5737,14 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         },
         designer=ok("appgen.designer-sync-report.v1"),
         designer_visual_edit_matrix=ok("appgen.designer-visual-edit-matrix.v1"),
-        designer_sync_cli=ok("appgen.designer-sync-cli-audit.v1"),
+        designer_sync_cli={
+            **ok("appgen.designer-sync-cli-audit.v1"),
+            "missing_ok_scenario_count": 0,
+            "bulk_atomic": True,
+            "bulk_round_trip": True,
+            "bulk_operation_count": 5,
+            "missing_bulk_changed_surfaces": (),
+        },
         migration_detected=appgen_dsl.REQUIRED_MIGRATION_DETECTIONS,
         migration_cli={
             **ok("appgen.migration-cli-audit.v1"),
@@ -5685,6 +5798,10 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
             "target_count": 5,
             "manifest_count": 5,
             "handoff_artifact_count": 25,
+            "missing_case_count": 0,
+            "missing_exit_code_case_count": 0,
+            "missing_payload_format_case_count": 0,
+            "missing_ok_case_count": 0,
         },
         release_text_renderer={
             **ok("appgen.release-verifier-text-renderer.v1"),
@@ -6030,6 +6147,11 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert semantic_check["detail"]["symbol_coverage_counts"]["missing_kind_count"] == 0
     assert semantic_check["detail"]["symbol_coverage_counts"]["symbol_count"] > 0
+    assert semantic_check["detail"]["source_set_cli"]["format"] == "appgen.semantic-source-set-cli-audit.v1"
+    assert semantic_check["detail"]["source_set_cli"]["ok"] is True
+    assert semantic_check["detail"]["source_set_cli"]["source_set_format"] == "appgen.semantic-source-set.v1"
+    assert semantic_check["detail"]["source_set_cli"]["missing_symbol_file_count"] == 0
+    assert semantic_check["detail"]["source_set_cli"]["missing_text_marker_count"] == 0
     language_check = next(check for check in report["checks"] if check["id"] == "dsl_language_quality")
     assert language_check["detail"]["format"] == "appgen.dsl-language-quality.v1"
     assert language_check["detail"]["ok"] is True
@@ -10578,7 +10700,7 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
 
     assert help_result.returncode == 0, help_result.stderr
     assert "Tooling subcommands are also available" in normalized_help
-    assert "lint, format, validate, generate, graph, graph-suite" in normalized_help
+    assert "lint, semantic, format, validate, generate, graph, graph-suite" in normalized_help
     assert "component-publish, pbc, designer-sync" in normalized_help
     assert "diagnostics, parser-golden, dsl-quality, dsl-antlr" in normalized_help
     assert "dsl-authoring-gate, dsl-language-service, drift, doctor, and tooling-audit" in normalized_help
@@ -10666,6 +10788,8 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert audit["subcommand_option_help"]["lint"]["missing"] == ()
     assert audit["subcommand_option_help"]["lint"]["exit_code"] == 0
     assert audit["subcommand_option_help"]["lint"]["required_option_count"] >= 5
+    assert audit["subcommand_option_help"]["semantic"]["missing"] == ()
+    assert audit["subcommand_option_help"]["semantic"]["exit_code"] == 0
     assert audit["subcommand_option_help"]["migration-plan"]["missing"] == ()
     assert audit["subcommand_option_help"]["lsp"]["missing"] == ()
     assert audit["subcommand_option_help"]["dsl-quality"]["missing"] == ()
@@ -10678,6 +10802,28 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert audit["module_entrypoint"]["exit_code"] == 0
     assert audit["module_entrypoint"]["payload_format"] == "appgen.lint-report.v1"
     assert audit["module_entrypoint"]["traceback_free"] is True
+
+
+def test_semantic_cli_audit_proves_directory_json_and_text_contracts(tmp_path: Path) -> None:
+    audit = appgen_dsl._tooling_audit_semantic_source_set_cli(tmp_path)
+
+    assert audit["format"] == "appgen.semantic-source-set-cli-audit.v1"
+    assert audit["ok"] is True
+    assert audit["json_exit_code"] == 0
+    assert audit["text_exit_code"] == 0
+    assert audit["payload_format"] == "appgen.semantic-model.v1"
+    assert audit["source_set_format"] == "appgen.semantic-source-set.v1"
+    assert audit["source_mode"] == "directory"
+    assert audit["file_count"] == audit["expected_file_count"] == 5
+    assert audit["missing_file_count"] == 0
+    assert audit["missing_table_count"] == 0
+    assert audit["missing_view_count"] == 0
+    assert audit["missing_flow_count"] == 0
+    assert audit["missing_symbol_file_count"] == 0
+    assert audit["files_without_symbols_count"] == 0
+    assert audit["error_diagnostic_count"] == 0
+    assert audit["missing_text_marker_count"] == 0
+    assert audit["text_json_fallback"] is False
 
 
 def test_dsl_language_cli_audit_proves_quality_authoring_and_service_commands(tmp_path: Path) -> None:
@@ -11009,6 +11155,7 @@ def test_missing_input_audit_covers_file_based_commands(tmp_path: Path) -> None:
     assert audit["missing_command_families"] == ()
     assert {
         "lint",
+        "semantic",
         "format",
         "validate",
         "graph",
@@ -11041,6 +11188,7 @@ def test_missing_input_audit_covers_file_based_commands(tmp_path: Path) -> None:
         "lint_missing_path",
         "lint_missing_previous_semantic",
         "lint_missing_catalog",
+        "semantic_missing_path",
         "format_missing_path",
         "validate_missing_path",
         "graph_missing_path",

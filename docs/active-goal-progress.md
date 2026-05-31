@@ -4405,3 +4405,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   patched source and exposing attempted-source diagnostics. The matrix, CLI
   audit, aggregate IDE gate, and implementation-phase gate now require this
   bulk transaction proof.
+- Current semantic workspace delivery pass makes multi-file AppGen applications
+  a first-class semantic input. `semantic_model_dsl_sources` and
+  `appgen semantic <file-or-directory>` now emit one `appgen.semantic-model.v1`
+  from a directory source set, include `appgen.semantic-source-set.v1` metadata,
+  publish per-file `appgen.semantic-file-report.v1` summaries, and attribute
+  symbols back to their owning `.appgen` files. The source-set CLI audit proves
+  cross-file table relationships, lookup paths, form bindings, workflow
+  handlers, JSON output, text output, source-file markers, symbol-file markers,
+  and contract-count markers; the aggregate tooling gate now requires this
+  evidence in the shared semantic-model and implementation-phase checks.
