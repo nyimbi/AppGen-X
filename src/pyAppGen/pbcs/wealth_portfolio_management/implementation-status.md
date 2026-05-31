@@ -31,3 +31,13 @@ Passed in the isolated worktree on 2026-05-30 after worker handoff and local rel
 - `PYTHONPATH=src /Volumes/Media/src/pjs/appgen/.venv/bin/pytest -q src/pyAppGen/pbcs/wealth_portfolio_management/tests` -> 10 passed
 - `git diff --check -- src/pyAppGen/pbcs/wealth_portfolio_management`
 - Focused release audits -> source True, package True, spec True, agent True, implementation True, capability True, generation True
+
+
+## Improve1 Traceability Controls
+
+- Added `wealth_portfolio_management_control.py` with executable controls for all 50 hand-curated improve1 wealth/portfolio features.
+- Added `IMPROVE1_TRACEABILITY.md` mapping each feature to code artifact/model, UI surface, service/API, test, and evidence.
+- Wired runtime, UI, and release evidence to expose the control contract and fail closed when required wealth-domain evidence is absent.
+- Added `tests/test_domain_behavior.py` for owned-table boundaries, AppGen-X eventing, database backend limits, projection-only dependencies, governed AI assistance, human confirmation, separated approval, and wealth/portfolio-specific operations.
+
+Validation for this slice is tracked in the current branch commits and focused test output.

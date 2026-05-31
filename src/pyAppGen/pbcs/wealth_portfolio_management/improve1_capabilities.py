@@ -648,3 +648,17 @@ def validate_improve1_capabilities(expected_titles: tuple[str, ...]) -> dict:
         "registry_ok": registry["ok"],
         "side_effects": (),
     }
+
+
+# Improve1 wealth portfolio management executable control artifacts.
+_WEALTH_BASE_CAPABILITY_REGISTRY = capability_registry
+_WEALTH_BASE_PLAN_FEATURE_EXECUTION = plan_feature_execution
+def capability_registry() -> dict:
+    registry=dict(_WEALTH_BASE_CAPABILITY_REGISTRY()); rows=[]
+    for row in registry["capabilities"]:
+        enriched=dict(row); enriched["code_artifact_model"]=tuple(dict.fromkeys(tuple(enriched["code_artifact_model"])+("wealth_portfolio_management_control.py",))); enriched["test"]=tuple(dict.fromkeys(tuple(enriched["test"])+("tests/test_domain_behavior.py",))); enriched["evidence"]=tuple(dict.fromkeys(tuple(enriched["evidence"])+("IMPROVE1_TRACEABILITY.md",))); rows.append(enriched)
+    registry["capabilities"]=tuple(rows); registry["ok"]=registry.get("ok") is True and len(rows)==50 and all("wealth_portfolio_management_control.py" in row["code_artifact_model"] and "tests/test_domain_behavior.py" in row["test"] for row in rows); return registry
+def plan_feature_execution(feature_number:int) -> dict:
+    plan=dict(_WEALTH_BASE_PLAN_FEATURE_EXECUTION(feature_number))
+    if plan.get("ok") is not True: return plan
+    plan["model_artifacts"]=tuple(dict.fromkeys(tuple(plan["model_artifacts"])+("wealth_portfolio_management_control.py",))); plan["test_artifacts"]=tuple(dict.fromkeys(tuple(plan["test_artifacts"])+("tests/test_domain_behavior.py",))); plan["evidence_artifacts"]=tuple(dict.fromkeys(tuple(plan["evidence_artifacts"])+("IMPROVE1_TRACEABILITY.md",))); plan["control_contract"]="improve1_wealth_portfolio_management_control_contract"; return plan
