@@ -28,3 +28,12 @@ Passed in the isolated worktree on 2026-05-30 after worker handoff:
 - `PYTHONPATH=src /Volumes/Media/src/pjs/appgen/.venv/bin/pytest -q src/pyAppGen/pbcs/trade_finance_operations/tests` -> 11 passed
 - `git diff --check -- src/pyAppGen/pbcs/trade_finance_operations`
 - Focused release audits -> source True, package True, spec True, agent True, implementation True, capability True, generation True
+
+
+## improve1 executable domain-control pass
+
+- Added `trade_finance_operations_control.py` as the package-local executable proof layer for all 50 improve1 features.
+- Each feature now has a trade-finance-specific control table, required LC/guarantee/collection/document/sanctions/settlement fields, UI panel name, service/API route, declared AppGen-X dependencies, datastore constraints, and side-effect-free evaluation evidence.
+- Added fail-closed gates for instrument, document/compliance, settlement/exposure, operations/agent evidence, human confirmation, separated approval, AI-agent preview-only operation, non-mutating simulations, and cross-PBC API/event/projection boundaries.
+- Bound the control contract into runtime capabilities, UI/workbench surfaces, release evidence, and improve1 execution planning.
+- Added `tests/test_domain_behavior.py` to verify executable coverage, owned-boundary constraints, eventing/database restrictions, UI/runtime/release exposure, domain gates, and trade-finance-specific payload fields.

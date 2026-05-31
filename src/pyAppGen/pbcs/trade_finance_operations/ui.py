@@ -163,3 +163,35 @@ def smoke_test() -> dict:
         "detail": detail,
         "side_effects": (),
     }
+
+
+# Improve1 trade finance operations control UI extension.
+from .trade_finance_operations_control import improve1_trade_finance_operations_control_contract as _improve1_trade_finance_operations_control_contract
+
+_TRADE_CONTROL_BASE_UI_CONTRACT = trade_finance_operations_ui_contract
+_TRADE_CONTROL_BASE_RENDER_WORKBENCH = trade_finance_operations_render_workbench
+
+
+def trade_finance_operations_ui_contract() -> dict:
+    ui = dict(_TRADE_CONTROL_BASE_UI_CONTRACT())
+    control = _improve1_trade_finance_operations_control_contract()
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "trade_finance_operations_control_contract": control,
+        "trade_finance_operations_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "trade_finance_operations_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def trade_finance_operations_render_workbench(*args, **kwargs) -> dict:
+    workbench = dict(_TRADE_CONTROL_BASE_RENDER_WORKBENCH(*args, **kwargs))
+    control = _improve1_trade_finance_operations_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "trade_finance_operations_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "trade_finance_operations_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "trade_finance_operations_control_agent_tools": tuple(f"trade_finance_operations.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench
