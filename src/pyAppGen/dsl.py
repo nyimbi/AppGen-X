@@ -1849,6 +1849,10 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
     parser_golden_parser = subparsers.add_parser("parser-golden")
     parser_golden_parser.add_argument("--json", action="store_true")
 
+    test_strategy_parser = subparsers.add_parser("test-strategy")
+    test_strategy_parser.add_argument("path")
+    test_strategy_parser.add_argument("--json", action="store_true")
+
     dsl_quality_parser = subparsers.add_parser("dsl-quality")
     dsl_quality_parser.add_argument("--json", action="store_true")
 
@@ -1879,6 +1883,12 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
 
     doctor_parser = subparsers.add_parser("doctor")
     doctor_parser.add_argument("--json", action="store_true")
+
+    contributor_tasks_parser = subparsers.add_parser("contributor-tasks")
+    contributor_tasks_parser.add_argument("--json", action="store_true")
+
+    priority_order_parser = subparsers.add_parser("priority-order")
+    priority_order_parser.add_argument("--json", action="store_true")
 
     tooling_audit_parser = subparsers.add_parser("tooling-audit")
     tooling_audit_parser.add_argument("--json", action="store_true")
@@ -2060,6 +2070,10 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
         report = parser_golden_audit_dsl()
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
+    if args.command == "test-strategy":
+        report = test_strategy_report_dsl(source, source_name=str(path))
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
     if args.command == "dsl-quality":
         report = dsl_language_quality_contract()
         _emit_tooling_payload(report, as_json=args.json)
@@ -2091,6 +2105,14 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
         return 0 if report["ok"] else 1
     if args.command == "doctor":
         report = doctor_report_dsl()
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "contributor-tasks":
+        report = contributor_tasks_report_dsl()
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "priority-order":
+        report = priority_order_report_dsl()
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     if args.command == "tooling-audit":
@@ -2534,6 +2556,61 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
             )
         for check in checks:
             print(f"{'ok' if check['ok'] else 'fail'} {check['check']}")
+        return
+    if payload.get("format") == "appgen.test-strategy-cli-audit.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        print(
+            f"test-strategy {status}: format={payload.get('format')} "
+            f"cases={payload.get('passing_case_count', 0)}/{payload.get('case_count', 0)} "
+            f"surfaces={payload.get('observed_surface_count', 0)}/{payload.get('required_surface_count', 0)} "
+            f"missing_cases={payload.get('missing_case_count', 0)} "
+            f"missing_surfaces={payload.get('missing_surface_count', 0)} "
+            f"doctor_checks={payload.get('doctor_check_count', 0)}"
+        )
+        for case in payload.get("cases", ()):
+            print(
+                f"{'ok' if case.get('ok') else 'fail'} case {case.get('case')}: "
+                f"format={case.get('payload_format')} exit={case.get('exit_code')}"
+            )
+        if payload.get("observed_surfaces"):
+            print(f"observed-surfaces {', '.join(payload.get('observed_surfaces', ()))}")
+        for case_id in payload.get("missing_case_ids", ()):
+            print(f"missing-case {case_id}")
+        for surface in payload.get("missing_surfaces", ()):
+            print(f"missing-surface {surface}")
+        return
+    if payload.get("format") == "appgen.contributor-task-contract-audit.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        print(
+            f"contributor-tasks {status}: format={payload.get('format')} "
+            f"groups={payload.get('group_count', 0)} "
+            f"tasks={payload.get('passing_task_count', 0)}/{payload.get('task_count', 0)} "
+            f"missing={payload.get('missing_task_count', 0)} "
+            f"missing_required={payload.get('missing_required_task_count', 0)}"
+        )
+        for task in payload.get("tasks", ()):
+            print(
+                f"{'ok' if task.get('ok') else 'fail'} {task.get('group')}::{task.get('task')} "
+                f"evidence={task.get('evidence_format')}"
+            )
+        for task_id in payload.get("missing_tasks", ()):
+            print(f"missing-task {task_id}")
+        return
+    if payload.get("format") == "appgen.priority-order-contract-audit.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        print(
+            f"priority-order {status}: format={payload.get('format')} "
+            f"priorities={payload.get('passing_priority_count', 0)}/{payload.get('priority_count', 0)} "
+            f"missing={payload.get('missing_priority_count', 0)} "
+            f"document_order_matches={payload.get('document_order_matches')}"
+        )
+        for index, item in enumerate(payload.get("priorities", ()), start=1):
+            print(
+                f"{index}. {'ok' if item.get('ok') else 'fail'} {item.get('priority')}: "
+                f"{item.get('label')} evidence={item.get('evidence_format')}"
+            )
+        for priority in payload.get("missing_priorities", ()):
+            print(f"missing-priority {priority}")
         return
     print(json.dumps(payload, indent=2, sort_keys=True, default=list))
 
@@ -6657,6 +6734,7 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.tooling-section-coverage-audit.v1",
     "appgen.tooling-implementation-phase-audit.v1",
     "appgen.implementation-phase-doc-alignment.v1",
+    "appgen.test-strategy-cli-audit.v1",
     "appgen.test-family-contract-audit.v1",
     "appgen.contributor-task-contract-audit.v1",
     "appgen.priority-order-contract-audit.v1",
@@ -8281,6 +8359,18 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "runtime_phase_count": {"type": "integer", "minimum": 0},
                 "phase_ids": {"type": "array", "items": {"type": "string"}},
                 "documented_phase_ids": {"type": "array", "items": {"type": "string"}},
+            },
+        ),
+        "appgen.test-strategy-cli-audit.v1": _contract_format_schema(
+            "appgen.test-strategy-cli-audit.v1",
+            required=("format", "ok", "cases", "case_count", "required_surfaces", "observed_surfaces"),
+            properties={
+                "cases": {"type": "array", "items": {"type": "object"}},
+                "case_count": {"type": "integer", "minimum": 0},
+                "passing_case_count": {"type": "integer", "minimum": 0},
+                "required_surfaces": {"type": "array", "items": {"type": "string"}},
+                "observed_surfaces": {"type": "array", "items": {"type": "string"}},
+                "missing_surface_count": {"type": "integer", "minimum": 0},
             },
         ),
         "appgen.test-family-contract-audit.v1": _contract_format_schema(
@@ -19584,6 +19674,59 @@ def _tooling_audit_diagnostics_catalog_cli() -> dict:
     }
 
 
+def test_strategy_report_dsl(source: str, *, source_name: str = "<memory>") -> dict:
+    """Run the first-class test strategy gate for one DSL source file."""
+    with tempfile.TemporaryDirectory(prefix="appgen-test-strategy-") as tmp:
+        report = _tooling_audit_test_strategy_cli(Path(tmp), source)
+    return {
+        **report,
+        "source_name": source_name,
+        "source_of_truth": "docs/tooling.md#test-strategy",
+    }
+
+
+def contributor_tasks_report_dsl() -> dict:
+    """Return contributor task evidence as a direct CLI/report surface."""
+    return _tooling_audit_report_detail(
+        "contributor_task_breakdown_contracts",
+        "appgen.contributor-task-contract-audit.v1",
+    )
+
+
+def priority_order_report_dsl() -> dict:
+    """Return the ordered tooling roadmap as a direct CLI/report surface."""
+    return _tooling_audit_report_detail(
+        "priority_order_contracts",
+        "appgen.priority-order-contract-audit.v1",
+    )
+
+
+def _tooling_audit_report_detail(check_id: str, expected_format: str) -> dict:
+    report = tooling_audit_report_dsl()
+    for check in report.get("checks", ()):
+        detail = check.get("detail")
+        if check.get("id") == check_id and isinstance(detail, dict):
+            return {
+                **detail,
+                "parent_format": report.get("format"),
+                "parent_check_id": check_id,
+                "source_of_truth": check.get("section") or detail.get("source_of_truth"),
+            }
+    return {
+        "format": expected_format,
+        "ok": False,
+        "parent_format": report.get("format"),
+        "parent_check_id": check_id,
+        "source_of_truth": "docs/tooling.md",
+        "blocking_gaps": (
+            {
+                "check": check_id,
+                "message": f"Missing tooling-audit detail for {expected_format}.",
+            },
+        ),
+    }
+
+
 def _tooling_audit_test_strategy_cli(tmp: Path, source: str) -> dict:
     source_path = tmp / "test-strategy.appgen"
     source_path.write_text(source, encoding="utf-8")
@@ -20424,6 +20567,16 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
                 repo_root,
                 implementation_phases,
             ),
+            "appgen.test-strategy-cli-audit.v1": {
+                "format": "appgen.test-strategy-cli-audit.v1",
+                "ok": True,
+                "cases": ({"case": "schema_validation", "ok": True},),
+                "case_count": 1,
+                "passing_case_count": 1,
+                "required_surfaces": ("cli",),
+                "observed_surfaces": ("cli",),
+                "missing_surface_count": 0,
+            },
             "appgen.test-family-contract-audit.v1": {
                 "format": "appgen.test-family-contract-audit.v1",
                 "ok": True,
@@ -22961,6 +23114,7 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         "designer-sync",
         "diagnostics",
         "parser-golden",
+        "test-strategy",
         "dsl-quality",
         "dsl-antlr",
         "dsl-authoring-gate",
@@ -22969,6 +23123,8 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         "contract-validate",
         "drift",
         "doctor",
+        "contributor-tasks",
+        "priority-order",
         "tooling-audit",
     )
     help_output = io.StringIO()
@@ -23004,6 +23160,7 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         ("designer-sync",): ("--edit-json", "--json"),
         ("diagnostics",): ("--audit-fixtures", "--json"),
         ("parser-golden",): ("--json",),
+        ("test-strategy",): ("--json",),
         ("dsl-quality",): ("--json",),
         ("dsl-antlr",): ("--json",),
         ("dsl-authoring-gate",): ("--json",),
@@ -23012,6 +23169,8 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         ("contract-validate",): ("--format", "--json"),
         ("drift",): ("--json",),
         ("doctor",): ("--json",),
+        ("contributor-tasks",): ("--json",),
+        ("priority-order",): ("--json",),
         ("tooling-audit",): ("--json",),
     }
     option_help = {}

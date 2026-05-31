@@ -23,12 +23,15 @@ _TOOLING_SUBCOMMANDS = {
     "designer-sync",
     "diagnostics",
     "parser-golden",
+    "test-strategy",
     "dsl-quality",
     "dsl-antlr",
     "dsl-authoring-gate",
     "dsl-language-service",
     "drift",
     "doctor",
+    "contributor-tasks",
+    "priority-order",
     "tooling-audit",
 }
 _HELP_FLAGS = {"-h", "--help"}
@@ -43,8 +46,9 @@ AppGen-X application generator and DSL tooling.
 Tooling subcommands are also available:
   lint, semantic, format, validate, generate, graph, graph-suite, explain,
   migration-plan, nl-plan, lsp, verify, package, component-publish, pbc, designer-sync,
-  diagnostics, parser-golden, dsl-quality, dsl-antlr, dsl-authoring-gate,
-  dsl-language-service, drift, doctor, and tooling-audit
+  diagnostics, parser-golden, test-strategy, dsl-quality, dsl-antlr,
+  dsl-authoring-gate, dsl-language-service, drift, doctor, contributor-tasks,
+  priority-order, and tooling-audit
 
 The platform supports visual drag-and-drop form design, database design,
 workflow design, PBC composition, packaging, and release evidence.

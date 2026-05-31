@@ -678,6 +678,14 @@ omits a documented subcommand, a subcommand help page omits a required option,
 `appgen` and `apg` stop sharing the same entrypoint, module execution via
 `python -m pyAppGen` stops dispatching to tooling, or the repo-local `./apg`
 command stops producing the same lint contract.
+Test strategy and roadmap commands are first-class CLI contracts:
+`appgen test-strategy <file>` emits the same cross-tool strategy evidence used
+by the aggregate audit, `appgen contributor-tasks` prints the evidence-backed
+good-first/intermediate/advanced task list, and `appgen priority-order` prints
+the dependency-ordered implementation roadmap. These commands exist so
+contributors and coding agents do not have to run the full `tooling-audit`
+payload just to decide what to build next or verify that a DSL file still
+exercises the required strategy surface.
 DSL language-quality commands are first-class CLI contracts: `appgen
 dsl-quality`, `appgen dsl-antlr`, `appgen dsl-authoring-gate <file>`, and
 `appgen dsl-language-service <file>` expose the same grammar, parser, keyword,
@@ -2387,6 +2395,18 @@ doctor-check counts across diagnostics, parser golden, semantic drift, and
 doctor gates, so release evidence proves the generator, IDE, LSP, graph, and
 release-verifier surfaces share the same semantic model without expanding every
 nested report.
+It is directly callable:
+
+```console
+appgen test-strategy path/to/app.appgen
+appgen test-strategy path/to/app.appgen --json
+```
+
+Text mode prints a `test-strategy ...` summary, one line per diagnostics,
+parser-golden, drift, and doctor case, and an `observed-surfaces ...` line for
+the shared semantic-model surfaces. JSON mode emits
+`appgen.test-strategy-cli-audit.v1` with the source file name and this section
+as `source_of_truth`.
 It also reports required, observed, and missing case ids; expected and observed
 exit codes by case; case `ok` status by case; expected and observed payload
 formats by case; expected text markers by case; text exit codes by case;
@@ -2627,7 +2647,7 @@ Exit criteria:
   package-manifest, component/PBC wrapper, doctor, tooling-audit,
   project-governance, schema-catalog, and contract-validation report schemas are
   available from CLI JSON and text modes. The schema audit validates
-  representative payloads for all 113 documented `appgen.*.v1` formats, so
+  representative payloads for all 114 documented `appgen.*.v1` formats, so
   adding a documented contract without a matching runtime sample fails the
   release gate.
 - `appgen.contract-validation-cli-audit.v1` proves those JSON contracts can be
@@ -2731,6 +2751,11 @@ semantic, diagnostic, formatter, CLI, LSP, graph, migration, natural-language,
 designer, release, and drift evidence. The gate fails when any listed task no
 longer has a passing evidence format, when one of the three task groups is
 missing, or when a required task name disappears from the runtime contract.
+`appgen contributor-tasks` exposes the same report directly. Text mode prints
+`group::task` lines with each evidence format; JSON mode emits
+`appgen.contributor-task-contract-audit.v1` with the parent tooling-audit check
+id so external agents can pick one bounded task without expanding the aggregate
+audit.
 
 Good first implementation tasks:
 
@@ -2773,6 +2798,9 @@ documented order and each priority has a passing evidence format before later
 tooling is counted on top of an unstable foundation. It also publishes
 `required_priority_ids` and `missing_required_priority_ids`, so a deleted or
 renamed priority fails by name instead of only changing the priority count.
+`appgen priority-order` exposes the same ordered roadmap directly. Text mode
+prints each numbered priority with its evidence format; JSON mode emits
+`appgen.priority-order-contract-audit.v1` with the parent tooling-audit check id.
 
 1. Shared parser and semantic model.
 2. Diagnostic registry and linter.

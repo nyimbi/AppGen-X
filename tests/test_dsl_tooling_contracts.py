@@ -4981,6 +4981,38 @@ def test_test_strategy_cli_audit_requires_generator_drift_surface(tmp_path: Path
     assert drift_case["generate_report"] == "appgen.generate-report.v1"
 
 
+def test_test_strategy_is_first_class_cli_command(tmp_path: Path) -> None:
+    source_path = tmp_path / "strategy.appgen"
+    source_path.write_text(TOOLING_SAMPLE, encoding="utf-8")
+    root = Path(__file__).resolve().parents[1]
+    cli_json = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "test-strategy", str(source_path), "--json"],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
+    cli_text = subprocess.run(
+        [sys.executable, "-m", "pyAppGen", "test-strategy", str(source_path)],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
+
+    assert cli_json.returncode == 0, cli_json.stderr
+    payload = json.loads(cli_json.stdout)
+    assert payload["format"] == "appgen.test-strategy-cli-audit.v1"
+    assert payload["source_name"] == str(source_path)
+    assert payload["source_of_truth"] == "docs/tooling.md#test-strategy"
+    assert payload["missing_case_count"] == 0
+    assert payload["missing_surface_count"] == 0
+    assert cli_text.returncode == 0, cli_text.stderr
+    assert cli_text.stdout.startswith("test-strategy ok: format=appgen.test-strategy-cli-audit.v1")
+    assert "case semantic_drift: format=appgen.semantic-drift-audit.v1 exit=0" in cli_text.stdout
+    assert "observed-surfaces " in cli_text.stdout
+
+
 def test_test_strategy_diagnostic_catalog_case_proves_registry_coverage_without_pbc_imports() -> None:
     catalog_case = appgen_dsl._tooling_audit_diagnostics_catalog_cli()
 
@@ -4988,6 +5020,102 @@ def test_test_strategy_diagnostic_catalog_case_proves_registry_coverage_without_
     assert catalog_case["payload_format"] == "appgen.diagnostic-catalog.v1"
     assert catalog_case["required_count"] == catalog_case["covered_count"]
     assert catalog_case["fixture_count"] >= catalog_case["required_count"]
+
+
+def test_contributor_and_priority_reports_are_first_class_cli_commands(monkeypatch) -> None:
+    fake_report = {
+        "format": "appgen.tooling-audit.v1",
+        "ok": True,
+        "checks": (
+            {
+                "id": "contributor_task_breakdown_contracts",
+                "section": "docs/tooling.md#contributor-task-breakdown",
+                "detail": {
+                    "format": "appgen.contributor-task-contract-audit.v1",
+                    "ok": True,
+                    "group_count": 3,
+                    "groups": ("good_first", "intermediate", "advanced"),
+                    "task_count": 2,
+                    "passing_task_count": 2,
+                    "missing_task_count": 0,
+                    "missing_required_task_count": 0,
+                    "tasks": (
+                        {
+                            "group": "good_first",
+                            "task": "define_diagnostic_dataclasses_and_json_schema",
+                            "ok": True,
+                            "evidence_format": "appgen.contract-schema-cli-audit.v1",
+                        },
+                        {
+                            "group": "advanced",
+                            "task": "cross_tool_drift_tests",
+                            "ok": True,
+                            "evidence_format": "appgen.test-strategy-cli-audit.v1",
+                        },
+                    ),
+                    "missing_tasks": (),
+                },
+            },
+            {
+                "id": "priority_order_contracts",
+                "section": "docs/tooling.md#priority-order",
+                "detail": {
+                    "format": "appgen.priority-order-contract-audit.v1",
+                    "ok": True,
+                    "priority_count": 2,
+                    "passing_priority_count": 2,
+                    "missing_priority_count": 0,
+                    "document_order_matches": True,
+                    "priorities": (
+                        {
+                            "priority": "shared_parser_and_semantic_model",
+                            "label": "Shared parser and semantic model.",
+                            "ok": True,
+                            "evidence_format": "appgen.semantic-source-set-cli-audit.v1",
+                        },
+                        {
+                            "priority": "package_and_release_verifiers",
+                            "label": "Package and release verifiers.",
+                            "ok": True,
+                            "evidence_format": "appgen.package-verify-cli-audit.v1",
+                        },
+                    ),
+                    "missing_priorities": (),
+                },
+            },
+        ),
+    }
+    monkeypatch.setattr(appgen_dsl, "tooling_audit_report_dsl", lambda: fake_report)
+
+    contributor_json = StringIO()
+    contributor_text = StringIO()
+    priority_json = StringIO()
+    priority_text = StringIO()
+    with redirect_stdout(contributor_json):
+        contributor_exit = appgen_dsl.dsl_tooling_cli(("contributor-tasks", "--json"))
+    with redirect_stdout(contributor_text):
+        contributor_text_exit = appgen_dsl.dsl_tooling_cli(("contributor-tasks",))
+    with redirect_stdout(priority_json):
+        priority_exit = appgen_dsl.dsl_tooling_cli(("priority-order", "--json"))
+    with redirect_stdout(priority_text):
+        priority_text_exit = appgen_dsl.dsl_tooling_cli(("priority-order",))
+
+    contributor_payload = json.loads(contributor_json.getvalue())
+    priority_payload = json.loads(priority_json.getvalue())
+    assert contributor_exit == 0
+    assert contributor_payload["format"] == "appgen.contributor-task-contract-audit.v1"
+    assert contributor_payload["parent_check_id"] == "contributor_task_breakdown_contracts"
+    assert contributor_text_exit == 0
+    assert contributor_text.getvalue().startswith(
+        "contributor-tasks ok: format=appgen.contributor-task-contract-audit.v1"
+    )
+    assert "ok advanced::cross_tool_drift_tests evidence=appgen.test-strategy-cli-audit.v1" in contributor_text.getvalue()
+    assert priority_exit == 0
+    assert priority_payload["format"] == "appgen.priority-order-contract-audit.v1"
+    assert priority_payload["parent_check_id"] == "priority_order_contracts"
+    assert priority_text_exit == 0
+    assert priority_text.getvalue().startswith("priority-order ok: format=appgen.priority-order-contract-audit.v1")
+    assert "1. ok shared_parser_and_semantic_model" in priority_text.getvalue()
 
 
 def test_module_boundary_audit_proves_documented_tooling_surfaces() -> None:
@@ -11040,8 +11168,9 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert "Tooling subcommands are also available" in normalized_help
     assert "lint, semantic, format, validate, generate, graph, graph-suite" in normalized_help
     assert "component-publish, pbc, designer-sync" in normalized_help
-    assert "diagnostics, parser-golden, dsl-quality, dsl-antlr" in normalized_help
-    assert "dsl-authoring-gate, dsl-language-service, drift, doctor, and tooling-audit" in normalized_help
+    assert "diagnostics, parser-golden, test-strategy, dsl-quality, dsl-antlr" in normalized_help
+    assert "dsl-authoring-gate, dsl-language-service, drift, doctor, contributor-tasks" in normalized_help
+    assert "priority-order, and tooling-audit" in normalized_help
     assert "apg =" in pyproject
     assert "visual drag-and-drop form design" in normalized_help
     assert audit["format"] == "appgen.cli-help-surface-audit.v1"
