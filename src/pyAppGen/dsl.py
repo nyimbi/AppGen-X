@@ -7722,12 +7722,15 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and graph_cli.get("missing_required_kind_count") == 0
             and graph_cli.get("failing_case_count") == 0
             and graph_cli.get("missing_case_count") == 0
+            and graph_cli.get("missing_exit_code_case_count") == 0
+            and graph_cli.get("missing_ok_case_count") == 0
             and graph_cli.get("missing_format_case_count") == 0
             and graph_cli.get("payload_format_case_count") == graph_cli.get("json_case_count")
             and graph_cli.get("missing_payload_format_case_count") == 0
             and graph_cli.get("text_marker_case_count")
             == graph_cli.get("mermaid_case_count", 0) + graph_cli.get("dot_case_count", 0)
             and graph_cli.get("missing_text_marker_count") == 0
+            and graph_cli.get("text_json_fallback_case_count") == 0
             and graph_suite_cli["ok"]
             and graph_suite_cli.get("missing_required_kind_count") == 0
             and graph_suite_cli.get("missing_rendering_count") == 0
@@ -7752,6 +7755,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "observed_case_ids": graph_cli.get("observed_case_ids"),
                     "missing_case_count": graph_cli.get("missing_case_count"),
                     "missing_case_ids": graph_cli.get("missing_case_ids"),
+                    "expected_exit_codes_by_case": graph_cli.get("expected_exit_codes_by_case"),
+                    "exit_codes_by_case": graph_cli.get("exit_codes_by_case"),
+                    "missing_exit_code_case_count": graph_cli.get("missing_exit_code_case_count"),
+                    "missing_exit_code_cases": graph_cli.get("missing_exit_code_cases"),
+                    "ok_by_case": graph_cli.get("ok_by_case"),
+                    "missing_ok_case_count": graph_cli.get("missing_ok_case_count"),
+                    "missing_ok_cases": graph_cli.get("missing_ok_cases"),
                     "expected_formats_by_case": graph_cli.get("expected_formats_by_case"),
                     "formats_by_case": graph_cli.get("formats_by_case"),
                     "missing_format_case_count": graph_cli.get("missing_format_case_count"),
@@ -7772,6 +7782,9 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "missing_text_marker_count": graph_cli.get("missing_text_marker_count"),
                     "missing_text_marker_cases": graph_cli.get("missing_text_marker_cases"),
                     "missing_text_markers_by_case": graph_cli.get("missing_text_markers_by_case"),
+                    "text_json_fallback_by_case": graph_cli.get("text_json_fallback_by_case"),
+                    "text_json_fallback_case_count": graph_cli.get("text_json_fallback_case_count"),
+                    "text_json_fallback_cases": graph_cli.get("text_json_fallback_cases"),
                 },
                 "suite_cli": {
                     "format": graph_suite_cli.get("format"),
@@ -16371,6 +16384,7 @@ def _tooling_audit_graph_cli_formats(tmp: Path, source: str) -> dict:
                 "ok": exit_code == 0 and (json_ok or text_ok),
                 "exit_code": exit_code,
                 "payload_format": payload_format,
+                "json_fallback": output_format in {"mermaid", "dot"} and stdout.lstrip().startswith("{"),
                 "stdout_prefix": stdout[:80],
             }
         )
@@ -16409,6 +16423,23 @@ def _tooling_audit_graph_cli_formats(tmp: Path, source: str) -> dict:
         if result["case"] in required_text_markers_by_case
         and not result["stdout_prefix"].startswith(required_text_markers_by_case[result["case"]])
     }
+    expected_exit_codes_by_case = {case_id: 0 for case_id in required_case_ids}
+    exit_codes_by_case = {result["case"]: result["exit_code"] for result in results}
+    missing_exit_code_cases = tuple(
+        case_id
+        for case_id, expected_exit_code in expected_exit_codes_by_case.items()
+        if exit_codes_by_case.get(case_id) != expected_exit_code
+    )
+    ok_by_case = {result["case"]: result["ok"] is True for result in results}
+    missing_ok_cases = tuple(case_id for case_id in required_case_ids if ok_by_case.get(case_id) is not True)
+    text_json_fallback_by_case = {
+        result["case"]: result.get("json_fallback") is True
+        for result in results
+        if result["case"] in required_text_markers_by_case
+    }
+    text_json_fallback_cases = tuple(
+        case_id for case_id, has_fallback in text_json_fallback_by_case.items() if has_fallback
+    )
     covered_kinds = tuple(dict.fromkeys(result["kind"] for result in results))
     covered_formats = tuple(dict.fromkeys(result["format"] for result in results))
     missing_required_kinds = tuple(kind for kind in REQUIRED_GRAPH_KINDS if kind not in covered_kinds)
@@ -16419,7 +16450,10 @@ def _tooling_audit_graph_cli_formats(tmp: Path, source: str) -> dict:
         and not missing_case_ids
         and not missing_format_cases
         and not missing_payload_format_cases
-        and not missing_text_markers_by_case,
+        and not missing_exit_code_cases
+        and not missing_ok_cases
+        and not missing_text_markers_by_case
+        and not text_json_fallback_cases,
         "case_count": len(results),
         "passing_case_count": sum(1 for result in results if result["ok"]),
         "failing_case_count": len(failing_cases),
@@ -16429,6 +16463,13 @@ def _tooling_audit_graph_cli_formats(tmp: Path, source: str) -> dict:
         "missing_case_count": len(missing_case_ids),
         "missing_case_ids": missing_case_ids,
         "failing_cases": failing_cases,
+        "expected_exit_codes_by_case": expected_exit_codes_by_case,
+        "exit_codes_by_case": exit_codes_by_case,
+        "missing_exit_code_case_count": len(missing_exit_code_cases),
+        "missing_exit_code_cases": missing_exit_code_cases,
+        "ok_by_case": ok_by_case,
+        "missing_ok_case_count": len(missing_ok_cases),
+        "missing_ok_cases": missing_ok_cases,
         "expected_formats_by_case": expected_formats_by_case,
         "formats_by_case": formats_by_case,
         "missing_format_case_count": len(missing_format_cases),
@@ -16457,6 +16498,9 @@ def _tooling_audit_graph_cli_formats(tmp: Path, source: str) -> dict:
         "missing_text_markers_by_case": missing_text_markers_by_case,
         "missing_text_marker_count": len(missing_text_markers_by_case),
         "missing_text_marker_cases": tuple(missing_text_markers_by_case),
+        "text_json_fallback_by_case": text_json_fallback_by_case,
+        "text_json_fallback_case_count": len(text_json_fallback_cases),
+        "text_json_fallback_cases": text_json_fallback_cases,
         "cases": tuple(results),
     }
 

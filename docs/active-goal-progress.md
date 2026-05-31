@@ -4286,3 +4286,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   (`1 passed`), aggregate tooling audit (`1 passed`, with the known active-PBC
   `datetime.utcnow()` warnings only), scoped diff whitespace check, and
   restricted-name scan outside archive, Git internals, and active PBC paths.
+- Current graph CLI hardening pass expands documented graph example evidence
+  with expected and observed exit codes, `ok` status, output formats, JSON
+  payload formats, text markers, and raw-JSON fallback status by named graph
+  case. The aggregate `graph_rendering_contracts` gate now requires those named
+  missing lists to be empty, so ER, lookup, workflow, handler, PBC, security,
+  agent, deployment, and package graph examples cannot pass by aggregate counts
+  while returning the wrong status, wrong JSON envelope, missing Mermaid/DOT
+  text, or raw JSON fallback. Verification passed: Python compile for the
+  touched DSL and tests, focused graph CLI audit (`1 passed`), aggregate tooling
+  audit (`1 passed`, with the known active-PBC `datetime.utcnow()` warnings
+  only), scoped diff whitespace check, and restricted-name scan outside archive,
+  Git internals, and active PBC paths.

@@ -8125,6 +8125,25 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     ]
     assert graph_rendering_check["detail"]["cli"]["missing_case_count"] == 0
     assert graph_rendering_check["detail"]["cli"]["missing_case_ids"] == ()
+    assert graph_rendering_check["detail"]["cli"]["exit_codes_by_case"] == (
+        graph_rendering_check["detail"]["cli"]["expected_exit_codes_by_case"]
+    )
+    assert graph_rendering_check["detail"]["cli"]["missing_exit_code_case_count"] == 0
+    assert graph_rendering_check["detail"]["cli"]["missing_exit_code_cases"] == ()
+    assert graph_rendering_check["detail"]["cli"]["ok_by_case"] == {
+        "er_mermaid": True,
+        "lookup_json": True,
+        "workflow_json": True,
+        "workflow_mermaid": True,
+        "handler_mermaid": True,
+        "pbc_dot": True,
+        "security_dot": True,
+        "agent_json": True,
+        "deployment_dot": True,
+        "package_mermaid": True,
+    }
+    assert graph_rendering_check["detail"]["cli"]["missing_ok_case_count"] == 0
+    assert graph_rendering_check["detail"]["cli"]["missing_ok_cases"] == ()
     assert graph_rendering_check["detail"]["cli"]["formats_by_case"] == graph_rendering_check["detail"]["cli"][
         "expected_formats_by_case"
     ]
@@ -8146,6 +8165,9 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert graph_rendering_check["detail"]["cli"]["missing_text_marker_count"] == 0
     assert graph_rendering_check["detail"]["cli"]["missing_text_marker_cases"] == ()
     assert graph_rendering_check["detail"]["cli"]["missing_text_markers_by_case"] == {}
+    assert graph_rendering_check["detail"]["cli"]["text_json_fallback_case_count"] == 0
+    assert graph_rendering_check["detail"]["cli"]["text_json_fallback_cases"] == ()
+    assert all(value is False for value in graph_rendering_check["detail"]["cli"]["text_json_fallback_by_case"].values())
     assert graph_rendering_check["detail"]["suite_cli"]["format"] == "appgen.graph-suite-cli-audit.v1"
     assert graph_rendering_check["detail"]["suite_cli"]["missing_required_kind_count"] == 0
     assert graph_rendering_check["detail"]["suite_cli"]["present_rendering_count"] == (
@@ -10567,6 +10589,13 @@ def test_graph_cli_audit_covers_documented_graph_examples(tmp_path: Path) -> Non
     assert audit["missing_case_count"] == 0
     assert audit["missing_case_ids"] == ()
     assert audit["failing_cases"] == ()
+    assert audit["expected_exit_codes_by_case"] == {case_id: 0 for case_id in expected_case_ids}
+    assert audit["exit_codes_by_case"] == audit["expected_exit_codes_by_case"]
+    assert audit["missing_exit_code_case_count"] == 0
+    assert audit["missing_exit_code_cases"] == ()
+    assert audit["ok_by_case"] == {case_id: True for case_id in expected_case_ids}
+    assert audit["missing_ok_case_count"] == 0
+    assert audit["missing_ok_cases"] == ()
     assert audit["expected_formats_by_case"] == {
         "er_mermaid": "mermaid",
         "lookup_json": "json",
@@ -10606,6 +10635,17 @@ def test_graph_cli_audit_covers_documented_graph_examples(tmp_path: Path) -> Non
     assert audit["missing_text_marker_count"] == 0
     assert audit["missing_text_marker_cases"] == ()
     assert audit["missing_text_markers_by_case"] == {}
+    assert audit["text_json_fallback_case_count"] == 0
+    assert audit["text_json_fallback_cases"] == ()
+    assert audit["text_json_fallback_by_case"] == {
+        "er_mermaid": False,
+        "workflow_mermaid": False,
+        "handler_mermaid": False,
+        "pbc_dot": False,
+        "security_dot": False,
+        "deployment_dot": False,
+        "package_mermaid": False,
+    }
     assert set(expected_case_ids) <= set(cases)
     assert cases["er_mermaid"]["kind"] == "er"
     assert cases["er_mermaid"]["format"] == "mermaid"

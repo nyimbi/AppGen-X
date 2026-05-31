@@ -945,11 +945,13 @@ case-id, failing-case, covered-kind, missing-required-kind, covered-format,
 JSON-case, Mermaid-case, DOT-case, payload-format, and text-marker counts
 across every required graph kind, so graph release evidence captures both
 individual CLI examples and full graph breadth. It also reports required,
-observed, and missing case ids; expected and observed output formats by case;
-expected and observed JSON payload formats by case; and required plus missing
-Mermaid/DOT text markers by case. This makes a missing documented graph
-example, a format drift, a JSON payload envelope regression, or a text-renderer
-marker regression fail by name rather than only changing an aggregate count.
+observed, and missing case ids; expected and observed exit codes by case; case
+`ok` status by case; expected and observed output formats by case; expected and
+observed JSON payload formats by case; required plus missing Mermaid/DOT text
+markers by case; and raw-JSON fallback status for text graph cases. This makes a
+missing documented graph example, a format drift, a JSON payload envelope
+regression, a text-renderer marker regression, a wrong process status, or a text
+mode JSON fallback fail by name rather than only changing an aggregate count.
 The graph-suite CLI audit
 reports required-kind, missing-required-kind, output-format,
 missing-rendering, text-fragment, and missing-text-fragment counts, so CI can
