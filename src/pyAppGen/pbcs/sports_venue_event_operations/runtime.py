@@ -591,3 +591,44 @@ def sports_venue_event_operations_runtime_smoke():
 
 
 sports_venue_event_operations_execute_domain_operation = execute_domain_operation
+
+# Improve1 sports venue event operations control extension.
+from .sports_venue_event_operations_control import evaluate_sports_venue_event_operations_control, improve1_sports_venue_event_operations_control_contract
+
+_SPORTS_CONTROL_BASE_RUNTIME_CAPABILITIES = sports_venue_event_operations_runtime_capabilities
+_SPORTS_CONTROL_BASE_BUILD_RELEASE_EVIDENCE = sports_venue_event_operations_build_release_evidence
+
+
+def sports_venue_event_operations_runtime_capabilities() -> dict:
+    runtime = dict(_SPORTS_CONTROL_BASE_RUNTIME_CAPABILITIES())
+    control = improve1_sports_venue_event_operations_control_contract()
+    runtime["ok"] = bool(runtime.get("ok")) and control["ok"]
+    runtime["sports_venue_event_operations_control"] = control
+    runtime["operations"] = tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + ("evaluate_sports_venue_event_operations_control", "improve1_sports_venue_event_operations_control_contract")))
+    runtime["improve1_control_owned_tables"] = control["owned_tables"]
+    runtime["event_contract"] = "AppGen-X"
+    runtime["stream_engine_picker_visible"] = False
+    return runtime
+
+
+def sports_venue_event_operations_build_release_evidence() -> dict:
+    evidence = dict(_SPORTS_CONTROL_BASE_BUILD_RELEASE_EVIDENCE())
+    control = improve1_sports_venue_event_operations_control_contract()
+    artifacts = dict(evidence.get("generated_artifacts", {}))
+    artifacts["sports_venue_event_operations_control"] = {
+        "contract": control["format"],
+        "capability_count": control["capability_count"],
+        "owned_tables": control["owned_tables"],
+        "service_apis": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "ui_surfaces": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "test": "tests/test_domain_behavior.py",
+    }
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_sports_venue_event_operations_control", "ok": control["ok"]},)
+    evidence.update({
+        "ok": bool(evidence.get("ok")) and control["ok"],
+        "checks": checks,
+        "generated_artifacts": artifacts,
+        "sports_venue_event_operations_control": control,
+        "blocking_gaps": tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ())),
+    })
+    return evidence

@@ -648,3 +648,39 @@ def validate_improve1_capabilities(expected_titles: tuple[str, ...]) -> dict:
         "registry_ok": registry["ok"],
         "side_effects": (),
     }
+
+# Improve1 sports venue event operations control traceability extension.
+_SPORTS_CONTROL_BASE_CAPABILITY_REGISTRY = capability_registry
+_SPORTS_CONTROL_BASE_PLAN_FEATURE_EXECUTION = plan_feature_execution
+
+
+def _with_sports_control_artifacts(row: dict) -> dict:
+    return {
+        **row,
+        "code_artifact_model": tuple(dict.fromkeys(tuple(row["code_artifact_model"]) + ("sports_venue_event_operations_control.py",))),
+        "ui_surface": tuple(dict.fromkeys(tuple(row["ui_surface"]) + ("sports_venue_event_operations_control.py",))),
+        "service_api": tuple(dict.fromkeys(tuple(row["service_api"]) + ("sports_venue_event_operations_control.py",))),
+        "test": tuple(dict.fromkeys(tuple(row["test"]) + ("tests/test_domain_behavior.py",))),
+        "evidence": tuple(dict.fromkeys(tuple(row["evidence"]) + ("sports_venue_event_operations_control.py", "tests/test_domain_behavior.py"))),
+    }
+
+
+def capability_registry() -> dict:
+    registry = dict(_SPORTS_CONTROL_BASE_CAPABILITY_REGISTRY())
+    rows = tuple(_with_sports_control_artifacts(row) for row in registry["capabilities"])
+    registry["capabilities"] = rows
+    registry["ok"] = len(rows) == 50 and all(row["code_artifact_model"] and row["ui_surface"] and row["service_api"] and row["test"] and row["evidence"] for row in rows)
+    registry["sports_venue_event_operations_control_artifact"] = "sports_venue_event_operations_control.py"
+    return registry
+
+
+def plan_feature_execution(feature_number: int) -> dict:
+    plan = dict(_SPORTS_CONTROL_BASE_PLAN_FEATURE_EXECUTION(feature_number))
+    if not plan.get("ok"):
+        return plan
+    plan["model_artifacts"] = tuple(dict.fromkeys(tuple(plan["model_artifacts"]) + ("sports_venue_event_operations_control.py",)))
+    plan["ui_artifacts"] = tuple(dict.fromkeys(tuple(plan["ui_artifacts"]) + ("sports_venue_event_operations_control.py",)))
+    plan["service_artifacts"] = tuple(dict.fromkeys(tuple(plan["service_artifacts"]) + ("sports_venue_event_operations_control.py",)))
+    plan["test_artifacts"] = tuple(dict.fromkeys(tuple(plan["test_artifacts"]) + ("tests/test_domain_behavior.py",)))
+    plan["evidence_artifacts"] = tuple(dict.fromkeys(tuple(plan["evidence_artifacts"]) + ("sports_venue_event_operations_control.py", "tests/test_domain_behavior.py")))
+    return plan

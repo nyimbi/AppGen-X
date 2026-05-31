@@ -1,18 +1,6 @@
-# Implementation Status
+# Sports Venue Event Operations Improve1 Implementation Status
 
-Delivered in this slice:
-- domain tables and operations rewritten for sports venue event-day control
-- standalone app with event scheduling, safety, weather, production, accessibility, and analytics flows
-- role-aware workbench forms, wizards, and controls
-- governed agent document intake and CRUD preview planning
-- source, package, spec, agent, implementation, capability, and generation audits
-- focused standalone tests
-
-Known limits:
-- standalone storage is in-memory for package-local verification
-- runtime contracts remain package-local evidence, not a deployed service
-
-
-## Repo-Level Focused Audit Follow-Up
-
-Added literal manifest identity, exact configuration/seed hook test marker, and specification manifest traceability appendix after local repo audits exposed source/spec gating failures.
+- Slice: executable improve1 traceability controls for all 50 Sports Venue Event Operations backlog capabilities.
+- Scope: package-local files under `src/pyAppGen/pbcs/sports_venue_event_operations` only.
+- Runtime evidence: `sports_venue_event_operations_control.py` maps every backlog feature to owned venue control tables, calendar/seating/ingress/security/credential/staffing/concession/crowd/medical/weather/broadcast/premium/settlement fields, UI panels, service/API routes, AppGen-X event contract evidence, declared dependencies, tests, and release evidence.
+- Guardrails: PostgreSQL/MySQL/MariaDB only, AppGen-X eventing only, no stream-engine picker, no shared-table access, assistant recommendations remain preview/confirmation gated, and event-calendar, seating/access, crowd-safety, staff/concession, and eventing/release controls fail closed when evidence is absent.

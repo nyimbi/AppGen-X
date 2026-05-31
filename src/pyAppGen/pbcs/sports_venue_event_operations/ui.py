@@ -239,3 +239,34 @@ def smoke_test():
         "ok": contract["ok"] and rendered["ok"] and standalone["ok"],
         "side_effects": (),
     }
+
+# Improve1 sports venue event operations control UI extension.
+from .sports_venue_event_operations_control import improve1_sports_venue_event_operations_control_contract as _improve1_sports_venue_event_operations_control_contract
+
+_SPORTS_CONTROL_BASE_UI_CONTRACT = sports_venue_event_operations_ui_contract
+_SPORTS_CONTROL_BASE_RENDER_WORKBENCH = sports_venue_event_operations_render_workbench
+
+
+def sports_venue_event_operations_ui_contract() -> dict:
+    ui = dict(_SPORTS_CONTROL_BASE_UI_CONTRACT())
+    control = _improve1_sports_venue_event_operations_control_contract()
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "sports_venue_event_operations_control_contract": control,
+        "sports_venue_event_operations_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "sports_venue_event_operations_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def sports_venue_event_operations_render_workbench(*args, **kwargs) -> dict:
+    workbench = dict(_SPORTS_CONTROL_BASE_RENDER_WORKBENCH(*args, **kwargs))
+    control = _improve1_sports_venue_event_operations_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "sports_venue_event_operations_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "sports_venue_event_operations_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "sports_venue_event_operations_control_agent_tools": tuple(f"sports_venue_event_operations.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench

@@ -63,3 +63,7 @@ Verification rule: every row must identify a code/model artifact, UI surface, se
 - Matrix rows: 50 of 50 improve1 features.
 - The accompanying `tests/test_improve1_traceability.py` test verifies row count and required evidence columns against the current backlog.
 - This file is traceability evidence, not a substitute for the executable tests and release evidence linked in the table.
+
+## Executable Sports Venue Event Operations Control Evidence
+
+`sports_venue_event_operations_control.py` maps all 50 improve1 backlog features to owned control tables, venue-event-specific fields, UI panels, service/API routes, AppGen-X eventing, declared API/event/projection dependencies, package-local tests, and release evidence. The runtime, UI, release evidence, and capability registry expose this contract so the PBC can prove feature 1-50 -> code artifact/model -> UI surface -> service/API -> test -> evidence without shared table access or stream-engine picker exposure.
