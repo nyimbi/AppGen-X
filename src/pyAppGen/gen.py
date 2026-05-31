@@ -97830,9 +97830,10 @@ def main(
     Tooling subcommands are also available through this command and the `apg`
     alias: lint, semantic, format, validate, generate, graph, graph-suite, explain,
     migration-plan, nl-plan, lsp, verify, package, component-publish, pbc,
-    designer-sync, diagnostics, parser-golden, test-strategy, dsl-quality,
-    dsl-antlr, dsl-authoring-gate, dsl-language-service, contract-schema,
-    contract-validate, drift, doctor, contributor-tasks, priority-order, and
+    designer-sync, diagnostics, parser-golden, module-boundaries, non-goals,
+    test-strategy, dsl-quality, dsl-antlr, dsl-authoring-gate,
+    dsl-language-service, contract-schema, contract-validate, drift, doctor,
+    contributor-tasks, priority-order, implementation-phases, tooling-docs, and
     tooling-audit.
     """
     schema_sources = [

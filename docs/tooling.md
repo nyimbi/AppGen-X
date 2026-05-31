@@ -48,6 +48,9 @@ or skip linting, semantic validation, or release evidence must be rejected
 before any patch is produced. The policy audit reports case, passing-case,
 diagnostic-code, fix, rejected-prompt, and zero-patch-rejection counts so these
 non-goals remain measurable release gates rather than prose warnings.
+`appgen non-goals` exposes the same policy report directly. Text mode lists
+each policy case and diagnostic codes; JSON mode emits
+`appgen.non-goal-policy-audit.v1`.
 
 ## Core Architecture
 
@@ -95,6 +98,8 @@ observed surface area. It also reports passing-boundary, missing-boundary,
 missing-callable, passing-core-runtime, and core-runtime-gap counts. It proves
 the parser, semantic model, diagnostic catalog, and formatter can run as core
 library services without starting Studio or a generated application.
+`appgen module-boundaries` exposes the same proof directly in JSON or compact
+text form, including boundary counts, callable counts, and core runtime gaps.
 
 ## Semantic Model Contract
 
@@ -678,6 +683,13 @@ omits a documented subcommand, a subcommand help page omits a required option,
 `appgen` and `apg` stop sharing the same entrypoint, module execution via
 `python -m pyAppGen` stops dispatching to tooling, or the repo-local `./apg`
 command stops producing the same lint contract.
+Governance commands are also direct CLI contracts: `appgen module-boundaries`
+emits `appgen.module-boundary-audit.v1`, `appgen non-goals` emits
+`appgen.non-goal-policy-audit.v1`, `appgen implementation-phases` emits
+`appgen.tooling-implementation-phase-audit.v1`, and `appgen tooling-docs`
+emits `appgen.tooling-docs-audit.v1` with embedded anchor and section coverage.
+These commands keep architectural and documentation guardrails callable without
+requiring contributors to expand the full aggregate audit.
 Test strategy and roadmap commands are first-class CLI contracts:
 `appgen test-strategy <file>` emits the same cross-tool strategy evidence used
 by the aggregate audit, `appgen contributor-tasks` prints the evidence-backed
@@ -1297,6 +1309,10 @@ renderer also embeds `appgen.tooling-section-coverage-audit.v1` through the
 `tooling_section_coverage_contracts` gate, proving every major `##` section and
 every concrete `###` subsection in this specification has at least one executable
 audit gate.
+`appgen tooling-docs` exposes these documentation governance checks directly as
+`appgen.tooling-docs-audit.v1`, embedding both the anchor audit and the section
+coverage audit so CI can distinguish missing anchors, missing major sections,
+missing subsections, runtime format reference gaps, and test reference gaps.
 The text
 renderer must include embedded audit format names such as
 `appgen.non-goal-policy-audit.v1` and
@@ -2603,6 +2619,9 @@ complete, which machine-readable reports supported them, and which named
 criteria still block completion. The aggregate gate fails when a required phase
 or a named exit criterion is removed, hidden, or no longer backed by passing
 runtime evidence.
+`appgen implementation-phases` exposes the same phase audit directly. Text mode
+prints per-phase pass/fail and exit-criterion totals; JSON mode emits
+`appgen.tooling-implementation-phase-audit.v1` with the full evidence map.
 `appgen.implementation-phase-doc-alignment.v1` is embedded beside it through
 the `implementation_phase_doc_alignment_contracts` gate. It proves the seven
 documented phase headings, titles, and representative exit criteria remain
@@ -2647,7 +2666,7 @@ Exit criteria:
   package-manifest, component/PBC wrapper, doctor, tooling-audit,
   project-governance, schema-catalog, and contract-validation report schemas are
   available from CLI JSON and text modes. The schema audit validates
-  representative payloads for all 114 documented `appgen.*.v1` formats, so
+  representative payloads for all 115 documented `appgen.*.v1` formats, so
   adding a documented contract without a matching runtime sample fails the
   release gate.
 - `appgen.contract-validation-cli-audit.v1` proves those JSON contracts can be

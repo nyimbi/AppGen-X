@@ -5118,6 +5118,114 @@ def test_contributor_and_priority_reports_are_first_class_cli_commands(monkeypat
     assert "1. ok shared_parser_and_semantic_model" in priority_text.getvalue()
 
 
+def test_governance_reports_are_first_class_cli_commands(monkeypatch) -> None:
+    fake_phase = {
+        "format": "appgen.tooling-implementation-phase-audit.v1",
+        "ok": True,
+        "phase_count": 1,
+        "passing_phase_count": 1,
+        "missing_phase_count": 0,
+        "missing_required_phase_count": 0,
+        "exit_criterion_count": 1,
+        "passing_exit_criterion_count": 1,
+        "missing_exit_criterion_count": 0,
+        "phases": (
+            {
+                "id": "phase_0_inventory_and_stabilization",
+                "ok": True,
+                "exit_criteria": ({"id": "current_behavior_documented", "ok": True},),
+                "passing_exit_criteria": ("current_behavior_documented",),
+                "missing_exit_criteria": (),
+            },
+        ),
+    }
+    fake_section_coverage = {
+        "format": "appgen.tooling-section-coverage-audit.v1",
+        "ok": True,
+        "required_section_count": 1,
+        "covered_section_count": 1,
+        "missing_section_count": 0,
+        "missing_sections": (),
+        "required_subsection_count": 1,
+        "covered_subsection_count": 1,
+        "missing_subsection_count": 0,
+        "missing_subsections": (),
+        "stale_mapping_count": 0,
+        "stale_subsection_mapping_count": 0,
+    }
+    fake_doc_anchor = {
+        "format": "appgen.tooling-doc-anchor-audit.v1",
+        "ok": True,
+        "missing_sections": (),
+        "runtime_reference_gap_count": 0,
+        "test_reference_gap_count": 0,
+    }
+    fake_report = {
+        "format": "appgen.tooling-audit.v1",
+        "ok": True,
+        "doc_anchor_integrity": fake_doc_anchor,
+        "checks": (
+            {
+                "id": "implementation_phase_exit_criteria",
+                "section": "docs/tooling.md#implementation-phases",
+                "detail": fake_phase,
+            },
+            {
+                "id": "tooling_section_coverage_contracts",
+                "section": "docs/tooling.md#appgen-tooling-audit",
+                "detail": fake_section_coverage,
+            },
+            {
+                "id": "tooling_doc_anchor_integrity",
+                "section": "docs/tooling.md#appgen-tooling-audit",
+                "detail": fake_doc_anchor,
+            },
+        ),
+    }
+    monkeypatch.setattr(appgen_dsl, "tooling_audit_report_dsl", lambda: fake_report)
+
+    module_text = StringIO()
+    non_goal_text = StringIO()
+    phase_json = StringIO()
+    phase_text = StringIO()
+    docs_json = StringIO()
+    docs_text = StringIO()
+    with redirect_stdout(module_text):
+        module_exit = appgen_dsl.dsl_tooling_cli(("module-boundaries",))
+    with redirect_stdout(non_goal_text):
+        non_goal_exit = appgen_dsl.dsl_tooling_cli(("non-goals",))
+    with redirect_stdout(phase_json):
+        phase_exit = appgen_dsl.dsl_tooling_cli(("implementation-phases", "--json"))
+    with redirect_stdout(phase_text):
+        phase_text_exit = appgen_dsl.dsl_tooling_cli(("implementation-phases",))
+    with redirect_stdout(docs_json):
+        docs_exit = appgen_dsl.dsl_tooling_cli(("tooling-docs", "--json"))
+    with redirect_stdout(docs_text):
+        docs_text_exit = appgen_dsl.dsl_tooling_cli(("tooling-docs",))
+
+    phase_payload = json.loads(phase_json.getvalue())
+    docs_payload = json.loads(docs_json.getvalue())
+    assert module_exit == 0
+    assert module_text.getvalue().startswith("module-boundaries ok: format=appgen.module-boundary-audit.v1")
+    assert "boundary parser:" in module_text.getvalue()
+    assert non_goal_exit == 0
+    assert non_goal_text.getvalue().startswith("non-goals ok: format=appgen.non-goal-policy-audit.v1")
+    assert "case reject_secret_literal" in non_goal_text.getvalue()
+    assert phase_exit == 0
+    assert phase_payload["format"] == "appgen.tooling-implementation-phase-audit.v1"
+    assert phase_payload["parent_check_id"] == "implementation_phase_exit_criteria"
+    assert phase_text_exit == 0
+    assert phase_text.getvalue().startswith(
+        "implementation-phases ok: format=appgen.tooling-implementation-phase-audit.v1"
+    )
+    assert docs_exit == 0
+    assert docs_payload["format"] == "appgen.tooling-docs-audit.v1"
+    assert docs_payload["doc_anchor_integrity"]["format"] == "appgen.tooling-doc-anchor-audit.v1"
+    assert docs_payload["section_coverage"]["format"] == "appgen.tooling-section-coverage-audit.v1"
+    assert docs_text_exit == 0
+    assert docs_text.getvalue().startswith("tooling-docs ok: format=appgen.tooling-docs-audit.v1")
+
+
 def test_module_boundary_audit_proves_documented_tooling_surfaces() -> None:
     audit = appgen_dsl.module_boundary_audit_dsl()
 
@@ -11168,9 +11276,10 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert "Tooling subcommands are also available" in normalized_help
     assert "lint, semantic, format, validate, generate, graph, graph-suite" in normalized_help
     assert "component-publish, pbc, designer-sync" in normalized_help
-    assert "diagnostics, parser-golden, test-strategy, dsl-quality, dsl-antlr" in normalized_help
-    assert "dsl-authoring-gate, dsl-language-service, drift, doctor, contributor-tasks" in normalized_help
-    assert "priority-order, and tooling-audit" in normalized_help
+    assert "diagnostics, parser-golden, module-boundaries, non-goals, test-strategy" in normalized_help
+    assert "dsl-quality, dsl-antlr, dsl-authoring-gate, dsl-language-service" in normalized_help
+    assert "doctor, contributor-tasks, priority-order, implementation-phases" in normalized_help
+    assert "tooling-docs, and tooling-audit" in normalized_help
     assert "apg =" in pyproject
     assert "visual drag-and-drop form design" in normalized_help
     assert audit["format"] == "appgen.cli-help-surface-audit.v1"
@@ -11503,8 +11612,10 @@ def test_contract_schema_catalog_exposes_core_json_schemas() -> None:
         "appgen.tooling-audit-text-renderer.v1",
         "appgen.tooling-doc-anchor-audit.v1",
         "appgen.tooling-section-coverage-audit.v1",
+        "appgen.tooling-docs-audit.v1",
         "appgen.tooling-implementation-phase-audit.v1",
         "appgen.implementation-phase-doc-alignment.v1",
+        "appgen.test-strategy-cli-audit.v1",
         "appgen.test-family-contract-audit.v1",
         "appgen.contributor-task-contract-audit.v1",
         "appgen.priority-order-contract-audit.v1",

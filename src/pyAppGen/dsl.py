@@ -1849,6 +1849,12 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
     parser_golden_parser = subparsers.add_parser("parser-golden")
     parser_golden_parser.add_argument("--json", action="store_true")
 
+    module_boundaries_parser = subparsers.add_parser("module-boundaries")
+    module_boundaries_parser.add_argument("--json", action="store_true")
+
+    non_goals_parser = subparsers.add_parser("non-goals")
+    non_goals_parser.add_argument("--json", action="store_true")
+
     test_strategy_parser = subparsers.add_parser("test-strategy")
     test_strategy_parser.add_argument("path")
     test_strategy_parser.add_argument("--json", action="store_true")
@@ -1889,6 +1895,12 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
 
     priority_order_parser = subparsers.add_parser("priority-order")
     priority_order_parser.add_argument("--json", action="store_true")
+
+    implementation_phases_parser = subparsers.add_parser("implementation-phases")
+    implementation_phases_parser.add_argument("--json", action="store_true")
+
+    tooling_docs_parser = subparsers.add_parser("tooling-docs")
+    tooling_docs_parser.add_argument("--json", action="store_true")
 
     tooling_audit_parser = subparsers.add_parser("tooling-audit")
     tooling_audit_parser.add_argument("--json", action="store_true")
@@ -2070,6 +2082,14 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
         report = parser_golden_audit_dsl()
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
+    if args.command == "module-boundaries":
+        report = module_boundary_audit_dsl()
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "non-goals":
+        report = _tooling_audit_non_goal_policy()
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
     if args.command == "test-strategy":
         report = test_strategy_report_dsl(source, source_name=str(path))
         _emit_tooling_payload(report, as_json=args.json)
@@ -2113,6 +2133,14 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
         return 0 if report["ok"] else 1
     if args.command == "priority-order":
         report = priority_order_report_dsl()
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "implementation-phases":
+        report = implementation_phases_report_dsl()
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "tooling-docs":
+        report = tooling_docs_report_dsl()
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     if args.command == "tooling-audit":
@@ -2557,6 +2585,40 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         for check in checks:
             print(f"{'ok' if check['ok'] else 'fail'} {check['check']}")
         return
+    if payload.get("format") == "appgen.module-boundary-audit.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        print(
+            f"module-boundaries {status}: format={payload.get('format')} "
+            f"boundaries={payload.get('passing_boundary_count', 0)}/{payload.get('boundary_count', 0)} "
+            f"callables={payload.get('callable_count', 0)} "
+            f"missing_boundaries={payload.get('missing_boundary_count', 0)} "
+            f"missing_callables={payload.get('missing_callable_count', 0)} "
+            f"core_runtime_gaps={payload.get('core_runtime_gap_count', 0)}"
+        )
+        for boundary in payload.get("boundaries", ()):
+            print(
+                f"{'ok' if boundary.get('ok') else 'fail'} boundary {boundary.get('boundary')}: "
+                f"module={boundary.get('documented_module')} "
+                f"callables={boundary.get('callable_count', 0)} "
+                f"missing={boundary.get('missing_callable_count', 0)}"
+            )
+        for gap in payload.get("core_runtime_gaps", ()):
+            print(f"core-runtime-gap {gap}")
+        return
+    if payload.get("format") == "appgen.non-goal-policy-audit.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        print(
+            f"non-goals {status}: format={payload.get('format')} "
+            f"cases={payload.get('passing_case_count', 0)}/{payload.get('case_count', 0)} "
+            f"diagnostics={payload.get('diagnostic_code_count', 0)} "
+            f"fixes={payload.get('fix_count', 0)} "
+            f"rejected_prompts={payload.get('rejected_prompt_count', 0)} "
+            f"zero_patch_rejections={payload.get('zero_patch_rejection_count', 0)}"
+        )
+        for case in payload.get("cases", ()):
+            codes = ",".join(case.get("diagnostic_codes", ())) or "none"
+            print(f"{'ok' if case.get('ok') else 'fail'} case {case.get('case')}: diagnostics={codes}")
+        return
     if payload.get("format") == "appgen.test-strategy-cli-audit.v1":
         status = "ok" if payload.get("ok") else "failed"
         print(
@@ -2611,6 +2673,43 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
             )
         for priority in payload.get("missing_priorities", ()):
             print(f"missing-priority {priority}")
+        return
+    if payload.get("format") == "appgen.tooling-implementation-phase-audit.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        print(
+            f"implementation-phases {status}: format={payload.get('format')} "
+            f"phases={payload.get('passing_phase_count', 0)}/{payload.get('phase_count', 0)} "
+            f"criteria={payload.get('passing_exit_criterion_count', 0)}/{payload.get('exit_criterion_count', 0)} "
+            f"missing_phases={payload.get('missing_phase_count', 0)} "
+            f"missing_required={payload.get('missing_required_phase_count', 0)} "
+            f"missing_criteria={payload.get('missing_exit_criterion_count', 0)}"
+        )
+        for phase in payload.get("phases", ()):
+            print(
+                f"{'ok' if phase.get('ok') else 'fail'} phase {phase.get('id')}: "
+                f"criteria={len(phase.get('passing_exit_criteria', ()))}"
+                f"/{len(phase.get('exit_criteria', ()))} "
+                f"missing={len(phase.get('missing_exit_criteria', ()))}"
+            )
+        return
+    if payload.get("format") == "appgen.tooling-docs-audit.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        anchor = payload.get("doc_anchor_integrity", {})
+        section = payload.get("section_coverage", {})
+        print(
+            f"tooling-docs {status}: format={payload.get('format')} "
+            f"anchors_missing={payload.get('missing_anchor_count', 0)} "
+            f"sections={section.get('covered_section_count', 0)}/{section.get('required_section_count', 0)} "
+            f"subsections={section.get('covered_subsection_count', 0)}/{section.get('required_subsection_count', 0)} "
+            f"runtime_format_gaps={anchor.get('runtime_reference_gap_count', 0)} "
+            f"test_format_gaps={anchor.get('test_reference_gap_count', 0)}"
+        )
+        for missing in anchor.get("missing_sections", ()):
+            print(f"missing-anchor {missing}")
+        for missing in section.get("missing_sections", ()):
+            print(f"missing-section {missing}")
+        for missing in section.get("missing_subsections", ()):
+            print(f"missing-subsection {missing}")
         return
     print(json.dumps(payload, indent=2, sort_keys=True, default=list))
 
@@ -6732,6 +6831,7 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.tooling-audit-text-renderer.v1",
     "appgen.tooling-doc-anchor-audit.v1",
     "appgen.tooling-section-coverage-audit.v1",
+    "appgen.tooling-docs-audit.v1",
     "appgen.tooling-implementation-phase-audit.v1",
     "appgen.implementation-phase-doc-alignment.v1",
     "appgen.test-strategy-cli-audit.v1",
@@ -8339,6 +8439,17 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "missing_sections": {"type": "array", "items": {"type": "string"}},
                 "covered_section_count": {"type": "integer", "minimum": 0},
                 "missing_section_count": {"type": "integer", "minimum": 0},
+            },
+        ),
+        "appgen.tooling-docs-audit.v1": _contract_format_schema(
+            "appgen.tooling-docs-audit.v1",
+            required=("format", "ok", "doc_anchor_integrity", "section_coverage"),
+            properties={
+                "doc_anchor_integrity": {"type": "object"},
+                "section_coverage": {"type": "object"},
+                "missing_anchor_count": {"type": "integer", "minimum": 0},
+                "missing_section_count": {"type": "integer", "minimum": 0},
+                "missing_subsection_count": {"type": "integer", "minimum": 0},
             },
         ),
         "appgen.tooling-implementation-phase-audit.v1": _contract_format_schema(
@@ -19701,6 +19812,56 @@ def priority_order_report_dsl() -> dict:
     )
 
 
+def implementation_phases_report_dsl() -> dict:
+    """Return implementation phase exit evidence as a direct CLI/report surface."""
+    return _tooling_audit_report_detail(
+        "implementation_phase_exit_criteria",
+        "appgen.tooling-implementation-phase-audit.v1",
+    )
+
+
+def tooling_docs_report_dsl() -> dict:
+    """Return docs anchor and section coverage evidence as a direct CLI/report surface."""
+    report = tooling_audit_report_dsl()
+    doc_anchor = report.get("doc_anchor_integrity")
+    if not isinstance(doc_anchor, dict):
+        doc_anchor = _tooling_audit_report_detail(
+            "tooling_doc_anchor_integrity",
+            "appgen.tooling-doc-anchor-audit.v1",
+        )
+    section_coverage = _tooling_audit_report_detail(
+        "tooling_section_coverage_contracts",
+        "appgen.tooling-section-coverage-audit.v1",
+    )
+    missing_anchor_count = len(doc_anchor.get("missing_sections", ()))
+    ok = (
+        doc_anchor.get("ok") is True
+        and section_coverage.get("ok") is True
+        and missing_anchor_count == 0
+        and doc_anchor.get("runtime_reference_gap_count", 0) == 0
+        and doc_anchor.get("test_reference_gap_count", 0) == 0
+        and section_coverage.get("missing_section_count", 0) == 0
+        and section_coverage.get("missing_subsection_count", 0) == 0
+        and section_coverage.get("stale_mapping_count", 0) == 0
+        and section_coverage.get("stale_subsection_mapping_count", 0) == 0
+    )
+    return {
+        "format": "appgen.tooling-docs-audit.v1",
+        "ok": ok,
+        "parent_format": report.get("format"),
+        "source_of_truth": "docs/tooling.md#appgen-tooling-audit",
+        "doc_anchor_integrity": doc_anchor,
+        "section_coverage": section_coverage,
+        "missing_anchor_count": missing_anchor_count,
+        "runtime_reference_gap_count": doc_anchor.get("runtime_reference_gap_count", 0),
+        "test_reference_gap_count": doc_anchor.get("test_reference_gap_count", 0),
+        "missing_section_count": section_coverage.get("missing_section_count", 0),
+        "missing_subsection_count": section_coverage.get("missing_subsection_count", 0),
+        "stale_mapping_count": section_coverage.get("stale_mapping_count", 0),
+        "stale_subsection_mapping_count": section_coverage.get("stale_subsection_mapping_count", 0),
+    }
+
+
 def _tooling_audit_report_detail(check_id: str, expected_format: str) -> dict:
     report = tooling_audit_report_dsl()
     for check in report.get("checks", ()):
@@ -20562,6 +20723,24 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
                 repo_root,
                 ({"section": "docs/tooling.md#appgen-tooling-audit"},),
             ),
+            "appgen.tooling-docs-audit.v1": {
+                "format": "appgen.tooling-docs-audit.v1",
+                "ok": True,
+                "doc_anchor_integrity": {
+                    "format": "appgen.tooling-doc-anchor-audit.v1",
+                    "ok": True,
+                    "missing_sections": (),
+                },
+                "section_coverage": {
+                    "format": "appgen.tooling-section-coverage-audit.v1",
+                    "ok": True,
+                    "missing_sections": (),
+                    "missing_subsections": (),
+                },
+                "missing_anchor_count": 0,
+                "missing_section_count": 0,
+                "missing_subsection_count": 0,
+            },
             "appgen.tooling-implementation-phase-audit.v1": implementation_phases,
             "appgen.implementation-phase-doc-alignment.v1": _tooling_audit_phase_doc_alignment(
                 repo_root,
@@ -23114,6 +23293,8 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         "designer-sync",
         "diagnostics",
         "parser-golden",
+        "module-boundaries",
+        "non-goals",
         "test-strategy",
         "dsl-quality",
         "dsl-antlr",
@@ -23125,6 +23306,8 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         "doctor",
         "contributor-tasks",
         "priority-order",
+        "implementation-phases",
+        "tooling-docs",
         "tooling-audit",
     )
     help_output = io.StringIO()
@@ -23160,6 +23343,8 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         ("designer-sync",): ("--edit-json", "--json"),
         ("diagnostics",): ("--audit-fixtures", "--json"),
         ("parser-golden",): ("--json",),
+        ("module-boundaries",): ("--json",),
+        ("non-goals",): ("--json",),
         ("test-strategy",): ("--json",),
         ("dsl-quality",): ("--json",),
         ("dsl-antlr",): ("--json",),
@@ -23171,6 +23356,8 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         ("doctor",): ("--json",),
         ("contributor-tasks",): ("--json",),
         ("priority-order",): ("--json",),
+        ("implementation-phases",): ("--json",),
+        ("tooling-docs",): ("--json",),
         ("tooling-audit",): ("--json",),
     }
     option_help = {}
