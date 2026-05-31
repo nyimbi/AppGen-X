@@ -63,3 +63,10 @@ Verification rule: every row must identify a code/model artifact, UI surface, se
 - Matrix rows: 50 of 50 improve1 features.
 - The accompanying `tests/test_improve1_traceability.py` test verifies row count and required evidence columns against the current backlog.
 - This file is traceability evidence, not a substitute for the executable tests and release evidence linked in the table.
+
+
+## Executable talent onboarding control evidence
+
+- `talent_onboarding_control.py` provides feature-specific control specs for all 50 rows, including owned control tables, talent/onboarding required fields, UI panel names, service/API routes, declared AppGen-X dependencies, allowed database backends, and side-effect-free evaluation evidence.
+- `tests/test_domain_behavior.py` verifies every improve1 feature through the executable control contract and asserts fail-closed behavior for requisition/candidate, interview/evaluation, background-check/offer/onboarding, governance/agent, approval, AI-agent preview, owned-table, database, and eventing constraints.
+- Runtime, UI, release evidence, and improve1 execution planning now expose `improve1_talent_onboarding_control_contract` as package-local release evidence.

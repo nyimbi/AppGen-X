@@ -246,3 +246,41 @@ def talent_onboarding_standalone_workbench_blueprint() -> dict:
 def talent_onboarding_render_standalone_workbench(workbench: dict) -> dict:
     bp=talent_onboarding_standalone_workbench_blueprint(); cards=({'key':'requisitions','value':workbench.get('requisition_count',0),'fragment':'RequisitionConsole'},{'key':'candidates','value':workbench.get('candidate_count',0),'fragment':'CandidatePipelineBoard'},{'key':'hired','value':workbench.get('hired_count',0),'fragment':'CandidatePipelineBoard'},{'key':'provisioned','value':workbench.get('provisioned_count',0),'fragment':'OnboardingTaskBoard'},{'key':'completed_tasks','value':workbench.get('completed_task_count',0),'fragment':'OnboardingTaskBoard'})
     return {'format':'appgen.talent-onboarding-standalone-render.v1','ok':bp['ok'] and bool(cards),'pbc':'talent_onboarding','tenant':workbench.get('tenant'),'cards':cards,'forms':tuple(i['key'] for i in bp['forms']),'wizards':tuple(i['key'] for i in bp['wizards']),'controls':tuple(i['key'] for i in bp['controls']),'side_effects':()}
+
+
+# Improve1 talent onboarding control UI extension.
+from .talent_onboarding_control import improve1_talent_onboarding_control_contract as _improve1_talent_onboarding_control_contract
+
+_TALENT_CONTROL_BASE_UI_CONTRACT = talent_onboarding_ui_contract
+_TALENT_CONTROL_BASE_RENDER_WORKBENCH = talent_onboarding_render_workbench
+
+
+def talent_onboarding_ui_contract() -> dict:
+    ui = dict(_TALENT_CONTROL_BASE_UI_CONTRACT())
+    control = _improve1_talent_onboarding_control_contract()
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "talent_onboarding_control_contract": control,
+        "talent_onboarding_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "talent_onboarding_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def talent_onboarding_render_workbench(*args, **kwargs) -> dict:
+    if not args and "state" not in kwargs:
+        args = (_appgen_smoke_state(),)
+    if "tenant" not in kwargs:
+        kwargs["tenant"] = "default"
+    if "principal_permissions" not in kwargs:
+        kwargs["principal_permissions"] = tuple(dict.fromkeys(talent_onboarding_ui_contract().get("action_permissions", {}).values()))
+    workbench = dict(_TALENT_CONTROL_BASE_RENDER_WORKBENCH(*args, **kwargs))
+    control = _improve1_talent_onboarding_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "talent_onboarding_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "talent_onboarding_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "talent_onboarding_control_agent_tools": tuple(f"talent_onboarding.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench
