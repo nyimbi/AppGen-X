@@ -7193,6 +7193,21 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     ]["required_detail_formats_by_check"]
     assert doctor_gate["detail"]["text_renderer"]["missing_detail_format_check_count"] == 0
     assert doctor_gate["detail"]["text_renderer"]["missing_detail_format_checks"] == ()
+    assert doctor_gate["detail"]["text_renderer"]["emitted_check_outcomes"] == doctor_gate["detail"][
+        "text_renderer"
+    ]["required_check_outcomes"]
+    assert doctor_gate["detail"]["text_renderer"]["missing_check_outcome_count"] == 0
+    assert doctor_gate["detail"]["text_renderer"]["missing_check_outcomes"] == ()
+    assert doctor_gate["detail"]["text_renderer"]["emitted_text_surfaces"] == doctor_gate["detail"][
+        "text_renderer"
+    ]["required_text_surfaces"]
+    assert doctor_gate["detail"]["text_renderer"]["missing_text_surface_count"] == 0
+    assert doctor_gate["detail"]["text_renderer"]["missing_text_surfaces"] == ()
+    assert doctor_gate["detail"]["text_renderer"]["emitted_report_formats"] == doctor_gate["detail"][
+        "text_renderer"
+    ]["required_report_formats"]
+    assert doctor_gate["detail"]["text_renderer"]["missing_report_format_count"] == 0
+    assert doctor_gate["detail"]["text_renderer"]["missing_report_formats"] == ()
     assert doctor_gate["detail"]["text_renderer"]["json_fallback"] is False
     assert doctor_gate["detail"]["cli"]["doctor_check_count"] >= 15
     package_check = next(check for check in report["checks"] if check["id"] == "package_and_release_verifiers")
@@ -8408,6 +8423,37 @@ def test_doctor_text_renderer_contract_proves_check_and_detail_format_markers() 
     assert report["emitted_detail_formats_by_check"] == report["required_detail_formats_by_check"]
     assert report["missing_detail_format_check_count"] == 0
     assert report["missing_detail_format_checks"] == ()
+    assert report["required_check_outcomes"] == (
+        "parser_golden_fixtures:ok",
+        "lsp_completion_coverage:ok",
+        "semantic_symbol_coverage:ok",
+        "lsp_symbol_coverage:ok",
+        "cli_alias_contract:ok",
+        "module_boundaries:fail",
+        "studio_semantic_service:ok",
+        "vscode_extension_surface:ok",
+    )
+    assert report["emitted_check_outcomes"] == report["required_check_outcomes"]
+    assert report["missing_check_outcome_count"] == 0
+    assert report["missing_check_outcomes"] == ()
+    assert report["required_text_surfaces"] == ("summary", "check_statuses", "detail_formats", "blocking_gaps")
+    assert report["emitted_text_surfaces"] == report["required_text_surfaces"]
+    assert report["missing_text_surface_count"] == 0
+    assert report["missing_text_surfaces"] == ()
+    assert report["required_report_formats"] == (
+        "appgen.doctor-report.v1",
+        "appgen.parser-golden-audit.v1",
+        "appgen.completion-coverage.v1",
+        "appgen.symbol-coverage.v1",
+        "appgen.lsp-symbol-coverage.v1",
+        "appgen.cli-alias-contract.v1",
+        "appgen.module-boundary-audit.v1",
+        "appgen.designer-sync-report.v1",
+        "appgen.vscode-extension-audit.v1",
+    )
+    assert report["emitted_report_formats"] == report["required_report_formats"]
+    assert report["missing_report_format_count"] == 0
+    assert report["missing_report_formats"] == ()
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith("doctor failed: format=appgen.doctor-report.v1 checks=8")

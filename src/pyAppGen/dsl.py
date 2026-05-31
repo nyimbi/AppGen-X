@@ -4797,6 +4797,38 @@ def _doctor_text_renderer_contract() -> dict:
         for check_id, detail_format in required_detail_formats_by_check.items()
         if emitted_detail_formats_by_check.get(check_id) != detail_format
     )
+    required_check_outcomes = tuple(
+        f"{check['check']}:{'ok' if check.get('ok') else 'fail'}" for check in payload["checks"]
+    )
+    emitted_check_outcomes = tuple(
+        f"{line.split()[1]}:{line.split()[0]}"
+        for line in text.splitlines()
+        if (line.startswith("ok ") or line.startswith("fail ")) and len(line.split()) >= 2
+    )
+    missing_check_outcomes = tuple(
+        outcome for outcome in required_check_outcomes if outcome not in emitted_check_outcomes
+    )
+    required_text_surfaces = ("summary", "check_statuses", "detail_formats", "blocking_gaps")
+    emitted_text_surfaces = tuple(
+        surface
+        for surface, present in (
+            ("summary", any(line.startswith("doctor ") for line in text.splitlines())),
+            ("check_statuses", bool(emitted_check_ids)),
+            ("detail_formats", bool(emitted_detail_formats_by_check)),
+            ("blocking_gaps", any("blocking_gaps=1" in line for line in text.splitlines())),
+        )
+        if present
+    )
+    missing_text_surfaces = tuple(
+        surface for surface in required_text_surfaces if surface not in emitted_text_surfaces
+    )
+    required_report_formats = ("appgen.doctor-report.v1", *tuple(required_detail_formats_by_check.values()))
+    emitted_report_formats = tuple(
+        report_format for report_format in required_report_formats if report_format in text
+    )
+    missing_report_formats = tuple(
+        report_format for report_format in required_report_formats if report_format not in emitted_report_formats
+    )
     counts = _text_renderer_contract_counts(
         text,
         required_fragments,
@@ -4805,7 +4837,13 @@ def _doctor_text_renderer_contract() -> dict:
     )
     return {
         "format": "appgen.doctor-text-renderer.v1",
-        "ok": not missing and not text.lstrip().startswith("{"),
+        "ok": not missing
+        and not missing_check_ids
+        and not missing_detail_format_checks
+        and not missing_check_outcomes
+        and not missing_text_surfaces
+        and not missing_report_formats
+        and not text.lstrip().startswith("{"),
         **counts,
         "check_line_count": counts["marker_line_count"],
         "detail_format_line_count": sum(1 for line in text.splitlines() if "detail_format=appgen." in line),
@@ -4817,6 +4855,18 @@ def _doctor_text_renderer_contract() -> dict:
         "emitted_detail_formats_by_check": emitted_detail_formats_by_check,
         "missing_detail_format_check_count": len(missing_detail_format_checks),
         "missing_detail_format_checks": missing_detail_format_checks,
+        "required_check_outcomes": required_check_outcomes,
+        "emitted_check_outcomes": emitted_check_outcomes,
+        "missing_check_outcome_count": len(missing_check_outcomes),
+        "missing_check_outcomes": missing_check_outcomes,
+        "required_text_surfaces": required_text_surfaces,
+        "emitted_text_surfaces": emitted_text_surfaces,
+        "missing_text_surface_count": len(missing_text_surfaces),
+        "missing_text_surfaces": missing_text_surfaces,
+        "required_report_formats": required_report_formats,
+        "emitted_report_formats": emitted_report_formats,
+        "missing_report_format_count": len(missing_report_formats),
+        "missing_report_formats": missing_report_formats,
         "required_fragments": required_fragments,
         "missing_fragments": missing,
         "json_fallback": text.lstrip().startswith("{"),
@@ -8756,10 +8806,11 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             }
             <= {check.get("check") for check in doctor.get("checks", ())}
             and doctor_text_renderer["ok"]
-            and doctor_text_renderer.get("check_line_count", 0) >= 8
-            and doctor_text_renderer.get("detail_format_line_count", 0) >= 8
             and doctor_text_renderer.get("missing_check_id_count") == 0
             and doctor_text_renderer.get("missing_detail_format_check_count") == 0
+            and doctor_text_renderer.get("missing_check_outcome_count") == 0
+            and doctor_text_renderer.get("missing_text_surface_count") == 0
+            and doctor_text_renderer.get("missing_report_format_count") == 0
             and doctor_text_renderer.get("json_fallback") is False
             and test_strategy_cli["ok"]
             and test_strategy_cli.get("doctor_check_count", 0) >= 15,
@@ -8791,6 +8842,18 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "emitted_detail_formats_by_check": doctor_text_renderer.get("emitted_detail_formats_by_check"),
                     "missing_detail_format_check_count": doctor_text_renderer.get("missing_detail_format_check_count"),
                     "missing_detail_format_checks": doctor_text_renderer.get("missing_detail_format_checks"),
+                    "required_check_outcomes": doctor_text_renderer.get("required_check_outcomes"),
+                    "emitted_check_outcomes": doctor_text_renderer.get("emitted_check_outcomes"),
+                    "missing_check_outcome_count": doctor_text_renderer.get("missing_check_outcome_count"),
+                    "missing_check_outcomes": doctor_text_renderer.get("missing_check_outcomes"),
+                    "required_text_surfaces": doctor_text_renderer.get("required_text_surfaces"),
+                    "emitted_text_surfaces": doctor_text_renderer.get("emitted_text_surfaces"),
+                    "missing_text_surface_count": doctor_text_renderer.get("missing_text_surface_count"),
+                    "missing_text_surfaces": doctor_text_renderer.get("missing_text_surfaces"),
+                    "required_report_formats": doctor_text_renderer.get("required_report_formats"),
+                    "emitted_report_formats": doctor_text_renderer.get("emitted_report_formats"),
+                    "missing_report_format_count": doctor_text_renderer.get("missing_report_format_count"),
+                    "missing_report_formats": doctor_text_renderer.get("missing_report_formats"),
                     "marker_line_count": doctor_text_renderer.get("marker_line_count"),
                     "json_fallback": doctor_text_renderer.get("json_fallback"),
                 },
@@ -10077,6 +10140,9 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     and evidence["doctor_text_renderer"].get("ok") is True
                     and evidence["doctor_text_renderer"].get("missing_check_id_count", 0) == 0
                     and evidence["doctor_text_renderer"].get("missing_detail_format_check_count", 0) == 0
+                    and evidence["doctor_text_renderer"].get("missing_check_outcome_count", 0) == 0
+                    and evidence["doctor_text_renderer"].get("missing_text_surface_count", 0) == 0
+                    and evidence["doctor_text_renderer"].get("missing_report_format_count", 0) == 0
                     and evidence["test_strategy_cli"].get("doctor_check_count", 0) >= 15,
                     "evidence_formats": (
                         evidence["doctor"].get("format"),

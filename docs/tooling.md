@@ -1033,6 +1033,11 @@ status and embedded audit marker. It also reports required, emitted, and missing
 doctor check ids plus required and emitted detail formats by check, so a missing
 doctor readiness check or embedded audit marker fails by name instead of only
 changing an aggregate line count.
+The same renderer publishes required, emitted, missing, and missing-count
+evidence for doctor check outcomes, text surfaces, and report formats. The
+aggregate doctor gate requires zero named missing entries, so a generic
+`detail_format=...` line cannot mask a hidden summary, blocking-gap marker,
+failed-check outcome, or embedded readiness report.
 The aggregate tooling audit exposes this proof independently as
 `doctor_cli_text_contracts`. That gate fails when doctor stops proving parser,
 package import, catalog, template writer, backend, semantic-model, alias, LSP,

@@ -4094,3 +4094,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   aggregate tooling audit (`1 passed`, with the known active-PBC
   `datetime.utcnow()` warnings only), scoped diff whitespace check, and
   restricted-name scan outside archive, Git internals, and active PBC paths.
+- Current doctor text audit hardening pass replaces generic check/detail-format
+  line-count acceptance with named evidence for doctor release logs.
+  `appgen.doctor-text-renderer.v1` now proves required and emitted doctor check
+  ids, check outcomes, text surfaces, embedded report formats, and detail
+  formats by check as part of its own `ok` condition and the aggregate doctor
+  gate. Verification passed: Python compile for the touched DSL and tests,
+  focused doctor text renderer test (`1 passed`), aggregate tooling audit
+  (`1 passed`, with the known active-PBC `datetime.utcnow()` warnings only),
+  scoped diff whitespace check, and restricted-name scan outside archive, Git
+  internals, and active PBC paths.
