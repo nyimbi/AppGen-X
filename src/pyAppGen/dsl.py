@@ -6813,6 +6813,11 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.nl-plan-contract-audit.v1",
     "appgen.nl-plan-cli-audit.v1",
     "appgen.release-verifier-report.v1",
+    "appgen.web-verifier.v1",
+    "appgen.mobile-verifier.v1",
+    "appgen.desktop-verifier.v1",
+    "appgen.pbc-verifier.v1",
+    "appgen.deployment-verifier.v1",
     "appgen.release-evidence-bundle.v1",
     "appgen.release-verifier-text-renderer.v1",
     "appgen.package-manifest.v1",
@@ -6904,6 +6909,20 @@ def _contract_format_schema(
     if properties:
         base_properties.update(properties)
     return _json_object_schema(title, required=required, properties=base_properties)
+
+
+def _target_verifier_schema(title: str) -> dict:
+    return _contract_format_schema(
+        title,
+        required=("format", "kind", "ok", "checks", "blocking_gaps"),
+        properties={
+            "kind": {"type": "string"},
+            "check_count": {"type": "integer", "minimum": 0},
+            "passing_check_count": {"type": "integer", "minimum": 0},
+            "blocking_gap_count": {"type": "integer", "minimum": 0},
+            "blocking_gaps": {"type": "array", "items": {"type": "string"}},
+        },
+    )
 
 
 def _contract_schema_catalog() -> dict[str, dict]:
@@ -8223,6 +8242,11 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "graph_suite_format": {"type": "string"},
             },
         ),
+        "appgen.web-verifier.v1": _target_verifier_schema("appgen.web-verifier.v1"),
+        "appgen.mobile-verifier.v1": _target_verifier_schema("appgen.mobile-verifier.v1"),
+        "appgen.desktop-verifier.v1": _target_verifier_schema("appgen.desktop-verifier.v1"),
+        "appgen.pbc-verifier.v1": _target_verifier_schema("appgen.pbc-verifier.v1"),
+        "appgen.deployment-verifier.v1": _target_verifier_schema("appgen.deployment-verifier.v1"),
         "appgen.release-evidence-bundle.v1": _contract_format_schema(
             "appgen.release-evidence-bundle.v1",
             required=("format", "artifacts", "graph_suite"),
@@ -20524,7 +20548,7 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
         release_report = release_verifier_report_dsl(
             source,
             source_name="contract-schema.appgen",
-            targets=("web",),
+            targets=("web", "mobile", "desktop", "pbc", "deployment"),
         )
         package_cli = _tooling_audit_package_verify_cli(tmp_path, _tooling_audit_package_verify_sample())
         designer_report = designer_sync_report_dsl(source, source_name="contract-schema.appgen")
@@ -20687,6 +20711,11 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             "appgen.nl-plan-contract-audit.v1": nl_plan_contract_audit_dsl(source, source_name="contract-schema.appgen"),
             "appgen.nl-plan-cli-audit.v1": _tooling_audit_nl_plan_cli(tmp_path, source),
             "appgen.release-verifier-report.v1": release_report,
+            "appgen.web-verifier.v1": release_report["reports"]["web"],
+            "appgen.mobile-verifier.v1": release_report["reports"]["mobile"],
+            "appgen.desktop-verifier.v1": release_report["reports"]["desktop"],
+            "appgen.pbc-verifier.v1": release_report["reports"]["pbc"],
+            "appgen.deployment-verifier.v1": release_report["reports"]["deployment"],
             "appgen.release-evidence-bundle.v1": release_report["evidence_bundle"],
             "appgen.release-verifier-text-renderer.v1": _release_verifier_text_renderer_contract(),
             "appgen.package-manifest.v1": {

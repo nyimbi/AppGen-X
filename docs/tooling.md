@@ -2451,6 +2451,7 @@ missing families before `docs/tooling.md` can be considered implemented.
 Release verifiers should generate evidence for each target.
 
 Web verifier:
+`appgen.web-verifier.v1`
 
 - app builds;
 - routes exist;
@@ -2459,6 +2460,7 @@ Web verifier:
 - smoke tests run.
 
 Mobile verifier:
+`appgen.mobile-verifier.v1`
 
 - package metadata exists;
 - signing posture declared;
@@ -2471,6 +2473,7 @@ Mobile verifier:
   launch readiness plus the launch entrypoint.
 
 Desktop verifier:
+`appgen.desktop-verifier.v1`
 
 - package metadata exists;
 - installer/update posture declared;
@@ -2483,6 +2486,7 @@ Desktop verifier:
   booleans.
 
 PBC verifier:
+`appgen.pbc-verifier.v1`
 
 - manifest validates;
 - package artifacts exist;
@@ -2493,6 +2497,7 @@ PBC verifier:
 - release evidence exists.
 
 Deployment verifier:
+`appgen.deployment-verifier.v1`
 
 - units declared;
 - health checks declared;
@@ -2666,7 +2671,7 @@ Exit criteria:
   package-manifest, component/PBC wrapper, doctor, tooling-audit,
   project-governance, schema-catalog, and contract-validation report schemas are
   available from CLI JSON and text modes. The schema audit validates
-  representative payloads for all 115 documented `appgen.*.v1` formats, so
+  representative payloads for all 120 documented `appgen.*.v1` formats, so
   adding a documented contract without a matching runtime sample fails the
   release gate.
 - `appgen.contract-validation-cli-audit.v1` proves those JSON contracts can be
