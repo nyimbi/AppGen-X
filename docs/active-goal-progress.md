@@ -4451,3 +4451,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   language-quality contract, and language CLI audit. Live schema validation now
   covers all 60 required formats, closing a gap where the semantic foundation
   was executable but not independently schema-validatable by agents or CI.
+- Current core tooling renderer schema pass promotes the central CLI and text
+  renderer evidence family into the exported contract catalog. The required
+  schema set now covers lint directory CLI audits, lint text, formatter text and
+  formatter guarantees, validate/generate CLI and text renderers, graph CLI and
+  suite CLI audits, graph/explain text renderers, explain CLI audits,
+  diagnostics text, parser-golden text, semantic-drift text, and doctor CLI/text
+  contracts. Live schema validation now covers all 75 required formats, reducing
+  the remaining unenforced surface to later designer, packaging, migration,
+  natural-language, release, frontend, and project-governance envelopes.
