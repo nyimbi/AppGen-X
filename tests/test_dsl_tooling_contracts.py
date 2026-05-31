@@ -11607,6 +11607,7 @@ def test_contract_schema_catalog_exposes_core_json_schemas() -> None:
         "appgen.component-publish-report.v1",
         "appgen.component-catalog-patch.v1",
         "appgen.component-publish-text-renderer.v1",
+        "appgen.pbc-verifier-catalog.v1",
         "appgen.pbc-package-verifier.v1",
         "appgen.pbc-publish-report.v1",
         "appgen.pbc-publish-text-renderer.v1",

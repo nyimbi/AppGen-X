@@ -1508,6 +1508,11 @@ appgen pbc publish src/pyAppGen/pbcs/gl_core --catalog local
 ```
 
 PBC commands operate on manifests and package directories, not grammar changes.
+`list --json` emits `appgen.pbc-verifier-catalog.v1`, a schema-backed catalog
+contract containing the selectable key, health, label, mesh, and datastore
+backend for each registered PBC. Agents use this contract to discover
+composable capabilities before planning an application instead of scraping
+human CLI text or hard-coding a built-in PBC list.
 `publish` emits `appgen.pbc-publish-report.v1`; it loads the package
 entrypoint, validates the manifest, proves the manifest is publishable, returns
 the catalog patch, attaches release-evidence verification, and records that the
@@ -2671,7 +2676,7 @@ Exit criteria:
   package-manifest, component/PBC wrapper, doctor, tooling-audit,
   project-governance, schema-catalog, and contract-validation report schemas are
   available from CLI JSON and text modes. The schema audit validates
-  representative payloads for all 120 documented `appgen.*.v1` formats, so
+  representative payloads for all 122 documented `appgen.*.v1` formats, so
   adding a documented contract without a matching runtime sample fails the
   release gate.
 - `appgen.contract-validation-cli-audit.v1` proves those JSON contracts can be

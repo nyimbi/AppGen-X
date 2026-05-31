@@ -6825,6 +6825,7 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.component-publish-report.v1",
     "appgen.component-catalog-patch.v1",
     "appgen.component-publish-text-renderer.v1",
+    "appgen.pbc-verifier-catalog.v1",
     "appgen.pbc-package-verifier.v1",
     "appgen.pbc-publish-report.v1",
     "appgen.pbc-publish-text-renderer.v1",
@@ -8327,6 +8328,27 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "required_contract_formats": {"type": "array", "items": {"type": "string"}},
                 "missing_contract_formats": {"type": "array", "items": {"type": "string"}},
                 "json_fallback": {"type": "boolean"},
+            },
+        ),
+        "appgen.pbc-verifier-catalog.v1": _contract_format_schema(
+            "appgen.pbc-verifier-catalog.v1",
+            required=("format", "ok", "count", "pbcs"),
+            properties={
+                "count": {"type": "integer", "minimum": 0},
+                "pbcs": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": ("pbc", "ok"),
+                        "properties": {
+                            "pbc": {"type": "string"},
+                            "ok": {"type": "boolean"},
+                            "label": {"type": ("string", "null")},
+                            "mesh": {"type": ("string", "null")},
+                            "datastore_backend": {"type": ("string", "null")},
+                        },
+                    },
+                },
             },
         ),
         "appgen.pbc-package-verifier.v1": _contract_format_schema(
@@ -20532,6 +20554,7 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             return {"format": contract_format, "ok": False}
 
         component_publish = component_publish_report("TextBox")
+        pbc_catalog = pbc_verifier_catalog_report()
         pbc_publish = pbc_publish_report("gl_core")
         migration_report = migration_plan_dsl(
             source,
@@ -20728,6 +20751,7 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             "appgen.component-publish-report.v1": component_publish,
             "appgen.component-catalog-patch.v1": component_publish["catalog_patch"],
             "appgen.component-publish-text-renderer.v1": _component_publish_text_renderer_contract(),
+            "appgen.pbc-verifier-catalog.v1": pbc_catalog,
             "appgen.pbc-package-verifier.v1": pbc_publish["release_evidence"],
             "appgen.pbc-publish-report.v1": pbc_publish,
             "appgen.pbc-publish-text-renderer.v1": _pbc_publish_text_renderer_contract(),
