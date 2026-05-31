@@ -22,3 +22,11 @@ Passed in this worktree before recording this status:
 - `PYTHONPATH=src /Volumes/Media/src/pjs/appgen/.venv/bin/pytest src/pyAppGen/pbcs/sustainability_esg_reporting/tests/test_contract.py` -> 8 passed
 - `git diff --check -- src/pyAppGen/pbcs/sustainability_esg_reporting`
 - Focused source/package/spec/agent/implementation/capability/generation audits -> all `True`
+
+## improve1 executable domain-control pass
+
+- Added `sustainability_esg_reporting_control.py` as the package-local executable proof layer for all 50 improve1 features.
+- Each feature now has a domain-specific control table, required ESG fields, UI panel name, service/API route, declared AppGen-X dependencies, datastore constraints, and side-effect-free evaluation evidence.
+- Added fail-closed evidence gates for carbon accounting, disclosure/assurance, targets/climate risk, supplier/social/governance, human confirmation, separated approval, AI-agent preview-only operation, non-mutating simulations, and cross-PBC API/event/projection boundaries.
+- Bound the control contract into runtime capabilities, UI/workbench surfaces, release evidence, and improve1 execution planning.
+- Added `tests/test_domain_behavior.py` to verify executable coverage, owned-boundary constraints, eventing/database restrictions, UI/runtime/release exposure, domain gates, and ESG-specific payload fields.
