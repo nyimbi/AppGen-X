@@ -4298,3 +4298,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   audit (`1 passed`, with the known active-PBC `datetime.utcnow()` warnings
   only), scoped diff whitespace check, and restricted-name scan outside archive,
   Git internals, and active PBC paths.
+- Current explain CLI hardening pass expands symbol, diagnostic, and handler
+  explanation evidence with expected and observed output modes, exit codes, `ok`
+  status, JSON payload formats, report-format coverage, text markers,
+  text-mode raw-JSON fallback status, and navigation detail cases by named
+  text/JSON mode. The aggregate `explain_cli_contracts` gate now requires those
+  named missing lists to be empty, so explain output cannot pass by aggregate
+  counts while returning the wrong status, wrong JSON envelope, missing text
+  marker, raw JSON fallback, or missing navigation payload. Verification passed:
+  Python compile for the touched DSL and tests, focused explain CLI audit
+  (`1 passed`), aggregate tooling audit (`1 passed`, with the known active-PBC
+  `datetime.utcnow()` warnings only), scoped diff whitespace check, and
+  restricted-name scan outside archive, Git internals, and active PBC paths.

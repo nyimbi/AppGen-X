@@ -7810,6 +7810,9 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and explain_cli.get("failing_case_count") == 0
             and explain_cli.get("missing_case_count") == 0
             and explain_cli.get("missing_output_mode_case_count") == 0
+            and explain_cli.get("missing_exit_code_case_count") == 0
+            and explain_cli.get("missing_ok_case_count") == 0
+            and explain_cli.get("missing_payload_format_case_count") == 0
             and explain_cli.get("exit_failure_count") == 0
             and explain_cli.get("text_case_count") == 3
             and explain_cli.get("json_case_count") == 3
@@ -7818,6 +7821,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and explain_cli.get("text_report_format_case_count") == explain_cli.get("text_case_count")
             and explain_cli.get("json_report_format_case_count") == explain_cli.get("json_case_count")
             and explain_cli.get("missing_text_marker_count") == 0
+            and explain_cli.get("text_json_fallback_case_count") == 0
             and explain_cli.get("symbol_case_count") == 2
             and explain_cli.get("diagnostic_case_count") == 2
             and explain_cli.get("handler_case_count") == 2
@@ -7856,6 +7860,17 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "output_modes_by_case": explain_cli.get("output_modes_by_case"),
                 "missing_output_mode_case_count": explain_cli.get("missing_output_mode_case_count"),
                 "missing_output_mode_cases": explain_cli.get("missing_output_mode_cases"),
+                "expected_exit_codes_by_case": explain_cli.get("expected_exit_codes_by_case"),
+                "exit_codes_by_case": explain_cli.get("exit_codes_by_case"),
+                "missing_exit_code_case_count": explain_cli.get("missing_exit_code_case_count"),
+                "missing_exit_code_cases": explain_cli.get("missing_exit_code_cases"),
+                "ok_by_case": explain_cli.get("ok_by_case"),
+                "missing_ok_case_count": explain_cli.get("missing_ok_case_count"),
+                "missing_ok_cases": explain_cli.get("missing_ok_cases"),
+                "expected_payload_formats_by_case": explain_cli.get("expected_payload_formats_by_case"),
+                "payload_formats_by_case": explain_cli.get("payload_formats_by_case"),
+                "missing_payload_format_case_count": explain_cli.get("missing_payload_format_case_count"),
+                "missing_payload_format_cases": explain_cli.get("missing_payload_format_cases"),
                 "exit_failure_count": explain_cli.get("exit_failure_count"),
                 "text_case_count": explain_cli.get("text_case_count"),
                 "json_case_count": explain_cli.get("json_case_count"),
@@ -7869,6 +7884,9 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "missing_text_marker_count": explain_cli.get("missing_text_marker_count"),
                 "missing_text_marker_cases": explain_cli.get("missing_text_marker_cases"),
                 "missing_text_markers_by_case": explain_cli.get("missing_text_markers_by_case"),
+                "text_json_fallback_by_case": explain_cli.get("text_json_fallback_by_case"),
+                "text_json_fallback_case_count": explain_cli.get("text_json_fallback_case_count"),
+                "text_json_fallback_cases": explain_cli.get("text_json_fallback_cases"),
                 "navigation_detail_case_count": explain_cli.get("navigation_detail_case_count"),
                 "navigation_detail_cases": explain_cli.get("navigation_detail_cases"),
                 "required_navigation_detail_cases": explain_cli.get("required_navigation_detail_cases"),
@@ -16670,6 +16688,8 @@ def _tooling_audit_explain_cli_formats(tmp: Path, source: str) -> dict:
                 "output_mode": "json" if case_id.endswith("_json") else "text",
                 "ok": exit_code == 0 and (json_ok or text_ok),
                 "exit_code": exit_code,
+                "payload_format": payload.get("format"),
+                "json_fallback": case_id.endswith("_text") and stdout.lstrip().startswith("{"),
                 "has_report_format": "format=appgen.explain-report.v1" in stdout
                 or payload.get("format") == "appgen.explain-report.v1",
                 "symbol_id": symbol.get("id"),
@@ -16696,6 +16716,29 @@ def _tooling_audit_explain_cli_formats(tmp: Path, source: str) -> dict:
         for case_id, expected_mode in expected_output_modes_by_case.items()
         if output_modes_by_case.get(case_id) != expected_mode
     )
+    expected_exit_codes_by_case = {case_id: 0 for case_id in required_case_ids}
+    exit_codes_by_case = {result["case"]: result["exit_code"] for result in results}
+    missing_exit_code_cases = tuple(
+        case_id
+        for case_id, expected_exit_code in expected_exit_codes_by_case.items()
+        if exit_codes_by_case.get(case_id) != expected_exit_code
+    )
+    ok_by_case = {result["case"]: result["ok"] is True for result in results}
+    missing_ok_cases = tuple(case_id for case_id in required_case_ids if ok_by_case.get(case_id) is not True)
+    expected_payload_formats_by_case = {
+        case_id: "appgen.explain-report.v1" for case_id, expected_mode in expected_output_modes_by_case.items()
+        if expected_mode == "json"
+    }
+    payload_formats_by_case = {
+        result["case"]: result.get("payload_format")
+        for result in results
+        if result["case"] in expected_payload_formats_by_case
+    }
+    missing_payload_format_cases = tuple(
+        case_id
+        for case_id, expected_format in expected_payload_formats_by_case.items()
+        if payload_formats_by_case.get(case_id) != expected_format
+    )
     text_report_format_cases = tuple(
         result["case"] for result in results if result["case"].endswith("_text") and result["has_report_format"]
     )
@@ -16718,6 +16761,14 @@ def _tooling_audit_explain_cli_formats(tmp: Path, source: str) -> dict:
         if result["case"] in required_text_markers_by_case
         and not result["stdout_prefix"].startswith(required_text_markers_by_case[result["case"]])
     }
+    text_json_fallback_by_case = {
+        result["case"]: result.get("json_fallback") is True
+        for result in results
+        if result["case"] in required_text_markers_by_case
+    }
+    text_json_fallback_cases = tuple(
+        case_id for case_id, has_fallback in text_json_fallback_by_case.items() if has_fallback
+    )
     navigation_detail_cases = tuple(
         result["case"]
         for result in results
@@ -16734,8 +16785,12 @@ def _tooling_audit_explain_cli_formats(tmp: Path, source: str) -> dict:
         "ok": all(result["ok"] for result in results)
         and not missing_case_ids
         and not missing_output_mode_cases
+        and not missing_exit_code_cases
+        and not missing_ok_cases
+        and not missing_payload_format_cases
         and not missing_report_format_cases
         and not missing_text_markers_by_case
+        and not text_json_fallback_cases
         and not missing_navigation_detail_cases,
         "case_count": len(results),
         "passing_case_count": sum(1 for result in results if result["ok"]),
@@ -16750,6 +16805,17 @@ def _tooling_audit_explain_cli_formats(tmp: Path, source: str) -> dict:
         "output_modes_by_case": output_modes_by_case,
         "missing_output_mode_case_count": len(missing_output_mode_cases),
         "missing_output_mode_cases": missing_output_mode_cases,
+        "expected_exit_codes_by_case": expected_exit_codes_by_case,
+        "exit_codes_by_case": exit_codes_by_case,
+        "missing_exit_code_case_count": len(missing_exit_code_cases),
+        "missing_exit_code_cases": missing_exit_code_cases,
+        "ok_by_case": ok_by_case,
+        "missing_ok_case_count": len(missing_ok_cases),
+        "missing_ok_cases": missing_ok_cases,
+        "expected_payload_formats_by_case": expected_payload_formats_by_case,
+        "payload_formats_by_case": payload_formats_by_case,
+        "missing_payload_format_case_count": len(missing_payload_format_cases),
+        "missing_payload_format_cases": missing_payload_format_cases,
         "exit_failure_count": sum(1 for result in results if result["exit_code"] != 0),
         "text_case_count": sum(1 for result in results if result["case"].endswith("_text")),
         "json_case_count": sum(1 for result in results if result["case"].endswith("_json")),
@@ -16766,6 +16832,9 @@ def _tooling_audit_explain_cli_formats(tmp: Path, source: str) -> dict:
         "missing_text_marker_count": len(missing_text_markers_by_case),
         "missing_text_marker_cases": tuple(missing_text_markers_by_case),
         "missing_text_markers_by_case": missing_text_markers_by_case,
+        "text_json_fallback_by_case": text_json_fallback_by_case,
+        "text_json_fallback_case_count": len(text_json_fallback_cases),
+        "text_json_fallback_cases": text_json_fallback_cases,
         "symbol_case_count": sum(1 for result in results if "symbol" in result["case"]),
         "diagnostic_case_count": sum(1 for result in results if "diagnostic" in result["case"]),
         "handler_case_count": sum(1 for result in results if "handler" in result["case"]),

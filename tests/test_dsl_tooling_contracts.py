@@ -8208,6 +8208,26 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     ]
     assert explain_contract_check["detail"]["missing_output_mode_case_count"] == 0
     assert explain_contract_check["detail"]["missing_output_mode_cases"] == ()
+    assert explain_contract_check["detail"]["exit_codes_by_case"] == explain_contract_check["detail"][
+        "expected_exit_codes_by_case"
+    ]
+    assert explain_contract_check["detail"]["missing_exit_code_case_count"] == 0
+    assert explain_contract_check["detail"]["missing_exit_code_cases"] == ()
+    assert explain_contract_check["detail"]["ok_by_case"] == {
+        "field_symbol_text": True,
+        "field_symbol_json": True,
+        "diagnostic_text": True,
+        "diagnostic_json": True,
+        "qualified_handler_text": True,
+        "qualified_handler_json": True,
+    }
+    assert explain_contract_check["detail"]["missing_ok_case_count"] == 0
+    assert explain_contract_check["detail"]["missing_ok_cases"] == ()
+    assert explain_contract_check["detail"]["payload_formats_by_case"] == explain_contract_check["detail"][
+        "expected_payload_formats_by_case"
+    ]
+    assert explain_contract_check["detail"]["missing_payload_format_case_count"] == 0
+    assert explain_contract_check["detail"]["missing_payload_format_cases"] == ()
     assert explain_contract_check["detail"]["exit_failure_count"] == 0
     assert explain_contract_check["detail"]["text_case_count"] == 3
     assert explain_contract_check["detail"]["json_case_count"] == 3
@@ -8225,6 +8245,9 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert explain_contract_check["detail"]["missing_text_marker_count"] == 0
     assert explain_contract_check["detail"]["missing_text_marker_cases"] == ()
     assert explain_contract_check["detail"]["missing_text_markers_by_case"] == {}
+    assert explain_contract_check["detail"]["text_json_fallback_case_count"] == 0
+    assert explain_contract_check["detail"]["text_json_fallback_cases"] == ()
+    assert all(value is False for value in explain_contract_check["detail"]["text_json_fallback_by_case"].values())
     assert explain_contract_check["detail"]["navigation_detail_case_count"] == 3
     assert explain_contract_check["detail"]["navigation_detail_cases"] == (
         "field_symbol_json",
@@ -10507,6 +10530,21 @@ def test_explain_cli_audit_covers_text_and_json_modes(tmp_path: Path) -> None:
     assert audit["output_modes_by_case"] == audit["expected_output_modes_by_case"]
     assert audit["missing_output_mode_case_count"] == 0
     assert audit["missing_output_mode_cases"] == ()
+    assert audit["expected_exit_codes_by_case"] == {case_id: 0 for case_id in expected_case_ids}
+    assert audit["exit_codes_by_case"] == audit["expected_exit_codes_by_case"]
+    assert audit["missing_exit_code_case_count"] == 0
+    assert audit["missing_exit_code_cases"] == ()
+    assert audit["ok_by_case"] == {case_id: True for case_id in expected_case_ids}
+    assert audit["missing_ok_case_count"] == 0
+    assert audit["missing_ok_cases"] == ()
+    assert audit["expected_payload_formats_by_case"] == {
+        "field_symbol_json": "appgen.explain-report.v1",
+        "diagnostic_json": "appgen.explain-report.v1",
+        "qualified_handler_json": "appgen.explain-report.v1",
+    }
+    assert audit["payload_formats_by_case"] == audit["expected_payload_formats_by_case"]
+    assert audit["missing_payload_format_case_count"] == 0
+    assert audit["missing_payload_format_cases"] == ()
     assert audit["exit_failure_count"] == 0
     assert audit["text_case_count"] == 3
     assert audit["json_case_count"] == 3
@@ -10525,6 +10563,13 @@ def test_explain_cli_audit_covers_text_and_json_modes(tmp_path: Path) -> None:
     assert audit["missing_text_marker_count"] == 0
     assert audit["missing_text_marker_cases"] == ()
     assert audit["missing_text_markers_by_case"] == {}
+    assert audit["text_json_fallback_by_case"] == {
+        "field_symbol_text": False,
+        "diagnostic_text": False,
+        "qualified_handler_text": False,
+    }
+    assert audit["text_json_fallback_case_count"] == 0
+    assert audit["text_json_fallback_cases"] == ()
     assert audit["symbol_case_count"] == 2
     assert audit["diagnostic_case_count"] == 2
     assert audit["handler_case_count"] == 2
