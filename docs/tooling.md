@@ -652,11 +652,14 @@ authoring, and editor-service evidence used by the aggregate tooling audit.
 `appgen.dsl-language-cli-audit.v1` exercises those commands in JSON and text
 modes, reports JSON/text case counts, payload formats, failing cases, and
 completion counts. It also reports required, observed, and missing JSON/text
-case ids, expected versus observed payload formats by case, required text
-markers by case, and missing text markers. The aggregate tooling audit blocks
-when agents or CI cannot query the language-quality gate directly, when any
-expected command mode disappears, when JSON payload formats drift, or when text
-logs lose the markers external coding agents rely on.
+case ids; expected versus observed exit codes by case; case `ok` status by case;
+expected versus observed payload formats by case; text exit codes by case;
+required text markers by case; missing text markers; and text JSON-fallback
+status by text case. The aggregate tooling audit blocks when agents or CI cannot
+query the language-quality gate directly, when any expected command mode
+disappears, when JSON payload formats drift, when text commands return the wrong
+process status, when text output falls back to raw JSON, or when text logs lose
+the markers external coding agents rely on.
 
 ### `appgen lint`
 

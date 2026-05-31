@@ -4273,3 +4273,16 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   (`1 passed`, with the known active-PBC `datetime.utcnow()` warnings only),
   scoped diff whitespace check, and restricted-name scan outside archive, Git
   internals, and active PBC paths.
+- Current DSL language CLI hardening pass expands language-quality command
+  evidence with expected and observed exit codes, `ok` status, JSON payload
+  formats, text exit codes, required text markers, and raw-JSON fallback status
+  by named JSON/text mode for `dsl-quality`, `dsl-antlr`,
+  `dsl-authoring-gate`, and `dsl-language-service`. The aggregate
+  `dsl_language_cli_contracts` gate now requires those named missing lists to be
+  empty, so grammar, parser-integrity, authoring, and language-service surfaces
+  cannot pass by aggregate counts while returning the wrong status, wrong JSON
+  envelope, missing text output, or raw JSON fallback. Verification passed:
+  Python compile for the touched DSL and tests, focused DSL language CLI audit
+  (`1 passed`), aggregate tooling audit (`1 passed`, with the known active-PBC
+  `datetime.utcnow()` warnings only), scoped diff whitespace check, and
+  restricted-name scan outside archive, Git internals, and active PBC paths.

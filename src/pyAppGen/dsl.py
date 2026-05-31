@@ -6597,7 +6597,11 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             dsl_language_cli["ok"]
             and dsl_language_cli.get("missing_case_count") == 0
             and dsl_language_cli.get("missing_payload_format_case_count") == 0
-            and dsl_language_cli.get("missing_text_marker_count") == 0,
+            and dsl_language_cli.get("missing_exit_code_case_count") == 0
+            and dsl_language_cli.get("missing_ok_case_count") == 0
+            and dsl_language_cli.get("missing_text_exit_code_case_count") == 0
+            and dsl_language_cli.get("missing_text_marker_count") == 0
+            and dsl_language_cli.get("text_json_fallback_case_count") == 0,
             "DSL language-quality, ANTLR integrity, authoring-gate, and language-service contracts are callable from CLI JSON and text modes.",
             "docs/tooling.md#cli-contracts",
             dsl_language_cli,
@@ -16029,12 +16033,49 @@ def _tooling_audit_dsl_language_cli(tmp: Path, source: str) -> dict:
     )
     text_marker_count = sum(len(markers) for markers in required_text_markers_by_case.values())
     missing_text_marker_count = sum(len(markers) for markers in missing_text_markers_by_case.values())
+    expected_exit_codes_by_case = {case_id: 0 for case_id in required_case_ids}
+    exit_codes_by_case = {case["case"]: case.get("exit_code") for case in cases if case["case"] in required_case_ids}
+    missing_exit_code_cases = tuple(
+        case_id
+        for case_id, expected_exit_code in expected_exit_codes_by_case.items()
+        if exit_codes_by_case.get(case_id) != expected_exit_code
+    )
+    ok_by_case = {case["case"]: case.get("ok") is True for case in cases if case["case"] in required_case_ids}
+    missing_ok_cases = tuple(case_id for case_id in required_case_ids if ok_by_case.get(case_id) is not True)
+    expected_text_exit_codes_by_case = {
+        "dsl_quality_text": 0,
+        "dsl_antlr_text": 0,
+        "dsl_authoring_gate_text": 0,
+        "dsl_language_service_text": 0,
+    }
+    text_exit_codes_by_case = {
+        "dsl_quality_text": quality_text_exit,
+        "dsl_antlr_text": antlr_text_exit,
+        "dsl_authoring_gate_text": authoring_text_exit,
+        "dsl_language_service_text": service_text_exit,
+    }
+    missing_text_exit_code_cases = tuple(
+        case_id
+        for case_id, expected_exit_code in expected_text_exit_codes_by_case.items()
+        if text_exit_codes_by_case.get(case_id) != expected_exit_code
+    )
+    text_json_fallback_by_case = {
+        case_id: text_outputs_by_case.get(case_id, "").lstrip().startswith("{")
+        for case_id in expected_text_exit_codes_by_case
+    }
+    text_json_fallback_cases = tuple(
+        case_id for case_id in expected_text_exit_codes_by_case if text_json_fallback_by_case.get(case_id) is True
+    )
     return {
         "format": "appgen.dsl-language-cli-audit.v1",
         "ok": not failing_cases
         and not missing_case_ids
         and not missing_payload_format_cases
-        and not missing_text_marker_cases,
+        and not missing_exit_code_cases
+        and not missing_ok_cases
+        and not missing_text_exit_code_cases
+        and not missing_text_marker_cases
+        and not text_json_fallback_cases,
         "case_count": len(cases),
         "passing_case_count": sum(1 for case in cases if case["ok"]),
         "failing_case_count": len(failing_cases),
@@ -16049,11 +16090,25 @@ def _tooling_audit_dsl_language_cli(tmp: Path, source: str) -> dict:
         "payload_formats_by_case": payload_formats_by_case,
         "missing_payload_format_case_count": len(missing_payload_format_cases),
         "missing_payload_format_cases": missing_payload_format_cases,
+        "expected_exit_codes_by_case": expected_exit_codes_by_case,
+        "exit_codes_by_case": exit_codes_by_case,
+        "missing_exit_code_case_count": len(missing_exit_code_cases),
+        "missing_exit_code_cases": missing_exit_code_cases,
+        "ok_by_case": ok_by_case,
+        "missing_ok_case_count": len(missing_ok_cases),
+        "missing_ok_cases": missing_ok_cases,
+        "expected_text_exit_codes_by_case": expected_text_exit_codes_by_case,
+        "text_exit_codes_by_case": text_exit_codes_by_case,
+        "missing_text_exit_code_case_count": len(missing_text_exit_code_cases),
+        "missing_text_exit_code_cases": missing_text_exit_code_cases,
         "required_text_markers_by_case": required_text_markers_by_case,
         "missing_text_markers_by_case": missing_text_markers_by_case,
         "text_marker_count": text_marker_count,
         "missing_text_marker_count": missing_text_marker_count,
         "missing_text_marker_cases": missing_text_marker_cases,
+        "text_json_fallback_by_case": text_json_fallback_by_case,
+        "text_json_fallback_case_count": len(text_json_fallback_cases),
+        "text_json_fallback_cases": text_json_fallback_cases,
         "language_quality_format": quality_payload.get("format"),
         "antlr_integrity_format": antlr_payload.get("format"),
         "authoring_gate_format": authoring_payload.get("format"),

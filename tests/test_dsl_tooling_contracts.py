@@ -5737,8 +5737,36 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert language_cli_check["detail"]["failing_cases"] == ()
     assert language_cli_check["detail"]["missing_payload_format_case_count"] == 0
     assert language_cli_check["detail"]["missing_payload_format_cases"] == ()
+    assert language_cli_check["detail"]["exit_codes_by_case"] == language_cli_check["detail"]["expected_exit_codes_by_case"]
+    assert language_cli_check["detail"]["missing_exit_code_case_count"] == 0
+    assert language_cli_check["detail"]["missing_exit_code_cases"] == ()
+    assert language_cli_check["detail"]["ok_by_case"] == {
+        "dsl_quality_json": True,
+        "dsl_antlr_json": True,
+        "dsl_authoring_gate_json": True,
+        "dsl_language_service_json": True,
+        "dsl_quality_text": True,
+        "dsl_antlr_text": True,
+        "dsl_authoring_gate_text": True,
+        "dsl_language_service_text": True,
+    }
+    assert language_cli_check["detail"]["missing_ok_case_count"] == 0
+    assert language_cli_check["detail"]["missing_ok_cases"] == ()
+    assert language_cli_check["detail"]["text_exit_codes_by_case"] == (
+        language_cli_check["detail"]["expected_text_exit_codes_by_case"]
+    )
+    assert language_cli_check["detail"]["missing_text_exit_code_case_count"] == 0
+    assert language_cli_check["detail"]["missing_text_exit_code_cases"] == ()
     assert language_cli_check["detail"]["missing_text_marker_count"] == 0
     assert language_cli_check["detail"]["missing_text_marker_cases"] == ()
+    assert language_cli_check["detail"]["text_json_fallback_by_case"] == {
+        "dsl_quality_text": False,
+        "dsl_antlr_text": False,
+        "dsl_authoring_gate_text": False,
+        "dsl_language_service_text": False,
+    }
+    assert language_cli_check["detail"]["text_json_fallback_case_count"] == 0
+    assert language_cli_check["detail"]["text_json_fallback_cases"] == ()
     assert language_cli_check["detail"]["observed_case_ids"] == language_cli_check["detail"]["required_case_ids"]
     assert language_cli_check["detail"]["payload_formats_by_case"] == (
         language_cli_check["detail"]["expected_payload_formats_by_case"]
@@ -10071,12 +10099,54 @@ def test_dsl_language_cli_audit_proves_quality_authoring_and_service_commands(tm
     assert audit["payload_formats_by_case"] == audit["expected_payload_formats_by_case"]
     assert audit["missing_payload_format_case_count"] == 0
     assert audit["missing_payload_format_cases"] == ()
+    assert audit["expected_exit_codes_by_case"] == {
+        "dsl_quality_json": 0,
+        "dsl_antlr_json": 0,
+        "dsl_authoring_gate_json": 0,
+        "dsl_language_service_json": 0,
+        "dsl_quality_text": 0,
+        "dsl_antlr_text": 0,
+        "dsl_authoring_gate_text": 0,
+        "dsl_language_service_text": 0,
+    }
+    assert audit["exit_codes_by_case"] == audit["expected_exit_codes_by_case"]
+    assert audit["missing_exit_code_case_count"] == 0
+    assert audit["missing_exit_code_cases"] == ()
+    assert audit["ok_by_case"] == {
+        "dsl_quality_json": True,
+        "dsl_antlr_json": True,
+        "dsl_authoring_gate_json": True,
+        "dsl_language_service_json": True,
+        "dsl_quality_text": True,
+        "dsl_antlr_text": True,
+        "dsl_authoring_gate_text": True,
+        "dsl_language_service_text": True,
+    }
+    assert audit["missing_ok_case_count"] == 0
+    assert audit["missing_ok_cases"] == ()
+    assert audit["expected_text_exit_codes_by_case"] == {
+        "dsl_quality_text": 0,
+        "dsl_antlr_text": 0,
+        "dsl_authoring_gate_text": 0,
+        "dsl_language_service_text": 0,
+    }
+    assert audit["text_exit_codes_by_case"] == audit["expected_text_exit_codes_by_case"]
+    assert audit["missing_text_exit_code_case_count"] == 0
+    assert audit["missing_text_exit_code_cases"] == ()
     assert audit["missing_text_marker_count"] == 0
     assert audit["missing_text_marker_cases"] == ()
     assert all(markers == () for markers in audit["missing_text_markers_by_case"].values())
     assert audit["text_marker_count"] == sum(
         len(markers) for markers in audit["required_text_markers_by_case"].values()
     )
+    assert audit["text_json_fallback_by_case"] == {
+        "dsl_quality_text": False,
+        "dsl_antlr_text": False,
+        "dsl_authoring_gate_text": False,
+        "dsl_language_service_text": False,
+    }
+    assert audit["text_json_fallback_case_count"] == 0
+    assert audit["text_json_fallback_cases"] == ()
     assert audit["language_quality_format"] == "appgen.dsl-language-quality.v1"
     assert audit["antlr_integrity_format"] == "appgen.dsl-antlr-integrity.v1"
     assert audit["authoring_gate_format"] == "appgen.dsl-authoring-release-gate.v1"
