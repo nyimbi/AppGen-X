@@ -325,3 +325,13 @@ for _operation in engine.DOMAIN_OPERATIONS:
 
 
 water_wastewater_operations_execute_domain_operation = engine.run_domain_operation
+
+
+# Improve1 water wastewater operations control extension.
+from .water_wastewater_operations_control import evaluate_water_wastewater_operations_control, improve1_water_wastewater_operations_control_contract
+_WATER_CONTROL_BASE_RUNTIME_CAPABILITIES = water_wastewater_operations_runtime_capabilities
+_WATER_CONTROL_BASE_BUILD_RELEASE_EVIDENCE = water_wastewater_operations_build_release_evidence
+def water_wastewater_operations_runtime_capabilities():
+    runtime=dict(_WATER_CONTROL_BASE_RUNTIME_CAPABILITIES()); control=improve1_water_wastewater_operations_control_contract(); runtime["ok"]=bool(runtime.get("ok")) and control["ok"]; runtime["water_wastewater_operations_control"]=control; runtime["operations"]=tuple(dict.fromkeys(tuple(runtime.get("operations",()))+("evaluate_water_wastewater_operations_control","improve1_water_wastewater_operations_control_contract"))); runtime["improve1_control_owned_tables"]=control["owned_tables"]; runtime["event_contract"]="AppGen-X"; runtime["stream_engine_picker_visible"]=False; return runtime
+def water_wastewater_operations_build_release_evidence():
+    evidence=dict(_WATER_CONTROL_BASE_BUILD_RELEASE_EVIDENCE()); control=improve1_water_wastewater_operations_control_contract(); artifacts=dict(evidence.get("generated_artifacts",{})); artifacts["water_wastewater_operations_control"]={"contract":control["format"],"capability_count":control["capability_count"],"owned_tables":control["owned_tables"],"service_apis":tuple(item["evidence"]["service_api"] for item in control["capabilities"]),"ui_surfaces":tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),"test":"tests/test_domain_behavior.py"}; checks=tuple(evidence.get("checks",()))+({"id":"improve1_water_wastewater_operations_control","ok":control["ok"]},); evidence.update({"ok":bool(evidence.get("ok")) and control["ok"],"checks":checks,"generated_artifacts":artifacts,"water_wastewater_operations_control":control,"blocking_gaps":tuple(evidence.get("blocking_gaps",()))+tuple(control.get("blocking_gaps",()))}); return evidence
