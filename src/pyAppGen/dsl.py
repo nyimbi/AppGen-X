@@ -8607,6 +8607,8 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and nl_plan_cli.get("missing_accepted_operation_kind_count") == 0
             and nl_plan_cli.get("missing_expected_operation_kind_case_count") == 0
             and nl_plan_cli.get("missing_payload_format_case_count") == 0
+            and nl_plan_cli.get("missing_exit_code_case_count") == 0
+            and nl_plan_cli.get("missing_ok_case_count") == 0
             and nl_plan_cli.get("missing_lint_ok_case_count") == 0
             and nl_plan_cli.get("missing_migration_format_case_count") == 0
             and nl_plan_cli.get("missing_test_plan_case_count") == 0
@@ -8625,6 +8627,10 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and bool(nl_plan_cli.get("accepted_text_token_note_lines"))
             and nl_plan_cli.get("rejected_ok") is True
             and "AGX1201" in nl_plan_cli.get("rejected_diagnostic_codes", ())
+            and nl_plan_cli.get("missing_rejected_exit_code_case_count") == 0
+            and nl_plan_cli.get("missing_rejected_payload_format_case_count") == 0
+            and nl_plan_cli.get("missing_rejected_diagnostic_code_case_count") == 0
+            and nl_plan_cli.get("missing_rejected_patch_empty_case_count") == 0
             and nl_plan_cli.get("blocking_case_count") == 0
             and not nl_plan_cli.get("blocking_cases"),
             "Natural-language CLI and agent contracts prove JSON and text handoffs expose patch, lint, migration, tests, token notes, and bounded rejection evidence.",
@@ -8654,6 +8660,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "payload_formats_by_case": nl_plan_cli.get("payload_formats_by_case"),
                 "missing_payload_format_case_count": nl_plan_cli.get("missing_payload_format_case_count"),
                 "missing_payload_format_cases": nl_plan_cli.get("missing_payload_format_cases"),
+                "expected_exit_codes_by_case": nl_plan_cli.get("expected_exit_codes_by_case"),
+                "exit_codes_by_case": nl_plan_cli.get("exit_codes_by_case"),
+                "missing_exit_code_case_count": nl_plan_cli.get("missing_exit_code_case_count"),
+                "missing_exit_code_cases": nl_plan_cli.get("missing_exit_code_cases"),
+                "ok_cases": nl_plan_cli.get("ok_cases"),
+                "missing_ok_case_count": nl_plan_cli.get("missing_ok_case_count"),
+                "missing_ok_cases": nl_plan_cli.get("missing_ok_cases"),
                 "lint_ok_cases": nl_plan_cli.get("lint_ok_cases"),
                 "missing_lint_ok_case_count": nl_plan_cli.get("missing_lint_ok_case_count"),
                 "missing_lint_ok_cases": nl_plan_cli.get("missing_lint_ok_cases"),
@@ -8683,6 +8696,38 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "accepted_text_has_token_notes": nl_plan_cli.get("accepted_text_has_token_notes"),
                 "accepted_text_token_note_line_count": len(nl_plan_cli.get("accepted_text_token_note_lines", ())),
                 "rejected_ok": nl_plan_cli.get("rejected_ok"),
+                "rejected_case_id": nl_plan_cli.get("rejected_case_id"),
+                "expected_rejected_exit_codes_by_case": nl_plan_cli.get("expected_rejected_exit_codes_by_case"),
+                "rejected_exit_codes_by_case": nl_plan_cli.get("rejected_exit_codes_by_case"),
+                "missing_rejected_exit_code_case_count": nl_plan_cli.get(
+                    "missing_rejected_exit_code_case_count"
+                ),
+                "missing_rejected_exit_code_cases": nl_plan_cli.get("missing_rejected_exit_code_cases"),
+                "expected_rejected_payload_formats_by_case": nl_plan_cli.get(
+                    "expected_rejected_payload_formats_by_case"
+                ),
+                "rejected_payload_formats_by_case": nl_plan_cli.get("rejected_payload_formats_by_case"),
+                "missing_rejected_payload_format_case_count": nl_plan_cli.get(
+                    "missing_rejected_payload_format_case_count"
+                ),
+                "missing_rejected_payload_format_cases": nl_plan_cli.get(
+                    "missing_rejected_payload_format_cases"
+                ),
+                "required_rejected_diagnostic_codes_by_case": nl_plan_cli.get(
+                    "required_rejected_diagnostic_codes_by_case"
+                ),
+                "rejected_diagnostic_codes_by_case": nl_plan_cli.get("rejected_diagnostic_codes_by_case"),
+                "missing_rejected_diagnostic_code_case_count": nl_plan_cli.get(
+                    "missing_rejected_diagnostic_code_case_count"
+                ),
+                "missing_rejected_diagnostic_codes_by_case": nl_plan_cli.get(
+                    "missing_rejected_diagnostic_codes_by_case"
+                ),
+                "rejected_patch_empty_cases": nl_plan_cli.get("rejected_patch_empty_cases"),
+                "missing_rejected_patch_empty_case_count": nl_plan_cli.get(
+                    "missing_rejected_patch_empty_case_count"
+                ),
+                "missing_rejected_patch_empty_cases": nl_plan_cli.get("missing_rejected_patch_empty_cases"),
                 "rejected_diagnostic_codes": nl_plan_cli.get("rejected_diagnostic_codes"),
                 "blocking_case_count": nl_plan_cli.get("blocking_case_count"),
                 "blocking_cases": nl_plan_cli.get("blocking_cases"),
@@ -16743,6 +16788,15 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
         for case_id, expected_format in expected_payload_formats_by_case.items()
         if payload_formats_by_case.get(case_id) != expected_format
     )
+    expected_exit_codes_by_case = {case_id: 0 for case_id in required_accepted_case_ids}
+    exit_codes_by_case = {case["case"]: case["exit_code"] for case in accepted_cases}
+    missing_exit_code_cases = tuple(
+        case_id
+        for case_id, expected_code in expected_exit_codes_by_case.items()
+        if exit_codes_by_case.get(case_id) != expected_code
+    )
+    ok_cases = tuple(case["case"] for case in accepted_cases if case["ok"] is True)
+    missing_ok_cases = tuple(case_id for case_id in required_accepted_case_ids if case_id not in ok_cases)
     lint_ok_cases = tuple(case["case"] for case in accepted_cases if case["lint_ok"] is True)
     missing_lint_ok_cases = tuple(case_id for case_id in required_accepted_case_ids if case_id not in lint_ok_cases)
     migration_format_cases = tuple(
@@ -16800,12 +16854,46 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
         and rejected_payload.get("dsl_patch") == ""
         and "AGX1201" in rejected_codes
     )
+    rejected_case_id = "reject_out_of_dsl_generated_code"
+    expected_rejected_exit_codes_by_case = {rejected_case_id: 1}
+    rejected_exit_codes_by_case = {rejected_case_id: rejected_exit}
+    missing_rejected_exit_code_cases = tuple(
+        case_id
+        for case_id, expected_code in expected_rejected_exit_codes_by_case.items()
+        if rejected_exit_codes_by_case.get(case_id) != expected_code
+    )
+    expected_rejected_payload_formats_by_case = {rejected_case_id: "appgen.nl-plan.v1"}
+    rejected_payload_formats_by_case = {rejected_case_id: rejected_payload.get("format")}
+    missing_rejected_payload_format_cases = tuple(
+        case_id
+        for case_id, expected_format in expected_rejected_payload_formats_by_case.items()
+        if rejected_payload_formats_by_case.get(case_id) != expected_format
+    )
+    required_rejected_diagnostic_codes_by_case = {rejected_case_id: ("AGX1201",)}
+    rejected_diagnostic_codes_by_case = {rejected_case_id: rejected_codes}
+    missing_rejected_diagnostic_codes_by_case = {
+        case_id: tuple(
+            code
+            for code in required_codes
+            if code not in set(rejected_diagnostic_codes_by_case.get(case_id, ()))
+        )
+        for case_id, required_codes in required_rejected_diagnostic_codes_by_case.items()
+        if any(code not in set(rejected_diagnostic_codes_by_case.get(case_id, ())) for code in required_codes)
+    }
+    rejected_patch_empty_cases = (
+        (rejected_case_id,) if rejected_payload.get("dsl_patch") == "" else ()
+    )
+    missing_rejected_patch_empty_cases = (
+        () if rejected_case_id in rejected_patch_empty_cases else (rejected_case_id,)
+    )
     return {
         "format": "appgen.nl-plan-cli-audit.v1",
         "ok": all(case["passed"] for case in accepted_cases)
         and not missing_accepted_case_ids
         and not missing_expected_operation_kind_cases
         and not missing_payload_format_cases
+        and not missing_exit_code_cases
+        and not missing_ok_cases
         and not missing_lint_ok_cases
         and not missing_migration_format_cases
         and not missing_test_plan_cases
@@ -16819,7 +16907,11 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
         and accepted_text_has_token_notes
         and bool(accepted_text_token_note_lines)
         and not missing_text_markers
-        and rejected_ok,
+        and rejected_ok
+        and not missing_rejected_exit_code_cases
+        and not missing_rejected_payload_format_cases
+        and not missing_rejected_diagnostic_codes_by_case
+        and not missing_rejected_patch_empty_cases,
         "case_count": len(accepted_cases) + 2,
         "accepted_case_count": len(accepted_cases),
         "accepted_passing_case_count": sum(1 for case in accepted_cases if case["passed"]),
@@ -16839,6 +16931,13 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
         "payload_formats_by_case": payload_formats_by_case,
         "missing_payload_format_case_count": len(missing_payload_format_cases),
         "missing_payload_format_cases": missing_payload_format_cases,
+        "expected_exit_codes_by_case": expected_exit_codes_by_case,
+        "exit_codes_by_case": exit_codes_by_case,
+        "missing_exit_code_case_count": len(missing_exit_code_cases),
+        "missing_exit_code_cases": missing_exit_code_cases,
+        "ok_cases": ok_cases,
+        "missing_ok_case_count": len(missing_ok_cases),
+        "missing_ok_cases": missing_ok_cases,
         "lint_ok_cases": lint_ok_cases,
         "missing_lint_ok_case_count": len(missing_lint_ok_cases),
         "missing_lint_ok_cases": missing_lint_ok_cases,
@@ -16875,14 +16974,30 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
         "accepted_text_token_note_line_count": len(accepted_text_token_note_lines),
         "accepted_text_token_note_lines": accepted_text_token_note_lines,
         "rejected_ok": rejected_ok,
+        "rejected_case_id": rejected_case_id,
         "rejected_exit_code": rejected_exit,
+        "expected_rejected_exit_codes_by_case": expected_rejected_exit_codes_by_case,
+        "rejected_exit_codes_by_case": rejected_exit_codes_by_case,
+        "missing_rejected_exit_code_case_count": len(missing_rejected_exit_code_cases),
+        "missing_rejected_exit_code_cases": missing_rejected_exit_code_cases,
         "accepted_payload_format": accepted_cases[0]["format"] if accepted_cases else None,
         "accepted_patch_bytes": accepted_patch_bytes,
         "accepted_test_count": accepted_test_count,
         "accepted_token_budget_notes": accepted_token_budget_notes,
         "migration_format": accepted_cases[0]["migration_format"] if accepted_cases else None,
         "rejected_payload_format": rejected_payload.get("format"),
+        "expected_rejected_payload_formats_by_case": expected_rejected_payload_formats_by_case,
+        "rejected_payload_formats_by_case": rejected_payload_formats_by_case,
+        "missing_rejected_payload_format_case_count": len(missing_rejected_payload_format_cases),
+        "missing_rejected_payload_format_cases": missing_rejected_payload_format_cases,
         "rejected_diagnostic_codes": rejected_codes,
+        "required_rejected_diagnostic_codes_by_case": required_rejected_diagnostic_codes_by_case,
+        "rejected_diagnostic_codes_by_case": rejected_diagnostic_codes_by_case,
+        "missing_rejected_diagnostic_code_case_count": len(missing_rejected_diagnostic_codes_by_case),
+        "missing_rejected_diagnostic_codes_by_case": missing_rejected_diagnostic_codes_by_case,
+        "rejected_patch_empty_cases": rejected_patch_empty_cases,
+        "missing_rejected_patch_empty_case_count": len(missing_rejected_patch_empty_cases),
+        "missing_rejected_patch_empty_cases": missing_rejected_patch_empty_cases,
     }
 
 

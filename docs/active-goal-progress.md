@@ -4213,3 +4213,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   the known active-PBC `datetime.utcnow()` warnings only), scoped diff
   whitespace check, and restricted-name scan outside archive, Git internals, and
   active PBC paths.
+- Current natural-language CLI agent hardening pass expands small-model
+  development-vector evidence with accepted-case exit codes, accepted-case
+  `ok` statuses, rejected-case exit codes, rejected payload formats, required
+  rejected diagnostic codes, and rejected empty-patch evidence by named case.
+  The aggregate `natural_language_cli_agent_contracts` gate now requires those
+  named missing lists to be empty, so unsupported natural-language requests
+  cannot pass by returning patch-shaped payloads, wrong process statuses, or
+  aggregate-only rejection evidence. Verification passed: Python compile for
+  the touched DSL and tests, focused NL CLI audit (`1 passed`), aggregate
+  tooling audit (`1 passed`, with the known active-PBC `datetime.utcnow()`
+  warnings only), scoped diff whitespace check, and restricted-name scan outside
+  archive, Git internals, and active PBC paths.

@@ -2067,6 +2067,13 @@ migration, test-plan, or token-budget markers, rejected prompts stop returning
 migration/test/token evidence drifts, or blocking cases appear. This is the
 release gate for Claude Code, OpenAI Codex, OpenCode, Ollama, vLLM, and small
 local models using natural language as a first-class development vector.
+The CLI audit also publishes expected and observed accepted-case exit codes,
+accepted-case `ok` booleans, rejected-case exit codes, rejected payload formats,
+required rejected diagnostic codes, and rejected empty-patch evidence by named
+case. The aggregate gate requires those named missing lists to be empty, so
+small-model agent workflows cannot pass by emitting a patch-shaped payload for
+unsupported requests, returning the wrong process status, or hiding an
+out-of-DSL rejection behind aggregate counts.
 
 The test-strategy CLI audit reports case, passing-case, failing-case, case-id,
 required-surface, observed-surface, missing-surface, payload-format, and

@@ -1231,6 +1231,13 @@ def test_nl_plan_cli_audit_covers_all_supported_edit_operations(tmp_path: Path) 
     assert audit["payload_formats_by_case"] == audit["expected_payload_formats_by_case"]
     assert audit["missing_payload_format_case_count"] == 0
     assert audit["missing_payload_format_cases"] == ()
+    assert audit["expected_exit_codes_by_case"] == {case_id: 0 for case_id in expected_case_ids}
+    assert audit["exit_codes_by_case"] == audit["expected_exit_codes_by_case"]
+    assert audit["missing_exit_code_case_count"] == 0
+    assert audit["missing_exit_code_cases"] == ()
+    assert audit["ok_cases"] == expected_case_ids
+    assert audit["missing_ok_case_count"] == 0
+    assert audit["missing_ok_cases"] == ()
     assert audit["lint_ok_cases"] == expected_case_ids
     assert audit["missing_lint_ok_case_count"] == 0
     assert audit["missing_lint_ok_cases"] == ()
@@ -1274,7 +1281,29 @@ def test_nl_plan_cli_audit_covers_all_supported_edit_operations(tmp_path: Path) 
     assert audit["accepted_text_token_note_line_count"] == len(audit["accepted_text_token_note_lines"])
     assert all(line.startswith("token-budget-note ") for line in audit["accepted_text_token_note_lines"])
     assert audit["rejected_ok"] is True
+    assert audit["rejected_case_id"] == "reject_out_of_dsl_generated_code"
+    assert audit["rejected_exit_code"] == 1
+    assert audit["expected_rejected_exit_codes_by_case"] == {"reject_out_of_dsl_generated_code": 1}
+    assert audit["rejected_exit_codes_by_case"] == audit["expected_rejected_exit_codes_by_case"]
+    assert audit["missing_rejected_exit_code_case_count"] == 0
+    assert audit["missing_rejected_exit_code_cases"] == ()
+    assert audit["rejected_payload_format"] == "appgen.nl-plan.v1"
+    assert audit["expected_rejected_payload_formats_by_case"] == {
+        "reject_out_of_dsl_generated_code": "appgen.nl-plan.v1"
+    }
+    assert audit["rejected_payload_formats_by_case"] == audit["expected_rejected_payload_formats_by_case"]
+    assert audit["missing_rejected_payload_format_case_count"] == 0
+    assert audit["missing_rejected_payload_format_cases"] == ()
     assert "AGX1201" in audit["rejected_diagnostic_codes"]
+    assert audit["required_rejected_diagnostic_codes_by_case"] == {
+        "reject_out_of_dsl_generated_code": ("AGX1201",)
+    }
+    assert audit["rejected_diagnostic_codes_by_case"]["reject_out_of_dsl_generated_code"] == ("AGX1201",)
+    assert audit["missing_rejected_diagnostic_code_case_count"] == 0
+    assert audit["missing_rejected_diagnostic_codes_by_case"] == {}
+    assert audit["rejected_patch_empty_cases"] == ("reject_out_of_dsl_generated_code",)
+    assert audit["missing_rejected_patch_empty_case_count"] == 0
+    assert audit["missing_rejected_patch_empty_cases"] == ()
 
 
 def test_appgen_migration_plan_subcommand_emits_json_and_text_contracts(tmp_path: Path) -> None:
@@ -8175,6 +8204,14 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert nl_cli_agent_check["detail"]["missing_accepted_case_count"] == 0
     assert nl_cli_agent_check["detail"]["missing_expected_operation_kind_case_count"] == 0
     assert nl_cli_agent_check["detail"]["missing_payload_format_case_count"] == 0
+    assert nl_cli_agent_check["detail"]["exit_codes_by_case"] == nl_cli_agent_check["detail"][
+        "expected_exit_codes_by_case"
+    ]
+    assert nl_cli_agent_check["detail"]["missing_exit_code_case_count"] == 0
+    assert nl_cli_agent_check["detail"]["missing_exit_code_cases"] == ()
+    assert nl_cli_agent_check["detail"]["ok_cases"] == nl_cli_agent_check["detail"]["required_accepted_case_ids"]
+    assert nl_cli_agent_check["detail"]["missing_ok_case_count"] == 0
+    assert nl_cli_agent_check["detail"]["missing_ok_cases"] == ()
     assert nl_cli_agent_check["detail"]["missing_lint_ok_case_count"] == 0
     assert nl_cli_agent_check["detail"]["missing_migration_format_case_count"] == 0
     assert nl_cli_agent_check["detail"]["missing_test_plan_case_count"] == 0
@@ -8195,6 +8232,25 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert nl_cli_agent_check["detail"]["accepted_text_has_token_notes"] is True
     assert nl_cli_agent_check["detail"]["accepted_text_token_note_line_count"] > 0
     assert nl_cli_agent_check["detail"]["rejected_ok"] is True
+    assert nl_cli_agent_check["detail"]["rejected_case_id"] == "reject_out_of_dsl_generated_code"
+    assert nl_cli_agent_check["detail"]["rejected_exit_codes_by_case"] == nl_cli_agent_check["detail"][
+        "expected_rejected_exit_codes_by_case"
+    ]
+    assert nl_cli_agent_check["detail"]["missing_rejected_exit_code_case_count"] == 0
+    assert nl_cli_agent_check["detail"]["missing_rejected_exit_code_cases"] == ()
+    assert nl_cli_agent_check["detail"]["rejected_payload_formats_by_case"] == nl_cli_agent_check["detail"][
+        "expected_rejected_payload_formats_by_case"
+    ]
+    assert nl_cli_agent_check["detail"]["missing_rejected_payload_format_case_count"] == 0
+    assert nl_cli_agent_check["detail"]["missing_rejected_payload_format_cases"] == ()
+    assert nl_cli_agent_check["detail"]["required_rejected_diagnostic_codes_by_case"] == {
+        "reject_out_of_dsl_generated_code": ("AGX1201",)
+    }
+    assert nl_cli_agent_check["detail"]["missing_rejected_diagnostic_code_case_count"] == 0
+    assert nl_cli_agent_check["detail"]["missing_rejected_diagnostic_codes_by_case"] == {}
+    assert nl_cli_agent_check["detail"]["rejected_patch_empty_cases"] == ("reject_out_of_dsl_generated_code",)
+    assert nl_cli_agent_check["detail"]["missing_rejected_patch_empty_case_count"] == 0
+    assert nl_cli_agent_check["detail"]["missing_rejected_patch_empty_cases"] == ()
     assert "AGX1201" in nl_cli_agent_check["detail"]["rejected_diagnostic_codes"]
     assert nl_cli_agent_check["detail"]["blocking_case_count"] == 0
     assert nl_cli_agent_check["detail"]["blocking_cases"] == ()
