@@ -8032,6 +8032,9 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and lsp_rename_cli.get("missing_scenario_count") == 0
             and lsp_rename_cli.get("missing_mode_scenario_count") == 0
             and lsp_rename_cli.get("missing_scope_scenario_count") == 0
+            and lsp_rename_cli.get("missing_exit_code_scenario_count") == 0
+            and lsp_rename_cli.get("missing_payload_format_scenario_count") == 0
+            and lsp_rename_cli.get("missing_ok_scenario_count") == 0
             and lsp_rename_cli.get("safe_json_scenario_count", 0) >= 5
             and lsp_rename_cli.get("blocked_json_scenario_count", 0) >= 5
             and lsp_rename_cli.get("blocked_text_scenario_count") == 1,
@@ -11379,6 +11382,9 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                 {
                     "id": "rename_and_code_actions",
                     "ok": evidence["lsp_rename_cli"].get("ok") is True
+                    and evidence["lsp_rename_cli"].get("missing_exit_code_scenario_count") == 0
+                    and evidence["lsp_rename_cli"].get("missing_payload_format_scenario_count") == 0
+                    and evidence["lsp_rename_cli"].get("missing_ok_scenario_count") == 0
                     and evidence["quick_fix"].get("ok") is True
                     and evidence["code_action_apply_audit"].get("ok") is True
                     and evidence["lsp_apply_cli"].get("ok") is True
@@ -14065,7 +14071,7 @@ audit RenameAudit { evidence: "InvoiceForm" }
         and any(item.get("code") == "AGX1101" for item in view_rename.get("blockers", ()))
     )
 
-    def run_rename_case(filename: str, case_source: str, needle: str, new_name: str) -> tuple[int, dict, str]:
+    def run_rename_case(filename: str, case_source: str, needle: str, new_name: str) -> tuple[int, dict, str, str]:
         case_path = tmp / filename
         case_path.write_text(case_source, encoding="utf-8")
         case_position = _tooling_lsp_position(case_source, needle)
@@ -14090,7 +14096,7 @@ audit RenameAudit { evidence: "InvoiceForm" }
         case_rename = case_payload.get("rename", {})
         case_changes = case_rename.get("workspace_edit", {}).get("changes", {}).get(str(case_path), ())
         case_patched_text = case_changes[0].get("newText", "") if case_changes else ""
-        return case_exit, case_rename, case_patched_text
+        return case_exit, case_rename, case_patched_text, case_payload.get("format")
 
     enterprise_source = """
 app EnterpriseRefactors { targets: web }
@@ -14128,7 +14134,7 @@ agent Assistant { provider: LocalModel; tools: read }
 audit RenameAudit { evidence: "gl_core JournalPosted FinanceRelease SubmitInvoice" }
 // gl_core JournalPosted FinanceRelease SubmitInvoice remain in this comment
 """
-    pbc_exit, pbc_rename, pbc_patched_text = run_rename_case(
+    pbc_exit, pbc_rename, pbc_patched_text, pbc_payload_format = run_rename_case(
         "lsp-rename-pbc.appgen", enterprise_source, "gl_core {", "ledger_core"
     )
     pbc_scope_ok = (
@@ -14144,7 +14150,7 @@ audit RenameAudit { evidence: "gl_core JournalPosted FinanceRelease SubmitInvoic
         and "gl_core: string" in pbc_patched_text
         and 'evidence: "gl_core JournalPosted FinanceRelease SubmitInvoice"' in pbc_patched_text
     )
-    event_exit, event_rename, event_patched_text = run_rename_case(
+    event_exit, event_rename, event_patched_text, event_payload_format = run_rename_case(
         "lsp-rename-event.appgen", enterprise_source, "JournalPosted {", "LedgerPosted"
     )
     event_scope_ok = (
@@ -14159,7 +14165,7 @@ audit RenameAudit { evidence: "gl_core JournalPosted FinanceRelease SubmitInvoic
         and "operation JournalPosted" in event_patched_text
         and "on Save -> JournalPosted" in event_patched_text
     )
-    package_exit, package_rename, package_patched_text = run_rename_case(
+    package_exit, package_rename, package_patched_text, package_payload_format = run_rename_case(
         "lsp-rename-package.appgen", enterprise_source, "FinanceRelease {", "WebRelease"
     )
     package_scope_ok = (
@@ -14171,7 +14177,7 @@ audit RenameAudit { evidence: "gl_core JournalPosted FinanceRelease SubmitInvoic
         and "package WebRelease" in package_patched_text
         and 'evidence: "gl_core JournalPosted FinanceRelease SubmitInvoice"' in package_patched_text
     )
-    deployment_exit, deployment_rename, deployment_patched_text = run_rename_case(
+    deployment_exit, deployment_rename, deployment_patched_text, deployment_payload_format = run_rename_case(
         "lsp-rename-deployment-unit.appgen", enterprise_source, "SubmitInvoice as worker", "PostInvoice"
     )
     deployment_scope_ok = (
@@ -14337,62 +14343,89 @@ view InvoiceForm for Invoice {
             "ok": safe_ok,
             "mode": "safe_json",
             "scope": rename.get("lexical_scope"),
+            "exit_code": exit_code,
+            "payload_format": payload.get("format"),
         },
         {
             "id": "lexical_operation_scope",
             "ok": lexical_scope_ok,
             "mode": "safe_json",
             "scope": lexical_rename.get("lexical_scope"),
+            "exit_code": lexical_exit,
+            "payload_format": lexical_payload.get("format"),
         },
         {
             "id": "blocked_table_scope",
             "ok": table_scope_ok,
             "mode": "blocked_json",
             "scope": table_rename.get("lexical_scope"),
+            "exit_code": table_exit,
+            "payload_format": table_payload.get("format"),
         },
         {
             "id": "blocked_view_scope",
             "ok": view_scope_ok,
             "mode": "blocked_json",
             "scope": view_rename.get("lexical_scope"),
+            "exit_code": view_exit,
+            "payload_format": view_payload.get("format"),
         },
         {
             "id": "blocked_pbc_scope",
             "ok": pbc_scope_ok,
             "mode": "blocked_json",
             "scope": pbc_rename.get("lexical_scope"),
+            "exit_code": pbc_exit,
+            "payload_format": pbc_payload_format,
         },
         {
             "id": "event_scope",
             "ok": event_scope_ok,
             "mode": "safe_json",
             "scope": event_rename.get("lexical_scope"),
+            "exit_code": event_exit,
+            "payload_format": event_payload_format,
         },
         {
             "id": "package_scope",
             "ok": package_scope_ok,
             "mode": "safe_json",
             "scope": package_rename.get("lexical_scope"),
+            "exit_code": package_exit,
+            "payload_format": package_payload_format,
         },
         {
             "id": "deployment_unit_scope",
             "ok": deployment_scope_ok,
             "mode": "safe_json",
             "scope": deployment_rename.get("lexical_scope"),
+            "exit_code": deployment_exit,
+            "payload_format": deployment_payload_format,
         },
         {
             "id": "blocked_field_scope",
             "ok": field_scope_ok,
             "mode": "blocked_json",
             "scope": field_rename.get("lexical_scope"),
+            "exit_code": field_exit,
+            "payload_format": field_payload.get("format"),
         },
         {
             "id": "approval_blocker_json",
             "ok": blocked_ok,
             "mode": "blocked_json",
             "scope": blocked_rename.get("lexical_scope"),
+            "exit_code": risk_exit,
+            "payload_format": risk_payload.get("format"),
         },
-        {"id": "approval_blocker_text", "ok": blocked_text_ok, "mode": "blocked_text", "scope": None},
+        {
+            "id": "approval_blocker_text",
+            "ok": blocked_text_ok,
+            "mode": "blocked_text",
+            "scope": None,
+            "exit_code": risk_text_exit,
+            "payload_format": None,
+        },
     )
     required_scenario_ids = (
         "safe_flow_rename",
@@ -14450,6 +14483,46 @@ view InvoiceForm for Invoice {
         for scenario, expected_scope in required_scopes_by_scenario.items()
         if observed_scopes_by_scenario.get(scenario) != expected_scope
     )
+    expected_exit_codes_by_scenario = {scenario: 0 for scenario in required_scenario_ids}
+    exit_codes_by_scenario = {
+        case["id"]: case.get("exit_code")
+        for case in scenario_results
+        if case["id"] in expected_exit_codes_by_scenario
+    }
+    missing_exit_code_scenarios = tuple(
+        scenario
+        for scenario, expected_exit_code in expected_exit_codes_by_scenario.items()
+        if exit_codes_by_scenario.get(scenario) != expected_exit_code
+    )
+    json_scenario_ids = tuple(
+        scenario
+        for scenario, mode in required_modes_by_scenario.items()
+        if mode.endswith("_json")
+    )
+    expected_payload_formats_by_scenario = {
+        scenario: "appgen.lsp-service.v1"
+        for scenario in json_scenario_ids
+    }
+    payload_formats_by_scenario = {
+        case["id"]: case.get("payload_format")
+        for case in scenario_results
+        if case["id"] in expected_payload_formats_by_scenario
+    }
+    missing_payload_format_scenarios = tuple(
+        scenario
+        for scenario, expected_format in expected_payload_formats_by_scenario.items()
+        if payload_formats_by_scenario.get(scenario) != expected_format
+    )
+    ok_by_scenario = {
+        case["id"]: case.get("ok") is True
+        for case in scenario_results
+        if case["id"] in required_scenario_ids
+    }
+    missing_ok_scenarios = tuple(
+        scenario
+        for scenario in required_scenario_ids
+        if ok_by_scenario.get(scenario) is not True
+    )
     failing_scenarios = tuple(case["id"] for case in scenario_results if not case["ok"])
     safe_json_scenarios = tuple(case["id"] for case in scenario_results if case["mode"] == "safe_json")
     blocked_json_scenarios = tuple(case["id"] for case in scenario_results if case["mode"] == "blocked_json")
@@ -14472,6 +14545,9 @@ view InvoiceForm for Invoice {
             and not missing_scenario_ids
             and not missing_mode_scenarios
             and not missing_scope_scenarios
+            and not missing_exit_code_scenarios
+            and not missing_payload_format_scenarios
+            and not missing_ok_scenarios
         ),
         "scenario_count": len(scenario_results),
         "passing_scenario_count": sum(1 for case in scenario_results if case["ok"]),
@@ -14491,6 +14567,17 @@ view InvoiceForm for Invoice {
         "observed_scopes_by_scenario": observed_scopes_by_scenario,
         "missing_scope_scenario_count": len(missing_scope_scenarios),
         "missing_scope_scenarios": missing_scope_scenarios,
+        "expected_exit_codes_by_scenario": expected_exit_codes_by_scenario,
+        "exit_codes_by_scenario": exit_codes_by_scenario,
+        "missing_exit_code_scenario_count": len(missing_exit_code_scenarios),
+        "missing_exit_code_scenarios": missing_exit_code_scenarios,
+        "expected_payload_formats_by_scenario": expected_payload_formats_by_scenario,
+        "payload_formats_by_scenario": payload_formats_by_scenario,
+        "missing_payload_format_scenario_count": len(missing_payload_format_scenarios),
+        "missing_payload_format_scenarios": missing_payload_format_scenarios,
+        "ok_by_scenario": ok_by_scenario,
+        "missing_ok_scenario_count": len(missing_ok_scenarios),
+        "missing_ok_scenarios": missing_ok_scenarios,
         "safe_json_scenario_count": len(safe_json_scenarios),
         "blocked_json_scenario_count": len(blocked_json_scenarios),
         "blocked_text_scenario_count": len(blocked_text_scenarios),

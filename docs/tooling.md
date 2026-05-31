@@ -1602,7 +1602,10 @@ blocker includes an `add_rename_hint` fix suggestion so agents and IDEs can ask
 for an explicit migration decision before applying the edit. The
 `appgen.lsp-rename-cli-audit.v1` gate also exercises lexical-scope safety by
 renaming handler, table, and view targets while proving matching names in fields,
-operations, comments, and string literals are preserved.
+operations, comments, and string literals are preserved. It publishes expected
+and observed exit codes by scenario, JSON service-envelope formats by scenario,
+and per-scenario `ok` status so safe and blocked rename paths cannot pass through
+aggregate scope counts alone.
 
 ### Completion Sources
 
@@ -1714,8 +1717,10 @@ for agents and IDEs that consume human-readable logs.
 `appgen.lsp-rename-cli-audit.v1` reports safe, blocked JSON, and blocked text
 scenario counts plus blocker-code and suggested-fix counts for rename safety.
 It also reports named scenario ids, failing-scenario counts, and failing
-scenario names so rename regressions identify the exact lexical scope or
-approval-blocker path that failed.
+scenario names, expected and observed exit codes by scenario, expected and
+observed `appgen.lsp-service.v1` payload formats for JSON scenarios, and
+per-scenario `ok` status so rename regressions identify the exact lexical scope,
+process status, service envelope, or approval-blocker path that failed.
 
 ## IDE Integration
 

@@ -2823,6 +2823,18 @@ def test_lsp_rename_cli_audit_covers_safe_and_blocked_renames(tmp_path: Path) ->
     assert report["observed_scopes_by_scenario"] == report["required_scopes_by_scenario"]
     assert report["missing_scope_scenario_count"] == 0
     assert report["missing_scope_scenarios"] == ()
+    assert report["exit_codes_by_scenario"] == report["expected_exit_codes_by_scenario"]
+    assert set(report["expected_exit_codes_by_scenario"].values()) == {0}
+    assert report["missing_exit_code_scenario_count"] == 0
+    assert report["missing_exit_code_scenarios"] == ()
+    assert report["payload_formats_by_scenario"] == report["expected_payload_formats_by_scenario"]
+    assert set(report["expected_payload_formats_by_scenario"].values()) == {"appgen.lsp-service.v1"}
+    assert "approval_blocker_text" not in report["expected_payload_formats_by_scenario"]
+    assert report["missing_payload_format_scenario_count"] == 0
+    assert report["missing_payload_format_scenarios"] == ()
+    assert report["ok_by_scenario"] == {scenario: True for scenario in report["required_scenario_ids"]}
+    assert report["missing_ok_scenario_count"] == 0
+    assert report["missing_ok_scenarios"] == ()
     assert report["safe_json_scenario_count"] == 5
     assert report["blocked_json_scenario_count"] == 5
     assert report["blocked_text_scenario_count"] == 1
@@ -6257,6 +6269,21 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert lsp_check["detail"]["rename_cli"]["missing_scope_scenario_count"] == 0
     assert lsp_check["detail"]["rename_cli"]["missing_scope_scenarios"] == ()
+    assert lsp_check["detail"]["rename_cli"]["exit_codes_by_scenario"] == (
+        lsp_check["detail"]["rename_cli"]["expected_exit_codes_by_scenario"]
+    )
+    assert lsp_check["detail"]["rename_cli"]["missing_exit_code_scenario_count"] == 0
+    assert lsp_check["detail"]["rename_cli"]["missing_exit_code_scenarios"] == ()
+    assert lsp_check["detail"]["rename_cli"]["payload_formats_by_scenario"] == (
+        lsp_check["detail"]["rename_cli"]["expected_payload_formats_by_scenario"]
+    )
+    assert lsp_check["detail"]["rename_cli"]["missing_payload_format_scenario_count"] == 0
+    assert lsp_check["detail"]["rename_cli"]["missing_payload_format_scenarios"] == ()
+    assert lsp_check["detail"]["rename_cli"]["ok_by_scenario"] == {
+        scenario: True for scenario in lsp_check["detail"]["rename_cli"]["required_scenario_ids"]
+    }
+    assert lsp_check["detail"]["rename_cli"]["missing_ok_scenario_count"] == 0
+    assert lsp_check["detail"]["rename_cli"]["missing_ok_scenarios"] == ()
     assert lsp_check["detail"]["rename_cli"]["safe_json_scenario_count"] == 5
     assert lsp_check["detail"]["rename_cli"]["blocked_json_scenario_count"] == 5
     assert lsp_check["detail"]["rename_cli"]["blocked_text_scenario_count"] == 1

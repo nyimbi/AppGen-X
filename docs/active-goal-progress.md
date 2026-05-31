@@ -4364,3 +4364,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `lsp_quick_fix_cli_contracts` gates now require those named missing lists to be
   empty, so editor/agent quick fixes cannot pass by edit counts while a CLI case
   returns the wrong status, wrong envelope, or failed case proof.
+- Current LSP rename CLI hardening pass expands rename safety evidence with
+  expected and observed exit codes, expected and observed `appgen.lsp-service.v1`
+  payload formats for JSON scenarios, and `ok` status by safe rename, lexical
+  scope, blocked JSON, and blocked text scenario. The aggregate
+  `language_server_core_features` and implementation-phase rename/code-action
+  gates now require those named missing lists to be empty, so rename safety
+  cannot pass by scenario counts while a CLI scenario returns the wrong status,
+  wrong service envelope, or failed proof.
