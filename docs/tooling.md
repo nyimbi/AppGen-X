@@ -745,7 +745,11 @@ audits, semantic-drift and semantic-drift text-renderer audits,
 `appgen.nl-plan.v1`, `appgen.release-verifier-report.v1`,
 `appgen.component-publish-report.v1`, `appgen.doctor-report.v1`,
 `appgen.tooling-audit.v1`, `appgen.contract-schema-catalog.v1`, and
-`appgen.contract-validation-report.v1`.
+`appgen.contract-validation-report.v1`. The catalog is intentionally complete:
+every `appgen.*.v1` envelope named in this document, including IDE, frontend,
+visual designer, LSP hover-depth, migration, natural-language, packaging,
+release, component/PBC wrapper, and project-governance contracts, is exported as
+a selectable schema and covered by representative sample validation.
 
 The optional positional format selects one schema from the catalog. Unknown
 schema names return the same `appgen.contract-schema-catalog.v1` envelope with
@@ -2575,12 +2579,14 @@ Exit criteria:
   formatting, rename, JSON-RPC, stdio, and text-renderer subcontracts,
   CLI alias/help, missing-input, missing-required-option, invalid-choice, and
   internal-error contracts,
-  designer-sync, diagnostic catalog, parser-golden, drift, migration,
-  natural-language, release-verifier, component-publish, doctor, tooling-audit,
-  schema-catalog, and contract-validation report schemas are available from CLI
-  JSON and text modes. The schema audit validates representative live payloads
-  for every required format, so adding a documented contract without a matching
-  runtime sample fails the release gate.
+  designer-sync, visual designer, Studio/frontend bridge, diagnostic catalog,
+  parser-golden, drift, migration, natural-language, release-verifier,
+  package-manifest, component/PBC wrapper, doctor, tooling-audit,
+  project-governance, schema-catalog, and contract-validation report schemas are
+  available from CLI JSON and text modes. The schema audit validates
+  representative payloads for all 113 documented `appgen.*.v1` formats, so
+  adding a documented contract without a matching runtime sample fails the
+  release gate.
 - `appgen.contract-validation-cli-audit.v1` proves those JSON contracts can be
   enforced against real payloads, including valid semantic-model payloads,
   missing required fields, unknown schemas, malformed JSON, and text mode.

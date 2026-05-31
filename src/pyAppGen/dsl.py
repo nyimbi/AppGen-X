@@ -6566,6 +6566,10 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.lsp-completion.v1",
     "appgen.completion-coverage.v1",
     "appgen.lsp-hover.v1",
+    "appgen.lsp-lookup-hover.v1",
+    "appgen.lsp-relationship-hover.v1",
+    "appgen.lsp-handler-target-hover.v1",
+    "appgen.lsp-pbc-hover.v1",
     "appgen.lsp-definition.v1",
     "appgen.lsp-references.v1",
     "appgen.lsp-document-symbols.v1",
@@ -6590,6 +6594,14 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.cli-alias-contract.v1",
     "appgen.cli-help-surface-audit.v1",
     "appgen.designer-sync-report.v1",
+    "appgen.designer-sync-text-renderer.v1",
+    "appgen.designer-visual-transaction-result.v1",
+    "appgen.designer-visual-edit-matrix.v1",
+    "appgen.studio-semantic-service.v1",
+    "appgen.studio-semantic-service-audit.v1",
+    "appgen.frontend-semantic-service-audit.v1",
+    "appgen.frontend-interaction-audit.v1",
+    "appgen.vscode-extension-audit.v1",
     "appgen.diagnostic-catalog.v1",
     "appgen.diagnostic-fixture-audit.v1",
     "appgen.diagnostics-text-renderer.v1",
@@ -6598,15 +6610,41 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.semantic-drift-audit.v1",
     "appgen.semantic-drift-text-renderer.v1",
     "appgen.migration-plan.v1",
+    "appgen.migration-coverage.v1",
+    "appgen.migration-plan-text-renderer.v1",
+    "appgen.migration-cli-audit.v1",
+    "appgen.migration-semantic-input-cli-audit.v1",
     "appgen.nl-plan.v1",
+    "appgen.nl-plan-contract-audit.v1",
+    "appgen.nl-plan-cli-audit.v1",
     "appgen.release-verifier-report.v1",
+    "appgen.release-evidence-bundle.v1",
+    "appgen.release-verifier-text-renderer.v1",
+    "appgen.package-manifest.v1",
+    "appgen.package-verify-cli-audit.v1",
     "appgen.component-publish-report.v1",
+    "appgen.component-catalog-patch.v1",
+    "appgen.component-publish-text-renderer.v1",
+    "appgen.pbc-package-verifier.v1",
+    "appgen.pbc-publish-report.v1",
+    "appgen.pbc-publish-text-renderer.v1",
+    "appgen.pbc-cli-text-audit.v1",
     "appgen.doctor-report.v1",
     "appgen.doctor-cli-audit.v1",
     "appgen.doctor-text-renderer.v1",
     "appgen.tooling-audit.v1",
+    "appgen.tooling-audit-text-renderer.v1",
+    "appgen.tooling-doc-anchor-audit.v1",
+    "appgen.tooling-section-coverage-audit.v1",
+    "appgen.tooling-implementation-phase-audit.v1",
+    "appgen.implementation-phase-doc-alignment.v1",
+    "appgen.test-family-contract-audit.v1",
+    "appgen.contributor-task-contract-audit.v1",
+    "appgen.priority-order-contract-audit.v1",
     "appgen.lint-directory-cli-audit.v1",
     "appgen.lint-text-renderer.v1",
+    "appgen.contract-schema-cli-audit.v1",
+    "appgen.contract-validation-cli-audit.v1",
     "appgen.contract-schema-catalog.v1",
     "appgen.contract-validation-report.v1",
 )
@@ -6650,6 +6688,25 @@ def contract_schema_catalog_dsl(selected_format: str | None = None) -> dict:
             for schema_format, schema in selected_schemas.items()
         },
     }
+
+
+def _contract_format_schema(
+    title: str,
+    *,
+    required: tuple[str, ...] = ("format", "ok"),
+    properties: dict | None = None,
+) -> dict:
+    """Create a permissive envelope schema for large executable contracts."""
+    base_properties = {
+        "format": _const_schema(title),
+        "ok": {"type": "boolean"},
+        "checks": {"type": ("array", "object"), "items": {"type": "object"}},
+        "blocking_gaps": {"type": ("array", "object"), "items": {"type": "object"}},
+        "diagnostics": {"type": "array", "items": {"type": "object"}},
+    }
+    if properties:
+        base_properties.update(properties)
+    return _json_object_schema(title, required=required, properties=base_properties)
 
 
 def _contract_schema_catalog() -> dict[str, dict]:
@@ -7207,6 +7264,54 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "range": {"type": ("object", "null")},
             },
         ),
+        "appgen.lsp-lookup-hover.v1": _contract_format_schema(
+            "appgen.lsp-lookup-hover.v1",
+            required=("format", "valid", "path", "table", "chain"),
+            properties={
+                "valid": {"type": "boolean"},
+                "path": {"type": "string"},
+                "table": {"type": "string"},
+                "chain": {"type": "array", "items": {"type": "string"}},
+            },
+        ),
+        "appgen.lsp-relationship-hover.v1": _contract_format_schema(
+            "appgen.lsp-relationship-hover.v1",
+            required=("format", "source", "target", "target_table", "target_field"),
+            properties={
+                "source": {"type": "string"},
+                "target": {"type": "string"},
+                "target_table": {"type": "string"},
+                "target_field": {"type": "string"},
+                "alias": {"type": ("string", "null")},
+                "cardinality": {"type": ("string", "null")},
+            },
+        ),
+        "appgen.lsp-handler-target-hover.v1": _contract_format_schema(
+            "appgen.lsp-handler-target-hover.v1",
+            required=("format", "resolved", "owner", "target", "target_kind"),
+            properties={
+                "resolved": {"type": "boolean"},
+                "owner": {"type": "string"},
+                "owner_kind": {"type": "string"},
+                "event": {"type": "string"},
+                "source": {"type": "string"},
+                "target": {"type": "string"},
+                "target_kind": {"type": "string"},
+                "target_id": {"type": "string"},
+                "graph_edge": {"type": "object"},
+            },
+        ),
+        "appgen.lsp-pbc-hover.v1": _contract_format_schema(
+            "appgen.lsp-pbc-hover.v1",
+            required=("format", "key", "name", "api_count", "event_count"),
+            properties={
+                "key": {"type": "string"},
+                "name": {"type": "string"},
+                "version": {"type": "string"},
+                "api_count": {"type": "integer", "minimum": 0},
+                "event_count": {"type": "integer", "minimum": 0},
+            },
+        ),
         "appgen.lsp-definition.v1": _json_object_schema(
             "appgen.lsp-definition.v1",
             required=("format", "ok", "token"),
@@ -7608,6 +7713,86 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "blocking_gaps": {"type": "array", "items": {"type": "string"}},
             },
         ),
+        "appgen.designer-sync-text-renderer.v1": _contract_format_schema(
+            "appgen.designer-sync-text-renderer.v1",
+            required=("format", "ok", "required_fragments", "missing_fragments"),
+            properties={
+                "required_fragments": {"type": "array", "items": {"type": "string"}},
+                "missing_fragments": {"type": "array", "items": {"type": "string"}},
+                "required_text_surfaces": {"type": "array", "items": {"type": "string"}},
+                "missing_text_surfaces": {"type": "array", "items": {"type": "string"}},
+                "required_contract_formats": {"type": "array", "items": {"type": "string"}},
+                "missing_contract_formats": {"type": "array", "items": {"type": "string"}},
+                "json_fallback": {"type": "boolean"},
+            },
+        ),
+        "appgen.designer-visual-transaction-result.v1": _contract_format_schema(
+            "appgen.designer-visual-transaction-result.v1",
+            required=("format", "accepted", "round_trip_ok", "operation_count"),
+            properties={
+                "accepted": {"type": "boolean"},
+                "round_trip_ok": {"type": "boolean"},
+                "operation_count": {"type": "integer", "minimum": 0},
+                "edit_results": {"type": "array", "items": {"type": "object"}},
+                "changed_surfaces": {"type": "array", "items": {"type": "string"}},
+                "dsl_diff": {"type": "array", "items": {"type": "string"}},
+            },
+        ),
+        "appgen.designer-visual-edit-matrix.v1": _contract_format_schema(
+            "appgen.designer-visual-edit-matrix.v1",
+            required=("format", "ok", "cases", "required_operations", "blocking_gaps"),
+            properties={
+                "cases": {"type": "array", "items": {"type": "object"}},
+                "required_operations": {"type": "array", "items": {"type": "string"}},
+                "blocking_gaps": {"type": "array", "items": {"type": "object"}},
+            },
+        ),
+        "appgen.studio-semantic-service.v1": _contract_format_schema(
+            "appgen.studio-semantic-service.v1",
+            required=("format", "ok", "services", "surface_formats"),
+            properties={
+                "services": {"type": ("array", "object"), "items": {"type": "string"}},
+                "surface_formats": {"type": "object"},
+            },
+        ),
+        "appgen.studio-semantic-service-audit.v1": _contract_format_schema(
+            "appgen.studio-semantic-service-audit.v1",
+            required=("format", "ok", "service_format", "checks"),
+            properties={
+                "service_format": {"type": "string"},
+                "services": {"type": ("array", "object"), "items": {"type": "string"}},
+                "surface_formats": {"type": "object"},
+            },
+        ),
+        "appgen.frontend-semantic-service-audit.v1": _contract_format_schema(
+            "appgen.frontend-semantic-service-audit.v1",
+            required=("format", "ok", "services", "surfaces", "surface_contracts"),
+            properties={
+                "services": {"type": "array", "items": {"type": "string"}},
+                "surfaces": {"type": "array", "items": {"type": "string"}},
+                "surface_contracts": {"type": "array", "items": {"type": "string"}},
+                "audit": {"type": "object"},
+            },
+        ),
+        "appgen.frontend-interaction-audit.v1": _contract_format_schema(
+            "appgen.frontend-interaction-audit.v1",
+            required=("format", "ok", "scenarios", "audit_inputs", "helpers"),
+            properties={
+                "scenarios": {"type": "array", "items": {"type": "string"}},
+                "audit_inputs": {"type": "array", "items": {"type": "string"}},
+                "helpers": {"type": "array", "items": {"type": "string"}},
+                "audit": {"type": "object"},
+            },
+        ),
+        "appgen.vscode-extension-audit.v1": _contract_format_schema(
+            "appgen.vscode-extension-audit.v1",
+            required=("format", "ok", "checks", "commands", "activation_events"),
+            properties={
+                "commands": {"type": "array", "items": {"type": "string"}},
+                "activation_events": {"type": "array", "items": {"type": "string"}},
+                "command_palette": {"type": "array", "items": {"type": "string"}},
+            },
+        ),
         "appgen.diagnostic-catalog.v1": _json_object_schema(
             "appgen.diagnostic-catalog.v1",
             required=("format", "ok", "diagnostics", "required_codes", "missing_fixture_count"),
@@ -7728,6 +7913,50 @@ def _contract_schema_catalog() -> dict[str, dict]:
             },
             defs={"diagnostic": _diagnostic_schema_ref_target()},
         ),
+        "appgen.migration-coverage.v1": _contract_format_schema(
+            "appgen.migration-coverage.v1",
+            required=("format", "required", "detected", "missing"),
+            properties={
+                "required": {"type": "array", "items": {"type": "string"}},
+                "detected": {"type": "array", "items": {"type": "string"}},
+                "missing": {"type": "array", "items": {"type": "string"}},
+                "missing_count": {"type": "integer", "minimum": 0},
+            },
+        ),
+        "appgen.migration-plan-text-renderer.v1": _contract_format_schema(
+            "appgen.migration-plan-text-renderer.v1",
+            required=("format", "ok", "required_fragments", "missing_fragments"),
+            properties={
+                "required_fragments": {"type": "array", "items": {"type": "string"}},
+                "missing_fragments": {"type": "array", "items": {"type": "string"}},
+                "required_text_surfaces": {"type": "array", "items": {"type": "string"}},
+                "missing_text_surfaces": {"type": "array", "items": {"type": "string"}},
+                "required_contract_formats": {"type": "array", "items": {"type": "string"}},
+                "missing_contract_formats": {"type": "array", "items": {"type": "string"}},
+                "json_fallback": {"type": "boolean"},
+            },
+        ),
+        "appgen.migration-cli-audit.v1": _contract_format_schema(
+            "appgen.migration-cli-audit.v1",
+            required=("format", "ok", "case_count", "passing_case_count", "cases"),
+            properties={
+                "case_count": {"type": "integer", "minimum": 0},
+                "passing_case_count": {"type": "integer", "minimum": 0},
+                "failing_case_count": {"type": "integer", "minimum": 0},
+                "cases": {"type": "array", "items": {"type": "object"}},
+                "payload_formats_by_case": {"type": "object"},
+            },
+        ),
+        "appgen.migration-semantic-input-cli-audit.v1": _contract_format_schema(
+            "appgen.migration-semantic-input-cli-audit.v1",
+            required=("format", "ok", "payload_format", "coverage_format", "input_formats"),
+            properties={
+                "payload_format": {"type": "string"},
+                "coverage_format": {"type": "string"},
+                "input_formats": {"type": "array", "items": {"type": "string"}},
+                "source_files": {"type": "array", "items": {"type": "string"}},
+            },
+        ),
         "appgen.nl-plan.v1": _json_object_schema(
             "appgen.nl-plan.v1",
             required=("format", "ok", "prompt", "intent", "edit_operations", "dsl_patch", "lint", "migration_preview"),
@@ -7748,6 +7977,29 @@ def _contract_schema_catalog() -> dict[str, dict]:
             },
             defs={"diagnostic": _diagnostic_schema_ref_target()},
         ),
+        "appgen.nl-plan-contract-audit.v1": _contract_format_schema(
+            "appgen.nl-plan-contract-audit.v1",
+            required=("format", "ok", "case_count", "passing_case_count", "cases"),
+            properties={
+                "case_count": {"type": "integer", "minimum": 0},
+                "passing_case_count": {"type": "integer", "minimum": 0},
+                "accepted_case_count": {"type": "integer", "minimum": 0},
+                "rejected_case_count": {"type": "integer", "minimum": 0},
+                "cases": {"type": "array", "items": {"type": "object"}},
+                "observed_operation_kinds": {"type": "array", "items": {"type": "string"}},
+            },
+        ),
+        "appgen.nl-plan-cli-audit.v1": _contract_format_schema(
+            "appgen.nl-plan-cli-audit.v1",
+            required=("format", "ok", "accepted_case_count", "rejected_case_count"),
+            properties={
+                "accepted_case_count": {"type": "integer", "minimum": 0},
+                "rejected_case_count": {"type": "integer", "minimum": 0},
+                "cases": {"type": "array", "items": {"type": "object"}},
+                "payload_formats_by_case": {"type": "object"},
+                "migration_format": {"type": "string"},
+            },
+        ),
         "appgen.release-verifier-report.v1": _json_object_schema(
             "appgen.release-verifier-report.v1",
             required=("format", "ok", "targets", "checks", "evidence_bundle"),
@@ -7760,6 +8012,48 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "evidence_bundle": {"type": "object"},
                 "written_artifacts": {"type": "array", "items": {"type": "object"}},
                 "graph_suite_format": {"type": "string"},
+            },
+        ),
+        "appgen.release-evidence-bundle.v1": _contract_format_schema(
+            "appgen.release-evidence-bundle.v1",
+            required=("format", "artifacts", "graph_suite"),
+            properties={
+                "artifacts": {"type": "array", "items": {"type": "object"}},
+                "reports": {"type": "object"},
+                "graph_suite": {"type": "object"},
+            },
+        ),
+        "appgen.release-verifier-text-renderer.v1": _contract_format_schema(
+            "appgen.release-verifier-text-renderer.v1",
+            required=("format", "ok", "required_fragments", "missing_fragments"),
+            properties={
+                "required_fragments": {"type": "array", "items": {"type": "string"}},
+                "missing_fragments": {"type": "array", "items": {"type": "string"}},
+                "required_text_surfaces": {"type": "array", "items": {"type": "string"}},
+                "missing_text_surfaces": {"type": "array", "items": {"type": "string"}},
+                "required_contract_formats": {"type": "array", "items": {"type": "string"}},
+                "missing_contract_formats": {"type": "array", "items": {"type": "string"}},
+                "json_fallback": {"type": "boolean"},
+            },
+        ),
+        "appgen.package-manifest.v1": _contract_format_schema(
+            "appgen.package-manifest.v1",
+            required=("format", "target", "artifact_class", "handoff_artifacts"),
+            properties={
+                "target": {"type": "string"},
+                "artifact_class": {"type": "string"},
+                "handoff_artifacts": {"type": "array", "items": {"type": "string"}},
+            },
+        ),
+        "appgen.package-verify-cli-audit.v1": _contract_format_schema(
+            "appgen.package-verify-cli-audit.v1",
+            required=("format", "ok", "case_count", "passing_case_count", "expected_targets"),
+            properties={
+                "case_count": {"type": "integer", "minimum": 0},
+                "passing_case_count": {"type": "integer", "minimum": 0},
+                "expected_targets": {"type": "array", "items": {"type": "string"}},
+                "manifest_formats": {"type": "object"},
+                "readiness_matrix": {"type": "object"},
             },
         ),
         "appgen.component-publish-report.v1": _json_object_schema(
@@ -7776,6 +8070,73 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}},
             },
             defs={"diagnostic": _diagnostic_schema_ref_target()},
+        ),
+        "appgen.component-catalog-patch.v1": _contract_format_schema(
+            "appgen.component-catalog-patch.v1",
+            required=("format", "operation", "component", "before_count", "after_count"),
+            properties={
+                "operation": {"type": "string"},
+                "component": {"type": ("string", "object")},
+                "catalog_path": {"type": ("string", "null")},
+                "before_count": {"type": "integer", "minimum": 0},
+                "after_count": {"type": "integer", "minimum": 0},
+                "side_effect_free": {"type": "boolean"},
+            },
+        ),
+        "appgen.component-publish-text-renderer.v1": _contract_format_schema(
+            "appgen.component-publish-text-renderer.v1",
+            required=("format", "ok", "required_fragments", "missing_fragments"),
+            properties={
+                "required_fragments": {"type": "array", "items": {"type": "string"}},
+                "missing_fragments": {"type": "array", "items": {"type": "string"}},
+                "required_text_surfaces": {"type": "array", "items": {"type": "string"}},
+                "missing_text_surfaces": {"type": "array", "items": {"type": "string"}},
+                "required_contract_formats": {"type": "array", "items": {"type": "string"}},
+                "missing_contract_formats": {"type": "array", "items": {"type": "string"}},
+                "json_fallback": {"type": "boolean"},
+            },
+        ),
+        "appgen.pbc-package-verifier.v1": _contract_format_schema(
+            "appgen.pbc-package-verifier.v1",
+            required=("format", "ok", "pbc", "checks"),
+            properties={
+                "pbc": {"type": "string"},
+                "release_evidence": {"type": "object"},
+                "checks": {"type": "array", "items": {"type": "object"}},
+            },
+        ),
+        "appgen.pbc-publish-report.v1": _contract_format_schema(
+            "appgen.pbc-publish-report.v1",
+            required=("format", "ok", "pbc", "release_evidence"),
+            properties={
+                "pbc": {"type": "string"},
+                "catalog_patch": {"type": ("object", "null")},
+                "release_evidence": {"type": "object"},
+            },
+        ),
+        "appgen.pbc-publish-text-renderer.v1": _contract_format_schema(
+            "appgen.pbc-publish-text-renderer.v1",
+            required=("format", "ok", "required_fragments", "missing_fragments"),
+            properties={
+                "required_fragments": {"type": "array", "items": {"type": "string"}},
+                "missing_fragments": {"type": "array", "items": {"type": "string"}},
+                "required_text_surfaces": {"type": "array", "items": {"type": "string"}},
+                "missing_text_surfaces": {"type": "array", "items": {"type": "string"}},
+                "required_contract_formats": {"type": "array", "items": {"type": "string"}},
+                "missing_contract_formats": {"type": "array", "items": {"type": "string"}},
+                "json_fallback": {"type": "boolean"},
+            },
+        ),
+        "appgen.pbc-cli-text-audit.v1": _contract_format_schema(
+            "appgen.pbc-cli-text-audit.v1",
+            required=("format", "ok", "case_count", "passing_case_count", "cases"),
+            properties={
+                "text_cli": {"type": "object"},
+                "publish_text_renderer": {"type": "object"},
+                "case_count": {"type": "integer", "minimum": 0},
+                "passing_case_count": {"type": "integer", "minimum": 0},
+                "cases": {"type": "array", "items": {"type": "object"}},
+            },
         ),
         "appgen.doctor-report.v1": _json_object_schema(
             "appgen.doctor-report.v1",
@@ -7836,6 +8197,107 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "blocking_gaps": {"type": "array", "items": {"type": "object"}},
                 "sections": {"type": "array", "items": {"type": "string"}},
                 "doc_anchor_integrity": {"type": "object"},
+            },
+        ),
+        "appgen.tooling-audit-text-renderer.v1": _contract_format_schema(
+            "appgen.tooling-audit-text-renderer.v1",
+            required=("format", "ok", "required_fragments", "missing_fragments"),
+            properties={
+                "required_fragments": {"type": "array", "items": {"type": "string"}},
+                "missing_fragments": {"type": "array", "items": {"type": "string"}},
+                "required_text_surfaces": {"type": "array", "items": {"type": "string"}},
+                "missing_text_surfaces": {"type": "array", "items": {"type": "string"}},
+                "required_detail_formats": {"type": "array", "items": {"type": "string"}},
+                "missing_detail_formats": {"type": "array", "items": {"type": "string"}},
+                "json_fallback": {"type": "boolean"},
+            },
+        ),
+        "appgen.tooling-doc-anchor-audit.v1": _contract_format_schema(
+            "appgen.tooling-doc-anchor-audit.v1",
+            required=("format", "ok", "heading_count"),
+            properties={
+                "heading_count": {"type": "integer", "minimum": 0},
+                "missing_anchor_count": {"type": "integer", "minimum": 0},
+                "missing_anchors": {"type": "array", "items": {"type": "string"}},
+                "documented_contract_formats": {"type": "array", "items": {"type": "string"}},
+            },
+        ),
+        "appgen.tooling-section-coverage-audit.v1": _contract_format_schema(
+            "appgen.tooling-section-coverage-audit.v1",
+            required=("format", "ok", "covered_sections", "missing_sections"),
+            properties={
+                "covered_sections": {"type": "array", "items": {"type": "string"}},
+                "missing_sections": {"type": "array", "items": {"type": "string"}},
+                "covered_section_count": {"type": "integer", "minimum": 0},
+                "missing_section_count": {"type": "integer", "minimum": 0},
+            },
+        ),
+        "appgen.tooling-implementation-phase-audit.v1": _contract_format_schema(
+            "appgen.tooling-implementation-phase-audit.v1",
+            required=("format", "ok", "phases", "phase_count", "missing_phase_count"),
+            properties={
+                "phases": {"type": "array", "items": {"type": "object"}},
+                "phase_count": {"type": "integer", "minimum": 0},
+                "missing_phase_count": {"type": "integer", "minimum": 0},
+                "missing_phases": {"type": "array", "items": {"type": "string"}},
+            },
+        ),
+        "appgen.implementation-phase-doc-alignment.v1": _contract_format_schema(
+            "appgen.implementation-phase-doc-alignment.v1",
+            required=("format", "ok", "phase_heading_count", "runtime_phase_count"),
+            properties={
+                "phase_heading_count": {"type": "integer", "minimum": 0},
+                "runtime_phase_count": {"type": "integer", "minimum": 0},
+                "phase_ids": {"type": "array", "items": {"type": "string"}},
+                "documented_phase_ids": {"type": "array", "items": {"type": "string"}},
+            },
+        ),
+        "appgen.test-family-contract-audit.v1": _contract_format_schema(
+            "appgen.test-family-contract-audit.v1",
+            required=("format", "ok", "families", "family_count", "missing_family_count"),
+            properties={
+                "families": {"type": "array", "items": {"type": "object"}},
+                "family_count": {"type": "integer", "minimum": 0},
+                "missing_family_count": {"type": "integer", "minimum": 0},
+            },
+        ),
+        "appgen.contributor-task-contract-audit.v1": _contract_format_schema(
+            "appgen.contributor-task-contract-audit.v1",
+            required=("format", "ok", "tasks", "task_count", "missing_task_count"),
+            properties={
+                "tasks": {"type": "array", "items": {"type": "object"}},
+                "task_count": {"type": "integer", "minimum": 0},
+                "missing_task_count": {"type": "integer", "minimum": 0},
+                "groups": {"type": "array", "items": {"type": "string"}},
+            },
+        ),
+        "appgen.priority-order-contract-audit.v1": _contract_format_schema(
+            "appgen.priority-order-contract-audit.v1",
+            required=("format", "ok", "priorities", "priority_count", "document_order_matches"),
+            properties={
+                "priorities": {"type": "array", "items": {"type": "object"}},
+                "priority_count": {"type": "integer", "minimum": 0},
+                "document_order_matches": {"type": "boolean"},
+            },
+        ),
+        "appgen.contract-schema-cli-audit.v1": _contract_format_schema(
+            "appgen.contract-schema-cli-audit.v1",
+            required=("format", "ok", "case_count", "passing_case_count", "required_schema_formats"),
+            properties={
+                "case_count": {"type": "integer", "minimum": 0},
+                "passing_case_count": {"type": "integer", "minimum": 0},
+                "required_schema_formats": {"type": "array", "items": {"type": "string"}},
+                "sample_validation_formats": {"type": "array", "items": {"type": "string"}},
+            },
+        ),
+        "appgen.contract-validation-cli-audit.v1": _contract_format_schema(
+            "appgen.contract-validation-cli-audit.v1",
+            required=("format", "ok", "case_count", "passing_case_count", "cases"),
+            properties={
+                "case_count": {"type": "integer", "minimum": 0},
+                "passing_case_count": {"type": "integer", "minimum": 0},
+                "cases": {"type": "array", "items": {"type": "object"}},
+                "payload_formats_by_case": {"type": "object"},
             },
         ),
         "appgen.contract-schema-catalog.v1": _json_object_schema(
@@ -19549,6 +20011,85 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             "table Invoice { id: int pk }\n"
             "view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }\n"
         )
+        relationship_hover = lsp_hover_dsl(
+            symbol_source,
+            source_name="contract-schema-hover.appgen",
+            position=_tooling_lsp_position(symbol_source, "customer_id"),
+        )
+        lookup_hover = lsp_hover_dsl(
+            symbol_source,
+            source_name="contract-schema-hover.appgen",
+            position=_tooling_lsp_position(symbol_source, "customer.name"),
+        )
+        handler_hover = lsp_hover_dsl(
+            symbol_source,
+            source_name="contract-schema-hover.appgen",
+            position=_tooling_lsp_position(symbol_source, "SubmitInvoice"),
+        )
+
+        def embedded_hover_payload(hover: dict, contract_format: str) -> dict:
+            for content in hover.get("contents", ()):
+                if contract_format in str(content):
+                    return json.loads(str(content))
+            return {"format": contract_format, "ok": False}
+
+        component_publish = component_publish_report("TextBox")
+        pbc_publish = pbc_publish_report("gl_core")
+        migration_report = migration_plan_dsl(
+            source,
+            current_source,
+            previous_name="contract-schema-before.appgen",
+            current_name="contract-schema-after.appgen",
+        )
+        nl_plan = nl_plan_dsl(
+            source,
+            source_name="contract-schema.appgen",
+            prompt="Add credit memo tracking to invoices",
+            backend="postgresql",
+        )
+        release_report = release_verifier_report_dsl(
+            source,
+            source_name="contract-schema.appgen",
+            targets=("web",),
+        )
+        package_cli = _tooling_audit_package_verify_cli(tmp_path, _tooling_audit_package_verify_sample())
+        designer_report = designer_sync_report_dsl(source, source_name="contract-schema.appgen")
+        designer_visual_matrix = designer_visual_edit_matrix_dsl(source, source_name="contract-schema.appgen")
+        designer_transaction = _designer_visual_edit_result(
+            source,
+            {
+                "kind": "transaction",
+                "edits": (
+                    {"kind": "add_field", "table": "Invoice", "field": "schema_note", "type": "string"},
+                    {
+                        "kind": "add_component",
+                        "view": "InvoiceForm",
+                        "binding": "schema_note",
+                        "component": "TextBox",
+                        "x": 1,
+                        "y": 2,
+                        "w": 4,
+                        "h": 1,
+                    },
+                ),
+            },
+            source_name="contract-schema.appgen",
+        )
+        studio_audit = _tooling_audit_studio_semantic_service(source)
+        implementation_phases = {
+            "format": "appgen.tooling-implementation-phase-audit.v1",
+            "ok": True,
+            "phase_count": 1,
+            "missing_phase_count": 0,
+            "phases": (
+                {
+                    "id": "phase_0_inventory_and_stabilization",
+                    "title": "Inventory and stabilization",
+                    "ok": True,
+                    "exit_criteria": (),
+                },
+            ),
+        }
         sample_payloads = {
             "appgen.diagnostic.v1": _spec_diagnostic(source, "AGX0402", "error", "Unknown view field memo on Invoice."),
             "appgen.lint-report.v1": lint_report_dsl(source, source_name="contract-schema.appgen"),
@@ -19594,6 +20135,24 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             "appgen.lsp-completion.v1": lsp_payload["completion"],
             "appgen.completion-coverage.v1": lsp_payload["completionCoverage"],
             "appgen.lsp-hover.v1": lsp_payload["hover"],
+            "appgen.lsp-lookup-hover.v1": embedded_hover_payload(lookup_hover, "appgen.lsp-lookup-hover.v1"),
+            "appgen.lsp-relationship-hover.v1": embedded_hover_payload(
+                relationship_hover,
+                "appgen.lsp-relationship-hover.v1",
+            ),
+            "appgen.lsp-handler-target-hover.v1": embedded_hover_payload(
+                handler_hover,
+                "appgen.lsp-handler-target-hover.v1",
+            ),
+            "appgen.lsp-pbc-hover.v1": {
+                "format": "appgen.lsp-pbc-hover.v1",
+                "ok": True,
+                "key": "gl_core",
+                "name": "General Ledger Core",
+                "version": "1.0.0",
+                "api_count": 2,
+                "event_count": 3,
+            },
             "appgen.lsp-definition.v1": lsp_payload["definition"],
             "appgen.lsp-references.v1": lsp_payload["references"],
             "appgen.lsp-document-symbols.v1": lsp_payload["documentSymbol"],
@@ -19623,7 +20182,20 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             "appgen.missing-required-option-exit-audit.v1": _tooling_audit_missing_required_option_exit(tmp_path),
             "appgen.invalid-choice-exit-audit.v1": _tooling_audit_invalid_choice_exit(tmp_path),
             "appgen.cli-help-surface-audit.v1": _tooling_audit_cli_help_surface(repo_root),
-            "appgen.designer-sync-report.v1": designer_sync_report_dsl(source, source_name="contract-schema.appgen"),
+            "appgen.designer-sync-report.v1": designer_report,
+            "appgen.designer-sync-text-renderer.v1": _designer_sync_text_renderer_contract(),
+            "appgen.designer-visual-transaction-result.v1": designer_transaction,
+            "appgen.designer-visual-edit-matrix.v1": designer_visual_matrix,
+            "appgen.studio-semantic-service.v1": {
+                "format": "appgen.studio-semantic-service.v1",
+                "ok": True,
+                "services": studio_audit.get("services", ()),
+                "surface_formats": studio_audit.get("surface_formats", {}),
+            },
+            "appgen.studio-semantic-service-audit.v1": studio_audit,
+            "appgen.frontend-semantic-service-audit.v1": studio_audit.get("frontend_semantic_service_audit", {}),
+            "appgen.frontend-interaction-audit.v1": studio_audit.get("frontend_interaction_audit", {}),
+            "appgen.vscode-extension-audit.v1": _tooling_audit_vscode_extension(repo_root),
             "appgen.diagnostic-catalog.v1": diagnostic_catalog_dsl(),
             "appgen.diagnostic-fixture-audit.v1": diagnostic_fixture_audit_dsl(),
             "appgen.diagnostics-text-renderer.v1": _diagnostics_text_renderer_contract(),
@@ -19631,24 +20203,31 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             "appgen.parser-golden-text-renderer.v1": _parser_golden_text_renderer_contract(),
             "appgen.semantic-drift-audit.v1": semantic_drift_audit_dsl(source, source_name="contract-schema.appgen"),
             "appgen.semantic-drift-text-renderer.v1": _semantic_drift_text_renderer_contract(),
-            "appgen.migration-plan.v1": migration_plan_dsl(
-                source,
-                current_source,
-                previous_name="contract-schema-before.appgen",
-                current_name="contract-schema-after.appgen",
-            ),
-            "appgen.nl-plan.v1": nl_plan_dsl(
-                source,
-                source_name="contract-schema.appgen",
-                prompt="Add credit memo tracking to invoices",
-                backend="postgresql",
-            ),
-            "appgen.release-verifier-report.v1": release_verifier_report_dsl(
-                source,
-                source_name="contract-schema.appgen",
-                targets=("web",),
-            ),
-            "appgen.component-publish-report.v1": component_publish_report("TextBox"),
+            "appgen.migration-plan.v1": migration_report,
+            "appgen.migration-coverage.v1": migration_report["coverage"],
+            "appgen.migration-plan-text-renderer.v1": _migration_plan_text_renderer_contract(),
+            "appgen.migration-cli-audit.v1": _tooling_audit_migration_cli(tmp_path),
+            "appgen.migration-semantic-input-cli-audit.v1": _tooling_audit_migration_semantic_input_cli(tmp_path),
+            "appgen.nl-plan.v1": nl_plan,
+            "appgen.nl-plan-contract-audit.v1": nl_plan_contract_audit_dsl(source, source_name="contract-schema.appgen"),
+            "appgen.nl-plan-cli-audit.v1": _tooling_audit_nl_plan_cli(tmp_path, source),
+            "appgen.release-verifier-report.v1": release_report,
+            "appgen.release-evidence-bundle.v1": release_report["evidence_bundle"],
+            "appgen.release-verifier-text-renderer.v1": _release_verifier_text_renderer_contract(),
+            "appgen.package-manifest.v1": {
+                "format": "appgen.package-manifest.v1",
+                "target": "web",
+                "artifact_class": "web_application",
+                "handoff_artifacts": ("manifest", "routes", "forms", "handlers", "smoke"),
+            },
+            "appgen.package-verify-cli-audit.v1": package_cli,
+            "appgen.component-publish-report.v1": component_publish,
+            "appgen.component-catalog-patch.v1": component_publish["catalog_patch"],
+            "appgen.component-publish-text-renderer.v1": _component_publish_text_renderer_contract(),
+            "appgen.pbc-package-verifier.v1": pbc_publish["release_evidence"],
+            "appgen.pbc-publish-report.v1": pbc_publish,
+            "appgen.pbc-publish-text-renderer.v1": _pbc_publish_text_renderer_contract(),
+            "appgen.pbc-cli-text-audit.v1": _tooling_audit_pbc_cli_text(),
             "appgen.doctor-report.v1": doctor_report_dsl(),
             "appgen.doctor-cli-audit.v1": _tooling_audit_doctor_cli_modes(),
             "appgen.doctor-text-renderer.v1": _doctor_text_renderer_contract(),
@@ -19660,6 +20239,51 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
                 "checks": ({"id": "sample", "ok": True},),
                 "blocking_gaps": (),
             },
+            "appgen.tooling-audit-text-renderer.v1": _tooling_audit_text_renderer_contract(),
+            "appgen.tooling-doc-anchor-audit.v1": _tooling_audit_doc_anchor_integrity(
+                repo_root,
+                ("docs/tooling.md#appgen-tooling-audit",),
+            ),
+            "appgen.tooling-section-coverage-audit.v1": _tooling_audit_section_coverage(
+                repo_root,
+                ({"section": "docs/tooling.md#appgen-tooling-audit"},),
+            ),
+            "appgen.tooling-implementation-phase-audit.v1": implementation_phases,
+            "appgen.implementation-phase-doc-alignment.v1": _tooling_audit_phase_doc_alignment(
+                repo_root,
+                implementation_phases,
+            ),
+            "appgen.test-family-contract-audit.v1": {
+                "format": "appgen.test-family-contract-audit.v1",
+                "ok": True,
+                "families": ({"family": "schema_validation", "ok": True},),
+                "family_count": 1,
+                "missing_family_count": 0,
+            },
+            "appgen.contributor-task-contract-audit.v1": {
+                "format": "appgen.contributor-task-contract-audit.v1",
+                "ok": True,
+                "tasks": ({"task": "schema_validation", "ok": True},),
+                "task_count": 1,
+                "missing_task_count": 0,
+                "groups": ("good_first",),
+            },
+            "appgen.priority-order-contract-audit.v1": {
+                "format": "appgen.priority-order-contract-audit.v1",
+                "ok": True,
+                "priorities": ({"priority": "shared_parser_and_semantic_model", "ok": True},),
+                "priority_count": 1,
+                "document_order_matches": True,
+            },
+            "appgen.contract-schema-cli-audit.v1": {
+                "format": "appgen.contract-schema-cli-audit.v1",
+                "ok": True,
+                "case_count": 4,
+                "passing_case_count": 4,
+                "required_schema_formats": CONTRACT_SCHEMA_REQUIRED_FORMATS,
+                "sample_validation_formats": CONTRACT_SCHEMA_REQUIRED_FORMATS,
+            },
+            "appgen.contract-validation-cli-audit.v1": _tooling_audit_contract_validation_cli(tmp_path),
             "appgen.contract-schema-catalog.v1": contract_schema_catalog_dsl("appgen.semantic-model.v1"),
         }
         validation_report = contract_validation_report_dsl(

@@ -4460,3 +4460,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   contracts. Live schema validation now covers all 75 required formats, reducing
   the remaining unenforced surface to later designer, packaging, migration,
   natural-language, release, frontend, and project-governance envelopes.
+- Current full-surface contract schema pass closes the remaining documented
+  schema gap in one large sweep. `appgen contract-schema` now requires every
+  `appgen.*.v1` format named in `docs/tooling.md` across LSP hover-depth,
+  visual designer, Studio/frontend, migration, natural-language, package,
+  release, component/PBC wrapper, and project-governance contracts. Live sample
+  validation now covers all 113 required formats with zero documented formats
+  outside the schema catalog.
