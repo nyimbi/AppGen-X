@@ -4060,3 +4060,16 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   tooling audit (`1 passed`, with the known active-PBC `datetime.utcnow()`
   warnings only), scoped diff whitespace check, and restricted-name scan outside
   archive, Git internals, and active PBC paths.
+- Current validate/generate text audit hardening pass replaces validation and
+  generation text count acceptance with named evidence for target readiness and
+  generated artifact handoff logs. `appgen.validate-generate-text-renderer.v1`
+  now proves required and emitted text surfaces, validate/generate contract
+  formats, semantic-model formats, validate/generate statuses, generated flags,
+  output directories, artifact size markers, requested/app/generate targets,
+  validation checks, target mismatch details, artifact paths, manifest paths,
+  gap ids, diagnostic codes, and diagnostic severities. Verification passed:
+  Python compile for the touched DSL and tests, focused validate/generate text
+  renderer test (`1 passed`), focused component-publish text renderer test
+  (`1 passed`), aggregate tooling audit (`1 passed`, with the known active-PBC
+  `datetime.utcnow()` warnings only), scoped diff whitespace check, and
+  restricted-name scan outside archive, Git internals, and active PBC paths.

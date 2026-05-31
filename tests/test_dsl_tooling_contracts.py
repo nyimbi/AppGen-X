@@ -6321,6 +6321,26 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert validate_target_check["detail"]["text_renderer"]["failing_check_line_count"] == 1
     assert validate_target_check["detail"]["text_renderer"]["target_detail_line_count"] == 2
     assert validate_target_check["detail"]["text_renderer"]["error_line_count"] == 1
+    assert validate_target_check["detail"]["text_renderer"]["emitted_text_surfaces"] == (
+        validate_target_check["detail"]["text_renderer"]["required_text_surfaces"]
+    )
+    assert validate_target_check["detail"]["text_renderer"]["missing_text_surface_count"] == 0
+    assert validate_target_check["detail"]["text_renderer"]["missing_text_surfaces"] == ()
+    assert validate_target_check["detail"]["text_renderer"]["emitted_contract_formats"] == (
+        validate_target_check["detail"]["text_renderer"]["required_contract_formats"]
+    )
+    assert validate_target_check["detail"]["text_renderer"]["missing_contract_format_count"] == 0
+    assert validate_target_check["detail"]["text_renderer"]["missing_contract_formats"] == ()
+    assert validate_target_check["detail"]["text_renderer"]["emitted_semantic_formats"] == (
+        validate_target_check["detail"]["text_renderer"]["required_semantic_formats"]
+    )
+    assert validate_target_check["detail"]["text_renderer"]["missing_semantic_format_count"] == 0
+    assert validate_target_check["detail"]["text_renderer"]["missing_semantic_formats"] == ()
+    assert validate_target_check["detail"]["text_renderer"]["emitted_validate_statuses"] == (
+        validate_target_check["detail"]["text_renderer"]["required_validate_statuses"]
+    )
+    assert validate_target_check["detail"]["text_renderer"]["missing_validate_status_count"] == 0
+    assert validate_target_check["detail"]["text_renderer"]["missing_validate_statuses"] == ()
     assert validate_target_check["detail"]["text_renderer"]["emitted_requested_targets"] == (
         validate_target_check["detail"]["text_renderer"]["required_requested_targets"]
     )
@@ -6403,6 +6423,41 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert generate_policy_check["detail"]["text_renderer"]["manifest_line_count"] >= 1
     assert generate_policy_check["detail"]["text_renderer"]["gap_line_count"] >= 1
     assert generate_policy_check["detail"]["text_renderer"]["warning_line_count"] >= 1
+    assert generate_policy_check["detail"]["text_renderer"]["emitted_text_surfaces"] == (
+        generate_policy_check["detail"]["text_renderer"]["required_text_surfaces"]
+    )
+    assert generate_policy_check["detail"]["text_renderer"]["missing_text_surface_count"] == 0
+    assert generate_policy_check["detail"]["text_renderer"]["missing_text_surfaces"] == ()
+    assert generate_policy_check["detail"]["text_renderer"]["emitted_contract_formats"] == (
+        generate_policy_check["detail"]["text_renderer"]["required_contract_formats"]
+    )
+    assert generate_policy_check["detail"]["text_renderer"]["missing_contract_format_count"] == 0
+    assert generate_policy_check["detail"]["text_renderer"]["missing_contract_formats"] == ()
+    assert generate_policy_check["detail"]["text_renderer"]["emitted_semantic_formats"] == (
+        generate_policy_check["detail"]["text_renderer"]["required_semantic_formats"]
+    )
+    assert generate_policy_check["detail"]["text_renderer"]["missing_semantic_format_count"] == 0
+    assert generate_policy_check["detail"]["text_renderer"]["missing_semantic_formats"] == ()
+    assert generate_policy_check["detail"]["text_renderer"]["emitted_generate_statuses"] == (
+        generate_policy_check["detail"]["text_renderer"]["required_generate_statuses"]
+    )
+    assert generate_policy_check["detail"]["text_renderer"]["missing_generate_status_count"] == 0
+    assert generate_policy_check["detail"]["text_renderer"]["missing_generate_statuses"] == ()
+    assert generate_policy_check["detail"]["text_renderer"]["emitted_generated_values"] == (
+        generate_policy_check["detail"]["text_renderer"]["required_generated_values"]
+    )
+    assert generate_policy_check["detail"]["text_renderer"]["missing_generated_value_count"] == 0
+    assert generate_policy_check["detail"]["text_renderer"]["missing_generated_values"] == ()
+    assert generate_policy_check["detail"]["text_renderer"]["emitted_output_dirs"] == (
+        generate_policy_check["detail"]["text_renderer"]["required_output_dirs"]
+    )
+    assert generate_policy_check["detail"]["text_renderer"]["missing_output_dir_count"] == 0
+    assert generate_policy_check["detail"]["text_renderer"]["missing_output_dirs"] == ()
+    assert generate_policy_check["detail"]["text_renderer"]["emitted_artifact_sizes"] == (
+        generate_policy_check["detail"]["text_renderer"]["required_artifact_sizes"]
+    )
+    assert generate_policy_check["detail"]["text_renderer"]["missing_artifact_size_count"] == 0
+    assert generate_policy_check["detail"]["text_renderer"]["missing_artifact_sizes"] == ()
     assert generate_policy_check["detail"]["text_renderer"]["emitted_generate_targets"] == (
         generate_policy_check["detail"]["text_renderer"]["required_generate_targets"]
     )
@@ -8319,6 +8374,48 @@ def test_validate_generate_text_renderer_contract_proves_readiness_log_markers()
     assert report["diagnostic_line_count"] == 2
     assert report["warning_line_count"] == 1
     assert report["error_line_count"] == 1
+    assert report["required_text_surfaces"] == (
+        "validate_summary",
+        "generate_summary",
+        "checks",
+        "target_details",
+        "output_dir",
+        "manifest",
+        "artifacts",
+        "gaps",
+        "diagnostics",
+    )
+    assert report["emitted_text_surfaces"] == report["required_text_surfaces"]
+    assert report["missing_text_surface_count"] == 0
+    assert report["missing_text_surfaces"] == ()
+    assert report["required_contract_formats"] == ("appgen.validate-report.v1", "appgen.generate-report.v1")
+    assert report["emitted_contract_formats"] == report["required_contract_formats"]
+    assert report["missing_contract_format_count"] == 0
+    assert report["missing_contract_formats"] == ()
+    assert report["required_semantic_formats"] == ("appgen.semantic-model.v1",)
+    assert report["emitted_semantic_formats"] == report["required_semantic_formats"]
+    assert report["missing_semantic_format_count"] == 0
+    assert report["missing_semantic_formats"] == ()
+    assert report["required_validate_statuses"] == ("failed",)
+    assert report["emitted_validate_statuses"] == report["required_validate_statuses"]
+    assert report["missing_validate_status_count"] == 0
+    assert report["missing_validate_statuses"] == ()
+    assert report["required_generate_statuses"] == ("failed",)
+    assert report["emitted_generate_statuses"] == report["required_generate_statuses"]
+    assert report["missing_generate_status_count"] == 0
+    assert report["missing_generate_statuses"] == ()
+    assert report["required_generated_values"] == ("False",)
+    assert report["emitted_generated_values"] == report["required_generated_values"]
+    assert report["missing_generated_value_count"] == 0
+    assert report["missing_generated_values"] == ()
+    assert report["required_output_dirs"] == ("generated/app",)
+    assert report["emitted_output_dirs"] == report["required_output_dirs"]
+    assert report["missing_output_dir_count"] == 0
+    assert report["missing_output_dirs"] == ()
+    assert report["required_artifact_sizes"] == ("generated/app/web/routes.json=512",)
+    assert report["emitted_artifact_sizes"] == report["required_artifact_sizes"]
+    assert report["missing_artifact_size_count"] == 0
+    assert report["missing_artifact_sizes"] == ()
     assert report["required_requested_targets"] == ("web", "mobile")
     assert report["emitted_requested_targets"] == report["required_requested_targets"]
     assert report["missing_requested_target_count"] == 0

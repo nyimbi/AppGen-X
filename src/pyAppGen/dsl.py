@@ -3144,6 +3144,7 @@ def _validate_generate_text_renderer_contract() -> dict:
     emitted_gap_ids = tuple(line.removeprefix("gap ").strip() for line in gap_lines)
     emitted_diagnostic_codes = tuple(line.split()[1].rstrip(":") for line in diagnostic_lines if len(line.split()) >= 2)
     emitted_diagnostic_severities = tuple(line.split()[0] for line in diagnostic_lines if line.split())
+    output_dir_lines = tuple(line for line in lines if line.startswith("output_dir "))
     required_requested_targets = tuple(validate_payload["requested_targets"])
     required_app_targets = tuple(validate_payload["app_targets"])
     required_generate_targets = tuple(generate_payload["targets"])
@@ -3156,6 +3157,93 @@ def _validate_generate_text_renderer_contract() -> dict:
     required_artifact_paths = tuple(artifact["path"] for artifact in generate_payload["artifacts"])
     required_manifest_paths = (generate_payload["manifest"],)
     required_gap_ids = tuple(generate_payload["blocking_gaps"])
+    required_text_surfaces = (
+        "validate_summary",
+        "generate_summary",
+        "checks",
+        "target_details",
+        "output_dir",
+        "manifest",
+        "artifacts",
+        "gaps",
+        "diagnostics",
+    )
+    emitted_text_surfaces = tuple(
+        surface
+        for surface, present in (
+            ("validate_summary", any(line.startswith("validate ") for line in summary_lines)),
+            ("generate_summary", any(line.startswith("generate ") for line in summary_lines)),
+            ("checks", bool(check_lines)),
+            ("target_details", bool(target_detail_lines)),
+            ("output_dir", bool(output_dir_lines)),
+            ("manifest", bool(manifest_lines)),
+            ("artifacts", bool(artifact_lines)),
+            ("gaps", bool(gap_lines)),
+            ("diagnostics", bool(diagnostic_lines)),
+        )
+        if present
+    )
+    missing_text_surfaces = tuple(
+        surface for surface in required_text_surfaces if surface not in emitted_text_surfaces
+    )
+    required_contract_formats = ("appgen.validate-report.v1", "appgen.generate-report.v1")
+    emitted_contract_formats = tuple(
+        contract_format for contract_format in required_contract_formats if contract_format in text
+    )
+    missing_contract_formats = tuple(
+        contract_format for contract_format in required_contract_formats if contract_format not in emitted_contract_formats
+    )
+    required_semantic_formats = ("appgen.semantic-model.v1",)
+    emitted_semantic_formats = tuple(
+        semantic_format for semantic_format in required_semantic_formats if semantic_format in text
+    )
+    missing_semantic_formats = tuple(
+        semantic_format for semantic_format in required_semantic_formats if semantic_format not in emitted_semantic_formats
+    )
+    required_validate_statuses = ("failed",)
+    emitted_validate_statuses = tuple(
+        status
+        for line in summary_lines
+        if line.startswith("validate ")
+        for status in required_validate_statuses
+        if f"validate {status}:" in line
+    )
+    missing_validate_statuses = tuple(
+        status for status in required_validate_statuses if status not in emitted_validate_statuses
+    )
+    required_generate_statuses = ("failed",)
+    emitted_generate_statuses = tuple(
+        status
+        for line in summary_lines
+        if line.startswith("generate ")
+        for status in required_generate_statuses
+        if f"generate {status}:" in line
+    )
+    missing_generate_statuses = tuple(
+        status for status in required_generate_statuses if status not in emitted_generate_statuses
+    )
+    required_generated_values = ("False",)
+    emitted_generated_values = tuple(
+        part.removeprefix("generated=")
+        for line in summary_lines
+        for part in line.split()
+        if part.startswith("generated=")
+    )
+    missing_generated_values = tuple(
+        value for value in required_generated_values if value not in emitted_generated_values
+    )
+    required_output_dirs = (generate_payload["output_dir"],)
+    emitted_output_dirs = tuple(line.removeprefix("output_dir ").strip() for line in output_dir_lines)
+    missing_output_dirs = tuple(path for path in required_output_dirs if path not in emitted_output_dirs)
+    required_artifact_sizes = ("generated/app/web/routes.json=512",)
+    emitted_artifact_sizes = tuple(
+        f"{line.removeprefix('artifact ').split(' bytes=', 1)[0].strip()}={line.split(' bytes=', 1)[1].strip()}"
+        for line in artifact_lines
+        if " bytes=" in line
+    )
+    missing_artifact_sizes = tuple(
+        size_marker for size_marker in required_artifact_sizes if size_marker not in emitted_artifact_sizes
+    )
     required_diagnostic_codes = tuple(
         diagnostic["code"] for diagnostic in (*validate_payload["diagnostics"], *generate_payload["diagnostics"])
     )
@@ -3197,6 +3285,14 @@ def _validate_generate_text_renderer_contract() -> dict:
         and not missing_gap_ids
         and not missing_diagnostic_codes
         and not missing_diagnostic_severities
+        and not missing_text_surfaces
+        and not missing_contract_formats
+        and not missing_semantic_formats
+        and not missing_validate_statuses
+        and not missing_generate_statuses
+        and not missing_generated_values
+        and not missing_output_dirs
+        and not missing_artifact_sizes
         and not text.lstrip().startswith("{"),
         **_text_renderer_contract_counts(
             text,
@@ -3216,6 +3312,38 @@ def _validate_generate_text_renderer_contract() -> dict:
         "diagnostic_line_count": len(diagnostic_lines),
         "warning_line_count": sum(1 for line in diagnostic_lines if line.startswith("warning ")),
         "error_line_count": sum(1 for line in diagnostic_lines if line.startswith("error ")),
+        "required_text_surfaces": required_text_surfaces,
+        "emitted_text_surfaces": emitted_text_surfaces,
+        "missing_text_surfaces": missing_text_surfaces,
+        "missing_text_surface_count": len(missing_text_surfaces),
+        "required_contract_formats": required_contract_formats,
+        "emitted_contract_formats": emitted_contract_formats,
+        "missing_contract_formats": missing_contract_formats,
+        "missing_contract_format_count": len(missing_contract_formats),
+        "required_semantic_formats": required_semantic_formats,
+        "emitted_semantic_formats": emitted_semantic_formats,
+        "missing_semantic_formats": missing_semantic_formats,
+        "missing_semantic_format_count": len(missing_semantic_formats),
+        "required_validate_statuses": required_validate_statuses,
+        "emitted_validate_statuses": emitted_validate_statuses,
+        "missing_validate_statuses": missing_validate_statuses,
+        "missing_validate_status_count": len(missing_validate_statuses),
+        "required_generate_statuses": required_generate_statuses,
+        "emitted_generate_statuses": emitted_generate_statuses,
+        "missing_generate_statuses": missing_generate_statuses,
+        "missing_generate_status_count": len(missing_generate_statuses),
+        "required_generated_values": required_generated_values,
+        "emitted_generated_values": emitted_generated_values,
+        "missing_generated_values": missing_generated_values,
+        "missing_generated_value_count": len(missing_generated_values),
+        "required_output_dirs": required_output_dirs,
+        "emitted_output_dirs": emitted_output_dirs,
+        "missing_output_dirs": missing_output_dirs,
+        "missing_output_dir_count": len(missing_output_dirs),
+        "required_artifact_sizes": required_artifact_sizes,
+        "emitted_artifact_sizes": emitted_artifact_sizes,
+        "missing_artifact_sizes": missing_artifact_sizes,
+        "missing_artifact_size_count": len(missing_artifact_sizes),
         "required_requested_targets": required_requested_targets,
         "emitted_requested_targets": emitted_requested_targets,
         "missing_requested_target_count": len(missing_requested_targets),
@@ -6613,12 +6741,10 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 if case.get("case") in {"validate_rejects_undeclared_targets", "validate_rejects_unknown_targets"}
             )
             and validate_generate_text_renderer["ok"]
-            and validate_generate_text_renderer.get("summary_line_count") == 2
-            and validate_generate_text_renderer.get("check_line_count") == 2
-            and validate_generate_text_renderer.get("passing_check_line_count") == 1
-            and validate_generate_text_renderer.get("failing_check_line_count") == 1
-            and validate_generate_text_renderer.get("target_detail_line_count") == 2
-            and validate_generate_text_renderer.get("error_line_count") == 1
+            and validate_generate_text_renderer.get("missing_text_surface_count") == 0
+            and validate_generate_text_renderer.get("missing_contract_format_count") == 0
+            and validate_generate_text_renderer.get("missing_semantic_format_count") == 0
+            and validate_generate_text_renderer.get("missing_validate_status_count") == 0
             and validate_generate_text_renderer.get("missing_requested_target_count") == 0
             and validate_generate_text_renderer.get("missing_app_target_count") == 0
             and validate_generate_text_renderer.get("missing_check_id_count") == 0
@@ -6656,6 +6782,28 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "failing_check_line_count": validate_generate_text_renderer.get("failing_check_line_count"),
                     "target_detail_line_count": validate_generate_text_renderer.get("target_detail_line_count"),
                     "error_line_count": validate_generate_text_renderer.get("error_line_count"),
+                    "required_text_surfaces": validate_generate_text_renderer.get("required_text_surfaces"),
+                    "emitted_text_surfaces": validate_generate_text_renderer.get("emitted_text_surfaces"),
+                    "missing_text_surfaces": validate_generate_text_renderer.get("missing_text_surfaces"),
+                    "missing_text_surface_count": validate_generate_text_renderer.get("missing_text_surface_count"),
+                    "required_contract_formats": validate_generate_text_renderer.get("required_contract_formats"),
+                    "emitted_contract_formats": validate_generate_text_renderer.get("emitted_contract_formats"),
+                    "missing_contract_formats": validate_generate_text_renderer.get("missing_contract_formats"),
+                    "missing_contract_format_count": validate_generate_text_renderer.get(
+                        "missing_contract_format_count"
+                    ),
+                    "required_semantic_formats": validate_generate_text_renderer.get("required_semantic_formats"),
+                    "emitted_semantic_formats": validate_generate_text_renderer.get("emitted_semantic_formats"),
+                    "missing_semantic_formats": validate_generate_text_renderer.get("missing_semantic_formats"),
+                    "missing_semantic_format_count": validate_generate_text_renderer.get(
+                        "missing_semantic_format_count"
+                    ),
+                    "required_validate_statuses": validate_generate_text_renderer.get("required_validate_statuses"),
+                    "emitted_validate_statuses": validate_generate_text_renderer.get("emitted_validate_statuses"),
+                    "missing_validate_status_count": validate_generate_text_renderer.get(
+                        "missing_validate_status_count"
+                    ),
+                    "missing_validate_statuses": validate_generate_text_renderer.get("missing_validate_statuses"),
                     "required_requested_targets": validate_generate_text_renderer.get("required_requested_targets"),
                     "emitted_requested_targets": validate_generate_text_renderer.get("emitted_requested_targets"),
                     "missing_requested_target_count": validate_generate_text_renderer.get(
@@ -6740,10 +6888,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and warning_generation_allowed["ok"]
             and warning_generation_allowed.get("allow_warnings") is True
             and validate_generate_text_renderer["ok"]
-            and validate_generate_text_renderer.get("artifact_line_count") >= 1
-            and validate_generate_text_renderer.get("manifest_line_count") >= 1
-            and validate_generate_text_renderer.get("gap_line_count") >= 1
-            and validate_generate_text_renderer.get("warning_line_count") >= 1
+            and validate_generate_text_renderer.get("missing_text_surface_count") == 0
+            and validate_generate_text_renderer.get("missing_contract_format_count") == 0
+            and validate_generate_text_renderer.get("missing_semantic_format_count") == 0
+            and validate_generate_text_renderer.get("missing_generate_status_count") == 0
+            and validate_generate_text_renderer.get("missing_generated_value_count") == 0
+            and validate_generate_text_renderer.get("missing_output_dir_count") == 0
+            and validate_generate_text_renderer.get("missing_artifact_size_count") == 0
             and validate_generate_text_renderer.get("missing_generate_target_count") == 0
             and validate_generate_text_renderer.get("missing_artifact_path_count") == 0
             and validate_generate_text_renderer.get("missing_manifest_path_count") == 0
@@ -6794,6 +6945,42 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "manifest_line_count": validate_generate_text_renderer.get("manifest_line_count"),
                     "gap_line_count": validate_generate_text_renderer.get("gap_line_count"),
                     "warning_line_count": validate_generate_text_renderer.get("warning_line_count"),
+                    "required_text_surfaces": validate_generate_text_renderer.get("required_text_surfaces"),
+                    "emitted_text_surfaces": validate_generate_text_renderer.get("emitted_text_surfaces"),
+                    "missing_text_surfaces": validate_generate_text_renderer.get("missing_text_surfaces"),
+                    "missing_text_surface_count": validate_generate_text_renderer.get("missing_text_surface_count"),
+                    "required_contract_formats": validate_generate_text_renderer.get("required_contract_formats"),
+                    "emitted_contract_formats": validate_generate_text_renderer.get("emitted_contract_formats"),
+                    "missing_contract_formats": validate_generate_text_renderer.get("missing_contract_formats"),
+                    "missing_contract_format_count": validate_generate_text_renderer.get(
+                        "missing_contract_format_count"
+                    ),
+                    "required_semantic_formats": validate_generate_text_renderer.get("required_semantic_formats"),
+                    "emitted_semantic_formats": validate_generate_text_renderer.get("emitted_semantic_formats"),
+                    "missing_semantic_formats": validate_generate_text_renderer.get("missing_semantic_formats"),
+                    "missing_semantic_format_count": validate_generate_text_renderer.get(
+                        "missing_semantic_format_count"
+                    ),
+                    "required_generate_statuses": validate_generate_text_renderer.get("required_generate_statuses"),
+                    "emitted_generate_statuses": validate_generate_text_renderer.get("emitted_generate_statuses"),
+                    "missing_generate_status_count": validate_generate_text_renderer.get(
+                        "missing_generate_status_count"
+                    ),
+                    "missing_generate_statuses": validate_generate_text_renderer.get("missing_generate_statuses"),
+                    "required_generated_values": validate_generate_text_renderer.get("required_generated_values"),
+                    "emitted_generated_values": validate_generate_text_renderer.get("emitted_generated_values"),
+                    "missing_generated_value_count": validate_generate_text_renderer.get(
+                        "missing_generated_value_count"
+                    ),
+                    "missing_generated_values": validate_generate_text_renderer.get("missing_generated_values"),
+                    "required_output_dirs": validate_generate_text_renderer.get("required_output_dirs"),
+                    "emitted_output_dirs": validate_generate_text_renderer.get("emitted_output_dirs"),
+                    "missing_output_dir_count": validate_generate_text_renderer.get("missing_output_dir_count"),
+                    "missing_output_dirs": validate_generate_text_renderer.get("missing_output_dirs"),
+                    "required_artifact_sizes": validate_generate_text_renderer.get("required_artifact_sizes"),
+                    "emitted_artifact_sizes": validate_generate_text_renderer.get("emitted_artifact_sizes"),
+                    "missing_artifact_size_count": validate_generate_text_renderer.get("missing_artifact_size_count"),
+                    "missing_artifact_sizes": validate_generate_text_renderer.get("missing_artifact_sizes"),
                     "required_generate_targets": validate_generate_text_renderer.get("required_generate_targets"),
                     "emitted_generate_targets": validate_generate_text_renderer.get("emitted_generate_targets"),
                     "missing_generate_target_count": validate_generate_text_renderer.get(

@@ -839,6 +839,13 @@ passing/failing check ids, unknown/missing targets, artifact paths, manifest
 paths, blocking-gap ids, diagnostic codes, and diagnostic severities with named
 missing lists, so validation and generation release logs fail on the exact
 hidden target, check, artifact, manifest, gap, or diagnostic marker.
+The same renderer publishes required, emitted, missing, and missing-count
+evidence for text surfaces, validate/generate contract formats, semantic-model
+formats, validate and generate statuses, generated flags, output directories,
+and artifact size markers. The aggregate validation and generation gates
+require zero named missing entries, so a generic summary, artifact, manifest,
+gap, or diagnostic line cannot hide a lost semantic contract, generated flag,
+output directory, or handoff artifact size.
 The aggregate tooling audit exposes validation readiness independently as
 `validate_target_contracts`. That gate fails when target normalization,
 `target_compatibility`, `AGX0802` target diagnostics, or validate text markers
