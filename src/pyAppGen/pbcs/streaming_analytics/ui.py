@@ -431,3 +431,40 @@ def smoke_test() -> dict:
         "rendered": rendered["workbench"],
         "side_effects": (),
     }
+
+# Improve1 streaming analytics control UI extension.
+from .streaming_analytics_control import improve1_streaming_analytics_control_contract as _improve1_streaming_analytics_control_contract
+
+_STREAMING_CONTROL_BASE_UI_CONTRACT = streaming_analytics_ui_contract
+_STREAMING_CONTROL_BASE_RENDER_WORKBENCH = streaming_analytics_render_workbench
+
+
+def streaming_analytics_ui_contract() -> dict:
+    ui = dict(_STREAMING_CONTROL_BASE_UI_CONTRACT())
+    control = _improve1_streaming_analytics_control_contract()
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "streaming_analytics_control_contract": control,
+        "streaming_analytics_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "streaming_analytics_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def streaming_analytics_render_workbench(*args, **kwargs) -> dict:
+    if not args and "state" not in kwargs:
+        args = (_appgen_smoke_state(),)
+    if "tenant" not in kwargs:
+        kwargs["tenant"] = "default"
+    if "principal_permissions" not in kwargs:
+        kwargs["principal_permissions"] = tuple(sorted(set(streaming_analytics_permissions_contract()["action_permissions"].values())))
+    workbench = dict(_STREAMING_CONTROL_BASE_RENDER_WORKBENCH(*args, **kwargs))
+    control = _improve1_streaming_analytics_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "streaming_analytics_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "streaming_analytics_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "streaming_analytics_control_agent_tools": tuple(f"streaming_analytics.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench
