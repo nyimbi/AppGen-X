@@ -1218,6 +1218,12 @@ context and non-mutating publication posture did not disappear. It also reports
 required and emitted catalog sources, side-effect values, write-performed
 values, patch formats, and existing catalog component names with named missing
 lists, so the release gate fails on the exact hidden publication marker.
+The same contract now publishes required, emitted, missing, and missing-count
+evidence for text surfaces, embedded report/patch contract formats,
+registration-state values, and before/after/existing catalog count markers.
+The aggregate component-publish gate requires zero named missing entries, so a
+generic catalog or side-effect line cannot hide a missing patch contract,
+registration state, or catalog-count transition.
 The aggregate tooling audit exposes this proof independently as
 `component_publish_catalog_contracts`. That gate fails when
 `appgen component-publish` stops returning an `appgen.component-catalog-patch.v1`

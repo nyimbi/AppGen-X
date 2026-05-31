@@ -2841,6 +2841,64 @@ def _component_publish_text_renderer_contract() -> dict:
     required_write_values = (str(payload["catalog_patch"]["write_performed"]),)
     required_patch_formats = (payload["catalog_patch"]["format"],)
     required_existing_components = tuple(payload["catalog"]["components"])
+    required_text_surfaces = (
+        "summary",
+        "catalog_source",
+        "catalog_counts",
+        "existing_catalog",
+        "side_effect_free",
+        "write_performed",
+        "patch_format",
+        "registration_state",
+    )
+    emitted_text_surfaces = tuple(
+        surface
+        for surface, present in (
+            ("summary", bool(summary_lines)),
+            ("catalog_source", bool(emitted_catalog_sources)),
+            ("catalog_counts", any(line.startswith("catalog-count ") for line in catalog_lines)),
+            ("existing_catalog", bool(emitted_existing_components)),
+            ("side_effect_free", bool(emitted_side_effect_values)),
+            ("write_performed", bool(emitted_write_values)),
+            ("patch_format", bool(emitted_patch_formats)),
+            ("registration_state", "already_registered=" in text),
+        )
+        if present
+    )
+    missing_text_surfaces = tuple(
+        surface for surface in required_text_surfaces if surface not in emitted_text_surfaces
+    )
+    required_contract_formats = (
+        "appgen.component-publish-report.v1",
+        "appgen.component-catalog-patch.v1",
+    )
+    emitted_contract_formats = tuple(
+        contract_format for contract_format in required_contract_formats if contract_format in text
+    )
+    missing_contract_formats = tuple(
+        contract_format for contract_format in required_contract_formats if contract_format not in emitted_contract_formats
+    )
+    required_registration_values = ("False",)
+    emitted_registration_values = tuple(
+        part.removeprefix("already_registered=")
+        for line in summary_lines
+        for part in line.split()
+        if part.startswith("already_registered=")
+    )
+    missing_registration_values = tuple(
+        value for value in required_registration_values if value not in emitted_registration_values
+    )
+    required_catalog_count_markers = ("before=1", "after=2", "existing=1")
+    emitted_catalog_count_markers = tuple(
+        part
+        for line in catalog_lines
+        if line.startswith("catalog-count ")
+        for part in line.removeprefix("catalog-count ").split()
+        if "=" in part
+    )
+    missing_catalog_count_markers = tuple(
+        marker for marker in required_catalog_count_markers if marker not in emitted_catalog_count_markers
+    )
     missing_catalog_sources = tuple(source for source in required_catalog_sources if source not in emitted_catalog_sources)
     missing_side_effect_values = tuple(
         value for value in required_side_effect_values if value not in emitted_side_effect_values
@@ -2858,6 +2916,10 @@ def _component_publish_text_renderer_contract() -> dict:
         and not missing_write_values
         and not missing_patch_formats
         and not missing_existing_components
+        and not missing_text_surfaces
+        and not missing_contract_formats
+        and not missing_registration_values
+        and not missing_catalog_count_markers
         and not text.lstrip().startswith("{"),
         **_text_renderer_contract_counts(
             text,
@@ -2871,6 +2933,22 @@ def _component_publish_text_renderer_contract() -> dict:
         "side_effect_line_count": len(side_effect_lines),
         "patch_contract_line_count": len(patch_contract_lines),
         "existing_catalog_line_count": sum(1 for line in catalog_lines if line.startswith("catalog-existing ")),
+        "required_text_surfaces": required_text_surfaces,
+        "emitted_text_surfaces": emitted_text_surfaces,
+        "missing_text_surfaces": missing_text_surfaces,
+        "missing_text_surface_count": len(missing_text_surfaces),
+        "required_contract_formats": required_contract_formats,
+        "emitted_contract_formats": emitted_contract_formats,
+        "missing_contract_formats": missing_contract_formats,
+        "missing_contract_format_count": len(missing_contract_formats),
+        "required_registration_values": required_registration_values,
+        "emitted_registration_values": emitted_registration_values,
+        "missing_registration_values": missing_registration_values,
+        "missing_registration_value_count": len(missing_registration_values),
+        "required_catalog_count_markers": required_catalog_count_markers,
+        "emitted_catalog_count_markers": emitted_catalog_count_markers,
+        "missing_catalog_count_markers": missing_catalog_count_markers,
+        "missing_catalog_count_marker_count": len(missing_catalog_count_markers),
         "required_catalog_sources": required_catalog_sources,
         "emitted_catalog_sources": emitted_catalog_sources,
         "missing_catalog_source_count": len(missing_catalog_sources),
@@ -6220,11 +6298,10 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and component_publish_cli.get("missing_catalog_side_effect_free") is True
             and component_publish_cli.get("missing_catalog_write_performed") is False
             and component_publish_text_renderer["ok"]
-            and component_publish_text_renderer.get("summary_line_count") == 1
-            and component_publish_text_renderer.get("catalog_line_count", 0) >= 2
-            and component_publish_text_renderer.get("side_effect_line_count") == 1
-            and component_publish_text_renderer.get("patch_contract_line_count") == 1
-            and component_publish_text_renderer.get("existing_catalog_line_count") == 1
+            and component_publish_text_renderer.get("missing_text_surface_count") == 0
+            and component_publish_text_renderer.get("missing_contract_format_count") == 0
+            and component_publish_text_renderer.get("missing_registration_value_count") == 0
+            and component_publish_text_renderer.get("missing_catalog_count_marker_count") == 0
             and component_publish_text_renderer.get("missing_catalog_source_count") == 0
             and component_publish_text_renderer.get("missing_side_effect_value_count") == 0
             and component_publish_text_renderer.get("missing_write_value_count") == 0
@@ -6274,6 +6351,42 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "side_effect_line_count": component_publish_text_renderer.get("side_effect_line_count"),
                     "patch_contract_line_count": component_publish_text_renderer.get("patch_contract_line_count"),
                     "existing_catalog_line_count": component_publish_text_renderer.get("existing_catalog_line_count"),
+                    "required_text_surfaces": component_publish_text_renderer.get("required_text_surfaces"),
+                    "emitted_text_surfaces": component_publish_text_renderer.get("emitted_text_surfaces"),
+                    "missing_text_surfaces": component_publish_text_renderer.get("missing_text_surfaces"),
+                    "missing_text_surface_count": component_publish_text_renderer.get(
+                        "missing_text_surface_count"
+                    ),
+                    "required_contract_formats": component_publish_text_renderer.get("required_contract_formats"),
+                    "emitted_contract_formats": component_publish_text_renderer.get("emitted_contract_formats"),
+                    "missing_contract_formats": component_publish_text_renderer.get("missing_contract_formats"),
+                    "missing_contract_format_count": component_publish_text_renderer.get(
+                        "missing_contract_format_count"
+                    ),
+                    "required_registration_values": component_publish_text_renderer.get(
+                        "required_registration_values"
+                    ),
+                    "emitted_registration_values": component_publish_text_renderer.get(
+                        "emitted_registration_values"
+                    ),
+                    "missing_registration_value_count": component_publish_text_renderer.get(
+                        "missing_registration_value_count"
+                    ),
+                    "missing_registration_values": component_publish_text_renderer.get(
+                        "missing_registration_values"
+                    ),
+                    "required_catalog_count_markers": component_publish_text_renderer.get(
+                        "required_catalog_count_markers"
+                    ),
+                    "emitted_catalog_count_markers": component_publish_text_renderer.get(
+                        "emitted_catalog_count_markers"
+                    ),
+                    "missing_catalog_count_marker_count": component_publish_text_renderer.get(
+                        "missing_catalog_count_marker_count"
+                    ),
+                    "missing_catalog_count_markers": component_publish_text_renderer.get(
+                        "missing_catalog_count_markers"
+                    ),
                     "required_catalog_sources": component_publish_text_renderer.get("required_catalog_sources"),
                     "emitted_catalog_sources": component_publish_text_renderer.get("emitted_catalog_sources"),
                     "missing_catalog_source_count": component_publish_text_renderer.get("missing_catalog_source_count"),

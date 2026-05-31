@@ -4048,3 +4048,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   audit (`1 passed`, with the known active-PBC `datetime.utcnow()` warnings
   only), scoped diff whitespace check, and restricted-name scan outside archive,
   Git internals, and active PBC paths.
+- Current component-publish text audit hardening pass replaces generic
+  component publication text count acceptance with named evidence for catalog
+  publication logs. `appgen.component-publish-text-renderer.v1` now proves
+  required and emitted text surfaces, embedded report/patch contract formats,
+  registration-state values, before/after/existing catalog count markers,
+  catalog sources, side-effect values, write-performed values, patch formats,
+  and existing component names. Verification passed: Python compile for the
+  touched DSL and tests, focused component-publish text renderer test
+  (`1 passed`), focused formatter text renderer test (`1 passed`), aggregate
+  tooling audit (`1 passed`, with the known active-PBC `datetime.utcnow()`
+  warnings only), scoped diff whitespace check, and restricted-name scan outside
+  archive, Git internals, and active PBC paths.

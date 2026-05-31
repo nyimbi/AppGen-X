@@ -6911,6 +6911,26 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert component_publish_check["detail"]["text_renderer"]["side_effect_line_count"] == 1
     assert component_publish_check["detail"]["text_renderer"]["patch_contract_line_count"] == 1
     assert component_publish_check["detail"]["text_renderer"]["existing_catalog_line_count"] == 1
+    assert component_publish_check["detail"]["text_renderer"]["emitted_text_surfaces"] == (
+        component_publish_check["detail"]["text_renderer"]["required_text_surfaces"]
+    )
+    assert component_publish_check["detail"]["text_renderer"]["missing_text_surface_count"] == 0
+    assert component_publish_check["detail"]["text_renderer"]["missing_text_surfaces"] == ()
+    assert component_publish_check["detail"]["text_renderer"]["emitted_contract_formats"] == (
+        component_publish_check["detail"]["text_renderer"]["required_contract_formats"]
+    )
+    assert component_publish_check["detail"]["text_renderer"]["missing_contract_format_count"] == 0
+    assert component_publish_check["detail"]["text_renderer"]["missing_contract_formats"] == ()
+    assert component_publish_check["detail"]["text_renderer"]["emitted_registration_values"] == (
+        component_publish_check["detail"]["text_renderer"]["required_registration_values"]
+    )
+    assert component_publish_check["detail"]["text_renderer"]["missing_registration_value_count"] == 0
+    assert component_publish_check["detail"]["text_renderer"]["missing_registration_values"] == ()
+    assert component_publish_check["detail"]["text_renderer"]["emitted_catalog_count_markers"] == (
+        component_publish_check["detail"]["text_renderer"]["required_catalog_count_markers"]
+    )
+    assert component_publish_check["detail"]["text_renderer"]["missing_catalog_count_marker_count"] == 0
+    assert component_publish_check["detail"]["text_renderer"]["missing_catalog_count_markers"] == ()
     assert component_publish_check["detail"]["text_renderer"]["emitted_catalog_sources"] == (
         component_publish_check["detail"]["text_renderer"]["required_catalog_sources"]
     )
@@ -7935,6 +7955,34 @@ def test_component_publish_text_renderer_contract_proves_catalog_log_markers() -
     assert report["side_effect_line_count"] == 1
     assert report["patch_contract_line_count"] == 1
     assert report["existing_catalog_line_count"] == 1
+    assert report["required_text_surfaces"] == (
+        "summary",
+        "catalog_source",
+        "catalog_counts",
+        "existing_catalog",
+        "side_effect_free",
+        "write_performed",
+        "patch_format",
+        "registration_state",
+    )
+    assert report["emitted_text_surfaces"] == report["required_text_surfaces"]
+    assert report["missing_text_surface_count"] == 0
+    assert report["missing_text_surfaces"] == ()
+    assert report["required_contract_formats"] == (
+        "appgen.component-publish-report.v1",
+        "appgen.component-catalog-patch.v1",
+    )
+    assert report["emitted_contract_formats"] == report["required_contract_formats"]
+    assert report["missing_contract_format_count"] == 0
+    assert report["missing_contract_formats"] == ()
+    assert report["required_registration_values"] == ("False",)
+    assert report["emitted_registration_values"] == report["required_registration_values"]
+    assert report["missing_registration_value_count"] == 0
+    assert report["missing_registration_values"] == ()
+    assert report["required_catalog_count_markers"] == ("before=1", "after=2", "existing=1")
+    assert report["emitted_catalog_count_markers"] == report["required_catalog_count_markers"]
+    assert report["missing_catalog_count_marker_count"] == 0
+    assert report["missing_catalog_count_markers"] == ()
     assert report["required_catalog_sources"] == ("components.json",)
     assert report["emitted_catalog_sources"] == report["required_catalog_sources"]
     assert report["missing_catalog_source_count"] == 0
