@@ -4159,3 +4159,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   (`3 passed`), aggregate tooling audit (`1 passed`, with the known active-PBC
   `datetime.utcnow()` warnings only), scoped diff whitespace check, and
   restricted-name scan outside archive, Git internals, and active PBC paths.
+- Current package manifest handoff hardening pass expands target packaging
+  evidence with named manifest format, artifact class, and smoke entrypoint
+  checks by package target. The aggregate `package_manifest_handoff_contracts`
+  gate now requires all three missing-target lists to be empty, so web, mobile,
+  desktop, PBC, and deployment packaging cannot pass by only satisfying manifest
+  or handoff counts while losing target-specific package semantics. Verification
+  passed: Python compile for the touched DSL and tests, focused package handoff
+  tests (`3 passed`), aggregate tooling audit (`1 passed`, with the known
+  active-PBC `datetime.utcnow()` warnings only), scoped diff whitespace check,
+  and restricted-name scan outside archive, Git internals, and active PBC paths.

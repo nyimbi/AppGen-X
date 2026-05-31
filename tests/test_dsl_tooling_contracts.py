@@ -3474,6 +3474,29 @@ def test_package_cli_audit_proves_all_target_handoff_contracts(tmp_path: Path) -
     assert report["manifest_targets"] == report["expected_targets"]
     assert report["missing_manifest_target_count"] == 0
     assert report["missing_manifest_targets"] == ()
+    assert report["required_manifest_formats_by_target"] == {
+        target: "appgen.package-manifest.v1" for target in report["expected_targets"]
+    }
+    assert report["missing_manifest_format_target_count"] == 0
+    assert report["missing_manifest_format_targets"] == ()
+    assert report["required_artifact_classes_by_target"] == {
+        "web": "web_application",
+        "mobile": "mobile_application",
+        "desktop": "desktop_application",
+        "pbc": "packaged_business_capability",
+        "deployment": "deployment_plan",
+    }
+    assert report["artifact_classes_by_target"] == report["required_artifact_classes_by_target"]
+    assert report["missing_artifact_class_target_count"] == 0
+    assert report["missing_artifact_class_targets"] == ()
+    assert report["required_smoke_entrypoints_by_target"] == {
+        "web": "web.smoke",
+        "mobile": "mobile.launch",
+        "desktop": "desktop.launch",
+    }
+    assert report["smoke_entrypoints_by_target"] == report["required_smoke_entrypoints_by_target"]
+    assert report["missing_smoke_entrypoint_target_count"] == 0
+    assert report["missing_smoke_entrypoint_targets"] == ()
     assert report["release_evidence_report_count"] == 5
     assert set(report["release_evidence_reports"]) == set(report["expected_targets"])
     assert report["missing_release_report_count"] == 0
@@ -7434,6 +7457,22 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert package_manifest_check["detail"]["missing_manifest_target_count"] == 0
     assert package_manifest_check["detail"]["missing_manifest_targets"] == ()
     assert package_manifest_check["detail"]["manifest_formats"]["web"] == "appgen.package-manifest.v1"
+    assert package_manifest_check["detail"]["required_manifest_formats_by_target"] == {
+        target: "appgen.package-manifest.v1"
+        for target in package_manifest_check["detail"]["expected_targets"]
+    }
+    assert package_manifest_check["detail"]["missing_manifest_format_target_count"] == 0
+    assert package_manifest_check["detail"]["missing_manifest_format_targets"] == ()
+    assert package_manifest_check["detail"]["artifact_classes_by_target"] == (
+        package_manifest_check["detail"]["required_artifact_classes_by_target"]
+    )
+    assert package_manifest_check["detail"]["missing_artifact_class_target_count"] == 0
+    assert package_manifest_check["detail"]["missing_artifact_class_targets"] == ()
+    assert package_manifest_check["detail"]["smoke_entrypoints_by_target"] == (
+        package_manifest_check["detail"]["required_smoke_entrypoints_by_target"]
+    )
+    assert package_manifest_check["detail"]["missing_smoke_entrypoint_target_count"] == 0
+    assert package_manifest_check["detail"]["missing_smoke_entrypoint_targets"] == ()
     assert package_manifest_check["detail"]["handoff_artifact_count"] >= 25
     assert package_manifest_check["detail"]["handoff_counts_by_target"]["mobile"] >= 6
     assert package_manifest_check["detail"]["missing_handoff_artifact_count"] == 0

@@ -2147,6 +2147,12 @@ reports required, observed, and missing case ids; invalid-choice-message cases;
 traceback-free cases; expected exit codes by case; and missing expected-exit
 cases so unsupported target handling fails by named command path instead of only
 changing aggregate failure counts.
+The package handoff audit publishes required and observed manifest formats,
+artifact classes, and smoke entrypoints by target, with named missing target
+lists for each family. The aggregate package manifest gate requires those lists
+to be empty, so web, mobile, or desktop packaging cannot pass by only reaching
+the expected manifest count while losing the target-specific package class,
+manifest envelope, or smoke launch entrypoint.
 
 ## Test Strategy
 

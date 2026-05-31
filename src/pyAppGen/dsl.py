@@ -8697,6 +8697,9 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and package_verify_cli.get("manifest_count") == 5
             and package_verify_cli.get("manifest_target_count") == 5
             and package_verify_cli.get("missing_manifest_target_count") == 0
+            and package_verify_cli.get("missing_manifest_format_target_count") == 0
+            and package_verify_cli.get("missing_artifact_class_target_count") == 0
+            and package_verify_cli.get("missing_smoke_entrypoint_target_count") == 0
             and package_verify_cli.get("handoff_artifact_count", 0) >= 25
             and package_verify_cli.get("missing_handoff_artifact_count") == 0
             and package_verify_cli.get("release_evidence_report_count") == 5
@@ -8748,6 +8751,27 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "missing_manifest_target_count": package_verify_cli.get("missing_manifest_target_count"),
                 "missing_manifest_targets": package_verify_cli.get("missing_manifest_targets"),
                 "manifest_formats": package_verify_cli.get("manifest_formats"),
+                "required_manifest_formats_by_target": package_verify_cli.get("required_manifest_formats_by_target"),
+                "missing_manifest_format_target_count": package_verify_cli.get(
+                    "missing_manifest_format_target_count"
+                ),
+                "missing_manifest_format_targets": package_verify_cli.get("missing_manifest_format_targets"),
+                "artifact_classes_by_target": package_verify_cli.get("artifact_classes_by_target"),
+                "required_artifact_classes_by_target": package_verify_cli.get(
+                    "required_artifact_classes_by_target"
+                ),
+                "missing_artifact_class_target_count": package_verify_cli.get(
+                    "missing_artifact_class_target_count"
+                ),
+                "missing_artifact_class_targets": package_verify_cli.get("missing_artifact_class_targets"),
+                "smoke_entrypoints_by_target": package_verify_cli.get("smoke_entrypoints_by_target"),
+                "required_smoke_entrypoints_by_target": package_verify_cli.get(
+                    "required_smoke_entrypoints_by_target"
+                ),
+                "missing_smoke_entrypoint_target_count": package_verify_cli.get(
+                    "missing_smoke_entrypoint_target_count"
+                ),
+                "missing_smoke_entrypoint_targets": package_verify_cli.get("missing_smoke_entrypoint_targets"),
                 "handoff_artifact_count": package_verify_cli.get("handoff_artifact_count"),
                 "handoff_counts_by_target": package_verify_cli.get("handoff_counts_by_target"),
                 "required_handoff_artifacts_by_target": package_verify_cli.get("required_handoff_artifacts_by_target"),
@@ -16865,6 +16889,45 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
         target: manifest_by_target[target].get("format")
         for target in expected_targets
     }
+    required_manifest_formats_by_target = {
+        target: "appgen.package-manifest.v1" for target in expected_targets
+    }
+    missing_manifest_format_targets = tuple(
+        target
+        for target, expected_format in required_manifest_formats_by_target.items()
+        if manifest_formats.get(target) != expected_format
+    )
+    artifact_classes_by_target = {
+        target: manifest_by_target[target].get("artifact_class")
+        for target in expected_targets
+    }
+    required_artifact_classes_by_target = {
+        "web": "web_application",
+        "mobile": "mobile_application",
+        "desktop": "desktop_application",
+        "pbc": "packaged_business_capability",
+        "deployment": "deployment_plan",
+    }
+    missing_artifact_class_targets = tuple(
+        target
+        for target, expected_class in required_artifact_classes_by_target.items()
+        if artifact_classes_by_target.get(target) != expected_class
+    )
+    smoke_entrypoints_by_target = {
+        "web": web_manifest.get("smoke_entrypoint"),
+        "mobile": mobile_manifest.get("smoke_entrypoint"),
+        "desktop": desktop_manifest.get("smoke_entrypoint"),
+    }
+    required_smoke_entrypoints_by_target = {
+        "web": "web.smoke",
+        "mobile": "mobile.launch",
+        "desktop": "desktop.launch",
+    }
+    missing_smoke_entrypoint_targets = tuple(
+        target
+        for target, expected_entrypoint in required_smoke_entrypoints_by_target.items()
+        if smoke_entrypoints_by_target.get(target) != expected_entrypoint
+    )
     release_reports = tuple(evidence_payload.get("reports", {}).keys())
     missing_release_reports = tuple(target for target in expected_targets if target not in release_reports)
     release_graph_kinds = tuple(evidence_graph_suite.get("required_kinds", ()))
@@ -16927,6 +16990,9 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
         "format": "appgen.package-verify-cli-audit.v1",
         "ok": all(case["ok"] for case in cases)
         and not missing_manifest_targets
+        and not missing_manifest_format_targets
+        and not missing_artifact_class_targets
+        and not missing_smoke_entrypoint_targets
         and not missing_handoff_artifacts
         and not missing_release_reports
         and not missing_release_graph_kinds
@@ -16948,6 +17014,17 @@ def _tooling_audit_package_verify_cli(tmp: Path, source: str) -> dict:
             if manifest.get("format") == "appgen.package-manifest.v1"
         ),
         "manifest_formats": manifest_formats,
+        "required_manifest_formats_by_target": required_manifest_formats_by_target,
+        "missing_manifest_format_target_count": len(missing_manifest_format_targets),
+        "missing_manifest_format_targets": missing_manifest_format_targets,
+        "artifact_classes_by_target": artifact_classes_by_target,
+        "required_artifact_classes_by_target": required_artifact_classes_by_target,
+        "missing_artifact_class_target_count": len(missing_artifact_class_targets),
+        "missing_artifact_class_targets": missing_artifact_class_targets,
+        "smoke_entrypoints_by_target": smoke_entrypoints_by_target,
+        "required_smoke_entrypoints_by_target": required_smoke_entrypoints_by_target,
+        "missing_smoke_entrypoint_target_count": len(missing_smoke_entrypoint_targets),
+        "missing_smoke_entrypoint_targets": missing_smoke_entrypoint_targets,
         "handoff_artifact_count": sum(
             len(items)
             for items in (web_handoff, mobile_handoff, desktop_handoff, pbc_handoff, deployment_handoff)
