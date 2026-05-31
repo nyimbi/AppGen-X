@@ -604,10 +604,39 @@ def test_lint_directory_audit_covers_strict_component_cli_gate(tmp_path: Path) -
         "stage_separation_profiles",
         "directory_file_order_and_reports",
     )
+    assert report["required_scenario_ids"] == report["scenario_ids"]
+    assert report["exit_codes_by_scenario"] == report["expected_exit_codes_by_scenario"]
+    assert report["expected_exit_codes_by_scenario"] == {
+        "strict_directory_json": 0,
+        "warning_directory_files": 0,
+        "normal_unknown_component_warning": 0,
+        "strict_unknown_component_error": 1,
+        "strict_catalog_component_success": 0,
+        "previous_semantic_migration_preview": 0,
+        "stage_separation_profiles": 0,
+        "directory_file_order_and_reports": 0,
+    }
+    assert report["missing_exit_code_scenario_count"] == 0
+    assert report["missing_exit_code_scenarios"] == ()
+    assert report["payload_formats_by_scenario"] == report["expected_payload_formats_by_scenario"]
+    assert set(report["expected_payload_formats_by_scenario"].values()) == {"appgen.lint-report.v1"}
+    assert "stage_separation_profiles" not in report["expected_payload_formats_by_scenario"]
+    assert report["missing_payload_format_scenario_count"] == 0
+    assert report["missing_payload_format_scenarios"] == ()
+    assert report["ok_by_scenario"] == {scenario: True for scenario in report["required_scenario_ids"]}
+    assert report["missing_ok_scenario_count"] == 0
+    assert report["missing_ok_scenarios"] == ()
     assert report["stage_profile_count"] == 3
     assert report["passing_stage_profile_count"] == report["stage_profile_count"]
     assert report["failing_stage_profile_count"] == 0
     assert report["stage_profile_ids"] == ("syntax", "semantic", "policy")
+    assert report["exit_codes_by_stage_profile"] == report["expected_exit_codes_by_stage_profile"]
+    assert report["expected_exit_codes_by_stage_profile"] == {"syntax": 1, "semantic": 1, "policy": 0}
+    assert report["missing_stage_profile_exit_code_count"] == 0
+    assert report["missing_stage_profile_exit_code_profiles"] == ()
+    assert report["ok_by_stage_profile"] == {"syntax": True, "semantic": True, "policy": True}
+    assert report["missing_ok_stage_profile_count"] == 0
+    assert report["missing_ok_stage_profiles"] == ()
     assert report["missing_stage_name_count"] == 0
     assert report["missing_stage_names"] == ()
     assert report["missing_severity_name_count"] == 0
@@ -7421,10 +7450,37 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert lint_contract_check["detail"]["directory_cli"]["failing_scenario_count"] == 0
     assert lint_contract_check["detail"]["directory_cli"]["failing_scenarios"] == ()
+    assert lint_contract_check["detail"]["directory_cli"]["exit_codes_by_scenario"] == (
+        lint_contract_check["detail"]["directory_cli"]["expected_exit_codes_by_scenario"]
+    )
+    assert lint_contract_check["detail"]["directory_cli"]["missing_exit_code_scenario_count"] == 0
+    assert lint_contract_check["detail"]["directory_cli"]["missing_exit_code_scenarios"] == ()
+    assert lint_contract_check["detail"]["directory_cli"]["payload_formats_by_scenario"] == (
+        lint_contract_check["detail"]["directory_cli"]["expected_payload_formats_by_scenario"]
+    )
+    assert lint_contract_check["detail"]["directory_cli"]["missing_payload_format_scenario_count"] == 0
+    assert lint_contract_check["detail"]["directory_cli"]["missing_payload_format_scenarios"] == ()
+    assert lint_contract_check["detail"]["directory_cli"]["ok_by_scenario"] == {
+        scenario: True for scenario in lint_contract_check["detail"]["directory_cli"]["required_scenario_ids"]
+    }
+    assert lint_contract_check["detail"]["directory_cli"]["missing_ok_scenario_count"] == 0
+    assert lint_contract_check["detail"]["directory_cli"]["missing_ok_scenarios"] == ()
     assert lint_contract_check["detail"]["directory_cli"]["stage_profile_count"] == 3
     assert lint_contract_check["detail"]["directory_cli"]["passing_stage_profile_count"] == 3
     assert lint_contract_check["detail"]["directory_cli"]["failing_stage_profile_count"] == 0
     assert lint_contract_check["detail"]["directory_cli"]["stage_profile_ids"] == ("syntax", "semantic", "policy")
+    assert lint_contract_check["detail"]["directory_cli"]["exit_codes_by_stage_profile"] == (
+        lint_contract_check["detail"]["directory_cli"]["expected_exit_codes_by_stage_profile"]
+    )
+    assert lint_contract_check["detail"]["directory_cli"]["missing_stage_profile_exit_code_count"] == 0
+    assert lint_contract_check["detail"]["directory_cli"]["missing_stage_profile_exit_code_profiles"] == ()
+    assert lint_contract_check["detail"]["directory_cli"]["ok_by_stage_profile"] == {
+        "syntax": True,
+        "semantic": True,
+        "policy": True,
+    }
+    assert lint_contract_check["detail"]["directory_cli"]["missing_ok_stage_profile_count"] == 0
+    assert lint_contract_check["detail"]["directory_cli"]["missing_ok_stage_profiles"] == ()
     assert lint_contract_check["detail"]["directory_cli"]["missing_stage_name_count"] == 0
     assert lint_contract_check["detail"]["directory_cli"]["missing_severity_name_count"] == 0
     assert lint_contract_check["detail"]["directory_cli"]["source_mode"] == "directory"

@@ -4378,3 +4378,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   phase gate now require the named missing-ok list to be empty, so designer sync
   cannot pass by exit-code and envelope evidence while a scenario fails its own
   round-trip or rejection proof.
+- Current lint directory CLI hardening pass expands source-set lint evidence
+  with expected and observed exit codes, expected and observed lint-report
+  payload formats, and `ok` status by strict directory, warning directory,
+  component catalog, migration-preview, stage-separation, and file-order
+  scenario. It also records expected/observed exit codes and `ok` status by
+  syntax, semantic, and policy stage profile. The aggregate lint directory gates
+  now require those named missing lists to be empty, so lint cannot pass by broad
+  scenario or stage counts while a CLI status, envelope, or stage proof regresses.

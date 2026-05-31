@@ -419,7 +419,10 @@ without expanding every diagnostic item.
 `appgen.lint-directory-cli-audit.v1` proves that syntax errors, semantic
 reference errors, and policy warnings are reported through distinct stage
 buckets. It publishes named scenario ids, failing-scenario counts, named
-failing scenarios, stage-profile ids, passing/failing stage-profile counts, and
+failing scenarios, expected and observed exit codes by scenario, expected and
+observed `appgen.lint-report.v1` payload formats by scenario, per-scenario `ok`
+status, stage-profile ids, expected and observed stage-profile exit codes,
+per-stage-profile `ok` status, passing/failing stage-profile counts, and
 required/observed/missing stage and severity names so release evidence can show
 which exact lint contract regressed without replaying the full CLI log.
 
@@ -455,7 +458,10 @@ The aggregate tooling audit exposes this proof independently as
 `lint_cli_directory_contracts`. That gate fails when strict mode, component
 catalog allow-listing, deterministic directory discovery, file-scoped
 diagnostics, previous-semantic migration previews, stage separation, or
-human-readable lint markers regress.
+human-readable lint markers regress. It also requires zero named missing entries
+for scenario exit codes, payload formats, scenario `ok` status, stage-profile
+exit codes, and stage-profile `ok` status, so a generic passing count cannot mask
+a hidden CLI status, envelope, or stage-proof regression.
 
 ### Linter Outputs
 
