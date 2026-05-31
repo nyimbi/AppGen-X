@@ -4148,3 +4148,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   (`1 passed`), aggregate tooling audit (`1 passed`, with the known active-PBC
   `datetime.utcnow()` warnings only), scoped diff whitespace check, and
   restricted-name scan outside archive, Git internals, and active PBC paths.
+- Current CLI usage-failure hardening pass expands missing-input,
+  missing-required-option, and invalid-choice audits with named stdout,
+  traceback, and unexpected-exit-code case evidence. The aggregate
+  `cli_usage_failure_contracts` gate now requires those named lists to be empty
+  for all three usage failure families, so CLI usage errors cannot pass by
+  emitting partial stdout payloads, hiding tracebacks, or drifting away from exit
+  code `2`. Verification passed: Python compile for the touched DSL and tests,
+  focused missing-input/missing-required-option/invalid-choice audit tests
+  (`3 passed`), aggregate tooling audit (`1 passed`, with the known active-PBC
+  `datetime.utcnow()` warnings only), scoped diff whitespace check, and
+  restricted-name scan outside archive, Git internals, and active PBC paths.

@@ -7502,12 +7502,21 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and missing_input_exit.get("missing_case_count") == 0
             and missing_input_exit.get("missing_command_family_count") == 0
             and missing_input_exit.get("missing_path_message_missing_count") == 0
+            and missing_input_exit.get("stdout_non_empty_case_count") == 0
+            and missing_input_exit.get("traceback_case_count") == 0
+            and missing_input_exit.get("unexpected_exit_code_case_count") == 0
             and missing_required_option_exit["ok"]
             and missing_required_option_exit.get("missing_case_count") == 0
             and missing_required_option_exit.get("missing_expected_message_count") == 0
+            and missing_required_option_exit.get("stdout_non_empty_case_count") == 0
+            and missing_required_option_exit.get("traceback_case_count") == 0
+            and missing_required_option_exit.get("unexpected_exit_code_case_count") == 0
             and invalid_choice_exit["ok"]
             and invalid_choice_exit.get("missing_case_count") == 0
             and invalid_choice_exit.get("missing_invalid_choice_message_count") == 0
+            and invalid_choice_exit.get("stdout_non_empty_case_count") == 0
+            and invalid_choice_exit.get("traceback_case_count") == 0
+            and invalid_choice_exit.get("unexpected_exit_code_case_count") == 0
             and cli_help_surface["ok"],
             "CLI usage and controlled-failure paths emit documented, traceback-free contracts for internal errors, missing inputs, required options, invalid choices, and discoverable help.",
             "docs/tooling.md#cli-contracts",
@@ -7536,6 +7545,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "missing_path_message_missing_cases": missing_input_exit.get("missing_path_message_missing_cases"),
                     "stdout_empty_count": missing_input_exit.get("stdout_empty_count"),
                     "traceback_free_count": missing_input_exit.get("traceback_free_count"),
+                    "stdout_non_empty_case_count": missing_input_exit.get("stdout_non_empty_case_count"),
+                    "stdout_non_empty_cases": missing_input_exit.get("stdout_non_empty_cases"),
+                    "traceback_case_count": missing_input_exit.get("traceback_case_count"),
+                    "traceback_cases": missing_input_exit.get("traceback_cases"),
+                    "expected_exit_code": missing_input_exit.get("expected_exit_code"),
+                    "unexpected_exit_code_case_count": missing_input_exit.get("unexpected_exit_code_case_count"),
+                    "unexpected_exit_code_cases": missing_input_exit.get("unexpected_exit_code_cases"),
                 },
                 "missing_required_option_exit": {
                     "format": missing_required_option_exit.get("format"),
@@ -7550,6 +7566,17 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "expected_message_count": missing_required_option_exit.get("expected_message_count"),
                     "missing_expected_message_count": missing_required_option_exit.get("missing_expected_message_count"),
                     "missing_expected_message_cases": missing_required_option_exit.get("missing_expected_message_cases"),
+                    "stdout_empty_count": missing_required_option_exit.get("stdout_empty_count"),
+                    "traceback_free_count": missing_required_option_exit.get("traceback_free_count"),
+                    "stdout_non_empty_case_count": missing_required_option_exit.get("stdout_non_empty_case_count"),
+                    "stdout_non_empty_cases": missing_required_option_exit.get("stdout_non_empty_cases"),
+                    "traceback_case_count": missing_required_option_exit.get("traceback_case_count"),
+                    "traceback_cases": missing_required_option_exit.get("traceback_cases"),
+                    "expected_exit_code": missing_required_option_exit.get("expected_exit_code"),
+                    "unexpected_exit_code_case_count": missing_required_option_exit.get(
+                        "unexpected_exit_code_case_count"
+                    ),
+                    "unexpected_exit_code_cases": missing_required_option_exit.get("unexpected_exit_code_cases"),
                 },
                 "invalid_choice_exit": {
                     "format": invalid_choice_exit.get("format"),
@@ -7563,6 +7590,15 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "invalid_choice_message_count": invalid_choice_exit.get("invalid_choice_message_count"),
                     "missing_invalid_choice_message_count": invalid_choice_exit.get("missing_invalid_choice_message_count"),
                     "missing_invalid_choice_message_cases": invalid_choice_exit.get("missing_invalid_choice_message_cases"),
+                    "stdout_empty_count": invalid_choice_exit.get("stdout_empty_count"),
+                    "traceback_free_count": invalid_choice_exit.get("traceback_free_count"),
+                    "stdout_non_empty_case_count": invalid_choice_exit.get("stdout_non_empty_case_count"),
+                    "stdout_non_empty_cases": invalid_choice_exit.get("stdout_non_empty_cases"),
+                    "traceback_case_count": invalid_choice_exit.get("traceback_case_count"),
+                    "traceback_cases": invalid_choice_exit.get("traceback_cases"),
+                    "expected_exit_code": invalid_choice_exit.get("expected_exit_code"),
+                    "unexpected_exit_code_case_count": invalid_choice_exit.get("unexpected_exit_code_case_count"),
+                    "unexpected_exit_code_cases": invalid_choice_exit.get("unexpected_exit_code_cases"),
                 },
                 "cli_help_surface": {
                     "format": cli_help_surface.get("format"),
@@ -14236,12 +14272,18 @@ def _tooling_audit_missing_input_exit(tmp: Path) -> dict:
     missing_path_message_cases = tuple(
         result["name"] for result in results if "path does not exist" not in result["stderr"]
     )
+    stdout_non_empty_cases = tuple(result["name"] for result in results if not result["stdout_empty"])
+    traceback_cases = tuple(result["name"] for result in results if "Traceback" in result["stderr"])
+    unexpected_exit_code_cases = tuple(result["name"] for result in results if result["exit_code"] != 2)
     return {
         "format": "appgen.missing-input-exit-audit.v1",
         "ok": not failing_cases
         and not missing_case_ids
         and not missing_command_families
-        and not missing_path_message_cases,
+        and not missing_path_message_cases
+        and not stdout_non_empty_cases
+        and not traceback_cases
+        and not unexpected_exit_code_cases,
         "case_count": len(results),
         "passing_case_count": sum(1 for result in results if result["ok"]),
         "failing_case_count": len(failing_cases),
@@ -14261,6 +14303,13 @@ def _tooling_audit_missing_input_exit(tmp: Path) -> dict:
         "missing_path_message_missing_cases": missing_path_message_cases,
         "stdout_empty_count": sum(1 for result in results if result["stdout_empty"]),
         "traceback_free_count": sum(1 for result in results if "Traceback" not in result["stderr"]),
+        "stdout_non_empty_case_count": len(stdout_non_empty_cases),
+        "stdout_non_empty_cases": stdout_non_empty_cases,
+        "traceback_case_count": len(traceback_cases),
+        "traceback_cases": traceback_cases,
+        "expected_exit_code": 2,
+        "unexpected_exit_code_case_count": len(unexpected_exit_code_cases),
+        "unexpected_exit_code_cases": unexpected_exit_code_cases,
         "cases": tuple(results),
     }
 
@@ -14288,7 +14337,10 @@ def _tooling_audit_missing_required_option_exit(tmp: Path) -> dict:
         results.append(
             {
                 "name": name,
-                "ok": exit_code == 2 and expected_message in stderr and "Traceback" not in stderr,
+                "ok": exit_code == 2
+                and expected_message in stderr
+                and "Traceback" not in stderr
+                and not output.getvalue().strip(),
                 "exit_code": exit_code,
                 "expected_message": expected_message,
                 "stderr": stderr.strip(),
@@ -14303,9 +14355,17 @@ def _tooling_audit_missing_required_option_exit(tmp: Path) -> dict:
     missing_expected_message_cases = tuple(
         result["name"] for result in results if result["expected_message"] not in result["stderr"]
     )
+    stdout_non_empty_cases = tuple(result["name"] for result in results if result["stdout"])
+    traceback_cases = tuple(result["name"] for result in results if "Traceback" in result["stderr"])
+    unexpected_exit_code_cases = tuple(result["name"] for result in results if result["exit_code"] != 2)
     return {
         "format": "appgen.missing-required-option-exit-audit.v1",
-        "ok": not failing_cases and not missing_case_ids and not missing_expected_message_cases,
+        "ok": not failing_cases
+        and not missing_case_ids
+        and not missing_expected_message_cases
+        and not stdout_non_empty_cases
+        and not traceback_cases
+        and not unexpected_exit_code_cases,
         "case_count": len(results),
         "passing_case_count": sum(1 for result in results if result["ok"]),
         "failing_case_count": len(failing_cases),
@@ -14321,6 +14381,13 @@ def _tooling_audit_missing_required_option_exit(tmp: Path) -> dict:
         "missing_expected_message_cases": missing_expected_message_cases,
         "stdout_empty_count": sum(1 for result in results if not result["stdout"]),
         "traceback_free_count": sum(1 for result in results if "Traceback" not in result["stderr"]),
+        "stdout_non_empty_case_count": len(stdout_non_empty_cases),
+        "stdout_non_empty_cases": stdout_non_empty_cases,
+        "traceback_case_count": len(traceback_cases),
+        "traceback_cases": traceback_cases,
+        "expected_exit_code": 2,
+        "unexpected_exit_code_case_count": len(unexpected_exit_code_cases),
+        "unexpected_exit_code_cases": unexpected_exit_code_cases,
         "cases": tuple(results),
     }
 
@@ -14352,7 +14419,10 @@ def _tooling_audit_invalid_choice_exit(tmp: Path) -> dict:
         results.append(
             {
                 "name": name,
-                "ok": exit_code == 2 and "invalid choice" in stderr and "Traceback" not in stderr,
+                "ok": exit_code == 2
+                and "invalid choice" in stderr
+                and "Traceback" not in stderr
+                and not output.getvalue().strip(),
                 "exit_code": exit_code,
                 "stderr": stderr.strip(),
                 "stdout": output.getvalue().strip(),
@@ -14365,9 +14435,17 @@ def _tooling_audit_invalid_choice_exit(tmp: Path) -> dict:
     missing_invalid_choice_message_cases = tuple(
         result["name"] for result in results if "invalid choice" not in result["stderr"]
     )
+    stdout_non_empty_cases = tuple(result["name"] for result in results if result["stdout"])
+    traceback_cases = tuple(result["name"] for result in results if "Traceback" in result["stderr"])
+    unexpected_exit_code_cases = tuple(result["name"] for result in results if result["exit_code"] != 2)
     return {
         "format": "appgen.invalid-choice-exit-audit.v1",
-        "ok": not failing_cases and not missing_case_ids and not missing_invalid_choice_message_cases,
+        "ok": not failing_cases
+        and not missing_case_ids
+        and not missing_invalid_choice_message_cases
+        and not stdout_non_empty_cases
+        and not traceback_cases
+        and not unexpected_exit_code_cases,
         "case_count": len(results),
         "passing_case_count": sum(1 for result in results if result["ok"]),
         "failing_case_count": len(failing_cases),
@@ -14382,6 +14460,13 @@ def _tooling_audit_invalid_choice_exit(tmp: Path) -> dict:
         "missing_invalid_choice_message_cases": missing_invalid_choice_message_cases,
         "stdout_empty_count": sum(1 for result in results if not result["stdout"]),
         "traceback_free_count": sum(1 for result in results if "Traceback" not in result["stderr"]),
+        "stdout_non_empty_case_count": len(stdout_non_empty_cases),
+        "stdout_non_empty_cases": stdout_non_empty_cases,
+        "traceback_case_count": len(traceback_cases),
+        "traceback_cases": traceback_cases,
+        "expected_exit_code": 2,
+        "unexpected_exit_code_case_count": len(unexpected_exit_code_cases),
+        "unexpected_exit_code_cases": unexpected_exit_code_cases,
         "cases": tuple(results),
     }
 

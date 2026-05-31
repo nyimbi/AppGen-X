@@ -6683,6 +6683,13 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_usage_check["detail"]["missing_input_exit"]["stdout_empty_count"] == (
         cli_usage_check["detail"]["missing_input_exit"]["case_count"]
     )
+    assert cli_usage_check["detail"]["missing_input_exit"]["stdout_non_empty_case_count"] == 0
+    assert cli_usage_check["detail"]["missing_input_exit"]["stdout_non_empty_cases"] == ()
+    assert cli_usage_check["detail"]["missing_input_exit"]["traceback_case_count"] == 0
+    assert cli_usage_check["detail"]["missing_input_exit"]["traceback_cases"] == ()
+    assert cli_usage_check["detail"]["missing_input_exit"]["expected_exit_code"] == 2
+    assert cli_usage_check["detail"]["missing_input_exit"]["unexpected_exit_code_case_count"] == 0
+    assert cli_usage_check["detail"]["missing_input_exit"]["unexpected_exit_code_cases"] == ()
     assert cli_usage_check["detail"]["missing_required_option_exit"]["format"] == (
         "appgen.missing-required-option-exit-audit.v1"
     )
@@ -6691,6 +6698,16 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_usage_check["detail"]["missing_required_option_exit"]["missing_case_ids"] == ()
     assert cli_usage_check["detail"]["missing_required_option_exit"]["missing_expected_message_count"] == 0
     assert cli_usage_check["detail"]["missing_required_option_exit"]["missing_expected_message_cases"] == ()
+    assert cli_usage_check["detail"]["missing_required_option_exit"]["stdout_empty_count"] == (
+        cli_usage_check["detail"]["missing_required_option_exit"]["case_count"]
+    )
+    assert cli_usage_check["detail"]["missing_required_option_exit"]["stdout_non_empty_case_count"] == 0
+    assert cli_usage_check["detail"]["missing_required_option_exit"]["stdout_non_empty_cases"] == ()
+    assert cli_usage_check["detail"]["missing_required_option_exit"]["traceback_case_count"] == 0
+    assert cli_usage_check["detail"]["missing_required_option_exit"]["traceback_cases"] == ()
+    assert cli_usage_check["detail"]["missing_required_option_exit"]["expected_exit_code"] == 2
+    assert cli_usage_check["detail"]["missing_required_option_exit"]["unexpected_exit_code_case_count"] == 0
+    assert cli_usage_check["detail"]["missing_required_option_exit"]["unexpected_exit_code_cases"] == ()
     assert cli_usage_check["detail"]["invalid_choice_exit"]["format"] == "appgen.invalid-choice-exit-audit.v1"
     assert cli_usage_check["detail"]["invalid_choice_exit"]["failing_case_count"] == 0
     assert cli_usage_check["detail"]["invalid_choice_exit"]["missing_case_count"] == 0
@@ -6700,6 +6717,16 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert cli_usage_check["detail"]["invalid_choice_exit"]["missing_invalid_choice_message_count"] == 0
     assert cli_usage_check["detail"]["invalid_choice_exit"]["missing_invalid_choice_message_cases"] == ()
+    assert cli_usage_check["detail"]["invalid_choice_exit"]["stdout_empty_count"] == (
+        cli_usage_check["detail"]["invalid_choice_exit"]["case_count"]
+    )
+    assert cli_usage_check["detail"]["invalid_choice_exit"]["stdout_non_empty_case_count"] == 0
+    assert cli_usage_check["detail"]["invalid_choice_exit"]["stdout_non_empty_cases"] == ()
+    assert cli_usage_check["detail"]["invalid_choice_exit"]["traceback_case_count"] == 0
+    assert cli_usage_check["detail"]["invalid_choice_exit"]["traceback_cases"] == ()
+    assert cli_usage_check["detail"]["invalid_choice_exit"]["expected_exit_code"] == 2
+    assert cli_usage_check["detail"]["invalid_choice_exit"]["unexpected_exit_code_case_count"] == 0
+    assert cli_usage_check["detail"]["invalid_choice_exit"]["unexpected_exit_code_cases"] == ()
     assert cli_usage_check["detail"]["cli_help_surface"]["format"] == "appgen.cli-help-surface-audit.v1"
     assert cli_usage_check["detail"]["cli_help_surface"]["documented_missing_subcommands"] == ()
     assert cli_usage_check["detail"]["cli_help_surface"]["help_missing_subcommands"] == ()
@@ -6763,6 +6790,13 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_check["detail"]["missing_input_exit"]["traceback_free_count"] == (
         cli_check["detail"]["missing_input_exit"]["case_count"]
     )
+    assert cli_check["detail"]["missing_input_exit"]["stdout_non_empty_case_count"] == 0
+    assert cli_check["detail"]["missing_input_exit"]["stdout_non_empty_cases"] == ()
+    assert cli_check["detail"]["missing_input_exit"]["traceback_case_count"] == 0
+    assert cli_check["detail"]["missing_input_exit"]["traceback_cases"] == ()
+    assert cli_check["detail"]["missing_input_exit"]["expected_exit_code"] == 2
+    assert cli_check["detail"]["missing_input_exit"]["unexpected_exit_code_case_count"] == 0
+    assert cli_check["detail"]["missing_input_exit"]["unexpected_exit_code_cases"] == ()
     assert cli_check["detail"]["missing_input_exit"]["missing_path_message_missing_count"] == 0
     assert cli_check["detail"]["missing_input_exit"]["missing_path_message_missing_cases"] == ()
     assert cli_check["detail"]["missing_required_option_exit"]["format"] == (
@@ -6794,6 +6828,13 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_check["detail"]["missing_required_option_exit"]["traceback_free_count"] == (
         cli_check["detail"]["missing_required_option_exit"]["case_count"]
     )
+    assert cli_check["detail"]["missing_required_option_exit"]["stdout_non_empty_case_count"] == 0
+    assert cli_check["detail"]["missing_required_option_exit"]["stdout_non_empty_cases"] == ()
+    assert cli_check["detail"]["missing_required_option_exit"]["traceback_case_count"] == 0
+    assert cli_check["detail"]["missing_required_option_exit"]["traceback_cases"] == ()
+    assert cli_check["detail"]["missing_required_option_exit"]["expected_exit_code"] == 2
+    assert cli_check["detail"]["missing_required_option_exit"]["unexpected_exit_code_case_count"] == 0
+    assert cli_check["detail"]["missing_required_option_exit"]["unexpected_exit_code_cases"] == ()
     assert cli_check["detail"]["missing_required_option_exit"]["missing_expected_message_count"] == 0
     assert cli_check["detail"]["missing_required_option_exit"]["missing_expected_message_cases"] == ()
     assert {
@@ -6836,6 +6877,13 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert cli_check["detail"]["invalid_choice_exit"]["traceback_free_count"] == (
         cli_check["detail"]["invalid_choice_exit"]["case_count"]
     )
+    assert cli_check["detail"]["invalid_choice_exit"]["stdout_non_empty_case_count"] == 0
+    assert cli_check["detail"]["invalid_choice_exit"]["stdout_non_empty_cases"] == ()
+    assert cli_check["detail"]["invalid_choice_exit"]["traceback_case_count"] == 0
+    assert cli_check["detail"]["invalid_choice_exit"]["traceback_cases"] == ()
+    assert cli_check["detail"]["invalid_choice_exit"]["expected_exit_code"] == 2
+    assert cli_check["detail"]["invalid_choice_exit"]["unexpected_exit_code_case_count"] == 0
+    assert cli_check["detail"]["invalid_choice_exit"]["unexpected_exit_code_cases"] == ()
     assert cli_check["detail"]["invalid_choice_exit"]["missing_invalid_choice_message_count"] == 0
     assert cli_check["detail"]["invalid_choice_exit"]["missing_invalid_choice_message_cases"] == ()
     diagnostic_contract_check = next(
@@ -9893,6 +9941,13 @@ def test_missing_input_audit_covers_file_based_commands(tmp_path: Path) -> None:
     assert audit["missing_path_message_missing_cases"] == ()
     assert audit["stdout_empty_count"] == audit["case_count"]
     assert audit["traceback_free_count"] == audit["case_count"]
+    assert audit["stdout_non_empty_case_count"] == 0
+    assert audit["stdout_non_empty_cases"] == ()
+    assert audit["traceback_case_count"] == 0
+    assert audit["traceback_cases"] == ()
+    assert audit["expected_exit_code"] == 2
+    assert audit["unexpected_exit_code_case_count"] == 0
+    assert audit["unexpected_exit_code_cases"] == ()
     assert {
         "lint_missing_path",
         "lint_missing_previous_semantic",
@@ -10146,6 +10201,13 @@ def test_invalid_choice_audit_covers_graph_formats_and_backend_choices(tmp_path:
     assert audit["missing_invalid_choice_message_cases"] == ()
     assert audit["stdout_empty_count"] == audit["case_count"]
     assert audit["traceback_free_count"] == audit["case_count"]
+    assert audit["stdout_non_empty_case_count"] == 0
+    assert audit["stdout_non_empty_cases"] == ()
+    assert audit["traceback_case_count"] == 0
+    assert audit["traceback_cases"] == ()
+    assert audit["expected_exit_code"] == 2
+    assert audit["unexpected_exit_code_case_count"] == 0
+    assert audit["unexpected_exit_code_cases"] == ()
     assert {
         "lint_backend",
         "graph_kind",
@@ -10181,6 +10243,13 @@ def test_missing_required_option_audit_covers_required_cli_options(tmp_path: Pat
     assert audit["expected_messages_by_case"]["explain_missing_selector"] == "one of the arguments"
     assert audit["stdout_empty_count"] == audit["case_count"]
     assert audit["traceback_free_count"] == audit["case_count"]
+    assert audit["stdout_non_empty_case_count"] == 0
+    assert audit["stdout_non_empty_cases"] == ()
+    assert audit["traceback_case_count"] == 0
+    assert audit["traceback_cases"] == ()
+    assert audit["expected_exit_code"] == 2
+    assert audit["unexpected_exit_code_case_count"] == 0
+    assert audit["unexpected_exit_code_cases"] == ()
     assert {
         "generate_missing_out",
         "nl_plan_missing_prompt",

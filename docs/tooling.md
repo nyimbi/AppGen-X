@@ -624,6 +624,11 @@ families and missing command-family names; cases missing the expected
 expected required-option message family by case. The aggregate gate fails on any
 missing named case, missing command family, missing expected message, or
 traceback-bearing failure path.
+The usage audits also publish named stdout, traceback, and unexpected-exit-code
+case lists. All three lists must be empty for missing-input, missing-required-
+option, and invalid-choice audits, so a usage failure cannot pass by writing a
+partial payload to stdout, changing the expected exit code, or hiding a Python
+traceback behind aggregate counts.
 The aggregate tooling audit exposes those failure paths as a separate
 `cli_usage_failure_contracts` gate. It reports internal-error mode counts,
 missing-input case/stdout/traceback counts, missing-required-option case
