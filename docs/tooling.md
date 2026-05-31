@@ -710,6 +710,18 @@ JSON Schema 2020-12 dialect, and includes schemas for `appgen.diagnostic.v1`,
 `appgen.format-result.v1`, `appgen.validate-report.v1`,
 `appgen.generate-report.v1`, `appgen.graph-suite-report.v1`,
 `appgen.explain-report.v1`, `appgen.lsp-service.v1`,
+`appgen.lsp-capabilities.v1`, `appgen.lsp-diagnostics.v1`,
+`appgen.lsp-completion.v1`, `appgen.completion-coverage.v1`,
+`appgen.lsp-hover.v1`, `appgen.lsp-definition.v1`,
+`appgen.lsp-references.v1`, `appgen.lsp-document-symbols.v1`,
+`appgen.lsp-workspace-symbols.v1`, `appgen.lsp-symbol-coverage.v1`,
+`appgen.lsp-code-actions.v1`, `appgen.lsp-code-action-apply.v1`,
+`appgen.lsp-code-action-apply-audit.v1`,
+`appgen.lsp-code-action-cli-audit.v1`, `appgen.lsp-formatting.v1`,
+`appgen.lsp-rename.v1`, `appgen.lsp-rename-cli-audit.v1`,
+`appgen.lsp-json-rpc-audit.v1`, `appgen.lsp-stdio-transport-audit.v1`,
+`appgen.lsp-service-text-renderer.v1`, and
+`appgen.lsp-code-action-text-renderer.v1`,
 `appgen.designer-sync-report.v1`, diagnostic catalog and fixture audit reports,
 parser-golden and semantic-drift audits, `appgen.migration-plan.v1`,
 `appgen.nl-plan.v1`, `appgen.release-verifier-report.v1`,
@@ -2535,10 +2547,14 @@ Exit criteria:
   progressive learning path.
 - `appgen.contract-schema-cli-audit.v1` proves core diagnostic, lint,
   semantic-model, formatter, validate/generate, graph-suite, explain, LSP,
+  LSP capability, diagnostic, completion, hover, navigation, symbol, code-action,
+  formatting, rename, JSON-RPC, stdio, and text-renderer subcontracts,
   designer-sync, diagnostic catalog, parser-golden, drift, migration,
   natural-language, release-verifier, component-publish, doctor, tooling-audit,
   schema-catalog, and contract-validation report schemas are available from CLI
-  JSON and text modes.
+  JSON and text modes. The schema audit validates representative live payloads
+  for every required format, so adding a documented contract without a matching
+  runtime sample fails the release gate.
 - `appgen.contract-validation-cli-audit.v1` proves those JSON contracts can be
   enforced against real payloads, including valid semantic-model payloads,
   missing required fields, unknown schemas, malformed JSON, and text mode.

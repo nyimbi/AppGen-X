@@ -4427,3 +4427,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   per-file symbol counts, model counts, diagnostics, and raw JSON. The
   `appgen.vscode-extension-audit.v1` gate now requires the semantic command
   IDs, activation events, CLI argument markers, and semantic webview renderer.
+- Current contract-schema expansion pass promotes the LSP/editor payload family
+  into first-class exported schemas. `appgen contract-schema --json` now covers
+  LSP capabilities, diagnostics, completion, completion coverage, hover,
+  definition, references, document symbols, workspace symbols, symbol coverage,
+  code actions, code-action apply and audit payloads, formatting, rename,
+  rename CLI audit, JSON-RPC audit, stdio audit, and text-renderer contracts.
+  The contract-schema audit validates live samples for all 43 required schemas,
+  so editor payload drift is caught by schema validation instead of relying only
+  on prose and aggregate audit counts.
