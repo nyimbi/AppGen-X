@@ -4138,3 +4138,13 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   tooling audit (`1 passed`, with the known active-PBC `datetime.utcnow()`
   warnings only), scoped diff whitespace check, and restricted-name scan
   outside archive, Git internals, and active PBC paths.
+- Current tooling-audit text hardening pass expands the top-level human release
+  log proof beyond named checks, sections, detail formats, and blocking gaps.
+  `appgen.tooling-audit-text-renderer.v1` now also proves required and emitted
+  text surfaces, status markers, top-level audit formats, source documents, and
+  implementation-phase markers as part of its own `ok` condition and the
+  aggregate tooling-audit text gate. Verification passed: Python compile for
+  the touched DSL and tests, focused tooling-audit text renderer test
+  (`1 passed`), aggregate tooling audit (`1 passed`, with the known active-PBC
+  `datetime.utcnow()` warnings only), scoped diff whitespace check, and
+  restricted-name scan outside archive, Git internals, and active PBC paths.

@@ -9316,7 +9316,12 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and text_renderer.get("missing_check_id_count") == 0
             and text_renderer.get("missing_section_count") == 0
             and text_renderer.get("missing_detail_format_count") == 0
-            and text_renderer.get("missing_blocking_gap_id_count") == 0,
+            and text_renderer.get("missing_blocking_gap_id_count") == 0
+            and text_renderer.get("missing_text_surface_count") == 0
+            and text_renderer.get("missing_status_marker_count") == 0
+            and text_renderer.get("missing_top_level_format_count") == 0
+            and text_renderer.get("missing_source_document_count") == 0
+            and text_renderer.get("missing_implementation_phase_marker_count") == 0,
             "Tooling-audit text mode exposes the top-level envelope, sections, embedded report formats, and implementation-phase marker.",
             "docs/tooling.md#appgen-tooling-audit",
             text_renderer,
@@ -9458,6 +9463,8 @@ def _tooling_audit_text_renderer_contract() -> dict:
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
     lines = tuple(line for line in text.splitlines() if line.strip())
     check_lines = tuple(line for line in lines if line.startswith(("ok ", "fail ")))
+    summary_lines = tuple(line for line in lines if line.startswith("tooling-audit "))
+    source_lines = tuple(line for line in lines if "source=" in line)
     detail_format_lines = tuple(line for line in check_lines if "formats=appgen." in line)
     section_lines = tuple(line for line in lines if line.startswith("section docs/tooling.md#"))
     blocking_gap_lines = tuple(line for line in lines if line.startswith("blocking-gap "))
@@ -9499,6 +9506,67 @@ def _tooling_audit_text_renderer_contract() -> dict:
     missing_blocking_gap_ids = tuple(
         gap_id for gap_id in required_blocking_gap_ids if gap_id not in emitted_blocking_gap_ids
     )
+    required_text_surfaces = (
+        "success_summary",
+        "failure_summary",
+        "source",
+        "sections",
+        "check_statuses",
+        "detail_formats",
+        "blocking_gaps",
+        "implementation_phases",
+    )
+    emitted_text_surfaces = tuple(
+        surface
+        for surface, present in (
+            ("success_summary", any(line.startswith("tooling-audit ok:") for line in summary_lines)),
+            ("failure_summary", any(line.startswith("tooling-audit failed:") for line in summary_lines)),
+            ("source", bool(source_lines)),
+            ("sections", bool(section_lines)),
+            ("check_statuses", bool(check_lines)),
+            ("detail_formats", bool(detail_format_lines)),
+            ("blocking_gaps", bool(blocking_gap_lines)),
+            ("implementation_phases", bool(implementation_phase_lines)),
+        )
+        if present
+    )
+    missing_text_surfaces = tuple(
+        surface for surface in required_text_surfaces if surface not in emitted_text_surfaces
+    )
+    required_status_markers = ("tooling-audit ok", "tooling-audit failed", "blocking_gaps=0")
+    emitted_status_markers = tuple(marker for marker in required_status_markers if marker in text)
+    missing_status_markers = tuple(
+        marker for marker in required_status_markers if marker not in emitted_status_markers
+    )
+    required_top_level_formats = ("appgen.tooling-audit.v1",)
+    emitted_top_level_formats = tuple(
+        report_format for report_format in required_top_level_formats if report_format in text
+    )
+    missing_top_level_formats = tuple(
+        report_format for report_format in required_top_level_formats if report_format not in emitted_top_level_formats
+    )
+    required_source_documents = (str(payload["source_of_truth"]),)
+    emitted_source_documents = tuple(
+        source for source in required_source_documents if any(f"source={source}" in line for line in source_lines)
+    )
+    missing_source_documents = tuple(
+        source for source in required_source_documents if source not in emitted_source_documents
+    )
+    required_implementation_phase_markers = (
+        "format=appgen.tooling-implementation-phase-audit.v1",
+        "criteria=3/3",
+        "missing_criteria=0",
+    )
+    emitted_implementation_phase_markers = tuple(
+        marker
+        for marker in required_implementation_phase_markers
+        if any(marker in line for line in implementation_phase_lines)
+    )
+    missing_implementation_phase_markers = tuple(
+        marker
+        for marker in required_implementation_phase_markers
+        if marker not in emitted_implementation_phase_markers
+    )
     return {
         "format": "appgen.tooling-audit-text-renderer.v1",
         "ok": not missing
@@ -9506,6 +9574,11 @@ def _tooling_audit_text_renderer_contract() -> dict:
         and not missing_sections
         and not missing_detail_formats
         and not missing_blocking_gap_ids
+        and not missing_text_surfaces
+        and not missing_status_markers
+        and not missing_top_level_formats
+        and not missing_source_documents
+        and not missing_implementation_phase_markers
         and not text.lstrip().startswith("{"),
         **_text_renderer_contract_counts(
             text,
@@ -9543,6 +9616,26 @@ def _tooling_audit_text_renderer_contract() -> dict:
         "emitted_blocking_gap_ids": emitted_blocking_gap_ids,
         "missing_blocking_gap_ids": missing_blocking_gap_ids,
         "missing_blocking_gap_id_count": len(missing_blocking_gap_ids),
+        "required_text_surfaces": required_text_surfaces,
+        "emitted_text_surfaces": emitted_text_surfaces,
+        "missing_text_surfaces": missing_text_surfaces,
+        "missing_text_surface_count": len(missing_text_surfaces),
+        "required_status_markers": required_status_markers,
+        "emitted_status_markers": emitted_status_markers,
+        "missing_status_markers": missing_status_markers,
+        "missing_status_marker_count": len(missing_status_markers),
+        "required_top_level_formats": required_top_level_formats,
+        "emitted_top_level_formats": emitted_top_level_formats,
+        "missing_top_level_formats": missing_top_level_formats,
+        "missing_top_level_format_count": len(missing_top_level_formats),
+        "required_source_documents": required_source_documents,
+        "emitted_source_documents": emitted_source_documents,
+        "missing_source_documents": missing_source_documents,
+        "missing_source_document_count": len(missing_source_documents),
+        "required_implementation_phase_markers": required_implementation_phase_markers,
+        "emitted_implementation_phase_markers": emitted_implementation_phase_markers,
+        "missing_implementation_phase_markers": missing_implementation_phase_markers,
+        "missing_implementation_phase_marker_count": len(missing_implementation_phase_markers),
         "section_line_count": len(section_lines),
         "blocking_gap_line_count": len(blocking_gap_lines),
         "implementation_phase_line_count": len(implementation_phase_lines),

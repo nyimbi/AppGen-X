@@ -5512,6 +5512,31 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert "docs/tooling.md#appgen-tooling-audit" in tooling_text_check["detail"]["emitted_sections"]
     assert "appgen.tooling-doc-anchor-audit.v1" in tooling_text_check["detail"]["emitted_detail_formats"]
     assert "studio_semantic_service" in tooling_text_check["detail"]["emitted_blocking_gap_ids"]
+    assert tooling_text_check["detail"]["emitted_text_surfaces"] == tooling_text_check["detail"][
+        "required_text_surfaces"
+    ]
+    assert tooling_text_check["detail"]["missing_text_surface_count"] == 0
+    assert tooling_text_check["detail"]["missing_text_surfaces"] == ()
+    assert tooling_text_check["detail"]["emitted_status_markers"] == tooling_text_check["detail"][
+        "required_status_markers"
+    ]
+    assert tooling_text_check["detail"]["missing_status_marker_count"] == 0
+    assert tooling_text_check["detail"]["missing_status_markers"] == ()
+    assert tooling_text_check["detail"]["emitted_top_level_formats"] == tooling_text_check["detail"][
+        "required_top_level_formats"
+    ]
+    assert tooling_text_check["detail"]["missing_top_level_format_count"] == 0
+    assert tooling_text_check["detail"]["missing_top_level_formats"] == ()
+    assert tooling_text_check["detail"]["emitted_source_documents"] == tooling_text_check["detail"][
+        "required_source_documents"
+    ]
+    assert tooling_text_check["detail"]["missing_source_document_count"] == 0
+    assert tooling_text_check["detail"]["missing_source_documents"] == ()
+    assert tooling_text_check["detail"]["emitted_implementation_phase_markers"] == tooling_text_check["detail"][
+        "required_implementation_phase_markers"
+    ]
+    assert tooling_text_check["detail"]["missing_implementation_phase_marker_count"] == 0
+    assert tooling_text_check["detail"]["missing_implementation_phase_markers"] == ()
     semantic_check = next(check for check in report["checks"] if check["id"] == "shared_semantic_model")
     assert semantic_check["detail"]["contract_counts"]["required_top_level_field_count"] == 20
     assert semantic_check["detail"]["contract_counts"]["missing_top_level_field_count"] == 0
@@ -8034,6 +8059,43 @@ def test_tooling_audit_text_renderer_contract_proves_human_log_markers() -> None
     assert report["missing_blocking_gap_ids"] == ()
     assert report["required_blocking_gap_ids"] == ("studio_semantic_service",)
     assert "studio_semantic_service" in report["emitted_blocking_gap_ids"]
+    assert report["required_text_surfaces"] == (
+        "success_summary",
+        "failure_summary",
+        "source",
+        "sections",
+        "check_statuses",
+        "detail_formats",
+        "blocking_gaps",
+        "implementation_phases",
+    )
+    assert report["emitted_text_surfaces"] == report["required_text_surfaces"]
+    assert report["missing_text_surface_count"] == 0
+    assert report["missing_text_surfaces"] == ()
+    assert report["required_status_markers"] == (
+        "tooling-audit ok",
+        "tooling-audit failed",
+        "blocking_gaps=0",
+    )
+    assert report["emitted_status_markers"] == report["required_status_markers"]
+    assert report["missing_status_marker_count"] == 0
+    assert report["missing_status_markers"] == ()
+    assert report["required_top_level_formats"] == ("appgen.tooling-audit.v1",)
+    assert report["emitted_top_level_formats"] == report["required_top_level_formats"]
+    assert report["missing_top_level_format_count"] == 0
+    assert report["missing_top_level_formats"] == ()
+    assert report["required_source_documents"] == ("docs/tooling.md",)
+    assert report["emitted_source_documents"] == report["required_source_documents"]
+    assert report["missing_source_document_count"] == 0
+    assert report["missing_source_documents"] == ()
+    assert report["required_implementation_phase_markers"] == (
+        "format=appgen.tooling-implementation-phase-audit.v1",
+        "criteria=3/3",
+        "missing_criteria=0",
+    )
+    assert report["emitted_implementation_phase_markers"] == report["required_implementation_phase_markers"]
+    assert report["missing_implementation_phase_marker_count"] == 0
+    assert report["missing_implementation_phase_markers"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith("tooling-audit ok: format=appgen.tooling-audit.v1")
     assert {

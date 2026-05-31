@@ -1106,6 +1106,11 @@ failure markers. The same renderer contract publishes required, emitted, and
 missing check ids, section anchors, embedded detail formats, and blocking-gap ids,
 and the aggregate `tooling_audit_text_renderer` gate fails if any named release
 log marker is missing.
+It also publishes required, emitted, missing, and missing-count evidence for
+text surfaces, status markers, top-level audit formats, source documents, and
+implementation-phase markers. The aggregate gate requires zero named missing
+entries, so generic audit summary lines cannot mask a hidden source marker,
+failed-audit status, top-level format, or phase exit-criteria marker.
 When implementation-phase evidence is present, the text output also reports the
 number of audited phases, missing phase count, passing/total exit-criterion
 counts, missing exit-criterion count, and the
