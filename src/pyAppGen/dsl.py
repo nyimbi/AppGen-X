@@ -8421,6 +8421,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and designer_sync_cli.get("failing_scenario_count") == 0
             and designer_sync_cli.get("missing_exit_code_scenario_count") == 0
             and designer_sync_cli.get("missing_payload_format_scenario_count") == 0
+            and designer_sync_cli.get("missing_ok_scenario_count") == 0
             and designer_sync_cli.get("missing_projection_count") == 0
             and designer_sync_cli.get("missing_changed_surface_count") == 0
             and designer_sync_cli.get("missing_diff_fragment_count") == 0
@@ -11442,7 +11443,8 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     "id": "visual_edits_generate_linted_dsl_patches",
                     "ok": evidence["designer"].get("ok") is True
                     and evidence["designer_visual_edit_matrix"].get("ok") is True
-                    and evidence["designer_sync_cli"].get("ok") is True,
+                    and evidence["designer_sync_cli"].get("ok") is True
+                    and evidence["designer_sync_cli"].get("missing_ok_scenario_count") == 0,
                     "evidence_formats": (
                         evidence["designer"].get("format"),
                         evidence["designer_visual_edit_matrix"].get("format"),
@@ -16797,6 +16799,16 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
         for scenario_id, expected_format in expected_payload_formats_by_scenario.items()
         if payload_formats_by_scenario.get(scenario_id) != expected_format
     )
+    ok_by_scenario = {
+        scenario["id"]: scenario.get("ok") is True
+        for scenario in scenarios
+        if scenario["id"] in required_scenario_ids
+    }
+    missing_ok_scenarios = tuple(
+        scenario_id
+        for scenario_id in required_scenario_ids
+        if ok_by_scenario.get(scenario_id) is not True
+    )
     required_projection_ids = (
         "form_designer",
         "database_designer",
@@ -16838,6 +16850,7 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
         and not failing_scenario_ids
         and not missing_exit_code_scenarios
         and not missing_payload_format_scenarios
+        and not missing_ok_scenarios
         and not missing_projection_ids
         and not missing_changed_surfaces
         and not missing_diff_fragments
@@ -16858,6 +16871,9 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
         "payload_formats_by_scenario": payload_formats_by_scenario,
         "missing_payload_format_scenario_count": len(missing_payload_format_scenarios),
         "missing_payload_format_scenarios": missing_payload_format_scenarios,
+        "ok_by_scenario": ok_by_scenario,
+        "missing_ok_scenario_count": len(missing_ok_scenarios),
+        "missing_ok_scenarios": missing_ok_scenarios,
         "valid_changed_surface_count": len(valid_edit.get("changed_surfaces", ())),
         "required_changed_surfaces": required_changed_surfaces,
         "missing_changed_surface_count": len(missing_changed_surfaces),

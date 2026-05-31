@@ -4372,3 +4372,9 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   gates now require those named missing lists to be empty, so rename safety
   cannot pass by scenario counts while a CLI scenario returns the wrong status,
   wrong service envelope, or failed proof.
+- Current designer-sync CLI hardening pass expands visual designer round-trip
+  evidence with `ok` status by accepted edit, malformed JSON, and non-object
+  payload scenario. The aggregate IDE visual designer gate and implementation
+  phase gate now require the named missing-ok list to be empty, so designer sync
+  cannot pass by exit-code and envelope evidence while a scenario fails its own
+  round-trip or rejection proof.
