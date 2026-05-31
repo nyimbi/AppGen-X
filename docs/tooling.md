@@ -1749,6 +1749,12 @@ diff fragments; invalid-case ids; traceback-free case ids; and missing
 traceback-free cases. The aggregate IDE gate fails when a named designer-sync
 scenario, projection surface, changed surface, diff preview fragment, or
 invalid-payload rejection contract disappears.
+The CLI audit also publishes expected and observed exit codes for valid and
+invalid designer-sync scenarios and expected versus observed payload formats for
+accepted visual edits. The aggregate IDE gate requires those named missing
+lists to be empty, so malformed edit payloads must remain exit-code `2` and
+accepted visual edits must keep the `appgen.designer-sync-report.v1` envelope
+instead of passing through scenario counts alone.
 Without `--json`, `appgen designer-sync` prints the
 `appgen.designer-sync-report.v1` format, semantic-model format as
 `semantic_format=...`, surface count and names, visual edit acceptance,

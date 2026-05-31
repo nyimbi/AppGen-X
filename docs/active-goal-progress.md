@@ -4225,3 +4225,15 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   tooling audit (`1 passed`, with the known active-PBC `datetime.utcnow()`
   warnings only), scoped diff whitespace check, and restricted-name scan outside
   archive, Git internals, and active PBC paths.
+- Current designer-sync CLI hardening pass expands Studio visual designer
+  handoff evidence with expected and observed exit codes for valid and invalid
+  scenarios plus expected and observed payload formats for accepted visual
+  edits. The aggregate `ide_visual_designer_round_trip` gate now requires those
+  named missing lists to be empty, so malformed edit payloads must remain
+  exit-code `2` and accepted visual edits must keep the
+  `appgen.designer-sync-report.v1` envelope instead of passing by scenario
+  counts alone. Verification passed: Python compile for the touched DSL and
+  tests, focused designer-sync CLI audit (`1 passed`), aggregate tooling audit
+  (`1 passed`, with the known active-PBC `datetime.utcnow()` warnings only),
+  scoped diff whitespace check, and restricted-name scan outside archive, Git
+  internals, and active PBC paths.

@@ -4139,6 +4139,20 @@ def test_designer_sync_cli_audit_proves_diff_semantic_and_projection_refresh(tmp
     assert report["missing_scenario_ids"] == ()
     assert report["failing_scenario_count"] == 0
     assert report["failing_scenario_ids"] == ()
+    assert report["expected_exit_codes_by_scenario"] == {
+        "valid_add_field_round_trip": 0,
+        "invalid_json_rejected": 2,
+        "non_object_edit_rejected": 2,
+    }
+    assert report["exit_codes_by_scenario"] == report["expected_exit_codes_by_scenario"]
+    assert report["missing_exit_code_scenario_count"] == 0
+    assert report["missing_exit_code_scenarios"] == ()
+    assert report["expected_payload_formats_by_scenario"] == {
+        "valid_add_field_round_trip": "appgen.designer-sync-report.v1",
+    }
+    assert report["payload_formats_by_scenario"] == report["expected_payload_formats_by_scenario"]
+    assert report["missing_payload_format_scenario_count"] == 0
+    assert report["missing_payload_format_scenarios"] == ()
     assert report["valid_changed_surface_count"] >= 1
     assert report["required_changed_surfaces"] == ("database_designer",)
     assert report["missing_changed_surface_count"] == 0
@@ -5872,6 +5886,16 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert designer_check["detail"]["cli"]["passing_scenario_count"] == 3
     assert designer_check["detail"]["cli"]["missing_scenario_count"] == 0
     assert designer_check["detail"]["cli"]["failing_scenario_count"] == 0
+    assert designer_check["detail"]["cli"]["exit_codes_by_scenario"] == designer_check["detail"]["cli"][
+        "expected_exit_codes_by_scenario"
+    ]
+    assert designer_check["detail"]["cli"]["missing_exit_code_scenario_count"] == 0
+    assert designer_check["detail"]["cli"]["missing_exit_code_scenarios"] == ()
+    assert designer_check["detail"]["cli"]["payload_formats_by_scenario"] == designer_check["detail"]["cli"][
+        "expected_payload_formats_by_scenario"
+    ]
+    assert designer_check["detail"]["cli"]["missing_payload_format_scenario_count"] == 0
+    assert designer_check["detail"]["cli"]["missing_payload_format_scenarios"] == ()
     assert designer_check["detail"]["cli"]["valid_changed_surface_count"] >= 1
     assert designer_check["detail"]["cli"]["missing_changed_surface_count"] == 0
     assert designer_check["detail"]["cli"]["projection_count"] >= 1

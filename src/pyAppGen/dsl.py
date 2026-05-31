@@ -8258,6 +8258,8 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and designer_sync_cli["ok"]
             and designer_sync_cli.get("missing_scenario_count") == 0
             and designer_sync_cli.get("failing_scenario_count") == 0
+            and designer_sync_cli.get("missing_exit_code_scenario_count") == 0
+            and designer_sync_cli.get("missing_payload_format_scenario_count") == 0
             and designer_sync_cli.get("missing_projection_count") == 0
             and designer_sync_cli.get("missing_changed_surface_count") == 0
             and designer_sync_cli.get("missing_diff_fragment_count") == 0
@@ -15916,15 +15918,54 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
         and "Traceback" not in non_object_stderr
     )
     scenarios = (
-        {"id": "valid_add_field_round_trip", "ok": valid_ok},
-        {"id": "invalid_json_rejected", "ok": invalid_ok},
-        {"id": "non_object_edit_rejected", "ok": non_object_ok},
+        {
+            "id": "valid_add_field_round_trip",
+            "ok": valid_ok,
+            "exit_code": valid_exit,
+            "payload_format": valid_payload.get("format"),
+        },
+        {
+            "id": "invalid_json_rejected",
+            "ok": invalid_ok,
+            "exit_code": invalid_exit,
+            "payload_format": None,
+        },
+        {
+            "id": "non_object_edit_rejected",
+            "ok": non_object_ok,
+            "exit_code": non_object_exit,
+            "payload_format": None,
+        },
     )
     required_scenario_ids = tuple(scenario["id"] for scenario in scenarios)
     observed_scenario_ids = tuple(scenario["id"] for scenario in scenarios)
     failing_scenario_ids = tuple(scenario["id"] for scenario in scenarios if not scenario["ok"])
     missing_scenario_ids = tuple(
         scenario_id for scenario_id in required_scenario_ids if scenario_id not in observed_scenario_ids
+    )
+    expected_exit_codes_by_scenario = {
+        "valid_add_field_round_trip": 0,
+        "invalid_json_rejected": 2,
+        "non_object_edit_rejected": 2,
+    }
+    exit_codes_by_scenario = {scenario["id"]: scenario["exit_code"] for scenario in scenarios}
+    missing_exit_code_scenarios = tuple(
+        scenario_id
+        for scenario_id, expected_code in expected_exit_codes_by_scenario.items()
+        if exit_codes_by_scenario.get(scenario_id) != expected_code
+    )
+    expected_payload_formats_by_scenario = {
+        "valid_add_field_round_trip": "appgen.designer-sync-report.v1",
+    }
+    payload_formats_by_scenario = {
+        scenario["id"]: scenario["payload_format"]
+        for scenario in scenarios
+        if scenario["id"] in expected_payload_formats_by_scenario
+    }
+    missing_payload_format_scenarios = tuple(
+        scenario_id
+        for scenario_id, expected_format in expected_payload_formats_by_scenario.items()
+        if payload_formats_by_scenario.get(scenario_id) != expected_format
     )
     required_projection_ids = (
         "form_designer",
@@ -15965,6 +16006,8 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
         and non_object_ok
         and not missing_scenario_ids
         and not failing_scenario_ids
+        and not missing_exit_code_scenarios
+        and not missing_payload_format_scenarios
         and not missing_projection_ids
         and not missing_changed_surfaces
         and not missing_diff_fragments
@@ -15977,6 +16020,14 @@ def _tooling_audit_designer_sync_cli(tmp: Path, source: str) -> dict:
         "missing_scenario_ids": missing_scenario_ids,
         "failing_scenario_count": len(failing_scenario_ids),
         "failing_scenario_ids": failing_scenario_ids,
+        "expected_exit_codes_by_scenario": expected_exit_codes_by_scenario,
+        "exit_codes_by_scenario": exit_codes_by_scenario,
+        "missing_exit_code_scenario_count": len(missing_exit_code_scenarios),
+        "missing_exit_code_scenarios": missing_exit_code_scenarios,
+        "expected_payload_formats_by_scenario": expected_payload_formats_by_scenario,
+        "payload_formats_by_scenario": payload_formats_by_scenario,
+        "missing_payload_format_scenario_count": len(missing_payload_format_scenarios),
+        "missing_payload_format_scenarios": missing_payload_format_scenarios,
         "valid_changed_surface_count": len(valid_edit.get("changed_surfaces", ())),
         "required_changed_surfaces": required_changed_surfaces,
         "missing_changed_surface_count": len(missing_changed_surfaces),
