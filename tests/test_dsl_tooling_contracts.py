@@ -3566,13 +3566,20 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
         "appgen.lint",
         "appgen.semantic",
         "appgen.previewSemantic",
+        "appgen.validate",
         "appgen.format",
         "appgen.graph",
         "appgen.previewGraph",
+        "appgen.previewDesigner",
+        "appgen.migrationPlan",
+        "appgen.nlPlan",
         "appgen.explain",
         "appgen.generate",
         "appgen.previewArtifacts",
+        "appgen.verifyRelease",
         "appgen.package",
+        "appgen.doctor",
+        "appgen.toolingAudit",
         "appgen.pbcCatalog",
         "appgen.restartLanguageServer",
     } <= commands
@@ -3594,11 +3601,32 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     assert "registerRenameProvider" in source
     assert "asRenameWorkspaceEdit" in source
     assert "AppGen-X rename blocked" in source
+    assert "registerTreeDataProvider" in source
+    assert "AppGenCommandTreeProvider" in source
     assert "registerCodeActionsProvider" in source
     assert "registerDocumentFormattingEditProvider" in source
+    assert '["validate", file, "--targets", "web,mobile,desktop", "--json"]' in source
+    assert '["designer-sync", file, "--json"]' in source
+    assert '["migration-plan", previous[0].fsPath, current, "--backend", "postgresql", "--json"]' in source
+    assert '["nl-plan", file, "--prompt", prompt.trim(), "--backend", "postgresql", "--json"]' in source
+    assert '["verify", file, "--target", "all", "--json"]' in source
+    assert '["doctor", "--json"]' in source
+    assert '["tooling-audit", "--json"]' in source
     assert '["pbc", "list", "--json"]' in source
+    assert {"appgen.workspace", "appgen.reports", "appgen.agents"} <= {
+        item["id"] for item in package["contributes"]["views"]["appgen-x"]
+    }
+    assert {"appgen.workspace", "appgen.reports", "appgen.agents"} <= {
+        item["view"] for item in package["contributes"]["viewsWelcome"]
+    }
     assert "renderPbcCatalog" in source
     assert "renderGraphPreview" in source
+    assert "renderValidationReport" in source
+    assert "renderDesignerSync" in source
+    assert "renderMigrationPlan" in source
+    assert "renderNaturalLanguagePlan" in source
+    assert "renderReleaseVerifier" in source
+    assert "renderToolingAudit" in source
     assert "renderArtifactPreview" in source
     assert "createWebviewPanel" in source
     audit = appgen_dsl._tooling_audit_vscode_extension(Path(__file__).resolve().parents[1])
@@ -3630,6 +3658,10 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     assert audit["checks"]["diagnostics_collection"] is True
     assert audit["checks"]["cli_command_contracts"] is True
     assert audit["checks"]["webview_renderers"] is True
+    assert audit["checks"]["activity_views"] is True
+    assert {"appgen.workspace", "appgen.reports", "appgen.agents"} <= set(audit["views"])
+    assert audit["missing_view_count"] == 0
+    assert audit["missing_view_welcome_count"] == 0
     assert audit["provider_marker_count"] == len(audit["provider_markers"])
     assert audit["provider_marker_count"] >= 10
     assert audit["missing_provider_marker_count"] == 0
@@ -3643,6 +3675,8 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     assert '["generate", file, "--out", out, "--allow-warnings", "--json"]' in audit["command_cli_markers"]
     assert '["semantic", activeFile(), "--json"]' in audit["command_cli_markers"]
     assert '["semantic", file, "--json"]' in audit["command_cli_markers"]
+    assert '["nl-plan", file, "--prompt", prompt.trim(), "--backend", "postgresql", "--json"]' in audit["command_cli_markers"]
+    assert '["tooling-audit", "--json"]' in audit["command_cli_markers"]
 
 
 def test_release_verifier_report_covers_package_pbc_and_deployment_evidence() -> None:

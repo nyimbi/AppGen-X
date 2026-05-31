@@ -4484,3 +4484,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   contracts. Bulk visual transactions now cover seven operations across database,
   form, workflow, package/deployment, menu, and splash surfaces, while invalid
   database-backed form bindings still reject atomically.
+- Current editor integration expansion turns the VS Code scaffold into a
+  broader AppGen-X IDE command center. The extension now contributes Workspace,
+  Reports, and Agent Handoff activity-bar views, command palette actions for
+  validation, designer sync, migration planning, natural-language planning,
+  release verification, doctor, and tooling audit, plus webview renderers for
+  each JSON evidence family. The VS Code extension audit now gates view
+  contributions, welcome content, expanded CLI argument contracts, and the
+  larger webview/report surface.

@@ -28,15 +28,23 @@ function activate(context) {
   registerCommand(context, "appgen.lint", () => runForActiveFile(["lint", activeFile(), "--json"], "AppGen-X Lint"));
   registerCommand(context, "appgen.semantic", () => runForActiveFile(["semantic", activeFile(), "--json"], "AppGen-X Semantic Model"));
   registerCommand(context, "appgen.previewSemantic", previewSemanticModel);
+  registerCommand(context, "appgen.validate", validateActiveFile);
   registerCommand(context, "appgen.format", () => runForActiveFile(["format", activeFile(), "--write", "--json"], "AppGen-X Format"));
   registerCommand(context, "appgen.graph", () => runForActiveFile(["graph-suite", activeFile(), "--json"], "AppGen-X Graphs"));
   registerCommand(context, "appgen.previewGraph", previewGraph);
+  registerCommand(context, "appgen.previewDesigner", previewDesignerSync);
+  registerCommand(context, "appgen.migrationPlan", migrationPlan);
+  registerCommand(context, "appgen.nlPlan", naturalLanguagePlan);
   registerCommand(context, "appgen.explain", explainActiveSymbol);
   registerCommand(context, "appgen.generate", generateActiveFile);
   registerCommand(context, "appgen.previewArtifacts", previewGeneratedArtifacts);
+  registerCommand(context, "appgen.verifyRelease", verifyRelease);
   registerCommand(context, "appgen.package", packageActiveFile);
+  registerCommand(context, "appgen.doctor", doctorReport);
+  registerCommand(context, "appgen.toolingAudit", toolingAudit);
   registerCommand(context, "appgen.pbcCatalog", browsePbcCatalog);
   registerCommand(context, "appgen.restartLanguageServer", () => client.restart());
+  registerViews(context);
 }
 
 function deactivate() {
@@ -258,6 +266,51 @@ function registerProviders(context) {
       return client.request("workspace/symbol", { query }).then((symbols) => (symbols || []).map(asSymbolInformation));
     }
   }));
+}
+
+function registerViews(context) {
+  const viewGroups = {
+    "appgen.workspace": [
+      { label: "Validate", command: "appgen.validate", icon: "checklist" },
+      { label: "Designer Sync", command: "appgen.previewDesigner", icon: "layout" },
+      { label: "Graph Preview", command: "appgen.previewGraph", icon: "type-hierarchy" },
+      { label: "Generate", command: "appgen.generate", icon: "run" },
+      { label: "Package", command: "appgen.package", icon: "package" }
+    ],
+    "appgen.reports": [
+      { label: "Doctor", command: "appgen.doctor", icon: "tools" },
+      { label: "Tooling Audit", command: "appgen.toolingAudit", icon: "verified" },
+      { label: "Release Verification", command: "appgen.verifyRelease", icon: "shield" },
+      { label: "Migration Plan", command: "appgen.migrationPlan", icon: "git-compare" }
+    ],
+    "appgen.agents": [
+      { label: "Natural Language Plan", command: "appgen.nlPlan", icon: "sparkle" },
+      { label: "Semantic Preview", command: "appgen.previewSemantic", icon: "symbol-class" },
+      { label: "PBC Catalog", command: "appgen.pbcCatalog", icon: "library" }
+    ]
+  };
+  for (const [viewId, items] of Object.entries(viewGroups)) {
+    context.subscriptions.push(vscode.window.registerTreeDataProvider(viewId, new AppGenCommandTreeProvider(items)));
+  }
+}
+
+class AppGenCommandTreeProvider {
+  constructor(items) {
+    this.items = items;
+    this.onDidChangeTreeData = new vscode.EventEmitter().event;
+  }
+
+  getTreeItem(item) {
+    const treeItem = new vscode.TreeItem(item.label, vscode.TreeItemCollapsibleState.None);
+    treeItem.command = { command: item.command, title: item.label };
+    treeItem.iconPath = new vscode.ThemeIcon(item.icon);
+    treeItem.contextValue = "appgenCommand";
+    return treeItem;
+  }
+
+  getChildren() {
+    return this.items;
+  }
 }
 
 function asRange(range) {
@@ -502,6 +555,90 @@ function renderArtifactPreview(payload) {
   return previewShell("AppGen-X Generated Artifact Preview", body);
 }
 
+function renderValidationReport(payload) {
+  const diagnostics = payload.diagnostics || [];
+  const gaps = payload.blocking_gaps || [];
+  const targets = payload.targets || [];
+  const body = `<p>Status: ${escapeHtml(payload.ok ? "ok" : "failed")}</p>
+    <p>Targets: ${escapeHtml(targets.join(", ") || "default")}</p>
+    <h2>Diagnostics</h2>
+    <ul>${diagnostics.map((diagnostic) => `<li>${escapeHtml(diagnostic.code || "")} ${escapeHtml(diagnostic.message || JSON.stringify(diagnostic))}</li>`).join("")}</ul>
+    <h2>Blocking Gaps</h2>
+    <ul>${gaps.map((gap) => `<li>${escapeHtml(String(gap))}</li>`).join("")}</ul>
+    <details><summary>Raw validation report</summary><pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre></details>`;
+  return previewShell("AppGen-X Validation", body);
+}
+
+function renderDesignerSync(payload) {
+  const surfaces = payload.surfaces || [];
+  const checks = payload.checks || [];
+  const projections = payload.projections || {};
+  const body = `<p>Status: ${escapeHtml(payload.ok ? "ok" : "failed")}</p>
+    <p>Semantic model: ${escapeHtml(payload.semantic_model_format || "")}</p>
+    <h2>Surfaces</h2>
+    <ul>${surfaces.map((surface) => `<li>${escapeHtml(surface)}</li>`).join("")}</ul>
+    <h2>Projection Counts</h2>
+    <ul>${Object.entries(projections).map(([key, value]) => `<li>${escapeHtml(key)}: ${escapeHtml(Array.isArray(value) ? value.length : Object.keys(value || {}).length)}</li>`).join("")}</ul>
+    <h2>Checks</h2>
+    <ul>${checks.map((check) => `<li>${escapeHtml(check.id || check.check || "check")}: ${escapeHtml(check.ok ? "ok" : "failed")}</li>`).join("")}</ul>
+    <details><summary>Raw designer sync report</summary><pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre></details>`;
+  return previewShell("AppGen-X Designer Sync", body);
+}
+
+function renderMigrationPlan(payload) {
+  const steps = payload.steps || payload.plan || [];
+  const diagnostics = payload.diagnostics || [];
+  const body = `<p>Status: ${escapeHtml(payload.ok ? "ok" : "failed")}</p>
+    <p>Backend: ${escapeHtml(payload.backend || "")}</p>
+    <h2>Plan</h2>
+    <ol>${steps.map((step) => `<li>${escapeHtml(step.description || step.sql || step.kind || JSON.stringify(step))}</li>`).join("")}</ol>
+    <h2>Diagnostics</h2>
+    <ul>${diagnostics.map((diagnostic) => `<li>${escapeHtml(diagnostic.code || "")} ${escapeHtml(diagnostic.message || JSON.stringify(diagnostic))}</li>`).join("")}</ul>
+    <details><summary>Raw migration plan</summary><pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre></details>`;
+  return previewShell("AppGen-X Migration Plan", body);
+}
+
+function renderNaturalLanguagePlan(payload) {
+  const operations = payload.operations || [];
+  const handoffs = payload.agent_handoffs || [];
+  const compactModels = payload.compact_models || [];
+  const body = `<p>Status: ${escapeHtml(payload.ok ? "ok" : "failed")}</p>
+    <h2>Operations</h2>
+    <ul>${operations.map((operation) => `<li>${escapeHtml(operation.kind || operation.type || JSON.stringify(operation))}</li>`).join("")}</ul>
+    <h2>Agent Handoffs</h2>
+    <ul>${handoffs.map((handoff) => `<li>${escapeHtml(handoff.agent || handoff.id || "agent")}: ${escapeHtml(handoff.summary || handoff.brief || "")}</li>`).join("")}</ul>
+    <h2>Compact Model Briefs</h2>
+    <ul>${compactModels.map((model) => `<li>${escapeHtml(model.model || model.id || "")}: ${escapeHtml(model.token_budget || model.tokens || "")}</li>`).join("")}</ul>
+    <details><summary>DSL Patch</summary><pre>${escapeHtml(payload.dsl_patch || "")}</pre></details>
+    <details><summary>Raw natural language plan</summary><pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre></details>`;
+  return previewShell("AppGen-X Natural Language Plan", body);
+}
+
+function renderReleaseVerifier(payload) {
+  const reports = payload.reports || {};
+  const checks = payload.checks || [];
+  const body = `<p>Status: ${escapeHtml(payload.ok ? "ok" : "failed")}</p>
+    <h2>Targets</h2>
+    <ul>${Object.keys(reports).map((target) => `<li>${escapeHtml(target)}: ${escapeHtml(reports[target].ok ? "ok" : "failed")}</li>`).join("")}</ul>
+    <h2>Checks</h2>
+    <ul>${checks.map((check) => `<li>${escapeHtml(check.id || check.check || "check")}: ${escapeHtml(check.ok ? "ok" : "failed")}</li>`).join("")}</ul>
+    <details><summary>Raw release verification</summary><pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre></details>`;
+  return previewShell("AppGen-X Release Verification", body);
+}
+
+function renderToolingAudit(payload) {
+  const checks = payload.checks || [];
+  const gaps = payload.blocking_gaps || [];
+  const body = `<p>Status: ${escapeHtml(payload.ok ? "ok" : "failed")}</p>
+    <p>Source: ${escapeHtml(payload.source_of_truth || "")}</p>
+    <h2>Checks</h2>
+    <ul>${checks.map((check) => `<li>${escapeHtml(check.id || check.check || "check")}: ${escapeHtml(check.ok ? "ok" : "failed")} ${escapeHtml(check.section || "")}</li>`).join("")}</ul>
+    <h2>Blocking Gaps</h2>
+    <ul>${gaps.map((gap) => `<li>${escapeHtml(gap.id || JSON.stringify(gap))}</li>`).join("")}</ul>
+    <details><summary>Raw tooling audit</summary><pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre></details>`;
+  return previewShell("AppGen-X Tooling Audit", body);
+}
+
 function renderPbcCatalog(payload) {
   const pbcs = payload.pbcs || payload.catalog || payload.items || [];
   const items = Array.isArray(pbcs) ? pbcs : Object.entries(pbcs).map(([key, value]) => ({ key, ...value }));
@@ -572,6 +709,20 @@ function previewSemanticModel() {
   });
 }
 
+function validateActiveFile() {
+  const file = activeFile();
+  return runAppGenJson(["validate", file, "--targets", "web,mobile,desktop", "--json"], "AppGen-X Validation").then((result) => {
+    showJsonPreview("AppGen-X Validation", result.payload, renderValidationReport);
+  });
+}
+
+function previewDesignerSync() {
+  const file = activeFile();
+  return runAppGenJson(["designer-sync", file, "--json"], "AppGen-X Designer Sync").then((result) => {
+    showJsonPreview("AppGen-X Designer Sync", result.payload, renderDesignerSync);
+  });
+}
+
 function previewGeneratedArtifacts() {
   const file = activeFile();
   const out = path.join(path.dirname(file), ".appgen-preview");
@@ -580,10 +731,61 @@ function previewGeneratedArtifacts() {
   });
 }
 
+async function migrationPlan() {
+  const current = activeFile();
+  const previous = await vscode.window.showOpenDialog({
+    canSelectFiles: true,
+    canSelectFolders: false,
+    canSelectMany: false,
+    filters: { "AppGen-X DSL": ["appgen", "ag", "ags"] },
+    openLabel: "Select previous DSL"
+  });
+  if (!previous || !previous.length) {
+    return;
+  }
+  return runAppGenJson(["migration-plan", previous[0].fsPath, current, "--backend", "postgresql", "--json"], "AppGen-X Migration Plan").then((result) => {
+    showJsonPreview("AppGen-X Migration Plan", result.payload, renderMigrationPlan);
+  });
+}
+
+async function naturalLanguagePlan() {
+  const file = activeFile();
+  const prompt = await vscode.window.showInputBox({
+    title: "AppGen-X Natural Language Change",
+    prompt: "Describe the tables, forms, workflows, agents, reports, or UI changes to plan.",
+    ignoreFocusOut: true
+  });
+  if (!prompt || !prompt.trim()) {
+    return;
+  }
+  return runAppGenJson(["nl-plan", file, "--prompt", prompt.trim(), "--backend", "postgresql", "--json"], "AppGen-X Natural Language Plan").then((result) => {
+    showJsonPreview("AppGen-X Natural Language Plan", result.payload, renderNaturalLanguagePlan);
+  });
+}
+
+function verifyRelease() {
+  const file = activeFile();
+  return runAppGenJson(["verify", file, "--target", "all", "--json"], "AppGen-X Release Verification").then((result) => {
+    showJsonPreview("AppGen-X Release Verification", result.payload, renderReleaseVerifier);
+  });
+}
+
 function packageActiveFile() {
   const file = activeFile();
   const out = path.join(path.dirname(file), "dist");
   return runForActiveFile(["package", file, "--out", out, "--json"], "AppGen-X Package");
+}
+
+function doctorReport() {
+  return runAppGenJson(["doctor", "--json"], "AppGen-X Doctor").then((result) => {
+    showJsonPreview("AppGen-X Doctor", result.payload, renderToolingAudit);
+  });
+}
+
+function toolingAudit() {
+  return runAppGenJson(["tooling-audit", "--json"], "AppGen-X Tooling Audit").then((result) => {
+    showJsonPreview("AppGen-X Tooling Audit", result.payload, renderToolingAudit);
+  });
 }
 
 function browsePbcCatalog() {

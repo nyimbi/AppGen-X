@@ -16,15 +16,25 @@
     "onCommand:appgen.lint",
     "onCommand:appgen.semantic",
     "onCommand:appgen.previewSemantic",
+    "onCommand:appgen.validate",
     "onCommand:appgen.format",
     "onCommand:appgen.graph",
     "onCommand:appgen.previewGraph",
+    "onCommand:appgen.previewDesigner",
+    "onCommand:appgen.migrationPlan",
+    "onCommand:appgen.nlPlan",
     "onCommand:appgen.explain",
     "onCommand:appgen.generate",
     "onCommand:appgen.previewArtifacts",
+    "onCommand:appgen.verifyRelease",
     "onCommand:appgen.package",
+    "onCommand:appgen.doctor",
+    "onCommand:appgen.toolingAudit",
     "onCommand:appgen.pbcCatalog",
-    "onCommand:appgen.restartLanguageServer"
+    "onCommand:appgen.restartLanguageServer",
+    "onView:appgen.workspace",
+    "onView:appgen.reports",
+    "onView:appgen.agents"
   ],
   "main": "./src/extension.js",
   "contributes": {
@@ -74,6 +84,10 @@
         "title": "AppGen-X: Preview Semantic Model"
       },
       {
+        "command": "appgen.validate",
+        "title": "AppGen-X: Validate Current File"
+      },
+      {
         "command": "appgen.format",
         "title": "AppGen-X: Format Current File"
       },
@@ -84,6 +98,18 @@
       {
         "command": "appgen.previewGraph",
         "title": "AppGen-X: Preview Graphs"
+      },
+      {
+        "command": "appgen.previewDesigner",
+        "title": "AppGen-X: Preview Designer Sync"
+      },
+      {
+        "command": "appgen.migrationPlan",
+        "title": "AppGen-X: Create Migration Plan"
+      },
+      {
+        "command": "appgen.nlPlan",
+        "title": "AppGen-X: Plan Natural Language Change"
       },
       {
         "command": "appgen.explain",
@@ -98,8 +124,20 @@
         "title": "AppGen-X: Preview Generated Artifacts"
       },
       {
+        "command": "appgen.verifyRelease",
+        "title": "AppGen-X: Verify Release Targets"
+      },
+      {
         "command": "appgen.package",
         "title": "AppGen-X: Package Application"
+      },
+      {
+        "command": "appgen.doctor",
+        "title": "AppGen-X: Run Doctor"
+      },
+      {
+        "command": "appgen.toolingAudit",
+        "title": "AppGen-X: Run Tooling Audit"
       },
       {
         "command": "appgen.pbcCatalog",
@@ -122,6 +160,9 @@
           "command": "appgen.previewSemantic"
         },
         {
+          "command": "appgen.validate"
+        },
+        {
           "command": "appgen.format"
         },
         {
@@ -129,6 +170,15 @@
         },
         {
           "command": "appgen.previewGraph"
+        },
+        {
+          "command": "appgen.previewDesigner"
+        },
+        {
+          "command": "appgen.migrationPlan"
+        },
+        {
+          "command": "appgen.nlPlan"
         },
         {
           "command": "appgen.explain"
@@ -140,7 +190,16 @@
           "command": "appgen.previewArtifacts"
         },
         {
+          "command": "appgen.verifyRelease"
+        },
+        {
           "command": "appgen.package"
+        },
+        {
+          "command": "appgen.doctor"
+        },
+        {
+          "command": "appgen.toolingAudit"
         },
         {
           "command": "appgen.pbcCatalog"
@@ -149,6 +208,45 @@
           "command": "appgen.restartLanguageServer"
         }
       ]
-    }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "appgen-x",
+          "title": "AppGen-X",
+          "icon": "resources/appgen.svg"
+        }
+      ]
+    },
+    "views": {
+      "appgen-x": [
+        {
+          "id": "appgen.workspace",
+          "name": "Workspace"
+        },
+        {
+          "id": "appgen.reports",
+          "name": "Reports"
+        },
+        {
+          "id": "appgen.agents",
+          "name": "Agent Handoffs"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "appgen.workspace",
+        "contents": "Open an AppGen-X DSL file, then run validation, designer sync, graph, generation, or packaging actions from this view."
+      },
+      {
+        "view": "appgen.reports",
+        "contents": "Run Doctor or Tooling Audit for machine-readable release evidence."
+      },
+      {
+        "view": "appgen.agents",
+        "contents": "Use Natural Language Plan to produce compact handoffs for coding agents and local models."
+      }
+    ]
   }
 }

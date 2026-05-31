@@ -1913,10 +1913,13 @@ The VS Code extension should provide:
 - diagnostics panel integration;
 - code actions and quick fixes;
 - outline tree;
+- activity-bar views for workspace actions, release reports, and agent handoffs;
 - graph previews;
 - generated artifact preview;
 - command palette actions for lint, semantic JSON, semantic preview, format,
-  graph, explain, generate, and package;
+  validation, graph, designer sync, migration planning, natural-language
+  planning, explain, generate, release verification, package, doctor, and
+  tooling audit;
 - PBC catalog browser.
 
 The repository ships the extension scaffold at `extensions/vscode-appgen-x`.
@@ -1926,22 +1929,31 @@ dependency-free JSON-RPC client that launches `appgen lsp --stdio`. The client
 registers VS Code providers for diagnostics, completion, hover, definition,
 references, document symbols, workspace symbols, rename, code actions, and
 formatting, while command palette actions call the same CLI contracts for lint,
-semantic model extraction, format, graph, explain, generate, and package.
-Semantic model previews, graph previews, generated artifact previews, and the
-PBC catalog browser render CLI JSON reports in webview panels rather than
-relying on editor-specific state.
+semantic model extraction, validation, format, graph, designer sync, migration
+planning, natural-language change planning, explain, generate, release
+verification, package, doctor, tooling audit, and PBC catalog browsing. It also
+contributes an AppGen-X activity-bar container with Workspace, Reports, and
+Agent Handoffs views. These views expose the same command contracts as clickable
+tree actions, so users can drive application design, database validation,
+release evidence, and coding-agent handoffs without memorizing CLI flags.
+Semantic model previews, validation reports, graph previews, designer sync
+reports, migration plans, natural-language change plans, generated artifact
+previews, release-verifier reports, doctor/tooling-audit reports, and the PBC
+catalog browser render CLI JSON reports in webview panels rather than relying on
+editor-specific state.
 `appgen.vscode-extension-audit.v1` checks this surface explicitly: language
 metadata, syntax grammar, command contributions, LSP providers, diagnostics
 collection, command activation events, command palette membership, CLI command
-configuration, CLI-backed command argument contracts, and semantic/graph/artifact/PBC
-webview renderers must all be present before the extension is counted as
-tooling-complete. The audit also reports command, activation-event,
-provider-marker, CLI-contract-marker, and webview-marker counts so release
-evidence captures the editor surface breadth, not only pass/fail booleans. It
+configuration, activity-bar view contributions, welcome content, CLI-backed
+command argument contracts, and semantic/validation/graph/designer/migration/NL
+plan/artifact/release/tooling/PBC webview renderers must all be present before
+the extension is counted as tooling-complete. The audit also reports command,
+activation-event, view, provider-marker, CLI-contract-marker, and webview-marker
+counts so release evidence captures the editor surface breadth, not only pass/fail booleans. It
 also reports missing-command, missing-activation-event, missing-palette-entry,
-missing-provider-marker, missing-CLI-contract-marker, and
-missing-webview-marker counts, which must all be zero for the extension gate to
-pass.
+missing-view, missing-view-welcome, missing-provider-marker,
+missing-CLI-contract-marker, and missing-webview-marker counts, which must all
+be zero for the extension gate to pass.
 
 ### AppGen-X Studio / Monaco
 

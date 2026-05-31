@@ -14333,22 +14333,33 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
         item.get("command")
         for item in package.get("contributes", {}).get("menus", {}).get("commandPalette", ())
     }
+    views = package.get("contributes", {}).get("views", {}).get("appgen-x", ())
+    view_ids = {item.get("id") for item in views}
+    views_welcome = tuple(item.get("view") for item in package.get("contributes", {}).get("viewsWelcome", ()))
     configuration = package.get("contributes", {}).get("configuration", {})
     configuration_properties = configuration.get("properties", {})
     required_commands = {
         "appgen.lint",
         "appgen.semantic",
         "appgen.previewSemantic",
+        "appgen.validate",
         "appgen.format",
         "appgen.graph",
         "appgen.previewGraph",
+        "appgen.previewDesigner",
+        "appgen.migrationPlan",
+        "appgen.nlPlan",
         "appgen.explain",
         "appgen.generate",
         "appgen.previewArtifacts",
+        "appgen.verifyRelease",
         "appgen.package",
+        "appgen.doctor",
+        "appgen.toolingAudit",
         "appgen.pbcCatalog",
         "appgen.restartLanguageServer",
     }
+    required_view_ids = {"appgen.workspace", "appgen.reports", "appgen.agents"}
     provider_markers = (
         "registerCompletionItemProvider",
         "registerHoverProvider",
@@ -14362,24 +14373,39 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
         "registerCodeActionsProvider",
         "registerDocumentFormattingEditProvider",
         '["lsp", "--stdio"]',
+        "registerTreeDataProvider",
+        "AppGenCommandTreeProvider",
     )
     command_cli_markers = (
         '["lint", activeFile(), "--json"]',
         '["semantic", activeFile(), "--json"]',
         '["semantic", file, "--json"]',
+        '["validate", file, "--targets", "web,mobile,desktop", "--json"]',
         '["format", activeFile(), "--write", "--json"]',
         '["graph-suite", activeFile(), "--json"]',
+        '["designer-sync", file, "--json"]',
+        '["migration-plan", previous[0].fsPath, current, "--backend", "postgresql", "--json"]',
+        '["nl-plan", file, "--prompt", prompt.trim(), "--backend", "postgresql", "--json"]',
         '["explain", file, "--symbol", symbol, "--json"]',
         '["generate", file, "--out", out, "--json"]',
         '["generate", file, "--out", out, "--allow-warnings", "--json"]',
+        '["verify", file, "--target", "all", "--json"]',
         '["package", file, "--out", out, "--json"]',
+        '["doctor", "--json"]',
+        '["tooling-audit", "--json"]',
         '["pbc", "list", "--json"]',
     )
     webview_markers = (
         "createWebviewPanel",
         "renderGraphPreview",
         "renderSemanticModel",
+        "renderValidationReport",
+        "renderDesignerSync",
+        "renderMigrationPlan",
+        "renderNaturalLanguagePlan",
         "renderArtifactPreview",
+        "renderReleaseVerifier",
+        "renderToolingAudit",
         "renderPbcCatalog",
         "showJsonPreview",
     )
@@ -14387,6 +14413,8 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
     missing_commands = tuple(sorted(required_commands - commands))
     missing_activation_events = tuple(sorted(required_activation_events - set(activation_events)))
     missing_command_palette = tuple(sorted(required_commands - command_palette))
+    missing_views = tuple(sorted(required_view_ids - view_ids))
+    missing_view_welcome = tuple(sorted(required_view_ids - set(views_welcome)))
     missing_provider_markers = tuple(marker for marker in provider_markers if marker not in source)
     missing_command_cli_markers = tuple(marker for marker in command_cli_markers if marker not in source)
     missing_webview_markers = tuple(marker for marker in webview_markers if marker not in source)
@@ -14401,6 +14429,7 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
         "command_activation_events": not missing_activation_events,
         "command_palette": not missing_command_palette,
         "cli_command_configuration": configuration_properties.get("appgen.command", {}).get("default") == "appgen",
+        "activity_views": not missing_views and not missing_view_welcome,
         "providers": not missing_provider_markers,
         "diagnostics_collection": 'createDiagnosticCollection("appgen")' in source
         and "textDocument/publishDiagnostics" in source,
@@ -14423,6 +14452,15 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
         "missing_command_palette_count": len(missing_command_palette),
         "configuration_properties": tuple(sorted(configuration_properties)),
         "configuration_property_count": len(configuration_properties),
+        "views": tuple(sorted(view_ids)),
+        "view_count": len(view_ids),
+        "required_views": tuple(sorted(required_view_ids)),
+        "required_view_count": len(required_view_ids),
+        "missing_views": missing_views,
+        "missing_view_count": len(missing_views),
+        "views_welcome": views_welcome,
+        "missing_view_welcome": missing_view_welcome,
+        "missing_view_welcome_count": len(missing_view_welcome),
         "language_extensions": language_extensions,
         "language_extension_count": len(language_extensions),
         "activation_events": activation_events,
