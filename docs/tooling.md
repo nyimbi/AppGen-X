@@ -752,7 +752,8 @@ JSON Schema 2020-12 dialect, and includes schemas for `appgen.diagnostic.v1`,
 `appgen.dsl-authoring-release-gate.v1`,
 `appgen.dsl-language-service.v1`,
 `appgen.format-result.v1`, `appgen.format-text-renderer.v1`,
-`appgen.formatter-contract-audit.v1`, `appgen.validate-report.v1`,
+`appgen.formatter-contract-audit.v1`, `appgen.format-write-audit.v1`,
+`appgen.validate-report.v1`,
 `appgen.generate-report.v1`, `appgen.validate-generate-text-renderer.v1`,
 `appgen.validate-generate-cli-audit.v1`, `appgen.graph-report.v1`,
 `appgen.graph.er.v1`, `appgen.graph.lookup.v1`,
@@ -792,11 +793,26 @@ JSON Schema 2020-12 dialect, and includes schemas for `appgen.diagnostic.v1`,
 `appgen.designer-nl-planner-panel.v1`,
 `appgen.designer-sync-report.v1`,
 `appgen.designer-sync-cli-audit.v1`,
-`appgen.designer-visual-edit-result.v1`, diagnostic catalog, fixture audit, and
+`appgen.designer-visual-edit-result.v1`,
+`appgen.designer-visual-transaction-result.v1`,
+`appgen.designer-visual-edit-matrix.v1`,
+`appgen.studio-semantic-service.v1`,
+`appgen.studio-semantic-service-audit.v1`,
+`appgen.studio-diagnostics-quick-fixes.v1`,
+`appgen.studio-graph-explain.v1`,
+`appgen.studio-natural-language-evolution.v1`,
+`appgen.studio-browser-smoke-ci-contract.v1`,
+`appgen.frontend-semantic-service-audit.v1`,
+`appgen.frontend-dsl-editor-audit.v1`,
+`appgen.frontend-interaction-audit.v1`,
+`appgen.vscode-extension-audit.v1`, diagnostic catalog, fixture audit, and
 diagnostic text-renderer reports, parser-golden and parser-golden text-renderer
 audits, semantic-drift and semantic-drift text-renderer audits,
 `appgen.migration-plan.v1`,
 `appgen.nl-plan.v1`, `appgen.release-verifier-report.v1`,
+`appgen.release-evidence-file.v1`,
+`appgen.package-invalid-target-audit.v1`,
+`appgen.component-publish-cli-audit.v1`,
 `appgen.component-publish-report.v1`, `appgen.doctor-report.v1`,
 `appgen.tooling-audit.v1`, `appgen.contract-schema-catalog.v1`, and
 `appgen.contract-validation-report.v1`. The catalog is intentionally complete:
@@ -820,9 +836,10 @@ ids; expected and observed exit codes; expected and observed payload formats;
 semantic-model required fields; representative payload validation counts;
 required text markers; and text JSON-fallback status. The representative
 payload validation pass validates live report payloads for every required schema
-format, including formatter, validation, generation, graph, explain, LSP,
-designer-sync, diagnostic, parser-golden, drift, migration, natural-language,
-release, component-publish, doctor, schema-catalog, and validation-report
+format, including formatter write-mode, validation, generation, graph, explain,
+LSP, designer-sync, Studio bridge, Studio browser-smoke, frontend bridge,
+diagnostic, parser-golden, drift, migration, natural-language, release,
+component-publish, doctor, schema-catalog, and validation-report
 payloads. The aggregate `contract_schema_cli_contracts` gate fails when any core
 schema disappears, the CLI stops exposing a selected semantic-model schema, a
 missing schema no longer returns a controlled contract payload, representative
@@ -1453,6 +1470,11 @@ the `appgen.release-evidence-bundle.v1` bundle format and
 graph-suite kinds as `graph-kinds ...`, graph-suite rendering formats as
 `graph-formats ...`, per-target verifier status, blocking gaps, and artifact paths;
 `--json` remains the complete machine-readable report.
+When `--out` writes the release evidence artifact, the file envelope is
+`appgen.release-evidence-file.v1`. It contains the evidence bundle, target
+checks, and target reports in a stable machine contract so CI systems can
+validate the written artifact directly instead of trusting only the package
+command response.
 The JSON report also publishes target, check, passing-check, failing-check,
 report, diagnostic, graph-kind, graph-format, evidence-artifact, and
 written-artifact counts at the top level, and each target verifier publishes
@@ -1485,6 +1507,9 @@ The aggregate tooling audit also exposes package handoff and release text as
 separate gates. `package_manifest_handoff_contracts` proves the written web,
 mobile, desktop, PBC, and deployment manifests carry target-specific handoff
 metadata, graph-suite evidence, and downstream-builder readiness booleans.
+`appgen.package-invalid-target-audit.v1` is the negative package-target
+contract: it proves unsupported package targets fail with the expected
+diagnostic shape and cannot silently produce partial handoff artifacts.
 `release_text_evidence_contracts` proves the human release log retains release,
 graph-suite, target-status, blocking-gap, and artifact markers without falling
 back to raw JSON, and fails if any required marker family reports missing named
@@ -1511,6 +1536,10 @@ before/after catalog counts.
 prove this human-readable component publication log remains side-effect-aware
 and exposes the catalog patch contract plus existing-catalog context without
 parsing JSON.
+`appgen.component-publish-cli-audit.v1` is the executable CLI contract for that
+surface. It validates JSON, text, and missing-catalog modes, requires the
+published report and catalog patch envelopes to remain named, and keeps
+component publication usable by coding agents without scraping prose.
 The renderer contract reports fragment and marker counts for the component
 summary, catalog metadata, side-effect posture, and patch contract. It also
 reports summary-line, catalog-line, side-effect-line, patch-contract-line, and
@@ -2193,6 +2222,16 @@ actionable drop preview/commit operations with handler definition evidence,
 device and data workbench render inputs, status-rail audit inputs, and the
 semantic-service bridge before the Studio browser-smoke gate can pass.
 The top-level `appgen.tooling-audit.v1` treats these as first-class gates:
+
+The raw Studio bridge payloads are also schema-backed contracts, not just
+nested audit details. `appgen.studio-diagnostics-quick-fixes.v1` validates the
+diagnostic and quick-fix panel payload, `appgen.studio-graph-explain.v1`
+validates the graph-suite/explain bridge payload,
+`appgen.studio-natural-language-evolution.v1` validates the prompt-to-DSL-diff
+evolution payload, and `appgen.studio-browser-smoke-ci-contract.v1` validates
+the executable browser-smoke handoff. This lets IDE clients, CI agents, and
+external coding agents validate each Studio bridge surface independently before
+they trust the aggregate semantic-service audit.
 `frontend_semantic_service_bridge` reports service, surface, surface-contract,
 required/observed/missing-name, and missing-count evidence from
 `appgen.frontend-semantic-service-audit.v1`;
@@ -2736,7 +2775,7 @@ Exit criteria:
   package-manifest, component/PBC wrapper, doctor, tooling-audit,
   project-governance, schema-catalog, and contract-validation report schemas are
   available from CLI JSON and text modes. The schema audit validates
-  representative payloads for all 157 documented `appgen.*.v1` formats, so
+  representative payloads for all 162 documented `appgen.*.v1` formats, so
   adding a documented contract without a matching runtime sample fails the
   release gate.
 - `appgen.contract-validation-cli-audit.v1` proves those JSON contracts can be

@@ -6753,6 +6753,7 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.format-result.v1",
     "appgen.format-text-renderer.v1",
     "appgen.formatter-contract-audit.v1",
+    "appgen.format-write-audit.v1",
     "appgen.validate-report.v1",
     "appgen.generate-report.v1",
     "appgen.validate-generate-text-renderer.v1",
@@ -6823,6 +6824,10 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.designer-visual-edit-matrix.v1",
     "appgen.studio-semantic-service.v1",
     "appgen.studio-semantic-service-audit.v1",
+    "appgen.studio-diagnostics-quick-fixes.v1",
+    "appgen.studio-graph-explain.v1",
+    "appgen.studio-natural-language-evolution.v1",
+    "appgen.studio-browser-smoke-ci-contract.v1",
     "appgen.frontend-semantic-service-audit.v1",
     "appgen.frontend-dsl-editor-audit.v1",
     "appgen.frontend-interaction-audit.v1",
@@ -7409,6 +7414,33 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "failed_check_count": {"type": "integer", "minimum": 0},
                 "checks": {"type": "array", "items": {"type": "object"}},
                 "blocking_gaps": {"type": "array", "items": {"type": "object"}},
+            },
+        ),
+        "appgen.format-write-audit.v1": _contract_format_schema(
+            "appgen.format-write-audit.v1",
+            required=(
+                "format",
+                "ok",
+                "scenario_count",
+                "passing_scenario_count",
+                "failing_scenario_count",
+                "blocking_gap_count",
+                "blocking_gaps",
+            ),
+            properties={
+                "scenario_count": {"type": "integer", "minimum": 0},
+                "passing_scenario_count": {"type": "integer", "minimum": 0},
+                "failing_scenario_count": {"type": "integer", "minimum": 0},
+                "scenario_ids": {"type": "array", "items": {"type": "string"}},
+                "failing_scenarios": {"type": "array", "items": {"type": "string"}},
+                "blocking_gap_count": {"type": "integer", "minimum": 0},
+                "blocking_gaps": {"type": "array", "items": {"type": "string"}},
+                "write_mode_count": {"type": "integer", "minimum": 0},
+                "check_mode_count": {"type": "integer", "minimum": 0},
+                "organize_category_count": {"type": "integer", "minimum": 0},
+                "organize_table_body_order": {"type": "array", "items": {"type": "string"}},
+                "text_has_report_format": {"type": "boolean"},
+                "text_has_write_metadata": {"type": "boolean"},
             },
         ),
         "appgen.validate-report.v1": _json_object_schema(
@@ -8277,6 +8309,47 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "service_format": {"type": "string"},
                 "services": {"type": ("array", "object"), "items": {"type": "string"}},
                 "surface_formats": {"type": "object"},
+            },
+        ),
+        "appgen.studio-diagnostics-quick-fixes.v1": _contract_format_schema(
+            "appgen.studio-diagnostics-quick-fixes.v1",
+            required=("format", "diagnostics", "code_actions"),
+            properties={
+                "diagnostics": {"type": "object"},
+                "code_actions": {"type": "object"},
+            },
+        ),
+        "appgen.studio-graph-explain.v1": _contract_format_schema(
+            "appgen.studio-graph-explain.v1",
+            required=("format", "graph_suite", "panel"),
+            properties={
+                "graph_suite": {"type": "object"},
+                "panel": {"type": "object"},
+            },
+        ),
+        "appgen.studio-natural-language-evolution.v1": _contract_format_schema(
+            "appgen.studio-natural-language-evolution.v1",
+            required=("format", "plan", "requires_dsl_diff_preview", "applies_through"),
+            properties={
+                "plan": {"type": "object"},
+                "requires_dsl_diff_preview": {"type": "boolean"},
+                "applies_through": {"type": "string"},
+            },
+        ),
+        "appgen.studio-browser-smoke-ci-contract.v1": _contract_format_schema(
+            "appgen.studio-browser-smoke-ci-contract.v1",
+            required=("format", "ok", "command", "scenarios", "checks", "blocking_gaps"),
+            properties={
+                "command": {"type": "string"},
+                "workflow": {"type": "string"},
+                "script": {"type": "string"},
+                "scenarios": {"type": "array", "items": {"type": "string"}},
+                "environment": {"type": "object"},
+                "frontend_semantic_service_audit": {"type": "object"},
+                "frontend_dsl_editor_audit": {"type": "object"},
+                "frontend_interaction_audit": {"type": "object"},
+                "checks": {"type": "array", "items": {"type": "object"}},
+                "blocking_gaps": {"type": "array", "items": {"type": "object"}},
             },
         ),
         "appgen.frontend-semantic-service-audit.v1": _contract_format_schema(
@@ -21002,6 +21075,11 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
         )
         designer_cli = _tooling_audit_designer_sync_cli(tmp_path, source)
         studio_audit = _tooling_audit_studio_semantic_service(source)
+        from .studio import studio_browser_smoke_ci_contract, studio_semantic_service_workspace
+
+        studio_workspace = studio_semantic_service_workspace(source)
+        studio_browser_smoke = studio_browser_smoke_ci_contract(repo_root)
+        format_write = _tooling_audit_format_write(tmp_path)
         implementation_phases = {
             "format": "appgen.tooling-implementation-phase-audit.v1",
             "ok": True,
@@ -21048,6 +21126,7 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             "appgen.format-result.v1": format_report_dsl(source, source_name="contract-schema.appgen"),
             "appgen.format-text-renderer.v1": _format_text_renderer_contract(),
             "appgen.formatter-contract-audit.v1": formatter_contract_audit_dsl(),
+            "appgen.format-write-audit.v1": format_write,
             "appgen.validate-report.v1": validate_report_dsl(source, source_name="contract-schema.appgen", targets=("web",)),
             "appgen.generate-report.v1": generate_report_dsl(
                 source,
@@ -21153,6 +21232,10 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
                 "surface_formats": studio_audit.get("surface_formats", {}),
             },
             "appgen.studio-semantic-service-audit.v1": studio_audit,
+            "appgen.studio-diagnostics-quick-fixes.v1": studio_workspace["diagnostics_quick_fixes"],
+            "appgen.studio-graph-explain.v1": studio_workspace["graph_explain"],
+            "appgen.studio-natural-language-evolution.v1": studio_workspace["natural_language_evolution"],
+            "appgen.studio-browser-smoke-ci-contract.v1": studio_browser_smoke,
             "appgen.frontend-semantic-service-audit.v1": studio_audit.get("frontend_semantic_service_audit", {}),
             "appgen.frontend-dsl-editor-audit.v1": studio_audit.get("frontend_dsl_editor_audit", {}),
             "appgen.frontend-interaction-audit.v1": studio_audit.get("frontend_interaction_audit", {}),
