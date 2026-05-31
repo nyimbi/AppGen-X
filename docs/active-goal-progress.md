@@ -4443,3 +4443,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   contracts, and CLI help-surface audits. The live schema sample validator now
   covers all 50 required formats, so agents can validate both successful tooling
   envelopes and controlled CLI failure contracts through the same catalog.
+- Current semantic/language foundation schema pass promotes shared-model and
+  language-quality evidence into the exported contract catalog. The required
+  schema set now covers symbol coverage, semantic source-set metadata,
+  per-file semantic reports, the semantic source-set CLI audit, module-boundary
+  audit, non-goal policy audit, keyword-budget audit, ANTLR integrity audit,
+  language-quality contract, and language CLI audit. Live schema validation now
+  covers all 60 required formats, closing a gap where the semantic foundation
+  was executable but not independently schema-validatable by agents or CI.

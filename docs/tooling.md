@@ -707,6 +707,12 @@ machine contracts that agents, IDEs, CI jobs, and downstream package verifiers
 consume. The command returns `appgen.contract-schema-catalog.v1`, using the
 JSON Schema 2020-12 dialect, and includes schemas for `appgen.diagnostic.v1`,
 `appgen.lint-report.v1`, `appgen.semantic-model.v1`,
+`appgen.symbol-coverage.v1`, `appgen.semantic-source-set.v1`,
+`appgen.semantic-file-report.v1`,
+`appgen.semantic-source-set-cli-audit.v1`,
+`appgen.module-boundary-audit.v1`, `appgen.non-goal-policy-audit.v1`,
+`appgen.dsl-keyword-budget.v1`, `appgen.dsl-antlr-integrity.v1`,
+`appgen.dsl-language-quality.v1`, `appgen.dsl-language-cli-audit.v1`,
 `appgen.format-result.v1`, `appgen.validate-report.v1`,
 `appgen.generate-report.v1`, `appgen.graph-suite-report.v1`,
 `appgen.explain-report.v1`, `appgen.lsp-service.v1`,
@@ -2552,6 +2558,9 @@ Exit criteria:
   progressive learning path.
 - `appgen.contract-schema-cli-audit.v1` proves core diagnostic, lint,
   semantic-model, formatter, validate/generate, graph-suite, explain, LSP,
+  semantic symbol-coverage, source-set, source-file, module-boundary,
+  non-goal-policy, DSL keyword-budget, ANTLR-integrity, language-quality, and
+  language-CLI contracts,
   LSP capability, diagnostic, completion, hover, navigation, symbol, code-action,
   formatting, rename, JSON-RPC, stdio, and text-renderer subcontracts,
   CLI alias/help, missing-input, missing-required-option, invalid-choice, and
