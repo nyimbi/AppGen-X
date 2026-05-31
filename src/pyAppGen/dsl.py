@@ -4406,6 +4406,41 @@ def _diagnostics_text_renderer_contract() -> dict:
     missing_covered_codes = tuple(code for code in required_covered_codes if code not in emitted_covered_codes)
     missing_missing_codes = tuple(code for code in required_missing_codes if code not in emitted_missing_codes)
     missing_blocking_gap_ids = tuple(gap_id for gap_id in required_blocking_gap_ids if gap_id not in emitted_blocking_gap_ids)
+    required_text_surfaces = (
+        "catalog_summary",
+        "fixture_summary",
+        "required_codes",
+        "covered_fixture_codes",
+        "covered_codes",
+        "missing_codes",
+        "blocking_gaps",
+    )
+    emitted_text_surfaces = tuple(
+        surface
+        for surface, present in (
+            ("catalog_summary", any(line.startswith("diagnostics ") for line in summary_lines)),
+            ("fixture_summary", any(line.startswith("diagnostics-audit ") for line in summary_lines)),
+            ("required_codes", bool(required_code_lines)),
+            ("covered_fixture_codes", bool(covered_fixture_lines)),
+            ("covered_codes", bool(covered_code_lines)),
+            ("missing_codes", bool(missing_code_lines)),
+            ("blocking_gaps", bool(gap_lines)),
+        )
+        if present
+    )
+    missing_text_surfaces = tuple(
+        surface for surface in required_text_surfaces if surface not in emitted_text_surfaces
+    )
+    required_contract_formats = (
+        "appgen.diagnostic-catalog.v1",
+        "appgen.diagnostic-fixture-audit.v1",
+    )
+    emitted_contract_formats = tuple(
+        contract_format for contract_format in required_contract_formats if contract_format in text
+    )
+    missing_contract_formats = tuple(
+        contract_format for contract_format in required_contract_formats if contract_format not in emitted_contract_formats
+    )
     return {
         "format": "appgen.diagnostics-text-renderer.v1",
         "ok": not missing
@@ -4414,6 +4449,8 @@ def _diagnostics_text_renderer_contract() -> dict:
         and not missing_covered_codes
         and not missing_missing_codes
         and not missing_blocking_gap_ids
+        and not missing_text_surfaces
+        and not missing_contract_formats
         and not text.lstrip().startswith("{"),
         **_text_renderer_contract_counts(
             text,
@@ -4448,6 +4485,14 @@ def _diagnostics_text_renderer_contract() -> dict:
         "emitted_blocking_gap_ids": emitted_blocking_gap_ids,
         "missing_blocking_gap_id_count": len(missing_blocking_gap_ids),
         "missing_blocking_gap_ids": missing_blocking_gap_ids,
+        "required_text_surfaces": required_text_surfaces,
+        "emitted_text_surfaces": emitted_text_surfaces,
+        "missing_text_surface_count": len(missing_text_surfaces),
+        "missing_text_surfaces": missing_text_surfaces,
+        "required_contract_formats": required_contract_formats,
+        "emitted_contract_formats": emitted_contract_formats,
+        "missing_contract_format_count": len(missing_contract_formats),
+        "missing_contract_formats": missing_contract_formats,
         "json_fallback": text.lstrip().startswith("{"),
         "text_prefix": text[:240],
     }
@@ -6169,17 +6214,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and diagnostic_fixtures.get("blocking_gap_count") == 0
             and diagnostic_fixtures.get("shape_gap_count") == 0
             and diagnostic_fixtures.get("severity_gap_count") == 0
-            and diagnostics_text_renderer.get("summary_line_count") == 2
-            and diagnostics_text_renderer.get("required_code_line_count", 0) >= 3
-            and diagnostics_text_renderer.get("covered_fixture_line_count", 0) >= 3
-            and diagnostics_text_renderer.get("covered_code_line_count", 0) >= 2
-            and diagnostics_text_renderer.get("missing_code_line_count", 0) >= 1
-            and diagnostics_text_renderer.get("blocking_gap_line_count", 0) >= 1
             and diagnostics_text_renderer.get("missing_required_code_count") == 0
             and diagnostics_text_renderer.get("missing_covered_fixture_code_count") == 0
             and diagnostics_text_renderer.get("missing_covered_code_count") == 0
             and diagnostics_text_renderer.get("missing_missing_code_count") == 0
             and diagnostics_text_renderer.get("missing_blocking_gap_id_count") == 0
+            and diagnostics_text_renderer.get("missing_text_surface_count") == 0
+            and diagnostics_text_renderer.get("missing_contract_format_count") == 0
             and diagnostics_text_renderer.get("json_fallback") is False,
             "Diagnostic catalog and fixture contracts prove required codes, shape fields, severity coverage, docs links, and text markers stay release-visible.",
             "docs/tooling.md#diagnostic-specification",
@@ -6238,6 +6279,14 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "emitted_blocking_gap_ids": diagnostics_text_renderer.get("emitted_blocking_gap_ids"),
                     "missing_blocking_gap_id_count": diagnostics_text_renderer.get("missing_blocking_gap_id_count"),
                     "missing_blocking_gap_ids": diagnostics_text_renderer.get("missing_blocking_gap_ids"),
+                    "required_text_surfaces": diagnostics_text_renderer.get("required_text_surfaces"),
+                    "emitted_text_surfaces": diagnostics_text_renderer.get("emitted_text_surfaces"),
+                    "missing_text_surface_count": diagnostics_text_renderer.get("missing_text_surface_count"),
+                    "missing_text_surfaces": diagnostics_text_renderer.get("missing_text_surfaces"),
+                    "required_contract_formats": diagnostics_text_renderer.get("required_contract_formats"),
+                    "emitted_contract_formats": diagnostics_text_renderer.get("emitted_contract_formats"),
+                    "missing_contract_format_count": diagnostics_text_renderer.get("missing_contract_format_count"),
+                    "missing_contract_formats": diagnostics_text_renderer.get("missing_contract_formats"),
                     "json_fallback": diagnostics_text_renderer.get("json_fallback"),
                 },
             },

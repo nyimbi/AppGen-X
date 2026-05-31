@@ -6819,6 +6819,16 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert diagnostic_contract_check["detail"]["text_renderer"]["missing_blocking_gap_id_count"] == 0
     assert diagnostic_contract_check["detail"]["text_renderer"]["missing_blocking_gap_ids"] == ()
+    assert diagnostic_contract_check["detail"]["text_renderer"]["emitted_text_surfaces"] == (
+        diagnostic_contract_check["detail"]["text_renderer"]["required_text_surfaces"]
+    )
+    assert diagnostic_contract_check["detail"]["text_renderer"]["missing_text_surface_count"] == 0
+    assert diagnostic_contract_check["detail"]["text_renderer"]["missing_text_surfaces"] == ()
+    assert diagnostic_contract_check["detail"]["text_renderer"]["emitted_contract_formats"] == (
+        diagnostic_contract_check["detail"]["text_renderer"]["required_contract_formats"]
+    )
+    assert diagnostic_contract_check["detail"]["text_renderer"]["missing_contract_format_count"] == 0
+    assert diagnostic_contract_check["detail"]["text_renderer"]["missing_contract_formats"] == ()
     assert diagnostic_contract_check["detail"]["text_renderer"]["json_fallback"] is False
     lint_check = next(check for check in report["checks"] if check["id"] == "lint_directory_and_strict_profiles")
     assert lint_check["detail"]["directory_cli"]["format"] == "appgen.lint-directory-cli-audit.v1"
@@ -8162,6 +8172,25 @@ def test_diagnostics_text_renderer_contract_proves_catalog_and_fixture_log_marke
     assert report["emitted_blocking_gap_ids"] == report["required_blocking_gap_ids"]
     assert report["missing_blocking_gap_id_count"] == 0
     assert report["missing_blocking_gap_ids"] == ()
+    assert report["required_text_surfaces"] == (
+        "catalog_summary",
+        "fixture_summary",
+        "required_codes",
+        "covered_fixture_codes",
+        "covered_codes",
+        "missing_codes",
+        "blocking_gaps",
+    )
+    assert report["emitted_text_surfaces"] == report["required_text_surfaces"]
+    assert report["missing_text_surface_count"] == 0
+    assert report["missing_text_surfaces"] == ()
+    assert report["required_contract_formats"] == (
+        "appgen.diagnostic-catalog.v1",
+        "appgen.diagnostic-fixture-audit.v1",
+    )
+    assert report["emitted_contract_formats"] == report["required_contract_formats"]
+    assert report["missing_contract_format_count"] == 0
+    assert report["missing_contract_formats"] == ()
     assert report["missing_fragments"] == ()
     assert report["json_fallback"] is False
     assert report["text_prefix"].startswith(

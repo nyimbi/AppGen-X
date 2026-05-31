@@ -738,6 +738,11 @@ fixture coverage, missing diagnostic coverage, and blocking fixture gaps. It
 also reports required and emitted code lists for required registry codes,
 covered fixture codes, fixture-audit covered codes, fixture-audit missing codes,
 and blocking-gap ids, with named missing lists for each family.
+The same renderer publishes required, emitted, missing, and missing-count
+evidence for diagnostic text surfaces and embedded diagnostic contract formats.
+The aggregate diagnostic gate requires zero named missing entries, so generic
+diagnostic line counts cannot mask a hidden catalog summary, fixture summary,
+code family, blocking-gap line, or format marker.
 The aggregate tooling audit exposes this proof independently as
 `diagnostic_catalog_fixture_contracts`. That gate fails when required AGX codes
 lose fixture coverage, diagnostic shape or severity enforcement regresses, docs

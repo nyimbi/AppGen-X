@@ -4073,3 +4073,14 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   (`1 passed`), aggregate tooling audit (`1 passed`, with the known active-PBC
   `datetime.utcnow()` warnings only), scoped diff whitespace check, and
   restricted-name scan outside archive, Git internals, and active PBC paths.
+- Current diagnostics text audit hardening pass replaces catalog/fixture text
+  line-count acceptance with named evidence for diagnostic release logs.
+  `appgen.diagnostics-text-renderer.v1` now proves required and emitted
+  diagnostic text surfaces, embedded diagnostic contract formats, required
+  registry codes, covered fixture codes, fixture-audit covered codes,
+  fixture-audit missing codes, and blocking-gap ids. Verification passed:
+  Python compile for the touched DSL and tests, focused diagnostics text
+  renderer test (`1 passed`), aggregate tooling audit (`1 passed`, with the
+  known active-PBC `datetime.utcnow()` warnings only), scoped diff whitespace
+  check, and restricted-name scan outside archive, Git internals, and active
+  PBC paths.
