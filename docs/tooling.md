@@ -2093,12 +2093,24 @@ case. The migration safety gate requires those named missing lists to be empty,
 so each supported backend must prove the destructive migration warning
 (`AGX1101`), an explicit approval posture, and at least one safe alternative
 instead of only returning a successful JSON envelope.
+`appgen migration-plan` accepts either raw DSL files or serialized
+`appgen.semantic-model.v1` JSON baselines for its previous and current inputs.
+This lets CI, IDEs, and composition pipelines diff frozen semantic baselines
+without reparsing old source text, while still preserving source-file names,
+rename hints, backend selection, destructive-change approval evidence, and
+`appgen.migration-coverage.v1` output. The human text renderer emits a
+`migration-inputs previous=... current=... semantic_inputs=...` line so release
+logs show whether the plan was generated from DSL text, semantic JSON, or a
+mixed input pair. `appgen.migration-semantic-input-cli-audit.v1` proves the CLI
+accepts semantic JSON baselines, preserves both baseline paths in
+`source_files`, reports two semantic inputs, detects table and field renames
+plus additive changes, and avoids falling back to raw JSON for text output.
 The aggregate tooling audit exposes migration safety and text evidence as
 `migration_safety_text_contracts`. This gate fails independently when required
 detection families are missing, supported backend profiles fail, destructive
 changes do not require approval, rename-hint evidence disappears,
-safe-alternative text disappears, report payload formats drift, or migration text
-output falls back to raw JSON.
+semantic-baseline support disappears, safe-alternative text disappears, report
+payload formats drift, or migration text output falls back to raw JSON.
 
 ## Natural-Language Change Planner
 

@@ -5759,6 +5759,13 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
             "passing_case_count": 2,
             "allowed_backend_count": 2,
         },
+        migration_semantic_input_cli={
+            **ok("appgen.migration-semantic-input-cli-audit.v1"),
+            "semantic_input_count": 2,
+            "missing_source_file_count": 0,
+            "missing_change_kind_count": 0,
+            "missing_text_fragment_count": 0,
+        },
         migration_text_renderer={
             **ok("appgen.migration-plan-text-renderer.v1"),
             "approval_line_count": 1,
@@ -8614,6 +8621,11 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert migration_check["detail"]["cli"]["missing_required_change_kind_count"] == 0
     assert migration_check["detail"]["cli"]["approval_required_count"] == migration_check["detail"]["cli"]["case_count"]
     assert migration_check["detail"]["cli"]["rename_hint_case_count"] == migration_check["detail"]["cli"]["case_count"]
+    assert migration_check["detail"]["semantic_input_cli"]["format"] == "appgen.migration-semantic-input-cli-audit.v1"
+    assert migration_check["detail"]["semantic_input_cli"]["ok"] is True
+    assert migration_check["detail"]["semantic_input_cli"]["semantic_input_count"] == 2
+    assert migration_check["detail"]["semantic_input_cli"]["missing_source_file_count"] == 0
+    assert migration_check["detail"]["semantic_input_cli"]["missing_change_kind_count"] == 0
     migration_safety_check = next(check for check in report["checks"] if check["id"] == "migration_safety_text_contracts")
     assert migration_safety_check["detail"]["required_detection_count"] == len(appgen_dsl.REQUIRED_MIGRATION_DETECTIONS)
     assert migration_safety_check["detail"]["detected_detection_count"] >= len(appgen_dsl.REQUIRED_MIGRATION_DETECTIONS)
@@ -8653,6 +8665,17 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert migration_safety_check["detail"]["cli"]["missing_destructive_change_cases"] == ()
     assert migration_safety_check["detail"]["cli"]["missing_safe_alternative_case_count"] == 0
     assert migration_safety_check["detail"]["cli"]["missing_safe_alternative_cases"] == ()
+    assert migration_safety_check["detail"]["semantic_input_cli"]["format"] == (
+        "appgen.migration-semantic-input-cli-audit.v1"
+    )
+    assert migration_safety_check["detail"]["semantic_input_cli"]["ok"] is True
+    assert migration_safety_check["detail"]["semantic_input_cli"]["previous_input_format"] == "appgen.semantic-model.v1"
+    assert migration_safety_check["detail"]["semantic_input_cli"]["current_input_format"] == "appgen.semantic-model.v1"
+    assert migration_safety_check["detail"]["semantic_input_cli"]["semantic_input_count"] == 2
+    assert migration_safety_check["detail"]["semantic_input_cli"]["missing_source_file_count"] == 0
+    assert migration_safety_check["detail"]["semantic_input_cli"]["missing_change_kind_count"] == 0
+    assert migration_safety_check["detail"]["semantic_input_cli"]["missing_text_fragment_count"] == 0
+    assert migration_safety_check["detail"]["semantic_input_cli"]["text_json_fallback"] is False
     assert migration_safety_check["detail"]["cli"]["required_diagnostic_codes_by_case"] == {
         case_id: ("AGX1101",)
         for case_id in migration_safety_check["detail"]["cli"]["required_case_ids"]
@@ -8680,6 +8703,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert migration_safety_check["detail"]["text_renderer"]["missing_text_surfaces"] == ()
     assert migration_safety_check["detail"]["text_renderer"]["emitted_text_surfaces"] == (
         "summary",
+        "input_formats",
         "coverage",
         "detected_families",
         "missing_families",
@@ -10130,6 +10154,7 @@ def test_migration_plan_text_renderer_contract_proves_safety_log_markers() -> No
     assert report["missing_fragment_count"] == 0
     assert report["marker_line_count"] >= 10
     assert report["summary_line_count"] == 1
+    assert report["input_line_count"] == 1
     assert report["coverage_line_count"] == 1
     assert report["detected_family_line_count"] == 1
     assert report["missing_family_line_count"] == 1
@@ -10142,6 +10167,7 @@ def test_migration_plan_text_renderer_contract_proves_safety_log_markers() -> No
     assert report["destructive_summary_line_count"] == 1
     assert report["required_text_surfaces"] == (
         "summary",
+        "input_formats",
         "coverage",
         "detected_families",
         "missing_families",
@@ -10191,12 +10217,98 @@ def test_migration_plan_text_renderer_contract_proves_safety_log_markers() -> No
         "migration-plan failed: format=appgen.migration-plan.v1 backend=postgresql"
     )
     assert {
+        "migration-inputs previous=appgen.semantic-model.v1 current=appgen.semantic-model.v1 semantic_inputs=2",
         "migration-coverage format=appgen.migration-coverage.v1: detected=3 missing=1",
         "migration-detected added_table, dropped_field, type_change",
         "migration-missing relationship_change",
         "safe-alternative drop_field: Mark Invoice.legacy_code deprecated before dropping it.",
         "warning AGX1101: Destructive migration changes require approval.",
     } <= set(report["required_fragments"])
+
+
+def test_migration_plan_accepts_semantic_model_json_inputs(tmp_path: Path) -> None:
+    previous_source = """
+app MigrationDemo { targets: web }
+
+table Customer {
+  id: int pk
+  name: string
+}
+
+table Invoice {
+  id: int pk
+  customer_id: int -> Customer.id
+  total: decimal default 0
+}
+"""
+    current_source = """
+app MigrationDemo { targets: web }
+
+table Account {
+  id: int pk
+  name: string
+}
+
+table Invoice {
+  id: int pk
+  account_id: int -> Account.id
+  total: decimal default 0
+  due_date: date required
+}
+"""
+    previous_path = tmp_path / "previous.semantic.json"
+    current_path = tmp_path / "current.semantic.json"
+    previous_path.write_text(
+        json.dumps(appgen_dsl.semantic_model_dsl(previous_source), indent=2, sort_keys=True, default=list),
+        encoding="utf-8",
+    )
+    current_path.write_text(
+        json.dumps(appgen_dsl.semantic_model_dsl(current_source), indent=2, sort_keys=True, default=list),
+        encoding="utf-8",
+    )
+
+    report = appgen_dsl.migration_plan_dsl_files(
+        previous_path,
+        current_path,
+        backend="postgresql",
+        rename_hints=("table:Customer=Account", "field:Invoice.customer_id=Invoice.account_id"),
+    )
+
+    assert report["format"] == "appgen.migration-plan.v1"
+    assert report["ok"] is True
+    assert report["previous_input_format"] == "appgen.semantic-model.v1"
+    assert report["current_input_format"] == "appgen.semantic-model.v1"
+    assert report["input_formats"] == ("appgen.semantic-model.v1",)
+    assert report["semantic_input_count"] == 2
+    assert report["source_files"] == (str(previous_path), str(current_path))
+    assert {"rename_table", "rename_field", "add_field"} <= {change["kind"] for change in report["changes"]}
+    assert report["coverage"]["format"] == "appgen.migration-coverage.v1"
+
+
+def test_migration_semantic_input_cli_audit_proves_json_baselines(tmp_path: Path) -> None:
+    report = appgen_dsl._tooling_audit_migration_semantic_input_cli(tmp_path)
+
+    assert report["format"] == "appgen.migration-semantic-input-cli-audit.v1"
+    assert report["ok"] is True
+    assert report["json_exit_code"] == 0
+    assert report["text_exit_code"] == 0
+    assert report["payload_format"] == "appgen.migration-plan.v1"
+    assert report["payload_ok"] is True
+    assert report["backend"] == "postgresql"
+    assert report["previous_input_format"] == "appgen.semantic-model.v1"
+    assert report["current_input_format"] == "appgen.semantic-model.v1"
+    assert report["input_formats"] == ("appgen.semantic-model.v1",)
+    assert report["semantic_input_count"] == 2
+    assert report["missing_source_file_count"] == 0
+    assert report["missing_source_files"] == ()
+    assert report["required_change_kinds"] == ("rename_table", "rename_field", "add_field")
+    assert report["missing_change_kind_count"] == 0
+    assert report["missing_change_kinds"] == ()
+    assert report["coverage_format"] == "appgen.migration-coverage.v1"
+    assert report["missing_text_fragment_count"] == 0
+    assert report["missing_text_fragments"] == ()
+    assert report["text_json_fallback"] is False
+    assert report["text_prefix"].startswith("migration-plan ok: format=appgen.migration-plan.v1")
 
 
 def test_migration_cli_audit_covers_supported_backends_and_rename_hints(tmp_path: Path) -> None:

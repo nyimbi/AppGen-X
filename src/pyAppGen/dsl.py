@@ -4029,6 +4029,12 @@ def _emit_migration_plan_text(payload: dict) -> None:
         f"changes={len(changes)} destructive={destructive_count} "
         f"requires_approval={payload.get('requires_approval', False)}"
     )
+    print(
+        "migration-inputs "
+        f"previous={payload.get('previous_input_format')} "
+        f"current={payload.get('current_input_format')} "
+        f"semantic_inputs={payload.get('semantic_input_count', 0)}"
+    )
     if coverage:
         print(f"migration-coverage format={coverage.get('format')}: detected={len(detected)} missing={len(missing)}")
     if detected:
@@ -4051,6 +4057,9 @@ def _migration_plan_text_renderer_contract() -> dict:
         "ok": False,
         "backend": "postgresql",
         "requires_approval": True,
+        "previous_input_format": "appgen.semantic-model.v1",
+        "current_input_format": "appgen.semantic-model.v1",
+        "semantic_input_count": 2,
         "coverage": {
             "format": "appgen.migration-coverage.v1",
             "detected": ("added_table", "dropped_field", "type_change"),
@@ -4085,6 +4094,7 @@ def _migration_plan_text_renderer_contract() -> dict:
     text = output.getvalue()
     required_fragments = (
         "migration-plan failed: format=appgen.migration-plan.v1 backend=postgresql changes=3 destructive=2 requires_approval=True",
+        "migration-inputs previous=appgen.semantic-model.v1 current=appgen.semantic-model.v1 semantic_inputs=2",
         "migration-coverage format=appgen.migration-coverage.v1: detected=3 missing=1",
         "migration-detected added_table, dropped_field, type_change",
         "migration-missing relationship_change",
@@ -4098,6 +4108,7 @@ def _migration_plan_text_renderer_contract() -> dict:
     missing = tuple(fragment for fragment in required_fragments if fragment not in text)
     lines = tuple(line for line in text.splitlines() if line.strip())
     summary_lines = tuple(line for line in lines if line.startswith("migration-plan "))
+    input_lines = tuple(line for line in lines if line.startswith("migration-inputs "))
     coverage_lines = tuple(line for line in lines if line.startswith("migration-coverage "))
     detected_lines = tuple(line for line in lines if line.startswith("migration-detected "))
     missing_family_lines = tuple(line for line in lines if line.startswith("migration-missing "))
@@ -4106,6 +4117,7 @@ def _migration_plan_text_renderer_contract() -> dict:
     diagnostic_lines = tuple(line for line in lines if line.startswith(("warning ", "error ")))
     required_text_surfaces = (
         "summary",
+        "input_formats",
         "coverage",
         "detected_families",
         "missing_families",
@@ -4119,6 +4131,15 @@ def _migration_plan_text_renderer_contract() -> dict:
         surface
         for surface, present in (
             ("summary", bool(summary_lines)),
+            (
+                "input_formats",
+                any(
+                    "previous=appgen.semantic-model.v1" in line
+                    and "current=appgen.semantic-model.v1" in line
+                    and "semantic_inputs=2" in line
+                    for line in input_lines
+                ),
+            ),
             ("coverage", bool(coverage_lines)),
             ("detected_families", bool(detected_lines)),
             ("missing_families", bool(missing_family_lines)),
@@ -4210,6 +4231,7 @@ def _migration_plan_text_renderer_contract() -> dict:
         "required_fragments": required_fragments,
         "missing_fragments": missing,
         "summary_line_count": len(summary_lines),
+        "input_line_count": len(input_lines),
         "coverage_line_count": len(coverage_lines),
         "detected_family_line_count": len(detected_lines),
         "missing_family_line_count": len(missing_family_lines),
@@ -6554,6 +6576,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         graph_suite_cli = _tooling_audit_graph_suite_cli(Path(tmp), source)
         explain_cli = _tooling_audit_explain_cli_formats(Path(tmp), source)
         migration_cli = _tooling_audit_migration_cli(Path(tmp))
+        migration_semantic_input_cli = _tooling_audit_migration_semantic_input_cli(Path(tmp))
         nl_plan_cli = _tooling_audit_nl_plan_cli(Path(tmp), source)
         dsl_language_cli = _tooling_audit_dsl_language_cli(Path(tmp), source)
         test_strategy_cli = _tooling_audit_test_strategy_cli(Path(tmp), source)
@@ -6642,6 +6665,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         explain_cli=explain_cli,
         migration_detected=migration_detected,
         migration_cli=migration_cli,
+        migration_semantic_input_cli=migration_semantic_input_cli,
         migration_text_renderer=migration_text_renderer,
         nl_plan_contract=nl_plan_contract,
         nl_plan_cli=nl_plan_cli,
@@ -6667,6 +6691,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         graph_suite_cli=graph_suite_cli,
         migration_detected=migration_detected,
         migration_cli=migration_cli,
+        migration_semantic_input_cli=migration_semantic_input_cli,
         lsp=lsp,
         lsp_rpc=lsp_rpc,
         lsp_rename_cli=lsp_rename_cli,
@@ -6704,6 +6729,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         vscode=vscode,
         studio=studio,
         migration_cli=migration_cli,
+        migration_semantic_input_cli=migration_semantic_input_cli,
         migration_text_renderer=migration_text_renderer,
         nl_plan_contract=nl_plan_contract,
         nl_plan_cli=nl_plan_cli,
@@ -6759,6 +6785,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         designer_sync_cli=designer_sync_cli,
         migration_detected=migration_detected,
         migration_cli=migration_cli,
+        migration_semantic_input_cli=migration_semantic_input_cli,
         migration_text_renderer=migration_text_renderer,
         nl_plan=nl_plan,
         nl_plan_contract=nl_plan_contract,
@@ -8841,20 +8868,23 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "migration_detection_coverage",
             set(REQUIRED_MIGRATION_DETECTIONS) <= set(migration_detected)
             and migration_text_renderer["ok"]
-            and migration_cli["ok"],
-            "Migration planner detects required change families, emits safety text evidence, and the CLI accepts supported backend profiles plus rename hints.",
+            and migration_cli["ok"]
+            and migration_semantic_input_cli["ok"],
+            "Migration planner detects required change families, emits safety text evidence, and the CLI accepts supported backend profiles, rename hints, and semantic-model baselines.",
             "docs/tooling.md#migration-planner",
             {
                 "detected": migration_detected,
                 "required": REQUIRED_MIGRATION_DETECTIONS,
                 "text_renderer": migration_text_renderer,
                 "cli": migration_cli,
+                "semantic_input_cli": migration_semantic_input_cli,
             },
         ),
         _tooling_audit_check(
             "migration_safety_text_contracts",
             set(REQUIRED_MIGRATION_DETECTIONS) <= set(migration_detected)
             and migration_cli["ok"]
+            and migration_semantic_input_cli["ok"]
             and migration_cli.get("case_count") == migration_cli.get("allowed_backend_count")
             and migration_cli.get("passing_case_count") == migration_cli.get("case_count")
             and migration_cli.get("missing_case_count") == 0
@@ -8881,8 +8911,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and migration_text_renderer.get("missing_safe_alternative_count") == 0
             and migration_text_renderer.get("missing_diagnostic_code_count") == 0
             and migration_text_renderer.get("missing_contract_format_count") == 0
+            and migration_semantic_input_cli.get("semantic_input_count") == 2
+            and migration_semantic_input_cli.get("missing_source_file_count") == 0
+            and migration_semantic_input_cli.get("missing_change_kind_count") == 0
+            and migration_semantic_input_cli.get("missing_text_fragment_count") == 0
+            and migration_semantic_input_cli.get("text_json_fallback") is False
             and migration_text_renderer.get("json_fallback") is False,
-            "Migration tooling proves required detection families, backend profiles, approval posture, safe alternatives, and text safety markers.",
+            "Migration tooling proves required detection families, backend profiles, semantic-model baselines, approval posture, safe alternatives, and text safety markers.",
             "docs/tooling.md#migration-planner",
             {
                 "required_detection_count": len(REQUIRED_MIGRATION_DETECTIONS),
@@ -8956,6 +8991,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "observed_change_kinds": migration_cli.get("observed_change_kinds"),
                     "missing_required_change_kinds": migration_cli.get("missing_required_change_kinds"),
                 },
+                "semantic_input_cli": migration_semantic_input_cli,
                 "text_renderer": {
                     "format": migration_text_renderer.get("format"),
                     "summary_line_count": migration_text_renderer.get("summary_line_count"),
@@ -11834,15 +11870,24 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                 {
                     "id": "migration_detection_coverage",
                     "ok": set(REQUIRED_MIGRATION_DETECTIONS) <= set(evidence["migration_detected"])
-                    and evidence["migration_cli"].get("ok") is True,
-                    "evidence_format": evidence["migration_cli"].get("format"),
+                    and evidence["migration_cli"].get("ok") is True
+                    and evidence["migration_semantic_input_cli"].get("ok") is True,
+                    "evidence_formats": (
+                        evidence["migration_cli"].get("format"),
+                        evidence["migration_semantic_input_cli"].get("format"),
+                    ),
                 },
                 {
                     "id": "migration_safety_text_contracts",
                     "ok": set(REQUIRED_MIGRATION_DETECTIONS) <= set(evidence["migration_detected"])
                     and evidence["migration_cli"].get("ok") is True
+                    and evidence["migration_semantic_input_cli"].get("ok") is True
                     and evidence["migration_cli"].get("case_count") == evidence["migration_cli"].get("allowed_backend_count")
                     and evidence["migration_cli"].get("passing_case_count") == evidence["migration_cli"].get("case_count")
+                    and evidence["migration_semantic_input_cli"].get("semantic_input_count") == 2
+                    and evidence["migration_semantic_input_cli"].get("missing_source_file_count") == 0
+                    and evidence["migration_semantic_input_cli"].get("missing_change_kind_count") == 0
+                    and evidence["migration_semantic_input_cli"].get("missing_text_fragment_count") == 0
                     and evidence["migration_text_renderer"].get("ok") is True
                     and evidence["migration_text_renderer"].get("missing_text_surface_count") == 0
                     and evidence["migration_text_renderer"].get("missing_detected_family_count") == 0
@@ -11853,6 +11898,7 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     and evidence["migration_text_renderer"].get("missing_contract_format_count") == 0,
                     "evidence_formats": (
                         evidence["migration_cli"].get("format"),
+                        evidence["migration_semantic_input_cli"].get("format"),
                         evidence["migration_text_renderer"].get("format"),
                     ),
                 },
@@ -18685,6 +18731,127 @@ table Invoice {
     }
 
 
+def _tooling_audit_migration_semantic_input_cli(tmp: Path) -> dict:
+    previous_source = """
+app MigrationDemo { targets: web }
+
+table Customer {
+  id: int pk
+  name: string
+}
+
+table Invoice {
+  id: int pk
+  customer_id: int -> Customer.id
+  total: decimal default 0
+}
+"""
+    current_source = """
+app MigrationDemo { targets: web }
+
+table Account {
+  id: int pk
+  name: string
+}
+
+table Invoice {
+  id: int pk
+  account_id: int -> Account.id
+  total: decimal default 0
+  due_date: date required
+}
+"""
+    previous_path = tmp / "migration-previous.semantic.json"
+    current_path = tmp / "migration-current.semantic.json"
+    previous_model = semantic_model_dsl(previous_source, source_name="migration-previous.appgen")
+    current_model = semantic_model_dsl(current_source, source_name="migration-current.appgen")
+    previous_path.write_text(json.dumps(previous_model, indent=2, sort_keys=True, default=list), encoding="utf-8")
+    current_path.write_text(json.dumps(current_model, indent=2, sort_keys=True, default=list), encoding="utf-8")
+
+    argv = (
+        "migration-plan",
+        str(previous_path),
+        str(current_path),
+        "--backend",
+        "postgresql",
+        "--rename-hint",
+        "table:Customer=Account",
+        "--rename-hint",
+        "field:Invoice.customer_id=Invoice.account_id",
+    )
+    json_output = io.StringIO()
+    with contextlib.redirect_stdout(json_output):
+        json_exit_code = dsl_tooling_cli((*argv, "--json"))
+    try:
+        payload = json.loads(json_output.getvalue())
+    except json.JSONDecodeError:
+        payload = {}
+    text_output = io.StringIO()
+    with contextlib.redirect_stdout(text_output):
+        text_exit_code = dsl_tooling_cli(argv)
+    text = text_output.getvalue()
+    text_lines = tuple(line for line in text.splitlines() if line.strip())
+    required_change_kinds = ("rename_table", "rename_field", "add_field")
+    change_kinds = tuple(sorted({change.get("kind") for change in payload.get("changes", ()) if change.get("kind")}))
+    source_files = tuple(payload.get("source_files", ()))
+    semantic_input_count = payload.get("semantic_input_count")
+    expected_source_files = (str(previous_path), str(current_path))
+    missing_source_files = tuple(path for path in expected_source_files if path not in source_files)
+    missing_change_kinds = tuple(kind for kind in required_change_kinds if kind not in set(change_kinds))
+    required_text_fragments = (
+        "migration-plan ok: format=appgen.migration-plan.v1 backend=postgresql",
+        "migration-inputs previous=appgen.semantic-model.v1 current=appgen.semantic-model.v1 semantic_inputs=2",
+        "migration-coverage format=appgen.migration-coverage.v1:",
+        "migration-detected added_field, data_backfill_requirement, relationship_change, renamed_field, renamed_table",
+    )
+    missing_text_fragments = tuple(fragment for fragment in required_text_fragments if fragment not in text)
+    text_json_fallback = text.lstrip().startswith("{")
+    ok = (
+        json_exit_code == 0
+        and text_exit_code == 0
+        and payload.get("format") == "appgen.migration-plan.v1"
+        and payload.get("ok") is True
+        and payload.get("backend") == "postgresql"
+        and payload.get("previous_input_format") == "appgen.semantic-model.v1"
+        and payload.get("current_input_format") == "appgen.semantic-model.v1"
+        and payload.get("input_formats") == ["appgen.semantic-model.v1"]
+        and semantic_input_count == 2
+        and not missing_source_files
+        and not missing_change_kinds
+        and payload.get("coverage", {}).get("format") == "appgen.migration-coverage.v1"
+        and not missing_text_fragments
+        and not text_json_fallback
+    )
+    return {
+        "format": "appgen.migration-semantic-input-cli-audit.v1",
+        "ok": ok,
+        "json_exit_code": json_exit_code,
+        "text_exit_code": text_exit_code,
+        "payload_format": payload.get("format"),
+        "payload_ok": payload.get("ok"),
+        "backend": payload.get("backend"),
+        "previous_input_format": payload.get("previous_input_format"),
+        "current_input_format": payload.get("current_input_format"),
+        "input_formats": tuple(payload.get("input_formats", ())),
+        "semantic_input_count": semantic_input_count,
+        "source_files": source_files,
+        "expected_source_files": expected_source_files,
+        "missing_source_file_count": len(missing_source_files),
+        "missing_source_files": missing_source_files,
+        "required_change_kinds": required_change_kinds,
+        "change_kinds": change_kinds,
+        "missing_change_kind_count": len(missing_change_kinds),
+        "missing_change_kinds": missing_change_kinds,
+        "coverage_format": payload.get("coverage", {}).get("format"),
+        "required_text_fragments": required_text_fragments,
+        "missing_text_fragment_count": len(missing_text_fragments),
+        "missing_text_fragments": missing_text_fragments,
+        "text_json_fallback": text_json_fallback,
+        "text_line_count": len(text_lines),
+        "text_prefix": text[:240],
+    }
+
+
 def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
     source_path = tmp / "nl-plan-cli.appgen"
     source_path.write_text(source, encoding="utf-8")
@@ -20709,8 +20876,14 @@ def migration_plan_dsl(
     """Compare two DSL semantic models and return appgen.migration-plan.v1."""
     normalized_backend = backend.strip().lower().replace("-", "_")
     allowed_backends = set(SUPPORTED_DATABASE_BACKENDS)
-    previous = semantic_model_dsl(previous_text, source_name=previous_name)
-    current = semantic_model_dsl(current_text, source_name=current_name)
+    previous, previous_input_format = _semantic_model_from_dsl_or_json_text(
+        previous_text,
+        source_name=previous_name,
+    )
+    current, current_input_format = _semantic_model_from_dsl_or_json_text(
+        current_text,
+        source_name=current_name,
+    )
     return migration_plan_from_semantic_models(
         previous,
         current,
@@ -20719,7 +20892,26 @@ def migration_plan_dsl(
         current_text=current_text,
         backend=normalized_backend if normalized_backend in allowed_backends else backend,
         rename_hints=rename_hints,
+        previous_input_format=previous_input_format,
+        current_input_format=current_input_format,
     )
+
+
+def _semantic_model_from_dsl_or_json_text(text: str, *, source_name: str | None = None) -> tuple[dict, str]:
+    source = text or ""
+    try:
+        payload = json.loads(source)
+    except json.JSONDecodeError:
+        return semantic_model_dsl(source, source_name=source_name), "appgen.dsl-source.v1"
+    if isinstance(payload, dict) and payload.get("format") == "appgen.semantic-model.v1":
+        return payload, "appgen.semantic-model.v1"
+    if (
+        isinstance(payload, dict)
+        and isinstance(payload.get("semantic_model"), dict)
+        and payload["semantic_model"].get("format") == "appgen.semantic-model.v1"
+    ):
+        return payload["semantic_model"], str(payload.get("format") or "appgen.semantic-model-wrapper.v1")
+    return semantic_model_dsl(source, source_name=source_name), "appgen.dsl-source.v1"
 
 
 def migration_plan_from_semantic_models(
@@ -20731,6 +20923,8 @@ def migration_plan_from_semantic_models(
     current_text: str = "",
     backend: str = "postgresql",
     rename_hints: Iterable[str] | None = None,
+    previous_input_format: str = "appgen.semantic-model.v1",
+    current_input_format: str = "appgen.semantic-model.v1",
 ) -> dict:
     """Compare semantic-model JSON payloads and return appgen.migration-plan.v1."""
     normalized_backend = backend.strip().lower().replace("-", "_")
@@ -20808,6 +21002,14 @@ def migration_plan_from_semantic_models(
         "allowed_backends": tuple(sorted(allowed_backends)),
         "allowed_backend_count": len(allowed_backends),
         "source_files": tuple(item for item in (previous_name, current_name) if item),
+        "previous_input_format": previous_input_format,
+        "current_input_format": current_input_format,
+        "input_formats": tuple(dict.fromkeys((previous_input_format, current_input_format))),
+        "semantic_input_count": sum(
+            1
+            for item in (previous_input_format, current_input_format)
+            if item == "appgen.semantic-model.v1"
+        ),
         "changes": tuple(changes),
         "change_count": len(changes),
         "destructive_change_count": len(destructive_changes),
