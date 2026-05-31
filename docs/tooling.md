@@ -708,7 +708,9 @@ consume. The command returns `appgen.contract-schema-catalog.v1`, using the
 JSON Schema 2020-12 dialect, and includes schemas for `appgen.diagnostic.v1`,
 `appgen.lint-report.v1`, `appgen.semantic-model.v1`,
 `appgen.migration-plan.v1`, `appgen.nl-plan.v1`,
-`appgen.release-verifier-report.v1`, and `appgen.tooling-audit.v1`.
+`appgen.release-verifier-report.v1`, `appgen.tooling-audit.v1`,
+`appgen.contract-schema-catalog.v1`, and
+`appgen.contract-validation-report.v1`.
 
 The optional positional format selects one schema from the catalog. Unknown
 schema names return the same `appgen.contract-schema-catalog.v1` envelope with
@@ -753,12 +755,14 @@ references, `const`, `enum`, `pattern`, and `minimum`. Unknown schema names,
 payloads with no inferrable format, malformed JSON, and missing required fields
 return the same report format with `ok: false` and exit code `1`.
 
-`appgen.contract-validation-cli-audit.v1` proves valid inferred JSON, valid
-explicit JSON, missing-required-field JSON, unknown-schema JSON, malformed JSON,
-and text modes. It reports required/observed case ids, expected/observed exit
-codes, expected/observed payload formats, required text markers, text
-JSON-fallback status, the validated payload/schema format pair, missing-field
-error counts, unknown-schema availability, and malformed-JSON diagnostic counts.
+`appgen.contract-validation-cli-audit.v1` proves valid inferred JSON,
+self-validation of `appgen.contract-validation-report.v1`, valid explicit JSON,
+missing-required-field JSON, unknown-schema JSON, malformed JSON, and text modes.
+It reports required/observed case ids, expected/observed exit codes,
+expected/observed payload formats, required text markers, text JSON-fallback
+status, the validated payload/schema format pair, self-report validation
+formats, missing-field error counts, unknown-schema availability, and
+malformed-JSON diagnostic counts.
 The aggregate `contract_validation_cli_contracts` gate fails when contract
 validation stops rejecting broken payloads, exits with the wrong process status,
 falls back to raw JSON in text mode, or loses the stable markers external agents
@@ -2520,7 +2524,8 @@ Exit criteria:
   progressive learning path.
 - `appgen.contract-schema-cli-audit.v1` proves core diagnostic, lint,
   semantic-model, migration, natural-language, release-verifier, and tooling
-  audit schemas are available from CLI JSON and text modes.
+  audit schemas, plus the schema-catalog and contract-validation report schemas,
+  are available from CLI JSON and text modes.
 - `appgen.contract-validation-cli-audit.v1` proves those JSON contracts can be
   enforced against real payloads, including valid semantic-model payloads,
   missing required fields, unknown schemas, malformed JSON, and text mode.

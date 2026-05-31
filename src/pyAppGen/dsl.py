@@ -6541,6 +6541,8 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.nl-plan.v1",
     "appgen.release-verifier-report.v1",
     "appgen.tooling-audit.v1",
+    "appgen.contract-schema-catalog.v1",
+    "appgen.contract-validation-report.v1",
 )
 
 
@@ -6713,6 +6715,56 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "sections": {"type": "array", "items": {"type": "string"}},
                 "doc_anchor_integrity": {"type": "object"},
             },
+        ),
+        "appgen.contract-schema-catalog.v1": _json_object_schema(
+            "appgen.contract-schema-catalog.v1",
+            required=("format", "ok", "schema_dialect", "required_schema_formats", "available_schema_formats", "schemas"),
+            properties={
+                "format": _const_schema("appgen.contract-schema-catalog.v1"),
+                "ok": {"type": "boolean"},
+                "schema_dialect": {"type": "string"},
+                "required_schema_formats": {"type": "array", "items": {"type": "string"}},
+                "required_schema_count": {"type": "integer", "minimum": 0},
+                "available_schema_formats": {"type": "array", "items": {"type": "string"}},
+                "available_schema_count": {"type": "integer", "minimum": 0},
+                "selected_formats": {"type": "array", "items": {"type": "string"}},
+                "selected_format_count": {"type": "integer", "minimum": 0},
+                "requested_format": {"type": "string"},
+                "missing_required_schema_formats": {"type": "array", "items": {"type": "string"}},
+                "missing_required_schema_count": {"type": "integer", "minimum": 0},
+                "missing_requested_schema_formats": {"type": "array", "items": {"type": "string"}},
+                "missing_requested_schema_count": {"type": "integer", "minimum": 0},
+                "schema_count": {"type": "integer", "minimum": 0},
+                "schemas": {"type": "object"},
+                "schema_property_counts": {"type": "object"},
+                "schema_required_counts": {"type": "object"},
+            },
+        ),
+        "appgen.contract-validation-report.v1": _json_object_schema(
+            "appgen.contract-validation-report.v1",
+            required=("format", "ok", "schema_format", "schema_available", "diagnostics", "diagnostic_count"),
+            properties={
+                "format": _const_schema("appgen.contract-validation-report.v1"),
+                "ok": {"type": "boolean"},
+                "source": {"type": ("string", "null")},
+                "schema_format": {"type": ("string", "null")},
+                "payload_format": {"type": ("string", "null")},
+                "schema_available": {"type": "boolean"},
+                "payload_format_inferred": {"type": "boolean"},
+                "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}},
+                "diagnostic_count": {"type": "integer", "minimum": 0},
+                "required_field_errors": {"type": "array", "items": {"type": "string"}},
+                "required_field_error_count": {"type": "integer", "minimum": 0},
+                "type_errors": {"type": "array", "items": {"type": "string"}},
+                "type_error_count": {"type": "integer", "minimum": 0},
+                "const_errors": {"type": "array", "items": {"type": "string"}},
+                "const_error_count": {"type": "integer", "minimum": 0},
+                "enum_errors": {"type": "array", "items": {"type": "string"}},
+                "enum_error_count": {"type": "integer", "minimum": 0},
+                "pattern_errors": {"type": "array", "items": {"type": "string"}},
+                "pattern_error_count": {"type": "integer", "minimum": 0},
+            },
+            defs={"diagnostic": _diagnostic_schema_ref_target()},
         ),
     }
 
@@ -7379,6 +7431,8 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and contract_validation_cli.get("valid_report_format") == "appgen.contract-validation-report.v1"
             and contract_validation_cli.get("valid_payload_format") == "appgen.semantic-model.v1"
             and contract_validation_cli.get("valid_schema_format") == "appgen.semantic-model.v1"
+            and contract_validation_cli.get("self_report_payload_format") == "appgen.contract-validation-report.v1"
+            and contract_validation_cli.get("self_report_schema_format") == "appgen.contract-validation-report.v1"
             and contract_validation_cli.get("missing_required_error_count", 0) >= 1
             and contract_validation_cli.get("unknown_schema_available") is False
             and contract_validation_cli.get("malformed_diagnostic_count", 0) >= 1,
@@ -18209,6 +18263,7 @@ def _tooling_audit_contract_schema_cli() -> dict:
         "schema appgen.semantic-model.v1:",
         "schema appgen.lint-report.v1:",
         "schema appgen.migration-plan.v1:",
+        "schema appgen.contract-validation-report.v1:",
     )
     missing_text_markers = tuple(marker for marker in required_text_markers if marker not in text)
     cases = (
@@ -18338,6 +18393,9 @@ def _tooling_audit_contract_validation_cli(tmp: Path) -> dict:
     malformed_path.write_text("{not-json", encoding="utf-8")
 
     inferred_exit, inferred_payload = _tooling_cli_json_case(("contract-validate", str(valid_path), "--json"))
+    self_report_path = tmp / "contract-validation-report.json"
+    self_report_path.write_text(json.dumps(inferred_payload, default=list), encoding="utf-8")
+    self_report_exit, self_report_payload = _tooling_cli_json_case(("contract-validate", str(self_report_path), "--json"))
     explicit_exit, explicit_payload = _tooling_cli_json_case(
         ("contract-validate", str(valid_path), "--format", "appgen.semantic-model.v1", "--json")
     )
@@ -18362,6 +18420,17 @@ def _tooling_audit_contract_validation_cli(tmp: Path) -> dict:
             "exit_code": inferred_exit,
             "payload_format": inferred_payload.get("format"),
             "contract_payload_format": inferred_payload.get("payload_format"),
+        },
+        {
+            "case": "self_report_json",
+            "ok": self_report_exit == 0
+            and self_report_payload.get("format") == "appgen.contract-validation-report.v1"
+            and self_report_payload.get("ok") is True
+            and self_report_payload.get("payload_format") == "appgen.contract-validation-report.v1"
+            and self_report_payload.get("schema_format") == "appgen.contract-validation-report.v1",
+            "exit_code": self_report_exit,
+            "payload_format": self_report_payload.get("format"),
+            "contract_payload_format": self_report_payload.get("payload_format"),
         },
         {
             "case": "valid_explicit_json",
@@ -18416,6 +18485,7 @@ def _tooling_audit_contract_validation_cli(tmp: Path) -> dict:
     )
     required_case_ids = (
         "valid_inferred_json",
+        "self_report_json",
         "valid_explicit_json",
         "missing_required_json",
         "unknown_schema_json",
@@ -18424,6 +18494,7 @@ def _tooling_audit_contract_validation_cli(tmp: Path) -> dict:
     )
     expected_exit_codes_by_case = {
         "valid_inferred_json": 0,
+        "self_report_json": 0,
         "valid_explicit_json": 0,
         "missing_required_json": 1,
         "unknown_schema_json": 1,
@@ -18432,6 +18503,7 @@ def _tooling_audit_contract_validation_cli(tmp: Path) -> dict:
     }
     expected_payload_formats_by_case = {
         "valid_inferred_json": "appgen.contract-validation-report.v1",
+        "self_report_json": "appgen.contract-validation-report.v1",
         "valid_explicit_json": "appgen.contract-validation-report.v1",
         "missing_required_json": "appgen.contract-validation-report.v1",
         "unknown_schema_json": "appgen.contract-validation-report.v1",
@@ -18490,6 +18562,8 @@ def _tooling_audit_contract_validation_cli(tmp: Path) -> dict:
         "valid_report_format": inferred_payload.get("format"),
         "valid_payload_format": inferred_payload.get("payload_format"),
         "valid_schema_format": inferred_payload.get("schema_format"),
+        "self_report_schema_format": self_report_payload.get("schema_format"),
+        "self_report_payload_format": self_report_payload.get("payload_format"),
         "missing_required_error_count": missing_required_report.get("required_field_error_count"),
         "unknown_schema_available": unknown_schema_report.get("schema_available"),
         "malformed_diagnostic_count": malformed_report.get("diagnostic_count"),

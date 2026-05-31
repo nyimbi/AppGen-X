@@ -5620,6 +5620,8 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
             "valid_report_format": "appgen.contract-validation-report.v1",
             "valid_payload_format": "appgen.semantic-model.v1",
             "valid_schema_format": "appgen.semantic-model.v1",
+            "self_report_payload_format": "appgen.contract-validation-report.v1",
+            "self_report_schema_format": "appgen.contract-validation-report.v1",
             "missing_required_error_count": 1,
             "unknown_schema_available": False,
             "malformed_diagnostic_count": 1,
@@ -6252,7 +6254,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     contract_schema_check = next(check for check in report["checks"] if check["id"] == "contract_schema_cli_contracts")
     assert contract_schema_check["detail"]["format"] == "appgen.contract-schema-cli-audit.v1"
     assert contract_schema_check["detail"]["ok"] is True
-    assert contract_schema_check["detail"]["required_schema_count"] == 7
+    assert contract_schema_check["detail"]["required_schema_count"] == 9
     assert contract_schema_check["detail"]["missing_required_schema_count"] == 0
     assert contract_schema_check["detail"]["missing_required_schema_formats"] == ()
     assert contract_schema_check["detail"]["missing_case_count"] == 0
@@ -6268,7 +6270,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert contract_validation_check["detail"]["format"] == "appgen.contract-validation-cli-audit.v1"
     assert contract_validation_check["detail"]["ok"] is True
-    assert contract_validation_check["detail"]["case_count"] == 6
+    assert contract_validation_check["detail"]["case_count"] == 7
     assert contract_validation_check["detail"]["passing_case_count"] == contract_validation_check["detail"]["case_count"]
     assert contract_validation_check["detail"]["missing_case_count"] == 0
     assert contract_validation_check["detail"]["missing_exit_code_case_count"] == 0
@@ -6278,6 +6280,8 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert contract_validation_check["detail"]["valid_report_format"] == "appgen.contract-validation-report.v1"
     assert contract_validation_check["detail"]["valid_payload_format"] == "appgen.semantic-model.v1"
     assert contract_validation_check["detail"]["valid_schema_format"] == "appgen.semantic-model.v1"
+    assert contract_validation_check["detail"]["self_report_payload_format"] == "appgen.contract-validation-report.v1"
+    assert contract_validation_check["detail"]["self_report_schema_format"] == "appgen.contract-validation-report.v1"
     assert contract_validation_check["detail"]["missing_required_error_count"] >= 1
     assert contract_validation_check["detail"]["unknown_schema_available"] is False
     assert contract_validation_check["detail"]["malformed_diagnostic_count"] >= 1
@@ -11112,7 +11116,7 @@ def test_contract_schema_catalog_exposes_core_json_schemas() -> None:
     assert catalog["format"] == "appgen.contract-schema-catalog.v1"
     assert catalog["ok"] is True
     assert catalog["schema_dialect"] == "https://json-schema.org/draft/2020-12/schema"
-    assert catalog["required_schema_count"] == 7
+    assert catalog["required_schema_count"] == 9
     assert set(catalog["required_schema_formats"]) == {
         "appgen.diagnostic.v1",
         "appgen.lint-report.v1",
@@ -11121,6 +11125,8 @@ def test_contract_schema_catalog_exposes_core_json_schemas() -> None:
         "appgen.nl-plan.v1",
         "appgen.release-verifier-report.v1",
         "appgen.tooling-audit.v1",
+        "appgen.contract-schema-catalog.v1",
+        "appgen.contract-validation-report.v1",
     }
     assert catalog["missing_required_schema_count"] == 0
     assert catalog["missing_required_schema_formats"] == ()
@@ -11154,7 +11160,7 @@ def test_contract_schema_cli_audit_proves_schema_command_modes() -> None:
     assert audit["observed_case_ids"] == audit["required_case_ids"]
     assert audit["missing_case_count"] == 0
     assert audit["missing_case_ids"] == ()
-    assert audit["required_schema_count"] == 7
+    assert audit["required_schema_count"] == 9
     assert audit["missing_required_schema_count"] == 0
     assert audit["missing_required_schema_formats"] == ()
     assert {"format", "ok", "app", "symbols", "tables", "views", "diagnostics"} <= set(
@@ -11181,11 +11187,12 @@ def test_contract_validation_cli_audit_proves_payload_validation_modes(tmp_path:
 
     assert audit["format"] == "appgen.contract-validation-cli-audit.v1"
     assert audit["ok"] is True
-    assert audit["case_count"] == 6
+    assert audit["case_count"] == 7
     assert audit["passing_case_count"] == audit["case_count"]
     assert audit["failing_case_count"] == 0
     assert audit["required_case_ids"] == (
         "valid_inferred_json",
+        "self_report_json",
         "valid_explicit_json",
         "missing_required_json",
         "unknown_schema_json",
@@ -11197,6 +11204,7 @@ def test_contract_validation_cli_audit_proves_payload_validation_modes(tmp_path:
     assert audit["missing_case_ids"] == ()
     assert audit["expected_exit_codes_by_case"] == {
         "valid_inferred_json": 0,
+        "self_report_json": 0,
         "valid_explicit_json": 0,
         "missing_required_json": 1,
         "unknown_schema_json": 1,
@@ -11213,6 +11221,8 @@ def test_contract_validation_cli_audit_proves_payload_validation_modes(tmp_path:
     assert audit["valid_report_format"] == "appgen.contract-validation-report.v1"
     assert audit["valid_payload_format"] == "appgen.semantic-model.v1"
     assert audit["valid_schema_format"] == "appgen.semantic-model.v1"
+    assert audit["self_report_payload_format"] == "appgen.contract-validation-report.v1"
+    assert audit["self_report_schema_format"] == "appgen.contract-validation-report.v1"
     assert audit["missing_required_error_count"] >= 1
     assert audit["unknown_schema_available"] is False
     assert audit["malformed_diagnostic_count"] >= 1
