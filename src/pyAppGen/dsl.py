@@ -6797,8 +6797,19 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.invalid-choice-exit-audit.v1",
     "appgen.cli-alias-contract.v1",
     "appgen.cli-help-surface-audit.v1",
+    "appgen.designer-dsl-editor.v1",
+    "appgen.designer-component-palette.v1",
+    "appgen.designer-form-projection.v1",
+    "appgen.designer-database-projection.v1",
+    "appgen.designer-workflow-projection.v1",
+    "appgen.designer-pbc-composition-projection.v1",
+    "appgen.designer-package-deployment-projection.v1",
+    "appgen.designer-graph-explain-panel.v1",
+    "appgen.designer-nl-planner-panel.v1",
     "appgen.designer-sync-report.v1",
+    "appgen.designer-sync-cli-audit.v1",
     "appgen.designer-sync-text-renderer.v1",
+    "appgen.designer-visual-edit-result.v1",
     "appgen.designer-visual-transaction-result.v1",
     "appgen.designer-visual-edit-matrix.v1",
     "appgen.studio-semantic-service.v1",
@@ -6950,6 +6961,20 @@ def _graph_contract_schema(title: str) -> dict:
             "nodes": {"type": "array", "items": {"type": "object"}},
             "edges": {"type": "array", "items": {"type": "object"}},
         },
+    )
+
+
+def _designer_projection_schema(title: str, *, properties: dict | None = None) -> dict:
+    base_properties = {
+        "format": _const_schema(title),
+        "semantic_model_format": {"type": ("string", "null")},
+    }
+    if properties:
+        base_properties.update(properties)
+    return _json_object_schema(
+        title,
+        required=("format", "semantic_model_format"),
+        properties=base_properties,
     )
 
 
@@ -7965,6 +7990,78 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "alias_contract": {"type": "object"},
             },
         ),
+        "appgen.designer-dsl-editor.v1": _designer_projection_schema(
+            "appgen.designer-dsl-editor.v1",
+            properties={
+                "diagnostics": {"type": "object"},
+                "outline": {"type": "object"},
+                "code_actions": {"type": "object"},
+                "formatting": {"type": "object"},
+            },
+        ),
+        "appgen.designer-component-palette.v1": _designer_projection_schema(
+            "appgen.designer-component-palette.v1",
+            properties={
+                "components": {"type": "array", "items": {"type": "object"}},
+                "field_types": {"type": "array", "items": {"type": "string"}},
+            },
+        ),
+        "appgen.designer-form-projection.v1": _designer_projection_schema(
+            "appgen.designer-form-projection.v1",
+            properties={"views": {"type": "array", "items": {"type": "object"}}},
+        ),
+        "appgen.designer-database-projection.v1": _designer_projection_schema(
+            "appgen.designer-database-projection.v1",
+            properties={
+                "tables": {"type": "array", "items": {"type": "object"}},
+                "er_graph": {"type": "object"},
+                "lookup_graph": {"type": "object"},
+            },
+        ),
+        "appgen.designer-workflow-projection.v1": _designer_projection_schema(
+            "appgen.designer-workflow-projection.v1",
+            properties={
+                "flows": {"type": "array", "items": {"type": "object"}},
+                "workflow_graph": {"type": "object"},
+                "handler_graph": {"type": "object"},
+            },
+        ),
+        "appgen.designer-pbc-composition-projection.v1": _designer_projection_schema(
+            "appgen.designer-pbc-composition-projection.v1",
+            properties={
+                "pbcs": {"type": "object"},
+                "composition": {"type": "object"},
+                "pbc_graph": {"type": "object"},
+            },
+        ),
+        "appgen.designer-package-deployment-projection.v1": _designer_projection_schema(
+            "appgen.designer-package-deployment-projection.v1",
+            properties={
+                "packages": {"type": "object"},
+                "deployment": {"type": "object"},
+                "package_graph": {"type": "object"},
+                "deployment_graph": {"type": "object"},
+            },
+        ),
+        "appgen.designer-graph-explain-panel.v1": _json_object_schema(
+            "appgen.designer-graph-explain-panel.v1",
+            required=("format", "graphs", "available_explain_queries"),
+            properties={
+                "format": _const_schema("appgen.designer-graph-explain-panel.v1"),
+                "graphs": {"type": "object"},
+                "available_explain_queries": {"type": "array", "items": {"type": "string"}},
+            },
+        ),
+        "appgen.designer-nl-planner-panel.v1": _json_object_schema(
+            "appgen.designer-nl-planner-panel.v1",
+            required=("format", "command", "requires_dsl_diff_preview"),
+            properties={
+                "format": _const_schema("appgen.designer-nl-planner-panel.v1"),
+                "command": {"type": "string"},
+                "requires_dsl_diff_preview": {"type": "boolean"},
+                "token_budget_notes": {"type": "array", "items": {"type": "string"}},
+            },
+        ),
         "appgen.designer-sync-report.v1": _json_object_schema(
             "appgen.designer-sync-report.v1",
             required=("format", "ok", "semantic_model_format", "surfaces", "projections", "checks", "blocking_gaps"),
@@ -7980,6 +8077,24 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "blocking_gaps": {"type": "array", "items": {"type": "string"}},
             },
         ),
+        "appgen.designer-sync-cli-audit.v1": _contract_format_schema(
+            "appgen.designer-sync-cli-audit.v1",
+            required=("format", "ok", "scenario_count", "passing_scenario_count", "required_scenario_ids"),
+            properties={
+                "scenario_count": {"type": "integer", "minimum": 0},
+                "passing_scenario_count": {"type": "integer", "minimum": 0},
+                "failing_scenario_count": {"type": "integer", "minimum": 0},
+                "required_scenario_ids": {"type": "array", "items": {"type": "string"}},
+                "observed_scenario_ids": {"type": "array", "items": {"type": "string"}},
+                "missing_scenario_ids": {"type": "array", "items": {"type": "string"}},
+                "required_projection_ids": {"type": "array", "items": {"type": "string"}},
+                "missing_projection_ids": {"type": "array", "items": {"type": "string"}},
+                "required_changed_surfaces": {"type": "array", "items": {"type": "string"}},
+                "missing_changed_surfaces": {"type": "array", "items": {"type": "string"}},
+                "expected_payload_formats_by_scenario": {"type": "object"},
+                "payload_formats_by_scenario": {"type": "object"},
+            },
+        ),
         "appgen.designer-sync-text-renderer.v1": _contract_format_schema(
             "appgen.designer-sync-text-renderer.v1",
             required=("format", "ok", "required_fragments", "missing_fragments"),
@@ -7991,6 +8106,21 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "required_contract_formats": {"type": "array", "items": {"type": "string"}},
                 "missing_contract_formats": {"type": "array", "items": {"type": "string"}},
                 "json_fallback": {"type": "boolean"},
+            },
+        ),
+        "appgen.designer-visual-edit-result.v1": _contract_format_schema(
+            "appgen.designer-visual-edit-result.v1",
+            required=("format", "accepted", "round_trip_ok", "operation"),
+            properties={
+                "operation": {"type": ("string", "null")},
+                "accepted": {"type": "boolean"},
+                "round_trip_ok": {"type": "boolean"},
+                "dsl_patch": {"type": "string"},
+                "dsl_diff": {"type": "array", "items": {"type": "string"}},
+                "patched_source": {"type": "string"},
+                "semantic_model_format": {"type": ("string", "null")},
+                "projections_after": {"type": "object"},
+                "changed_surfaces": {"type": "array", "items": {"type": "string"}},
             },
         ),
         "appgen.designer-visual-transaction-result.v1": _contract_format_schema(
@@ -20706,6 +20836,11 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
         package_cli = _tooling_audit_package_verify_cli(tmp_path, _tooling_audit_package_verify_sample())
         package_invalid_target = _tooling_audit_package_invalid_target(tmp_path, source)
         designer_report = designer_sync_report_dsl(source, source_name="contract-schema.appgen")
+        designer_single_edit = _designer_visual_edit_result(
+            source,
+            {"kind": "add_field", "table": "Invoice", "field": "schema_note", "type": "string"},
+            source_name="contract-schema.appgen",
+        )
         designer_visual_matrix = designer_visual_edit_matrix_dsl(source, source_name="contract-schema.appgen")
         designer_transaction = _designer_visual_edit_result(
             source,
@@ -20727,6 +20862,7 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             },
             source_name="contract-schema.appgen",
         )
+        designer_cli = _tooling_audit_designer_sync_cli(tmp_path, source)
         studio_audit = _tooling_audit_studio_semantic_service(source)
         implementation_phases = {
             "format": "appgen.tooling-implementation-phase-audit.v1",
@@ -20844,8 +20980,19 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             "appgen.missing-required-option-exit-audit.v1": _tooling_audit_missing_required_option_exit(tmp_path),
             "appgen.invalid-choice-exit-audit.v1": _tooling_audit_invalid_choice_exit(tmp_path),
             "appgen.cli-help-surface-audit.v1": _tooling_audit_cli_help_surface(repo_root),
+            "appgen.designer-dsl-editor.v1": designer_report["projections"]["dsl_editor"],
+            "appgen.designer-component-palette.v1": designer_report["projections"]["component_palette"],
+            "appgen.designer-form-projection.v1": designer_report["projections"]["form_designer"],
+            "appgen.designer-database-projection.v1": designer_report["projections"]["database_designer"],
+            "appgen.designer-workflow-projection.v1": designer_report["projections"]["workflow_designer"],
+            "appgen.designer-pbc-composition-projection.v1": designer_report["projections"]["pbc_composition_designer"],
+            "appgen.designer-package-deployment-projection.v1": designer_report["projections"]["package_deployment_designer"],
+            "appgen.designer-graph-explain-panel.v1": designer_report["projections"]["graph_explain_panel"],
+            "appgen.designer-nl-planner-panel.v1": designer_report["projections"]["natural_language_planner"],
             "appgen.designer-sync-report.v1": designer_report,
+            "appgen.designer-sync-cli-audit.v1": designer_cli,
             "appgen.designer-sync-text-renderer.v1": _designer_sync_text_renderer_contract(),
+            "appgen.designer-visual-edit-result.v1": designer_single_edit,
             "appgen.designer-visual-transaction-result.v1": designer_transaction,
             "appgen.designer-visual-edit-matrix.v1": designer_visual_matrix,
             "appgen.studio-semantic-service.v1": {

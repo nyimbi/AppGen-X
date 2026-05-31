@@ -763,7 +763,18 @@ JSON Schema 2020-12 dialect, and includes schemas for `appgen.diagnostic.v1`,
 `appgen.missing-required-option-exit-audit.v1`,
 `appgen.invalid-choice-exit-audit.v1`, `appgen.cli-alias-contract.v1`, and
 `appgen.cli-help-surface-audit.v1`,
-`appgen.designer-sync-report.v1`, diagnostic catalog, fixture audit, and
+`appgen.designer-dsl-editor.v1`,
+`appgen.designer-component-palette.v1`,
+`appgen.designer-form-projection.v1`,
+`appgen.designer-database-projection.v1`,
+`appgen.designer-workflow-projection.v1`,
+`appgen.designer-pbc-composition-projection.v1`,
+`appgen.designer-package-deployment-projection.v1`,
+`appgen.designer-graph-explain-panel.v1`,
+`appgen.designer-nl-planner-panel.v1`,
+`appgen.designer-sync-report.v1`,
+`appgen.designer-sync-cli-audit.v1`,
+`appgen.designer-visual-edit-result.v1`, diagnostic catalog, fixture audit, and
 diagnostic text-renderer reports, parser-golden and parser-golden text-renderer
 audits, semantic-drift and semantic-drift text-renderer audits,
 `appgen.migration-plan.v1`,
@@ -2026,6 +2037,19 @@ diff previews, patched source, the after-edit semantic model, changed designer
 surfaces, and refreshed projections for accepted visual edits. Form, database,
 workflow, PBC composition, and package/deployment edit paths must validate the
 patched DSL before the Studio accepts the visual operation.
+Each Studio panel projection is a schema-backed handoff contract:
+`appgen.designer-dsl-editor.v1`, `appgen.designer-component-palette.v1`,
+`appgen.designer-form-projection.v1`,
+`appgen.designer-database-projection.v1`,
+`appgen.designer-workflow-projection.v1`,
+`appgen.designer-pbc-composition-projection.v1`,
+`appgen.designer-package-deployment-projection.v1`,
+`appgen.designer-graph-explain-panel.v1`, and
+`appgen.designer-nl-planner-panel.v1`. Single visual edits return
+`appgen.designer-visual-edit-result.v1`, while multi-edit transactions return
+the transaction-specific contract below. Agents and IDE clients should validate
+the panel projection they consume directly instead of unpacking the aggregate
+designer-sync report by convention.
 Designer edits may also be submitted as an atomic transaction with
 `kind: "transaction"` and an `edits` array. A transaction can span database
 field creation, form component placement, workflow transition edits,
@@ -2694,7 +2718,7 @@ Exit criteria:
   package-manifest, component/PBC wrapper, doctor, tooling-audit,
   project-governance, schema-catalog, and contract-validation report schemas are
   available from CLI JSON and text modes. The schema audit validates
-  representative payloads for all 137 documented `appgen.*.v1` formats, so
+  representative payloads for all 148 documented `appgen.*.v1` formats, so
   adding a documented contract without a matching runtime sample fails the
   release gate.
 - `appgen.contract-validation-cli-audit.v1` proves those JSON contracts can be
