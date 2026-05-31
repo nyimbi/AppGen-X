@@ -6885,6 +6885,8 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             component_publish_cli["ok"]
             and component_publish_cli.get("passing_case_count") == component_publish_cli.get("case_count")
             and component_publish_cli.get("missing_case_count") == 0
+            and component_publish_cli.get("missing_exit_code_case_count") == 0
+            and component_publish_cli.get("missing_ok_case_count") == 0
             and component_publish_cli.get("patch_format") == "appgen.component-catalog-patch.v1"
             and component_publish_cli.get("operation") == "upsert_component"
             and component_publish_cli.get("component") == "CustomGauge"
@@ -6928,6 +6930,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "observed_case_ids": component_publish_cli.get("observed_case_ids"),
                     "missing_case_count": component_publish_cli.get("missing_case_count"),
                     "missing_case_ids": component_publish_cli.get("missing_case_ids"),
+                    "expected_exit_codes_by_case": component_publish_cli.get("expected_exit_codes_by_case"),
+                    "exit_codes_by_case": component_publish_cli.get("exit_codes_by_case"),
+                    "missing_exit_code_case_count": component_publish_cli.get("missing_exit_code_case_count"),
+                    "missing_exit_code_cases": component_publish_cli.get("missing_exit_code_cases"),
+                    "ok_by_case": component_publish_cli.get("ok_by_case"),
+                    "missing_ok_case_count": component_publish_cli.get("missing_ok_case_count"),
+                    "missing_ok_cases": component_publish_cli.get("missing_ok_cases"),
                     "patch_format": component_publish_cli.get("patch_format"),
                     "operation": component_publish_cli.get("operation"),
                     "component": component_publish_cli.get("component"),
@@ -11155,6 +11164,8 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     and evidence["component_publish_cli"].get("passing_case_count")
                     == evidence["component_publish_cli"].get("case_count")
                     and evidence["component_publish_cli"].get("failing_case_count") == 0
+                    and evidence["component_publish_cli"].get("missing_exit_code_case_count") == 0
+                    and evidence["component_publish_cli"].get("missing_ok_case_count") == 0
                     and evidence["component_publish_cli"].get("patch_format") == "appgen.component-catalog-patch.v1"
                     and evidence["component_publish_cli"].get("side_effect_free") is True
                     and evidence["component_publish_cli"].get("write_performed") is False
@@ -15028,6 +15039,7 @@ def _tooling_audit_component_publish_cli(tmp: Path) -> dict:
             and patch.get("side_effect_free") is True
             and patch.get("write_performed") is False
             and not json_payload.get("blocking_gaps"),
+            "exit_code": json_exit,
         },
         {
             "case": "text_publish_markers",
@@ -15039,6 +15051,7 @@ def _tooling_audit_component_publish_cli(tmp: Path) -> dict:
             and "catalog-count before=1 after=2 existing=1" in text_output
             and "catalog-existing ExistingBox" in text_output
             and not text_output.lstrip().startswith("{"),
+            "exit_code": text_exit,
         },
         {
             "case": "missing_catalog_rejected",
@@ -15048,6 +15061,7 @@ def _tooling_audit_component_publish_cli(tmp: Path) -> dict:
             and "catalog_path_readable" in set(missing_payload.get("blocking_gaps", ()))
             and missing_payload.get("catalog_patch", {}).get("side_effect_free") is True
             and missing_payload.get("catalog_patch", {}).get("write_performed") is False,
+            "exit_code": missing_exit,
         },
     )
     failing_cases = tuple(case["case"] for case in cases if not case["ok"])
@@ -15068,12 +15082,39 @@ def _tooling_audit_component_publish_cli(tmp: Path) -> dict:
     missing_catalog_blocking_gap_misses = tuple(
         gap for gap in required_missing_catalog_blocking_gaps if gap not in observed_missing_catalog_blocking_gaps
     )
+    expected_exit_codes_by_case = {
+        "json_publish_patch": 0,
+        "text_publish_markers": 0,
+        "missing_catalog_rejected": 1,
+    }
+    exit_codes_by_case = {
+        case["case"]: case.get("exit_code")
+        for case in cases
+        if case["case"] in expected_exit_codes_by_case
+    }
+    missing_exit_code_cases = tuple(
+        case_id
+        for case_id, expected_exit_code in expected_exit_codes_by_case.items()
+        if exit_codes_by_case.get(case_id) != expected_exit_code
+    )
+    ok_by_case = {
+        case["case"]: case.get("ok") is True
+        for case in cases
+        if case["case"] in required_case_ids
+    }
+    missing_ok_cases = tuple(
+        case_id
+        for case_id in required_case_ids
+        if ok_by_case.get(case_id) is not True
+    )
     return {
         "format": "appgen.component-publish-cli-audit.v1",
         "ok": not failing_cases
         and not missing_case_ids
         and not missing_text_markers
-        and not missing_catalog_blocking_gap_misses,
+        and not missing_catalog_blocking_gap_misses
+        and not missing_exit_code_cases
+        and not missing_ok_cases,
         "case_count": len(cases),
         "passing_case_count": sum(1 for case in cases if case["ok"]),
         "failing_case_count": len(failing_cases),
@@ -15109,6 +15150,13 @@ def _tooling_audit_component_publish_cli(tmp: Path) -> dict:
         "missing_catalog_blocking_gap_misses": missing_catalog_blocking_gap_misses,
         "missing_catalog_side_effect_free": missing_payload.get("catalog_patch", {}).get("side_effect_free"),
         "missing_catalog_write_performed": missing_payload.get("catalog_patch", {}).get("write_performed"),
+        "expected_exit_codes_by_case": expected_exit_codes_by_case,
+        "exit_codes_by_case": exit_codes_by_case,
+        "missing_exit_code_case_count": len(missing_exit_code_cases),
+        "missing_exit_code_cases": missing_exit_code_cases,
+        "ok_by_case": ok_by_case,
+        "missing_ok_case_count": len(missing_ok_cases),
+        "missing_ok_cases": missing_ok_cases,
         "cases": cases,
     }
 

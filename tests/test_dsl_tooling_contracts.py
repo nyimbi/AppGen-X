@@ -543,6 +543,17 @@ def test_component_publish_cli_audit_covers_patch_text_and_missing_catalog(tmp_p
     assert audit["observed_case_ids"] == audit["required_case_ids"]
     assert audit["missing_case_count"] == 0
     assert audit["missing_case_ids"] == ()
+    assert audit["expected_exit_codes_by_case"] == {
+        "json_publish_patch": 0,
+        "text_publish_markers": 0,
+        "missing_catalog_rejected": 1,
+    }
+    assert audit["exit_codes_by_case"] == audit["expected_exit_codes_by_case"]
+    assert audit["missing_exit_code_case_count"] == 0
+    assert audit["missing_exit_code_cases"] == ()
+    assert audit["ok_by_case"] == {case_id: True for case_id in audit["required_case_ids"]}
+    assert audit["missing_ok_case_count"] == 0
+    assert audit["missing_ok_cases"] == ()
     assert audit["patch_format"] == "appgen.component-catalog-patch.v1"
     assert audit["operation"] == "upsert_component"
     assert audit["component"] == "CustomGauge"
@@ -7410,6 +7421,16 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert component_publish_check["detail"]["cli"]["missing_case_count"] == 0
     assert component_publish_check["detail"]["cli"]["missing_case_ids"] == ()
+    assert component_publish_check["detail"]["cli"]["exit_codes_by_case"] == (
+        component_publish_check["detail"]["cli"]["expected_exit_codes_by_case"]
+    )
+    assert component_publish_check["detail"]["cli"]["missing_exit_code_case_count"] == 0
+    assert component_publish_check["detail"]["cli"]["missing_exit_code_cases"] == ()
+    assert component_publish_check["detail"]["cli"]["ok_by_case"] == {
+        case_id: True for case_id in component_publish_check["detail"]["cli"]["required_case_ids"]
+    }
+    assert component_publish_check["detail"]["cli"]["missing_ok_case_count"] == 0
+    assert component_publish_check["detail"]["cli"]["missing_ok_cases"] == ()
     assert component_publish_check["detail"]["cli"]["patch_format"] == "appgen.component-catalog-patch.v1"
     assert component_publish_check["detail"]["cli"]["operation"] == "upsert_component"
     assert component_publish_check["detail"]["cli"]["component"] == "CustomGauge"

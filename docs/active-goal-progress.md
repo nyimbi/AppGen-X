@@ -4341,3 +4341,10 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   require those named missing lists to be empty, so target rejection, artifact
   handoff, and warning/error policy cannot pass by aggregate counts while a case
   returns the wrong process status or silently fails its own scenario proof.
+- Current component-publish CLI hardening pass expands component catalog
+  publication evidence with expected and observed exit codes plus `ok` status by
+  named JSON publication, text publication, and missing-catalog rejection case.
+  The aggregate `component_publish_catalog_contracts` gate now requires those
+  named missing lists to be empty, so side-effect-free component publication
+  cannot pass by patch metadata and text markers while a CLI case returns the
+  wrong process status or fails its own scenario proof.
