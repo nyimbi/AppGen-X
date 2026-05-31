@@ -659,6 +659,13 @@ h2 {
   overflow: hidden;
 }
 
+.form-frame:focus-within {
+  border-color: var(--brand);
+  box-shadow:
+    0 0 0 3px rgba(36, 107, 97, 0.14),
+    0 20px 48px rgba(31, 41, 55, 0.08);
+}
+
 .form-titlebar {
   display: flex;
   align-items: center;
@@ -682,7 +689,7 @@ h2 {
 
 .canvas-rulers {
   position: absolute;
-  top: 42px;
+  top: 78px;
   left: 0;
   right: 0;
   display: grid;
@@ -694,6 +701,31 @@ h2 {
   font-size: 10px;
   font-weight: 800;
   pointer-events: none;
+}
+
+.drop-target-banner {
+  position: absolute;
+  top: 46px;
+  right: 10px;
+  left: 10px;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px dashed #8ca0bb;
+  border-radius: 7px;
+  padding: 7px 9px;
+  color: #40566f;
+  background: rgba(248, 250, 252, 0.92);
+  font-size: 12px;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+.drop-target-banner strong {
+  color: var(--brand-strong);
+  white-space: nowrap;
 }
 
 .canvas-rulers span {
@@ -726,6 +758,13 @@ h2 {
     transform 120ms ease;
 }
 
+.placed-component.selected {
+  border-color: var(--brand);
+  box-shadow:
+    0 0 0 3px rgba(36, 107, 97, 0.2),
+    0 14px 28px rgba(31, 41, 55, 0.16);
+}
+
 .placed-component svg {
   flex: 0 0 auto;
   color: var(--tile-accent);
@@ -743,6 +782,42 @@ h2 {
     0 0 0 3px color-mix(in srgb, var(--tile-accent) 18%, transparent),
     0 12px 24px rgba(31, 41, 55, 0.14);
   transform: translateY(-1px);
+}
+
+.drop-operation-panel {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+  border: 1px solid #cfd8e6;
+  border-radius: 7px;
+  padding: 10px;
+  color: #40566f;
+  background: #f8fafc;
+}
+
+.drop-operation-panel div {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.drop-operation-panel p,
+.drop-operation-panel code {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+
+.drop-operation-panel code {
+  border: 1px solid #d7e0ec;
+  border-radius: 6px;
+  padding: 7px 8px;
+  color: #17463f;
+  background: #ffffff;
 }
 
 .surface-workbenches {

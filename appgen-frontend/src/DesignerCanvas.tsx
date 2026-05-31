@@ -1,18 +1,7 @@
 import { Icon } from './Icon'
 import { visualBindings } from './bindingCatalog'
-
-const placedComponents = [
-  { name: 'Main Menu', icon: 'menu' as const, x: 4, y: 4, w: 92, tone: 'navigation' },
-  { name: 'Customer Name', icon: 'input' as const, x: 7, y: 16, w: 36, tone: 'inputs' },
-  { name: 'Account Lookup', icon: 'lookup' as const, x: 48, y: 16, w: 26, tone: 'choice' },
-  { name: 'Invoice Date', icon: 'calendar' as const, x: 77, y: 16, w: 19, tone: 'inputs' },
-  { name: 'Line Items', icon: 'dataGrid' as const, x: 7, y: 35, w: 67, tone: 'data' },
-  { name: 'Popup Actions', icon: 'popup' as const, x: 78, y: 35, w: 18, tone: 'navigation' },
-  { name: 'Approval Agent', icon: 'agent' as const, x: 78, y: 49, w: 18, tone: 'automation' },
-  { name: 'Totals Chart', icon: 'chart' as const, x: 7, y: 73, w: 30, tone: 'data' },
-  { name: 'Receipt Camera', icon: 'camera' as const, x: 41, y: 73, w: 24, tone: 'media' },
-  { name: 'Mobile Target', icon: 'mobile' as const, x: 69, y: 73, w: 27, tone: 'targets' },
-]
+import { designerRuntimeAudit } from './designerRuntime'
+import type { ComponentDragPayload, DesignerDropOperation, PlacedComponent } from './designerRuntime'
 
 const timelineTracks = [
   { name: 'Fade totals panel', icon: 'floatAnimation' as const, duration: '180ms', target: 'Totals Chart' },
@@ -33,7 +22,23 @@ const sceneNodes = [
   { name: 'Product mesh', icon: 'mesh3d' as const, state: 'Bound' },
 ]
 
-export function DesignerCanvas() {
+type DesignerCanvasProps = {
+  components: PlacedComponent[]
+  selectedId: string
+  lastOperation: DesignerDropOperation | null
+  onDropComponent: (payload: ComponentDragPayload, target: { x: number; y: number }) => void
+  onSelectComponent: (id: string) => void
+}
+
+export function DesignerCanvas({
+  components,
+  selectedId,
+  lastOperation,
+  onDropComponent,
+  onSelectComponent,
+}: DesignerCanvasProps) {
+  const runtimeAudit = designerRuntimeAudit()
+
   return (
     <main className="panel designer-canvas" aria-label="Application designer">
       <div className="canvas-toolbar">
@@ -61,7 +66,26 @@ export function DesignerCanvas() {
       </div>
 
       <section className="canvas-grid" aria-label="Form canvas">
-        <div className="form-frame">
+        <div
+          className="form-frame"
+          onDragOver={(event) => {
+            event.preventDefault()
+            event.dataTransfer.dropEffect = 'copy'
+          }}
+          onDrop={(event) => {
+            event.preventDefault()
+            const payloadText = event.dataTransfer.getData('application/appgen-component')
+            if (!payloadText) {
+              return
+            }
+            const bounds = event.currentTarget.getBoundingClientRect()
+            const payload = JSON.parse(payloadText) as ComponentDragPayload
+            onDropComponent(payload, {
+              x: ((event.clientX - bounds.left) / bounds.width) * 100,
+              y: ((event.clientY - bounds.top) / bounds.height) * 100,
+            })
+          }}
+        >
           <div className="form-titlebar">
             <span>InvoiceForm</span>
             <span>
@@ -69,17 +93,23 @@ export function DesignerCanvas() {
               12 columns
             </span>
           </div>
+          <div className="drop-target-banner">
+            <Icon name="drag" />
+            <span>Drop Target Ready</span>
+            <strong>{runtimeAudit.ok ? 'Runtime wired' : 'Runtime blocked'}</strong>
+          </div>
           <div className="canvas-rulers" aria-hidden="true">
             <span>0</span>
             <span>320</span>
             <span>640</span>
             <span>960</span>
           </div>
-          {placedComponents.map((component) => (
+          {components.map((component) => (
             <button
-              className={`placed-component placed-${component.tone}`}
-              key={component.name}
-              style={{ left: `${component.x}%`, top: `${component.y}%`, width: `${component.w}%` }}
+              className={`placed-component placed-${component.tone} ${component.id === selectedId ? 'selected' : ''}`}
+              key={component.id}
+              onClick={() => onSelectComponent(component.id)}
+              style={{ left: `${component.x}%`, top: `${component.y}%`, width: `${component.w}%`, height: `${component.h}%` }}
               type="button"
             >
               <Icon name={component.icon} />
@@ -87,6 +117,20 @@ export function DesignerCanvas() {
             </button>
           ))}
         </div>
+      </section>
+
+      <section className="drop-operation-panel" aria-label="Designer drag and drop runtime">
+        <div>
+          <Icon name="workflow" />
+          <span>Drag/drop wiring</span>
+          <strong>{lastOperation ? 'Committed' : 'Ready'}</strong>
+        </div>
+        <p>
+          {lastOperation
+            ? `Last drop: ${lastOperation.preview.name} -> handler ${lastOperation.handlerDefinition.target}`
+            : `Actionable operation: ${runtimeAudit.commit.operation} -> handler ${runtimeAudit.commit.handlerDefinition.target}`}
+        </p>
+        <code>{lastOperation?.dslPatch[0] ?? runtimeAudit.commit.dslPatch[0]}</code>
       </section>
 
       <section className="surface-workbenches" aria-label="Advanced design surfaces">

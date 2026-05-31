@@ -1,12 +1,15 @@
 import { Icon } from './Icon'
 import type { ComponentCategory } from './componentCatalog'
 import { categoryIcons, paletteCategories, paletteComponents } from './componentCatalog'
+import { createComponentDragPayload } from './designerRuntime'
+import type { ComponentDragPayload } from './designerRuntime'
 
 type ComponentPaletteProps = {
   activeCategory: ComponentCategory | 'All'
   query: string
   onCategoryChange: (category: ComponentCategory | 'All') => void
   onQueryChange: (query: string) => void
+  onDragStart?: (payload: ComponentDragPayload) => void
 }
 
 export function ComponentPalette({
@@ -14,6 +17,7 @@ export function ComponentPalette({
   query,
   onCategoryChange,
   onQueryChange,
+  onDragStart,
 }: ComponentPaletteProps) {
   const visibleComponents = filterPaletteComponents(activeCategory, query)
   const visibleGroups = groupPaletteComponents(visibleComponents)
@@ -77,6 +81,13 @@ export function ComponentPalette({
                 data-component-category={componentDragPayload(component).category}
                 data-component-icon={componentDragPayload(component).icon}
                 draggable
+                onDragStart={(event) => {
+                  const payload = componentDragPayload(component)
+                  event.dataTransfer.effectAllowed = 'copy'
+                  event.dataTransfer.setData('application/appgen-component', JSON.stringify(payload))
+                  event.dataTransfer.setData('text/plain', payload.component)
+                  onDragStart?.(payload)
+                }}
                 key={component.name}
                 title={component.description}
                 type="button"
@@ -144,11 +155,5 @@ export function paletteCategoryCounts() {
 }
 
 export function componentDragPayload(component: (typeof paletteComponents)[number]) {
-  return {
-    component: component.name,
-    category: component.category,
-    icon: component.icon,
-    size: component.size,
-    draggable: true,
-  }
+  return createComponentDragPayload(component)
 }

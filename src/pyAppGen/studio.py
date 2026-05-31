@@ -362,6 +362,7 @@ def _frontend_interaction_audit(interaction_audit_text: str) -> dict:
         "palette_search_filter",
         "palette_empty_state",
         "component_drag_payload",
+        "actionable_drag_drop_wiring_operations",
         "device_workbench_render_inputs",
         "data_workbench_render_inputs",
         "status_rail_audit_inputs",
@@ -375,12 +376,15 @@ def _frontend_interaction_audit(interaction_audit_text: str) -> dict:
         "inspectorEditorAudit",
         "packageInstallAudit",
         "semanticServiceAudit",
+        "designerRuntimeAudit",
     )
     required_helpers = (
         "filterPaletteComponents",
         "groupPaletteComponents",
         "paletteCategoryCounts",
         "componentDragPayload",
+        "previewComponentDropOperation",
+        "commitComponentDropOperation",
     )
     observed_scenarios = tuple(
         scenario for scenario in required_scenarios if f"id: '{scenario}'" in interaction_audit_text

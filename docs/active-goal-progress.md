@@ -4467,3 +4467,9 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   release, component/PBC wrapper, and project-governance contracts. Live sample
   validation now covers all 113 required formats with zero documented formats
   outside the schema catalog.
+- Current Studio frontend implementation pass makes the browser designer more
+  than a static contract display. The React Studio now has palette drag payloads,
+  canvas drop targets, drop preview/commit runtime contracts, selected-component
+  inspection, generated handler wiring evidence, and browser-smoke assertions
+  for the drag/drop runtime. The frontend interaction audit now requires nine
+  named scenarios, including actionable drag/drop wiring operations.

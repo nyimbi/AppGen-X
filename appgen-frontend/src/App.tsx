@@ -11,6 +11,11 @@ import { StatusRail } from './StatusRail'
 import { StudioChrome } from './StudioChrome'
 import { paletteCategories } from './componentCatalog'
 import type { ComponentCategory } from './componentCatalog'
+import {
+  commitComponentDropOperation,
+  initialPlacedComponents,
+} from './designerRuntime'
+import type { ComponentDragPayload, DesignerDropOperation, PlacedComponent } from './designerRuntime'
 
 type StudioInitialState = {
   category: ComponentCategory | 'All'
@@ -35,6 +40,17 @@ function App() {
   const initialState = readStudioInitialState()
   const [activeCategory, setActiveCategory] = useState<ComponentCategory | 'All'>(initialState.category)
   const [query, setQuery] = useState(initialState.query)
+  const [components, setComponents] = useState<PlacedComponent[]>(initialPlacedComponents)
+  const [selectedId, setSelectedId] = useState(initialPlacedComponents[4].id)
+  const [lastOperation, setLastOperation] = useState<DesignerDropOperation | null>(null)
+  const selectedComponent = components.find((component) => component.id === selectedId) ?? components[0]
+
+  function handleDropComponent(payload: ComponentDragPayload, target: { x: number; y: number }) {
+    const operation = commitComponentDropOperation(components, payload, target)
+    setComponents(operation.components)
+    setSelectedId(operation.committed.id)
+    setLastOperation(operation)
+  }
 
   return (
     <div className="app-shell">
@@ -46,8 +62,14 @@ function App() {
           onQueryChange={setQuery}
           query={query}
         />
-        <DesignerCanvas />
-        <InspectorPanel />
+        <DesignerCanvas
+          components={components}
+          lastOperation={lastOperation}
+          onDropComponent={handleDropComponent}
+          onSelectComponent={setSelectedId}
+          selectedId={selectedId}
+        />
+        <InspectorPanel selectedComponent={selectedComponent} />
       </section>
       <SemanticServicePanel />
       <PackageManager />

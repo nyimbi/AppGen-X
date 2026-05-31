@@ -2068,6 +2068,7 @@ surface contract formats, and the `SemanticServicePanel` rendering hooks before
 the Studio bridge counts as complete in Python release evidence. It also embeds
 `appgen.frontend-interaction-audit.v1`, which proves the frontend interaction
 audit covers palette category/search/empty states, component drag payloads,
+actionable drop preview/commit operations with handler definition evidence,
 device and data workbench render inputs, status-rail audit inputs, and the
 semantic-service bridge before the Studio browser-smoke gate can pass.
 The top-level `appgen.tooling-audit.v1` treats these as first-class gates:
@@ -2081,8 +2082,10 @@ the aggregate Studio semantic-service audit, so browser-facing regressions are
 visible in release evidence without expanding nested Studio details. The release
 gate also requires observed frontend services, surfaces, surface contracts,
 interaction scenarios, audit inputs, and helpers to meet their required totals
-with empty named-missing tuples, which keeps browser-facing bridge regressions
-actionable in CI logs.
+with empty named-missing tuples. Drag/drop readiness is not counted from static
+markup alone: the audit must see palette drag payload construction, drop preview,
+drop commit, and generated handler wiring helpers, which keeps browser-facing
+bridge regressions actionable in CI logs.
 
 ## Graph Tooling
 

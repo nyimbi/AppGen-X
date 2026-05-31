@@ -5135,8 +5135,9 @@ def test_studio_semantic_service_audit_proves_panel_contracts() -> None:
     assert report["frontend_semantic_service_audit"]["checks"]["panel_renders_surfaces"] is True
     assert report["frontend_interaction_format"] == "appgen.frontend-interaction-audit.v1"
     assert report["frontend_interaction_audit"]["ok"] is True
-    assert report["frontend_interaction_scenario_count"] == 8
-    assert report["frontend_interaction_required_scenario_count"] == 8
+    assert report["frontend_interaction_scenario_count"] == 9
+    assert report["frontend_interaction_required_scenario_count"] == 9
+    assert "actionable_drag_drop_wiring_operations" in report["frontend_interaction_scenarios"]
     assert set(report["frontend_interaction_required_scenarios"]) <= set(report["frontend_interaction_scenarios"])
     assert report["frontend_interaction_missing_scenarios"] == ()
     assert report["frontend_interaction_audit_input_count"] == len(
@@ -6625,7 +6626,8 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     frontend_interaction_check = next(check for check in report["checks"] if check["id"] == "frontend_interaction_audit_bridge")
     assert frontend_interaction_check["detail"]["format"] == "appgen.frontend-interaction-audit.v1"
     assert frontend_interaction_check["detail"]["audit"]["ok"] is True
-    assert frontend_interaction_check["detail"]["scenario_count"] == 8
+    assert frontend_interaction_check["detail"]["scenario_count"] == 9
+    assert "actionable_drag_drop_wiring_operations" in frontend_interaction_check["detail"]["scenarios"]
     assert set(frontend_interaction_check["detail"]["required_scenarios"]) <= set(
         frontend_interaction_check["detail"]["scenarios"]
     )

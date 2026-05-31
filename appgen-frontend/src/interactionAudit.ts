@@ -13,6 +13,12 @@ import type { DeviceApiGroup } from './deviceApiCatalog'
 import { inspectorEditorAudit } from './inspectorCatalog'
 import { packageInstallAudit } from './packageCatalog'
 import { semanticServiceAudit } from './semanticServiceContract'
+import {
+  commitComponentDropOperation,
+  designerRuntimeAudit,
+  initialPlacedComponents,
+  previewComponentDropOperation,
+} from './designerRuntime'
 
 const requiredDeviceGroups: DeviceApiGroup[] = [
   'Sensors',
@@ -44,6 +50,11 @@ export function studioInteractionAudit() {
   const inspectorAudit = inspectorEditorAudit()
   const packageAudit = packageInstallAudit()
   const semanticAudit = semanticServiceAudit()
+  const runtimeAudit = designerRuntimeAudit()
+  const previewDrop = dragPayload ? previewComponentDropOperation(dragPayload, { x: 62, y: 62 }) : null
+  const committedDrop = dragPayload
+    ? commitComponentDropOperation(initialPlacedComponents, dragPayload, { x: 62, y: 62 })
+    : null
 
   const scenarios = [
     {
@@ -78,6 +89,17 @@ export function studioInteractionAudit() {
       evidence: dragPayload,
     },
     {
+      id: 'actionable_drag_drop_wiring_operations',
+      ok:
+        runtimeAudit.ok &&
+        runtimeAudit.dragPayload.source === 'component_palette' &&
+        previewDrop?.operation === 'bind_event_to_handler' &&
+        committedDrop !== null &&
+        committedDrop.componentCountAfter === committedDrop.componentCountBefore + 1 &&
+        committedDrop?.handlerDefinition.signature === 'sender, context',
+      evidence: { runtimeAudit, previewDrop, committedDrop },
+    },
+    {
       id: 'device_workbench_render_inputs',
       ok: requiredDeviceGroups.every((group) => deviceGroups.has(group)) && deviceAudit.ok,
       evidence: { groups: Array.from(deviceGroups), total: deviceAudit.totalCapabilities },
@@ -105,6 +127,7 @@ export function studioInteractionAudit() {
         editors: inspectorAudit.totalEditors,
         packages: packageAudit.totalPackages,
         semanticSurfaces: semanticAudit.surfaceCount,
+        dragDropRuntime: runtimeAudit.ok,
       },
     },
     {

@@ -1,19 +1,24 @@
 import { Icon } from './Icon'
 import { inspectorEditors, inspectorKindIcons } from './inspectorCatalog'
 import type { InspectorEditorKind } from './inspectorCatalog'
-
-const properties = [
-  ['Name', 'LineItemsGrid'],
-  ['Data source', 'Invoice.lines'],
-  ['Lookup mode', 'Auto generated'],
-  ['Context menu', 'PopupActions'],
-  ['Validation', 'Required rows'],
-  ['Target', 'Web, mobile, desktop'],
-]
+import type { PlacedComponent } from './designerRuntime'
 
 const editorKinds: InspectorEditorKind[] = ['Property', 'Event', 'Component', 'Custom Designer']
 
-export function InspectorPanel() {
+type InspectorPanelProps = {
+  selectedComponent: PlacedComponent
+}
+
+export function InspectorPanel({ selectedComponent }: InspectorPanelProps) {
+  const properties = [
+    ['Name', selectedComponent.id],
+    ['Component', selectedComponent.name],
+    ['Data source', selectedComponent.binding],
+    ['Source', selectedComponent.source],
+    ['Bounds', `${selectedComponent.x.toFixed(0)}, ${selectedComponent.y.toFixed(0)}, ${selectedComponent.w.toFixed(0)}, ${selectedComponent.h.toFixed(0)}`],
+    ['Handler', selectedComponent.handler ? `${selectedComponent.handler.event} -> ${selectedComponent.handler.target}` : 'None'],
+  ]
+
   return (
     <aside className="panel inspector-panel" aria-label="Object inspector">
       <div className="panel-title-row">
@@ -25,12 +30,12 @@ export function InspectorPanel() {
       </div>
 
       <div className="selected-card">
-        <span className="component-icon category-data">
-          <Icon name="dataGrid" />
+        <span className={`component-icon category-${selectedComponent.tone}`}>
+          <Icon name={selectedComponent.icon} />
         </span>
         <div>
-          <strong>Line Items</strong>
-          <span>Data Grid</span>
+          <strong>{selectedComponent.name}</strong>
+          <span>{selectedComponent.binding}</span>
         </div>
       </div>
 
@@ -80,7 +85,7 @@ export function InspectorPanel() {
         </button>
         <button type="button">
           <Icon name="workflow" />
-          Add Event
+          {selectedComponent.handler ? selectedComponent.handler.target : 'Add Event'}
         </button>
       </div>
     </aside>

@@ -160,6 +160,9 @@ async function main() {
         'AppGen Studio',
         'Toolbox',
         'Invoice Workspace',
+        'Drop Target Ready',
+        'Drag/drop wiring',
+        'handler ButtonClick',
         'Object Inspector',
         'Component Installation',
         'Native Capability Coverage',
@@ -176,7 +179,7 @@ async function main() {
     {
       id: 'interaction_audit_bridge',
       path: '/',
-      includes: ['Interactions', '8 checks', 'Device APIs', 'Data Services', 'Editors'],
+      includes: ['Interactions', '9 checks', 'Device APIs', 'Data Services', 'Editors'],
     },
     {
       id: 'device_palette_filter',
