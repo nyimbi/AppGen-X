@@ -4260,3 +4260,16 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   known active-PBC `datetime.utcnow()` warnings only), scoped diff whitespace
   check, and restricted-name scan outside archive, Git internals, and active PBC
   paths.
+- Current test-strategy CLI hardening pass expands cross-tool strategy evidence
+  with expected and observed exit codes, `ok` status, payload formats, text
+  markers, text exit codes, and raw-JSON fallback status by named diagnostics,
+  parser-golden, semantic-drift, and doctor case. The aggregate
+  `parser_golden_and_drift_gates` gate now requires those named missing lists to
+  be empty, so a shared-model strategy surface cannot pass by case count while
+  returning the wrong process status, wrong JSON envelope, missing text summary,
+  or raw JSON fallback. Verification passed: Python compile for the touched DSL
+  and tests, focused test-strategy CLI audit (`1 passed`, with the known
+  active-PBC `datetime.utcnow()` warnings only), aggregate tooling audit
+  (`1 passed`, with the known active-PBC `datetime.utcnow()` warnings only),
+  scoped diff whitespace check, and restricted-name scan outside archive, Git
+  internals, and active PBC paths.

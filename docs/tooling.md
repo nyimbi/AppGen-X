@@ -2098,10 +2098,14 @@ doctor-check counts across diagnostics, parser golden, semantic drift, and
 doctor gates, so release evidence proves the generator, IDE, LSP, graph, and
 release-verifier surfaces share the same semantic model without expanding every
 nested report.
-It also reports required, observed, and missing case ids plus expected and
-observed payload formats by case, so diagnostics, parser-golden, drift, and
-doctor evidence cannot disappear or drift format while the aggregate case count
-still looks correct.
+It also reports required, observed, and missing case ids; expected and observed
+exit codes by case; case `ok` status by case; expected and observed payload
+formats by case; expected text markers by case; text exit codes by case;
+text-marker presence by case; and text JSON-fallback status by case. The
+aggregate gate requires all named missing lists to be empty, so diagnostics,
+parser-golden, drift, and doctor evidence cannot disappear, return the wrong
+process status, drift JSON format, lose human-readable text, or fall back to raw
+JSON while the aggregate case count still looks correct.
 The semantic drift text renderer also publishes required, emitted, missing, and
 missing-count evidence for drift text surfaces, embedded drift/semantic/generator
 contract formats, and semantic digests. The aggregate semantic gate requires

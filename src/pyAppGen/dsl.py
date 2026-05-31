@@ -9316,6 +9316,11 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and test_strategy_cli.get("observed_surface_count", 0) >= 6
             and test_strategy_cli.get("missing_surface_count") == 0
             and test_strategy_cli.get("missing_payload_format_case_count") == 0
+            and test_strategy_cli.get("missing_exit_code_case_count") == 0
+            and test_strategy_cli.get("missing_ok_case_count") == 0
+            and test_strategy_cli.get("missing_text_exit_code_case_count") == 0
+            and test_strategy_cli.get("missing_text_marker_case_count") == 0
+            and test_strategy_cli.get("text_json_fallback_case_count") == 0
             and test_strategy_cli.get("failing_case_count") == 0,
             "Semantic drift contracts prove CLI, LSP, Studio, graph, generator, release, and tests consume the shared semantic model with text evidence.",
             "docs/tooling.md#test-strategy",
@@ -9391,6 +9396,25 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "payload_formats_by_case": test_strategy_cli.get("payload_formats_by_case"),
                     "missing_payload_format_case_count": test_strategy_cli.get("missing_payload_format_case_count"),
                     "missing_payload_format_cases": test_strategy_cli.get("missing_payload_format_cases"),
+                    "expected_exit_codes_by_case": test_strategy_cli.get("expected_exit_codes_by_case"),
+                    "exit_codes_by_case": test_strategy_cli.get("exit_codes_by_case"),
+                    "missing_exit_code_case_count": test_strategy_cli.get("missing_exit_code_case_count"),
+                    "missing_exit_code_cases": test_strategy_cli.get("missing_exit_code_cases"),
+                    "ok_by_case": test_strategy_cli.get("ok_by_case"),
+                    "missing_ok_case_count": test_strategy_cli.get("missing_ok_case_count"),
+                    "missing_ok_cases": test_strategy_cli.get("missing_ok_cases"),
+                    "expected_text_markers_by_case": test_strategy_cli.get("expected_text_markers_by_case"),
+                    "text_exit_codes_by_case": test_strategy_cli.get("text_exit_codes_by_case"),
+                    "missing_text_exit_code_case_count": test_strategy_cli.get(
+                        "missing_text_exit_code_case_count"
+                    ),
+                    "missing_text_exit_code_cases": test_strategy_cli.get("missing_text_exit_code_cases"),
+                    "text_marker_present_by_case": test_strategy_cli.get("text_marker_present_by_case"),
+                    "missing_text_marker_case_count": test_strategy_cli.get("missing_text_marker_case_count"),
+                    "missing_text_marker_cases": test_strategy_cli.get("missing_text_marker_cases"),
+                    "text_json_fallback_by_case": test_strategy_cli.get("text_json_fallback_by_case"),
+                    "text_json_fallback_case_count": test_strategy_cli.get("text_json_fallback_case_count"),
+                    "text_json_fallback_cases": test_strategy_cli.get("text_json_fallback_cases"),
                     "failing_case_count": test_strategy_cli.get("failing_case_count"),
                     "case_ids": test_strategy_cli.get("case_ids"),
                     "payload_format_count": test_strategy_cli.get("payload_format_count"),
@@ -15677,6 +15701,11 @@ def _tooling_audit_test_strategy_cli(tmp: Path, source: str) -> dict:
     parser_exit, parser_payload = run_json(("parser-golden", "--json"))
     drift_exit, drift_payload = run_json(("drift", str(source_path), "--json"))
     doctor_exit, doctor_payload = run_json(("doctor", "--json"))
+    catalog_text_exit, catalog_text = _tooling_cli_text_case(("diagnostics",))
+    diagnostics_text_exit, diagnostics_text = _tooling_cli_text_case(("diagnostics", "--audit-fixtures"))
+    parser_text_exit, parser_text = _tooling_cli_text_case(("parser-golden",))
+    drift_text_exit, drift_text = _tooling_cli_text_case(("drift", str(source_path)))
+    doctor_text_exit, doctor_text = _tooling_cli_text_case(("doctor",))
     drift_required_surfaces = ("cli", "lsp", "studio", "graph", "generator", "release_verifier")
     cases = (
         _tooling_audit_diagnostics_catalog_cli(),
@@ -15753,13 +15782,66 @@ def _tooling_audit_test_strategy_cli(tmp: Path, source: str) -> dict:
         for case_id, expected_format in expected_payload_formats_by_case.items()
         if payload_formats_by_case.get(case_id) != expected_format
     )
+    expected_exit_codes_by_case = {case_id: 0 for case_id in required_case_ids}
+    exit_codes_by_case = {case["case"]: case.get("exit_code") for case in cases if case["case"] in required_case_ids}
+    missing_exit_code_cases = tuple(
+        case_id
+        for case_id, expected_exit_code in expected_exit_codes_by_case.items()
+        if exit_codes_by_case.get(case_id) != expected_exit_code
+    )
+    ok_by_case = {case["case"]: case.get("ok") is True for case in cases if case["case"] in required_case_ids}
+    missing_ok_cases = tuple(case_id for case_id in required_case_ids if ok_by_case.get(case_id) is not True)
+    expected_text_markers_by_case = {
+        "diagnostics_catalog": "diagnostics ok: format=appgen.diagnostic-catalog.v1",
+        "diagnostics_audit_fixtures": "diagnostics-audit ok: format=appgen.diagnostic-fixture-audit.v1",
+        "parser_golden": "parser-golden ok: format=appgen.parser-golden-audit.v1",
+        "semantic_drift": "drift ok: format=appgen.semantic-drift-audit.v1",
+        "doctor": "doctor ok: format=appgen.doctor-report.v1",
+    }
+    text_outputs_by_case = {
+        "diagnostics_catalog": catalog_text,
+        "diagnostics_audit_fixtures": diagnostics_text,
+        "parser_golden": parser_text,
+        "semantic_drift": drift_text,
+        "doctor": doctor_text,
+    }
+    text_exit_codes_by_case = {
+        "diagnostics_catalog": catalog_text_exit,
+        "diagnostics_audit_fixtures": diagnostics_text_exit,
+        "parser_golden": parser_text_exit,
+        "semantic_drift": drift_text_exit,
+        "doctor": doctor_text_exit,
+    }
+    text_marker_present_by_case = {
+        case_id: expected_marker in text_outputs_by_case.get(case_id, "")
+        for case_id, expected_marker in expected_text_markers_by_case.items()
+    }
+    text_json_fallback_by_case = {
+        case_id: text_outputs_by_case.get(case_id, "").lstrip().startswith("{") for case_id in required_case_ids
+    }
+    missing_text_marker_cases = tuple(
+        case_id for case_id in required_case_ids if text_marker_present_by_case.get(case_id) is not True
+    )
+    missing_text_exit_code_cases = tuple(
+        case_id
+        for case_id in required_case_ids
+        if text_exit_codes_by_case.get(case_id) != expected_exit_codes_by_case[case_id]
+    )
+    text_json_fallback_cases = tuple(
+        case_id for case_id in required_case_ids if text_json_fallback_by_case.get(case_id) is True
+    )
     payload_formats = tuple(dict.fromkeys(case.get("payload_format") for case in cases if case.get("payload_format")))
     return {
         "format": "appgen.test-strategy-cli-audit.v1",
         "ok": all(case["ok"] for case in cases)
         and not missing_surfaces
         and not missing_case_ids
-        and not missing_payload_format_cases,
+        and not missing_payload_format_cases
+        and not missing_exit_code_cases
+        and not missing_ok_cases
+        and not missing_text_marker_cases
+        and not missing_text_exit_code_cases
+        and not text_json_fallback_cases,
         "case_count": len(cases),
         "passing_case_count": sum(1 for case in cases if case["ok"]),
         "failing_case_count": len(failing_cases),
@@ -15779,6 +15861,23 @@ def _tooling_audit_test_strategy_cli(tmp: Path, source: str) -> dict:
         "payload_formats_by_case": payload_formats_by_case,
         "missing_payload_format_case_count": len(missing_payload_format_cases),
         "missing_payload_format_cases": missing_payload_format_cases,
+        "expected_exit_codes_by_case": expected_exit_codes_by_case,
+        "exit_codes_by_case": exit_codes_by_case,
+        "missing_exit_code_case_count": len(missing_exit_code_cases),
+        "missing_exit_code_cases": missing_exit_code_cases,
+        "ok_by_case": ok_by_case,
+        "missing_ok_case_count": len(missing_ok_cases),
+        "missing_ok_cases": missing_ok_cases,
+        "expected_text_markers_by_case": expected_text_markers_by_case,
+        "text_exit_codes_by_case": text_exit_codes_by_case,
+        "missing_text_exit_code_case_count": len(missing_text_exit_code_cases),
+        "missing_text_exit_code_cases": missing_text_exit_code_cases,
+        "text_marker_present_by_case": text_marker_present_by_case,
+        "missing_text_marker_case_count": len(missing_text_marker_cases),
+        "missing_text_marker_cases": missing_text_marker_cases,
+        "text_json_fallback_by_case": text_json_fallback_by_case,
+        "text_json_fallback_case_count": len(text_json_fallback_cases),
+        "text_json_fallback_cases": text_json_fallback_cases,
         "payload_format_count": len(payload_formats),
         "payload_formats": payload_formats,
         "doctor_check_count": len(doctor_payload.get("checks", ())),

@@ -4485,6 +4485,53 @@ def test_test_strategy_cli_audit_requires_generator_drift_surface(tmp_path: Path
     assert report["payload_formats_by_case"] == report["expected_payload_formats_by_case"]
     assert report["missing_payload_format_case_count"] == 0
     assert report["missing_payload_format_cases"] == ()
+    assert report["expected_exit_codes_by_case"] == {
+        "diagnostics_catalog": 0,
+        "diagnostics_audit_fixtures": 0,
+        "parser_golden": 0,
+        "semantic_drift": 0,
+        "doctor": 0,
+    }
+    assert report["exit_codes_by_case"] == report["expected_exit_codes_by_case"]
+    assert report["missing_exit_code_case_count"] == 0
+    assert report["missing_exit_code_cases"] == ()
+    assert report["ok_by_case"] == {
+        "diagnostics_catalog": True,
+        "diagnostics_audit_fixtures": True,
+        "parser_golden": True,
+        "semantic_drift": True,
+        "doctor": True,
+    }
+    assert report["missing_ok_case_count"] == 0
+    assert report["missing_ok_cases"] == ()
+    assert report["expected_text_markers_by_case"] == {
+        "diagnostics_catalog": "diagnostics ok: format=appgen.diagnostic-catalog.v1",
+        "diagnostics_audit_fixtures": "diagnostics-audit ok: format=appgen.diagnostic-fixture-audit.v1",
+        "parser_golden": "parser-golden ok: format=appgen.parser-golden-audit.v1",
+        "semantic_drift": "drift ok: format=appgen.semantic-drift-audit.v1",
+        "doctor": "doctor ok: format=appgen.doctor-report.v1",
+    }
+    assert report["text_exit_codes_by_case"] == report["expected_exit_codes_by_case"]
+    assert report["missing_text_exit_code_case_count"] == 0
+    assert report["missing_text_exit_code_cases"] == ()
+    assert report["text_marker_present_by_case"] == {
+        "diagnostics_catalog": True,
+        "diagnostics_audit_fixtures": True,
+        "parser_golden": True,
+        "semantic_drift": True,
+        "doctor": True,
+    }
+    assert report["missing_text_marker_case_count"] == 0
+    assert report["missing_text_marker_cases"] == ()
+    assert report["text_json_fallback_by_case"] == {
+        "diagnostics_catalog": False,
+        "diagnostics_audit_fixtures": False,
+        "parser_golden": False,
+        "semantic_drift": False,
+        "doctor": False,
+    }
+    assert report["text_json_fallback_case_count"] == 0
+    assert report["text_json_fallback_cases"] == ()
     assert set(report["payload_formats"]) >= {
         "appgen.diagnostic-catalog.v1",
         "appgen.diagnostic-fixture-audit.v1",
@@ -7352,6 +7399,43 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert test_strategy_check["detail"]["cli"]["missing_payload_format_case_count"] == 0
     assert test_strategy_check["detail"]["cli"]["missing_payload_format_cases"] == ()
+    assert test_strategy_check["detail"]["cli"]["exit_codes_by_case"] == (
+        test_strategy_check["detail"]["cli"]["expected_exit_codes_by_case"]
+    )
+    assert test_strategy_check["detail"]["cli"]["missing_exit_code_case_count"] == 0
+    assert test_strategy_check["detail"]["cli"]["missing_exit_code_cases"] == ()
+    assert test_strategy_check["detail"]["cli"]["ok_by_case"] == {
+        "diagnostics_catalog": True,
+        "diagnostics_audit_fixtures": True,
+        "parser_golden": True,
+        "semantic_drift": True,
+        "doctor": True,
+    }
+    assert test_strategy_check["detail"]["cli"]["missing_ok_case_count"] == 0
+    assert test_strategy_check["detail"]["cli"]["missing_ok_cases"] == ()
+    assert test_strategy_check["detail"]["cli"]["text_exit_codes_by_case"] == (
+        test_strategy_check["detail"]["cli"]["expected_exit_codes_by_case"]
+    )
+    assert test_strategy_check["detail"]["cli"]["missing_text_exit_code_case_count"] == 0
+    assert test_strategy_check["detail"]["cli"]["missing_text_exit_code_cases"] == ()
+    assert test_strategy_check["detail"]["cli"]["text_marker_present_by_case"] == {
+        "diagnostics_catalog": True,
+        "diagnostics_audit_fixtures": True,
+        "parser_golden": True,
+        "semantic_drift": True,
+        "doctor": True,
+    }
+    assert test_strategy_check["detail"]["cli"]["missing_text_marker_case_count"] == 0
+    assert test_strategy_check["detail"]["cli"]["missing_text_marker_cases"] == ()
+    assert test_strategy_check["detail"]["cli"]["text_json_fallback_by_case"] == {
+        "diagnostics_catalog": False,
+        "diagnostics_audit_fixtures": False,
+        "parser_golden": False,
+        "semantic_drift": False,
+        "doctor": False,
+    }
+    assert test_strategy_check["detail"]["cli"]["text_json_fallback_case_count"] == 0
+    assert test_strategy_check["detail"]["cli"]["text_json_fallback_cases"] == ()
     assert test_strategy_check["detail"]["cli"]["doctor_check_count"] > 0
     assert {
         "diagnostics_catalog",
