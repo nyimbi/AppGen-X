@@ -11710,6 +11710,35 @@ def test_contract_schema_catalog_exposes_core_json_schemas() -> None:
         "appgen.acp-capability-coverage.v1",
         "appgen.compact-generation-brief.v1",
         "appgen.compact-full-app-generation-gate.v1",
+        "appgen.base-feature-document-check.v1",
+        "appgen.base-feature-generation-smoke-audit.v1",
+        "appgen.base-feature-release-audit.v1",
+        "appgen.config-editor-generation-smoke-audit.v1",
+        "appgen.package-config-editor-catalog.v1",
+        "appgen.package-config-production-status.v1",
+        "appgen.package-config-update.v1",
+        "appgen.cookiecutter-template.v1",
+        "appgen.distribution-generation-smoke-audit.v1",
+        "appgen.fab-extension-package.v1",
+        "appgen.generated-coverage-manifest.v1",
+        "appgen.package-distribution-artifacts.v1",
+        "appgen.seed-fixture.v1",
+        "appgen.seed-script-manifest.v1",
+        "appgen.generated-dsl-reference-smoke-audit.v1",
+        "appgen.package-dsl-artifact-contract.v1",
+        "appgen.package-dsl-linter-contract.v1",
+        "appgen.erp-generation-smoke-audit.v1",
+        "appgen.erp-starter.v1",
+        "appgen.erp-template-catalog.v1",
+        "appgen.ideas-document-check.v1",
+        "appgen.ideas-generation-smoke-audit.v1",
+        "appgen.ideas-release-audit.v1",
+        "appgen.generated-app-excellence-audit.v1",
+        "appgen.generated-app-excellence-smoke-audit.v1",
+        "appgen.jhipster-superiority-audit.v1",
+        "appgen.low-code-roadmap-generation-smoke-audit.v1",
+        "appgen.package-goal-audit.v1",
+        "appgen.roadmap-release-audit.v1",
     } <= set(catalog["required_schema_formats"])
     assert catalog["missing_required_schema_count"] == 0
     assert catalog["missing_required_schema_formats"] == ()
@@ -11737,6 +11766,10 @@ def test_contract_schema_catalog_exposes_core_json_schemas() -> None:
     assert {"format", "ok", "profiles", "generation_smoke", "checks", "blocking_gaps"} <= set(
         compact_gate_schema["required"]
     )
+    config_catalog_schema = catalog["schemas"]["appgen.package-config-editor-catalog.v1"]
+    assert {"format", "ok", "fields", "groups", "editable_keys"} <= set(config_catalog_schema["required"])
+    package_goal_schema = catalog["schemas"]["appgen.package-goal-audit.v1"]
+    assert {"format", "ok", "decision", "gates", "blocking_gaps"} <= set(package_goal_schema["required"])
     assert missing["ok"] is False
     assert missing["missing_requested_schema_formats"] == ("appgen.missing-contract.v1",)
 

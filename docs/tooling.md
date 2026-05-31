@@ -851,7 +851,37 @@ plus the Application Composition Platform and compact generation contracts:
 `appgen.application-composition-topology.v1`,
 `appgen.acp-capability-coverage.v1`,
 `appgen.compact-generation-brief.v1`, and
-`appgen.compact-full-app-generation-gate.v1`. The catalog is intentionally complete:
+`appgen.compact-full-app-generation-gate.v1`,
+plus the top-level package support contracts:
+`appgen.base-feature-document-check.v1`,
+`appgen.base-feature-generation-smoke-audit.v1`,
+`appgen.base-feature-release-audit.v1`,
+`appgen.config-editor-generation-smoke-audit.v1`,
+`appgen.package-config-editor-catalog.v1`,
+`appgen.package-config-production-status.v1`,
+`appgen.package-config-update.v1`,
+`appgen.cookiecutter-template.v1`,
+`appgen.distribution-generation-smoke-audit.v1`,
+`appgen.fab-extension-package.v1`,
+`appgen.generated-coverage-manifest.v1`,
+`appgen.package-distribution-artifacts.v1`,
+`appgen.seed-fixture.v1`,
+`appgen.seed-script-manifest.v1`,
+`appgen.generated-dsl-reference-smoke-audit.v1`,
+`appgen.package-dsl-artifact-contract.v1`,
+`appgen.package-dsl-linter-contract.v1`,
+`appgen.erp-generation-smoke-audit.v1`,
+`appgen.erp-starter.v1`,
+`appgen.erp-template-catalog.v1`,
+`appgen.ideas-document-check.v1`,
+`appgen.ideas-generation-smoke-audit.v1`,
+`appgen.ideas-release-audit.v1`,
+`appgen.generated-app-excellence-audit.v1`,
+`appgen.generated-app-excellence-smoke-audit.v1`,
+`appgen.jhipster-superiority-audit.v1`,
+`appgen.low-code-roadmap-generation-smoke-audit.v1`,
+`appgen.package-goal-audit.v1`, and
+`appgen.roadmap-release-audit.v1`. The catalog is intentionally complete:
 every `appgen.*.v1` envelope named in this document, including IDE, frontend,
 visual designer, LSP hover-depth, migration, natural-language, packaging,
 release, component/PBC wrapper, and project-governance contracts, is exported as
@@ -881,6 +911,13 @@ contract instead of a developer-facing runtime selector, while the topology and
 capability-coverage contracts prove the composable runtime fabric and catalog
 depth. The compact generation contracts prove small local models can receive a
 bounded brief, emit DSL patches, and pass the full-app natural-language gate.
+
+Top-level package support schemas make roadmap, base-feature, config-editor,
+distribution, DSL-quality, ERP-template, and ideas evidence reusable without
+running heavyweight generated-app smoke checks during every schema audit. These
+schemas keep package release gates, generated smoke envelopes, template
+manifests, seed fixtures, and goal-readiness audits visible to CI and external
+agents while the runtime inventory continues to expose the larger backlog.
 
 The optional positional format selects one schema from the catalog. Unknown
 schema names return the same `appgen.contract-schema-catalog.v1` envelope with
@@ -2863,9 +2900,10 @@ Exit criteria:
   parser-golden, drift, migration, natural-language, release-verifier,
   package-manifest, component/PBC wrapper, doctor, tooling-audit,
   project-governance, schema-catalog, contract-validation, runtime inventory,
-  package release-audit, agentic development-vector, ACP composition, and compact
-  generation report schemas are available from CLI JSON and text modes. The
-  schema audit validates representative payloads for all 195
+  package release-audit, agentic development-vector, ACP composition, compact
+  generation, and top-level package support report schemas are available from CLI
+  JSON and text modes. The schema audit validates representative payloads for all
+  224
   documented `appgen.*.v1` formats, so
   adding a documented contract without a matching runtime sample fails the
   release gate.

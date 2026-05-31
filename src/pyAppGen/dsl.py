@@ -6794,6 +6794,39 @@ ACP_COMPOSITION_SCHEMA_FORMATS = (
 )
 
 
+TOP_LEVEL_PACKAGE_SUPPORT_SCHEMA_FORMATS = (
+    "appgen.base-feature-document-check.v1",
+    "appgen.base-feature-generation-smoke-audit.v1",
+    "appgen.base-feature-release-audit.v1",
+    "appgen.config-editor-generation-smoke-audit.v1",
+    "appgen.package-config-editor-catalog.v1",
+    "appgen.package-config-production-status.v1",
+    "appgen.package-config-update.v1",
+    "appgen.cookiecutter-template.v1",
+    "appgen.distribution-generation-smoke-audit.v1",
+    "appgen.fab-extension-package.v1",
+    "appgen.generated-coverage-manifest.v1",
+    "appgen.package-distribution-artifacts.v1",
+    "appgen.seed-fixture.v1",
+    "appgen.seed-script-manifest.v1",
+    "appgen.generated-dsl-reference-smoke-audit.v1",
+    "appgen.package-dsl-artifact-contract.v1",
+    "appgen.package-dsl-linter-contract.v1",
+    "appgen.erp-generation-smoke-audit.v1",
+    "appgen.erp-starter.v1",
+    "appgen.erp-template-catalog.v1",
+    "appgen.ideas-document-check.v1",
+    "appgen.ideas-generation-smoke-audit.v1",
+    "appgen.ideas-release-audit.v1",
+    "appgen.generated-app-excellence-audit.v1",
+    "appgen.generated-app-excellence-smoke-audit.v1",
+    "appgen.jhipster-superiority-audit.v1",
+    "appgen.low-code-roadmap-generation-smoke-audit.v1",
+    "appgen.package-goal-audit.v1",
+    "appgen.roadmap-release-audit.v1",
+)
+
+
 CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.diagnostic.v1",
     "appgen.lint-report.v1",
@@ -6960,6 +6993,7 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     *PACKAGE_RELEASE_AUDIT_SCHEMA_FORMATS,
     *AGENTIC_DEVELOPMENT_SCHEMA_FORMATS,
     *ACP_COMPOSITION_SCHEMA_FORMATS,
+    *TOP_LEVEL_PACKAGE_SUPPORT_SCHEMA_FORMATS,
     "appgen.contract-schema-catalog.v1",
     "appgen.contract-validation-report.v1",
 )
@@ -7207,6 +7241,158 @@ def _acp_composition_schema(title: str) -> dict:
             "generation_smoke": {"type": "object"},
             "checks": {"type": "array", "items": {"type": "object"}},
             "blocking_gaps": {"type": "array", "items": {"type": "object"}},
+            "stop_condition": {"type": "string"},
+        },
+    )
+
+
+def _top_level_package_support_schema(title: str) -> dict:
+    required_by_format = {
+        "appgen.base-feature-document-check.v1": ("format", "ok", "path", "required_phrases", "missing"),
+        "appgen.base-feature-generation-smoke-audit.v1": (
+            "format",
+            "ok",
+            "decision",
+            "required_artifacts",
+            "checks",
+            "blocking_gaps",
+        ),
+        "appgen.base-feature-release-audit.v1": ("format", "ok", "decision", "document", "gates", "blocking_gaps"),
+        "appgen.config-editor-generation-smoke-audit.v1": (
+            "format",
+            "ok",
+            "decision",
+            "required_artifacts",
+            "checks",
+            "blocking_gaps",
+        ),
+        "appgen.package-config-editor-catalog.v1": ("format", "ok", "fields", "groups", "editable_keys"),
+        "appgen.package-config-production-status.v1": ("format", "ok", "warnings", "blockers"),
+        "appgen.package-config-update.v1": ("format", "ok", "accepted", "rejected", "values", "production"),
+        "appgen.cookiecutter-template.v1": ("format", "app_name", "artifacts", "variables", "post_generate_checks"),
+        "appgen.distribution-generation-smoke-audit.v1": (
+            "format",
+            "ok",
+            "decision",
+            "required_artifacts",
+            "checks",
+            "blocking_gaps",
+        ),
+        "appgen.fab-extension-package.v1": ("format", "artifacts", "entrypoints", "extension_points"),
+        "appgen.generated-coverage-manifest.v1": (
+            "format",
+            "artifacts",
+            "coverage_targets",
+            "minimum_generated_tests",
+        ),
+        "appgen.package-distribution-artifacts.v1": ("format", "app_name", "artifacts", "package_commands"),
+        "appgen.seed-fixture.v1": ("format", "ok", "name", "validation"),
+        "appgen.seed-script-manifest.v1": ("format", "artifacts", "seed_modes", "guards"),
+        "appgen.generated-dsl-reference-smoke-audit.v1": (
+            "format",
+            "ok",
+            "decision",
+            "required_artifacts",
+            "checks",
+            "blocking_gaps",
+        ),
+        "appgen.package-dsl-artifact-contract.v1": ("format", "ok", "required_artifacts", "missing"),
+        "appgen.package-dsl-linter-contract.v1": ("format", "ok", "valid_sample", "invalid_sample", "legacy_sample"),
+        "appgen.erp-generation-smoke-audit.v1": (
+            "format",
+            "ok",
+            "decision",
+            "required_artifacts",
+            "checks",
+            "blocking_gaps",
+        ),
+        "appgen.erp-starter.v1": ("format", "stack", "modules", "tables"),
+        "appgen.erp-template-catalog.v1": ("format", "ok", "modules"),
+        "appgen.ideas-document-check.v1": ("format", "ok", "path", "required_phrases", "missing"),
+        "appgen.ideas-generation-smoke-audit.v1": (
+            "format",
+            "ok",
+            "decision",
+            "required_artifacts",
+            "checks",
+            "blocking_gaps",
+        ),
+        "appgen.ideas-release-audit.v1": ("format", "ok", "decision", "document", "gates", "blocking_gaps"),
+        "appgen.generated-app-excellence-audit.v1": ("format", "ok", "categories", "gates", "blocking_gaps"),
+        "appgen.generated-app-excellence-smoke-audit.v1": (
+            "format",
+            "ok",
+            "decision",
+            "required_artifacts",
+            "checks",
+            "blocking_gaps",
+        ),
+        "appgen.jhipster-superiority-audit.v1": ("format", "ok", "baseline", "advantages", "gates"),
+        "appgen.low-code-roadmap-generation-smoke-audit.v1": (
+            "format",
+            "ok",
+            "decision",
+            "required_artifacts",
+            "checks",
+            "blocking_gaps",
+        ),
+        "appgen.package-goal-audit.v1": ("format", "ok", "decision", "gates", "blocking_gaps"),
+        "appgen.roadmap-release-audit.v1": ("format", "ok", "decision", "documents", "gates", "blocking_gaps"),
+    }
+    return _contract_format_schema(
+        title,
+        required=required_by_format[title],
+        properties={
+            "path": {"type": "string"},
+            "exists": {"type": "boolean"},
+            "required_phrases": {"type": "array", "items": {"type": "string"}},
+            "missing": {"type": "array", "items": {"type": "string"}},
+            "scope": {"type": "string"},
+            "decision": {"type": "string"},
+            "required_artifacts": {"type": "array", "items": {"type": "string"}},
+            "compiled_artifacts": {"type": "array", "items": {"type": "string"}},
+            "checks": {"type": "array", "items": {"type": "object"}},
+            "blocking_gaps": {"type": "array", "items": {"type": "object"}},
+            "document": {"type": "object"},
+            "documents": {"type": "array", "items": {"type": "object"}},
+            "gates": {"type": "array", "items": {"type": "object"}},
+            "fields": {"type": "array", "items": {"type": "object"}},
+            "groups": {"type": "array", "items": {"type": "string"}},
+            "editable_keys": {"type": "array", "items": {"type": "string"}},
+            "roadmap_required_flags": {"type": "array", "items": {"type": "string"}},
+            "warnings": {"type": "array", "items": {"type": "string"}},
+            "blockers": {"type": "array", "items": {"type": "string"}},
+            "accepted": {"type": "array", "items": {"type": "string"}},
+            "rejected": {"type": "array", "items": {"type": "string"}},
+            "values": {"type": "object"},
+            "production": {"type": "object"},
+            "app_name": {"type": "string"},
+            "artifacts": {"type": "array", "items": {"type": "string"}},
+            "package_commands": {"type": "array", "items": {"type": "string"}},
+            "metadata": {"type": "object"},
+            "variables": {"type": "array", "items": {"type": "string"}},
+            "post_generate_checks": {"type": "array", "items": {"type": "string"}},
+            "entrypoints": {"type": "array", "items": {"type": "string"}},
+            "extension_points": {"type": "array", "items": {"type": "string"}},
+            "coverage_targets": {"type": "array", "items": {"type": "string"}},
+            "minimum_generated_tests": {"type": "integer", "minimum": 0},
+            "name": {"type": "string"},
+            "validation": {"type": "object"},
+            "rows": {"type": "array", "items": {"type": "object"}},
+            "seed_modes": {"type": "array", "items": {"type": "string"}},
+            "guards": {"type": "array", "items": {"type": "string"}},
+            "valid_sample": {"type": "object"},
+            "invalid_sample": {"type": "object"},
+            "legacy_sample": {"type": "object"},
+            "stack": {"type": "string"},
+            "modules": {"type": "array", "items": {"type": ("object", "string")}},
+            "tables": {"type": "array", "items": {"type": "string"}},
+            "required_sections": {"type": "array", "items": {"type": "string"}},
+            "missing_sections": {"type": "array", "items": {"type": "string"}},
+            "capabilities": {"type": "array", "items": {"type": "object"}},
+            "categories": {"type": "array", "items": {"type": "object"}},
+            "baseline": {"type": "array", "items": {"type": "object"}},
+            "advantages": {"type": "array", "items": {"type": "object"}},
             "stop_condition": {"type": "string"},
         },
     )
@@ -9328,6 +9514,10 @@ def _contract_schema_catalog() -> dict[str, dict]:
         **{
             schema_format: _acp_composition_schema(schema_format)
             for schema_format in ACP_COMPOSITION_SCHEMA_FORMATS
+        },
+        **{
+            schema_format: _top_level_package_support_schema(schema_format)
+            for schema_format in TOP_LEVEL_PACKAGE_SUPPORT_SCHEMA_FORMATS
         },
         "appgen.contract-schema-catalog.v1": _json_object_schema(
             "appgen.contract-schema-catalog.v1",
@@ -21395,6 +21585,109 @@ def _package_release_audit_schema_sample(schema_format: str) -> dict:
     }
 
 
+def _simple_release_sample(schema_format: str, *, scope: str = "package") -> dict:
+    check = {"id": "schema_sample", "ok": True}
+    return {
+        "format": schema_format,
+        "scope": scope,
+        "ok": True,
+        "decision": "approved",
+        "required_artifacts": ("app/sample.py",),
+        "compiled_artifacts": ("app/sample.py",),
+        "checks": (check,),
+        "gates": (check,),
+        "blocking_gaps": (),
+        "document": {
+            "format": schema_format.replace("-release-audit.v1", "-document-check.v1"),
+            "ok": True,
+        },
+        "documents": ({"path": "docs/tooling.md", "ok": True},),
+        "stop_condition": f"do-not-claim-{schema_format}-unless-ok-is-true",
+    }
+
+
+def _top_level_package_support_schema_sample(schema_format: str) -> dict:
+    from .base_features import base_feature_document_check
+    from .config_admin import config_editor_catalog, production_config_status, update_config_source
+    from .distribution import (
+        cookiecutter_template_manifest,
+        distribution_artifact_manifest,
+        fab_extension_manifest,
+        generated_coverage_manifest,
+        seed_script_manifest,
+    )
+    from .dsl_quality import dsl_artifact_contract, dsl_linter_release_contract
+    from .erp import erp_starter_manifest, erp_template_catalog
+    from .ideas import ideas_document_check
+    from .roadmap import jhipster_superiority_audit
+
+    smoke_samples = {
+        "appgen.base-feature-generation-smoke-audit.v1",
+        "appgen.config-editor-generation-smoke-audit.v1",
+        "appgen.distribution-generation-smoke-audit.v1",
+        "appgen.generated-dsl-reference-smoke-audit.v1",
+        "appgen.erp-generation-smoke-audit.v1",
+        "appgen.ideas-generation-smoke-audit.v1",
+        "appgen.generated-app-excellence-smoke-audit.v1",
+        "appgen.low-code-roadmap-generation-smoke-audit.v1",
+    }
+    release_samples = {
+        "appgen.base-feature-release-audit.v1",
+        "appgen.ideas-release-audit.v1",
+        "appgen.package-goal-audit.v1",
+        "appgen.roadmap-release-audit.v1",
+    }
+    if schema_format in smoke_samples:
+        return _simple_release_sample(schema_format, scope="generated-app")
+    if schema_format in release_samples:
+        return _simple_release_sample(schema_format, scope="package")
+    if schema_format == "appgen.base-feature-document-check.v1":
+        return base_feature_document_check()
+    if schema_format == "appgen.package-config-editor-catalog.v1":
+        return config_editor_catalog()
+    if schema_format == "appgen.package-config-production-status.v1":
+        return production_config_status({"SECRET_KEY": "production-secret"})
+    if schema_format == "appgen.package-config-update.v1":
+        return update_config_source("", {"APP_NAME": "SchemaSample"})
+    if schema_format == "appgen.cookiecutter-template.v1":
+        return cookiecutter_template_manifest("SchemaSample")
+    if schema_format == "appgen.fab-extension-package.v1":
+        return fab_extension_manifest()
+    if schema_format == "appgen.generated-coverage-manifest.v1":
+        return generated_coverage_manifest()
+    if schema_format == "appgen.package-distribution-artifacts.v1":
+        return distribution_artifact_manifest("SchemaSample")
+    if schema_format == "appgen.seed-fixture.v1":
+        return {
+            "format": "appgen.seed-fixture.v1",
+            "ok": True,
+            "name": "schema-sample",
+            "rows": (),
+            "validation": {"ok": True, "errors": ()},
+        }
+    if schema_format == "appgen.seed-script-manifest.v1":
+        return seed_script_manifest()
+    if schema_format == "appgen.package-dsl-artifact-contract.v1":
+        return dsl_artifact_contract()
+    if schema_format == "appgen.package-dsl-linter-contract.v1":
+        return dsl_linter_release_contract()
+    if schema_format == "appgen.erp-starter.v1":
+        return erp_starter_manifest("finance_core", app_name="SchemaSample")
+    if schema_format == "appgen.erp-template-catalog.v1":
+        return erp_template_catalog()
+    if schema_format == "appgen.ideas-document-check.v1":
+        return ideas_document_check()
+    if schema_format == "appgen.generated-app-excellence-audit.v1":
+        sample = _simple_release_sample(schema_format, scope="package")
+        return {
+            **sample,
+            "categories": ({"id": "secure", "ok": True}, {"id": "highly-capable", "ok": True}),
+        }
+    if schema_format == "appgen.jhipster-superiority-audit.v1":
+        return jhipster_superiority_audit()
+    raise KeyError(schema_format)
+
+
 def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
     source = _tooling_audit_sample_dsl()
     with tempfile.TemporaryDirectory(prefix="appgen-contract-schema-samples-") as tmp:
@@ -21874,6 +22167,10 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             "appgen.compact-full-app-generation-gate.v1": compact_full_app_generation_gate(
                 "Build a compact ERP app with customers, invoices, approval workflow, and an assistant.",
             ),
+            **{
+                schema_format: _top_level_package_support_schema_sample(schema_format)
+                for schema_format in TOP_LEVEL_PACKAGE_SUPPORT_SCHEMA_FORMATS
+            },
             "appgen.contract-schema-catalog.v1": contract_schema_catalog_dsl("appgen.semantic-model.v1"),
         }
         validation_report = contract_validation_report_dsl(
