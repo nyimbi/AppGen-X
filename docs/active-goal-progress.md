@@ -4333,3 +4333,11 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   the known active-PBC `datetime.utcnow()` warnings only), scoped diff
   whitespace check, and restricted-name scan outside archive, Git internals, and
   active PBC paths.
+- Current validate/generate CLI hardening pass expands validation and generation
+  evidence with expected and observed exit codes plus `ok` status by named
+  target-validation, generation-success, warning-blocking, warning-allowed, and
+  error-blocking case. The aggregate `cli_validation_and_generation_contracts`,
+  `validate_target_contracts`, and `generate_artifact_policy_contracts` gates now
+  require those named missing lists to be empty, so target rejection, artifact
+  handoff, and warning/error policy cannot pass by aggregate counts while a case
+  returns the wrong process status or silently fails its own scenario proof.

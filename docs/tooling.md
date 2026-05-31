@@ -902,9 +902,10 @@ absence counts, payload-format counts, generated blocking-gap names, and
 blocking-gap case counts so agents can review generation readiness without
 expanding every case.
 It also reports required, observed, and missing case ids plus expected and
-observed payload formats by case, so validation and generation scenarios cannot
-disappear or drift report envelope formats while aggregate case and payload
-counts still look plausible.
+observed payload formats by case, expected and observed exit codes by case, and
+per-case `ok` status, so validation and generation scenarios cannot disappear,
+drift report envelope formats, return the wrong process status, or pass with
+false-positive aggregate case and payload counts.
 The aggregate tooling audit exposes generation handoff independently as
 `generate_artifact_policy_contracts`. That gate fails when successful
 generation stops writing manifests/artifacts, warning-only sources stop blocking

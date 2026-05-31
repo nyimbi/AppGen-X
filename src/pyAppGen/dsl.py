@@ -7179,6 +7179,8 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and generation["generated"]
             and validate_generate_cli.get("missing_case_count") == 0
             and validate_generate_cli.get("missing_payload_format_case_count") == 0
+            and validate_generate_cli.get("missing_exit_code_case_count") == 0
+            and validate_generate_cli.get("missing_ok_case_count") == 0
             and not warning_generation_blocked["ok"]
             and "lint_warnings" in warning_generation_blocked["blocking_gaps"]
             and warning_generation_allowed["ok"],
@@ -7205,6 +7207,8 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and validate_generate_cli["ok"]
             and validate_generate_cli.get("missing_case_count") == 0
             and validate_generate_cli.get("missing_payload_format_case_count") == 0
+            and validate_generate_cli.get("missing_exit_code_case_count") == 0
+            and validate_generate_cli.get("missing_ok_case_count") == 0
             and validate_generate_cli.get("validation_case_count") == 3
             and validate_generate_cli.get("validation_rejection_case_count") == 2
             and set(validate_generate_cli.get("validation_rejection_cases", ()))
@@ -7251,6 +7255,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "payload_formats_by_case": validate_generate_cli.get("payload_formats_by_case"),
                     "missing_payload_format_case_count": validate_generate_cli.get("missing_payload_format_case_count"),
                     "missing_payload_format_cases": validate_generate_cli.get("missing_payload_format_cases"),
+                    "expected_exit_codes_by_case": validate_generate_cli.get("expected_exit_codes_by_case"),
+                    "exit_codes_by_case": validate_generate_cli.get("exit_codes_by_case"),
+                    "missing_exit_code_case_count": validate_generate_cli.get("missing_exit_code_case_count"),
+                    "missing_exit_code_cases": validate_generate_cli.get("missing_exit_code_cases"),
+                    "ok_by_case": validate_generate_cli.get("ok_by_case"),
+                    "missing_ok_case_count": validate_generate_cli.get("missing_ok_case_count"),
+                    "missing_ok_cases": validate_generate_cli.get("missing_ok_cases"),
                     "case_ids": validate_generate_cli.get("case_ids"),
                 },
                 "text_renderer": {
@@ -7348,6 +7359,8 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and validate_generate_cli["ok"]
             and validate_generate_cli.get("missing_case_count") == 0
             and validate_generate_cli.get("missing_payload_format_case_count") == 0
+            and validate_generate_cli.get("missing_exit_code_case_count") == 0
+            and validate_generate_cli.get("missing_ok_case_count") == 0
             and validate_generate_cli.get("generated_case_count") == 4
             and validate_generate_cli.get("generated_success_case_count") == 2
             and set(validate_generate_cli.get("generated_success_cases", ()))
@@ -7415,6 +7428,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     "payload_formats_by_case": validate_generate_cli.get("payload_formats_by_case"),
                     "missing_payload_format_case_count": validate_generate_cli.get("missing_payload_format_case_count"),
                     "missing_payload_format_cases": validate_generate_cli.get("missing_payload_format_cases"),
+                    "expected_exit_codes_by_case": validate_generate_cli.get("expected_exit_codes_by_case"),
+                    "exit_codes_by_case": validate_generate_cli.get("exit_codes_by_case"),
+                    "missing_exit_code_case_count": validate_generate_cli.get("missing_exit_code_case_count"),
+                    "missing_exit_code_cases": validate_generate_cli.get("missing_exit_code_cases"),
+                    "ok_by_case": validate_generate_cli.get("ok_by_case"),
+                    "missing_ok_case_count": validate_generate_cli.get("missing_ok_case_count"),
+                    "missing_ok_cases": validate_generate_cli.get("missing_ok_cases"),
                     "payload_format_count": validate_generate_cli.get("payload_format_count"),
                     "payload_formats": validate_generate_cli.get("payload_formats"),
                 },
@@ -15612,9 +15632,42 @@ def _tooling_audit_validate_generate_cli(tmp: Path, source: str) -> dict:
         for case_id, expected_format in expected_payload_formats_by_case.items()
         if payload_formats_by_case.get(case_id) != expected_format
     )
+    expected_exit_codes_by_case = {
+        "validate_targets": 0,
+        "validate_rejects_undeclared_targets": 1,
+        "validate_rejects_unknown_targets": 1,
+        "generate_writes_artifacts": 0,
+        "generate_blocks_warnings": 1,
+        "generate_allows_warnings_when_requested": 0,
+        "generate_blocks_errors_even_when_warnings_allowed": 1,
+    }
+    exit_codes_by_case = {
+        case["case"]: case.get("exit_code")
+        for case in cases
+        if case["case"] in expected_exit_codes_by_case
+    }
+    missing_exit_code_cases = tuple(
+        case_id
+        for case_id, expected_exit_code in expected_exit_codes_by_case.items()
+        if exit_codes_by_case.get(case_id) != expected_exit_code
+    )
+    ok_by_case = {
+        case["case"]: case.get("ok") is True
+        for case in cases
+        if case["case"] in required_case_ids
+    }
+    missing_ok_cases = tuple(
+        case_id
+        for case_id in required_case_ids
+        if ok_by_case.get(case_id) is not True
+    )
     return {
         "format": "appgen.validate-generate-cli-audit.v1",
-        "ok": not failing_cases and not missing_case_ids and not missing_payload_format_cases,
+        "ok": not failing_cases
+        and not missing_case_ids
+        and not missing_payload_format_cases
+        and not missing_exit_code_cases
+        and not missing_ok_cases,
         "case_count": len(cases),
         "passing_case_count": sum(1 for case in cases if case["ok"]),
         "failing_case_count": len(failing_cases),
@@ -15650,6 +15703,13 @@ def _tooling_audit_validate_generate_cli(tmp: Path, source: str) -> dict:
         "payload_formats_by_case": payload_formats_by_case,
         "missing_payload_format_case_count": len(missing_payload_format_cases),
         "missing_payload_format_cases": missing_payload_format_cases,
+        "expected_exit_codes_by_case": expected_exit_codes_by_case,
+        "exit_codes_by_case": exit_codes_by_case,
+        "missing_exit_code_case_count": len(missing_exit_code_cases),
+        "missing_exit_code_cases": missing_exit_code_cases,
+        "ok_by_case": ok_by_case,
+        "missing_ok_case_count": len(missing_ok_cases),
+        "missing_ok_cases": missing_ok_cases,
         "payload_format_count": len(payload_formats),
         "payload_formats": payload_formats,
         "cases": cases,

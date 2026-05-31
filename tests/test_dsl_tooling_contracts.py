@@ -5072,6 +5072,21 @@ def test_validate_generate_cli_audit_proves_generated_artifact_handoff(tmp_path:
     assert audit["payload_formats_by_case"] == audit["expected_payload_formats_by_case"]
     assert audit["missing_payload_format_case_count"] == 0
     assert audit["missing_payload_format_cases"] == ()
+    assert audit["expected_exit_codes_by_case"] == {
+        "validate_targets": 0,
+        "validate_rejects_undeclared_targets": 1,
+        "validate_rejects_unknown_targets": 1,
+        "generate_writes_artifacts": 0,
+        "generate_blocks_warnings": 1,
+        "generate_allows_warnings_when_requested": 0,
+        "generate_blocks_errors_even_when_warnings_allowed": 1,
+    }
+    assert audit["exit_codes_by_case"] == audit["expected_exit_codes_by_case"]
+    assert audit["missing_exit_code_case_count"] == 0
+    assert audit["missing_exit_code_cases"] == ()
+    assert audit["ok_by_case"] == {case_id: True for case_id in audit["required_case_ids"]}
+    assert audit["missing_ok_case_count"] == 0
+    assert audit["missing_ok_cases"] == ()
     assert audit["payload_format_count"] == len(audit["payload_formats"])
     assert set(audit["payload_formats"]) == {"appgen.validate-report.v1", "appgen.generate-report.v1"}
     assert generated["ok"] is True
@@ -6618,6 +6633,16 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert cli_check["detail"]["validate_generate_cli"]["missing_payload_format_case_count"] == 0
     assert cli_check["detail"]["validate_generate_cli"]["missing_payload_format_cases"] == ()
+    assert cli_check["detail"]["validate_generate_cli"]["exit_codes_by_case"] == (
+        cli_check["detail"]["validate_generate_cli"]["expected_exit_codes_by_case"]
+    )
+    assert cli_check["detail"]["validate_generate_cli"]["missing_exit_code_case_count"] == 0
+    assert cli_check["detail"]["validate_generate_cli"]["missing_exit_code_cases"] == ()
+    assert cli_check["detail"]["validate_generate_cli"]["ok_by_case"] == {
+        case_id: True for case_id in cli_check["detail"]["validate_generate_cli"]["required_case_ids"]
+    }
+    assert cli_check["detail"]["validate_generate_cli"]["missing_ok_case_count"] == 0
+    assert cli_check["detail"]["validate_generate_cli"]["missing_ok_cases"] == ()
     assert {
         "validate_targets",
         "validate_rejects_undeclared_targets",
@@ -6660,6 +6685,16 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert validate_target_check["detail"]["cli"]["missing_payload_format_case_count"] == 0
     assert validate_target_check["detail"]["cli"]["missing_payload_format_cases"] == ()
+    assert validate_target_check["detail"]["cli"]["exit_codes_by_case"] == (
+        validate_target_check["detail"]["cli"]["expected_exit_codes_by_case"]
+    )
+    assert validate_target_check["detail"]["cli"]["missing_exit_code_case_count"] == 0
+    assert validate_target_check["detail"]["cli"]["missing_exit_code_cases"] == ()
+    assert validate_target_check["detail"]["cli"]["ok_by_case"] == {
+        case_id: True for case_id in validate_target_check["detail"]["cli"]["required_case_ids"]
+    }
+    assert validate_target_check["detail"]["cli"]["missing_ok_case_count"] == 0
+    assert validate_target_check["detail"]["cli"]["missing_ok_cases"] == ()
     assert set(validate_target_check["detail"]["cli"]["validation_rejection_cases"]) == {
         "validate_rejects_undeclared_targets",
         "validate_rejects_unknown_targets",
@@ -6765,6 +6800,16 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert generate_policy_check["detail"]["cli"]["missing_payload_format_case_count"] == 0
     assert generate_policy_check["detail"]["cli"]["missing_payload_format_cases"] == ()
+    assert generate_policy_check["detail"]["cli"]["exit_codes_by_case"] == (
+        generate_policy_check["detail"]["cli"]["expected_exit_codes_by_case"]
+    )
+    assert generate_policy_check["detail"]["cli"]["missing_exit_code_case_count"] == 0
+    assert generate_policy_check["detail"]["cli"]["missing_exit_code_cases"] == ()
+    assert generate_policy_check["detail"]["cli"]["ok_by_case"] == {
+        case_id: True for case_id in generate_policy_check["detail"]["cli"]["required_case_ids"]
+    }
+    assert generate_policy_check["detail"]["cli"]["missing_ok_case_count"] == 0
+    assert generate_policy_check["detail"]["cli"]["missing_ok_cases"] == ()
     assert generate_policy_check["detail"]["cli"]["payload_format_count"] == len(
         generate_policy_check["detail"]["cli"]["payload_formats"]
     )
