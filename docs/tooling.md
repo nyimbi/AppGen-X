@@ -916,7 +916,53 @@ plus the binding-designer runtime contracts:
 `appgen.binding-runtime-propagation-replay-contract.v1`,
 `appgen.binding-runtime-wiring-contract.v1`,
 `appgen.binding-scope-context-contract.v1`, and
-`appgen.binding-update-scheduler-contract.v1`. The catalog is intentionally complete:
+`appgen.binding-update-scheduler-contract.v1`,
+plus the native Pascal/runtime workbench contracts:
+`appgen.pascal-apply-property-delta-operation.v1`,
+`appgen.pascal-compile-package-transaction-replay.v1`,
+`appgen.pascal-compile-preview-operation.v1`,
+`appgen.pascal-compiler-pipeline-contract.v1`,
+`appgen.pascal-compiler-recovery-contract.v1`,
+`appgen.pascal-component-inheritance-contract.v1`,
+`appgen.pascal-debug-session-transaction-replay.v1`,
+`appgen.pascal-debug-symbol-contract.v1`,
+`appgen.pascal-debug-watch-transaction-replay.v1`,
+`appgen.pascal-design-edit-session-replay-contract.v1`,
+`appgen.pascal-diagnostic-mapping-contract.v1`,
+`appgen.pascal-event-binding-contract.v1`,
+`appgen.pascal-event-handler-wiring-contract.v1`,
+`appgen.pascal-event-stub-evolution-contract.v1`,
+`appgen.pascal-form-stream-schema-contract.v1`,
+`appgen.pascal-incremental-compile-contract.v1`,
+`appgen.pascal-incremental-invalidation-contract.v1`,
+`appgen.pascal-language-frontend-contract.v1`,
+`appgen.pascal-open-design-stream-operation.v1`,
+`appgen.pascal-package-dependency-contract.v1`,
+`appgen.pascal-package-target-matrix-contract.v1`,
+`appgen.pascal-refresh-resources-operation.v1`,
+`appgen.pascal-reload-runtime-preview-operation.v1`,
+`appgen.pascal-resource-manifest-hash-contract.v1`,
+`appgen.pascal-resource-round-trip-fidelity-contract.v1`,
+`appgen.pascal-resource-streaming-contract.v1`,
+`appgen.pascal-round-trip-stream-operation.v1`,
+`appgen.pascal-rtti-contract.v1`,
+`appgen.pascal-runtime-actionable-operations.v1`,
+`appgen.pascal-runtime-artifact-parity-contract.v1`,
+`appgen.pascal-runtime-authoring-replay-matrix.v1`,
+`appgen.pascal-runtime-authoring-scenario-operation.v1`,
+`appgen.pascal-runtime-debug-authoring-contract.v1`,
+`appgen.pascal-runtime-lifecycle-contract.v1`,
+`appgen.pascal-runtime-memory-model-contract.v1`,
+`appgen.pascal-runtime-module-replay-matrix.v1`,
+`appgen.pascal-runtime-readiness-contract.v1`,
+`appgen.pascal-runtime-session-replay-contract.v1`,
+`appgen.pascal-runtime-workbench.v1`,
+`appgen.pascal-semantic-validation-contract.v1`,
+`appgen.pascal-start-debug-preview-operation.v1`,
+`appgen.pascal-static-analysis-contract.v1`,
+`appgen.pascal-toolchain-adapter-contract.v1`,
+`appgen.pascal-unit-contract.v1`, and
+`appgen.pascal-unit-parse-contract.v1`. The catalog is intentionally complete:
 every `appgen.*.v1` envelope named in this document, including IDE, frontend,
 visual designer, LSP hover-depth, migration, natural-language, packaging,
 release, component/PBC wrapper, and project-governance contracts, is exported as
@@ -959,6 +1005,12 @@ scraping generated release audits. IDEs and agents can validate graph JSON,
 expression validation, staged graph edits, lookup and master-detail wiring,
 runtime propagation, offline replay, diagnostics, accessibility routes, and
 full lifecycle replay from the same `appgen contract-schema` catalog used by CI.
+
+Native Pascal/runtime schemas make form streaming, unit generation, compiler
+planning, package target matrices, event handler wiring, resource hashes,
+incremental invalidation, debugging previews, runtime reloads, and authoring
+replay matrices machine-validatable. IDEs and package verifiers can now consume
+these payloads directly instead of mining the aggregate form-designer workbench.
 
 The optional positional format selects one schema from the catalog. Unknown
 schema names return the same `appgen.contract-schema-catalog.v1` envelope with
@@ -2944,7 +2996,7 @@ Exit criteria:
   package release-audit, agentic development-vector, ACP composition, compact
   generation, and top-level package support report schemas are available from CLI
   JSON and text modes. The schema audit validates representative payloads for all
-  258
+  303
   documented `appgen.*.v1` formats, so
   adding a documented contract without a matching runtime sample fails the
   release gate.

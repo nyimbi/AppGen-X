@@ -78,6 +78,55 @@ BINDING_DESIGNER_SCHEMA_FORMATS = (
 )
 
 
+PASCAL_RUNTIME_SCHEMA_FORMATS = (
+    "appgen.pascal-apply-property-delta-operation.v1",
+    "appgen.pascal-compile-package-transaction-replay.v1",
+    "appgen.pascal-compile-preview-operation.v1",
+    "appgen.pascal-compiler-pipeline-contract.v1",
+    "appgen.pascal-compiler-recovery-contract.v1",
+    "appgen.pascal-component-inheritance-contract.v1",
+    "appgen.pascal-debug-session-transaction-replay.v1",
+    "appgen.pascal-debug-symbol-contract.v1",
+    "appgen.pascal-debug-watch-transaction-replay.v1",
+    "appgen.pascal-design-edit-session-replay-contract.v1",
+    "appgen.pascal-diagnostic-mapping-contract.v1",
+    "appgen.pascal-event-binding-contract.v1",
+    "appgen.pascal-event-handler-wiring-contract.v1",
+    "appgen.pascal-event-stub-evolution-contract.v1",
+    "appgen.pascal-form-stream-schema-contract.v1",
+    "appgen.pascal-incremental-compile-contract.v1",
+    "appgen.pascal-incremental-invalidation-contract.v1",
+    "appgen.pascal-language-frontend-contract.v1",
+    "appgen.pascal-open-design-stream-operation.v1",
+    "appgen.pascal-package-dependency-contract.v1",
+    "appgen.pascal-package-target-matrix-contract.v1",
+    "appgen.pascal-refresh-resources-operation.v1",
+    "appgen.pascal-reload-runtime-preview-operation.v1",
+    "appgen.pascal-resource-manifest-hash-contract.v1",
+    "appgen.pascal-resource-round-trip-fidelity-contract.v1",
+    "appgen.pascal-resource-streaming-contract.v1",
+    "appgen.pascal-round-trip-stream-operation.v1",
+    "appgen.pascal-rtti-contract.v1",
+    "appgen.pascal-runtime-actionable-operations.v1",
+    "appgen.pascal-runtime-artifact-parity-contract.v1",
+    "appgen.pascal-runtime-authoring-replay-matrix.v1",
+    "appgen.pascal-runtime-authoring-scenario-operation.v1",
+    "appgen.pascal-runtime-debug-authoring-contract.v1",
+    "appgen.pascal-runtime-lifecycle-contract.v1",
+    "appgen.pascal-runtime-memory-model-contract.v1",
+    "appgen.pascal-runtime-module-replay-matrix.v1",
+    "appgen.pascal-runtime-readiness-contract.v1",
+    "appgen.pascal-runtime-session-replay-contract.v1",
+    "appgen.pascal-runtime-workbench.v1",
+    "appgen.pascal-semantic-validation-contract.v1",
+    "appgen.pascal-start-debug-preview-operation.v1",
+    "appgen.pascal-static-analysis-contract.v1",
+    "appgen.pascal-toolchain-adapter-contract.v1",
+    "appgen.pascal-unit-contract.v1",
+    "appgen.pascal-unit-parse-contract.v1",
+)
+
+
 TOOLING_SAMPLE = """
 app FinanceOps { targets: web, mobile, desktop }
 
@@ -11778,8 +11827,10 @@ def test_contract_schema_catalog_exposes_core_json_schemas() -> None:
         "appgen.package-goal-audit.v1",
         "appgen.roadmap-release-audit.v1",
         *BINDING_DESIGNER_SCHEMA_FORMATS,
+        *PASCAL_RUNTIME_SCHEMA_FORMATS,
     } <= set(catalog["required_schema_formats"])
     assert BINDING_DESIGNER_SCHEMA_FORMATS == appgen_dsl.BINDING_DESIGNER_SCHEMA_FORMATS
+    assert PASCAL_RUNTIME_SCHEMA_FORMATS == appgen_dsl.PASCAL_RUNTIME_SCHEMA_FORMATS
     assert catalog["missing_required_schema_count"] == 0
     assert catalog["missing_required_schema_formats"] == ()
     assert catalog["schema_count"] == catalog["required_schema_count"]
@@ -11816,6 +11867,11 @@ def test_contract_schema_catalog_exposes_core_json_schemas() -> None:
     assert {"format", "nodes", "edges"} <= set(binding_graph_schema["required"])
     binding_lifecycle_schema = catalog["schemas"]["appgen.binding-lifecycle-release-replay.v1"]
     assert {"format", "ok", "decision", "replay", "checks"} <= set(binding_lifecycle_schema["required"])
+    pascal_unit_schema = catalog["schemas"]["appgen.pascal-unit-contract.v1"]
+    assert pascal_unit_schema["required"] == ("format",)
+    pascal_workbench_schema = catalog["schemas"]["appgen.pascal-runtime-workbench.v1"]
+    assert pascal_workbench_schema["properties"]["format"]["const"] == "appgen.pascal-runtime-workbench.v1"
+    assert "checks" in pascal_workbench_schema["properties"]
     package_goal_schema = catalog["schemas"]["appgen.package-goal-audit.v1"]
     assert {"format", "ok", "decision", "gates", "blocking_gaps"} <= set(package_goal_schema["required"])
     assert missing["ok"] is False
