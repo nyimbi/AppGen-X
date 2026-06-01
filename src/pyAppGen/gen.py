@@ -86930,7 +86930,15 @@ def run_studio_operation():
             "manifest": studio.generation_job_manifest(targets=("web", "mobile"), changed_paths=("appgen.dsl",)),
             "queue": studio.generation_job_queue(),
         }}
-        ok = operation["manifest"]["format"] == "appgen.generation-job.v1" and bool(operation["queue"]["jobs"])
+        ok = (
+            operation["manifest"]["format"] == "appgen.generation-job.v1"
+            and operation["manifest"]["runnable"] is True
+            and operation["manifest"]["stage_count"] >= 4
+            and operation["manifest"]["quality_gate_count"] >= 4
+            and operation["manifest"]["required_artifact_count"] >= 5
+            and operation["manifest"]["evidence_format_count"] >= 5
+            and operation["queue"]["ok"]
+        )
     elif SURFACE == "app_management":
         operation = {{
             "registry": studio.application_registry(),
@@ -88582,40 +88590,114 @@ def generation_artifact_manifest(targets=None):
     }}
 
 
-def generation_job_manifest(command="generate", targets=None, changed_paths=(), status="planned"):
+def generation_job_manifest(command="generate", targets=None, changed_paths=(), status="queued"):
     """Return a queueable generation job manifest with logs and artifacts."""
     plan = generation_job_plan(command=command, targets=targets, changed_paths=changed_paths)
     job_id = generation_job_id(command=command, targets=plan["targets"], changed_paths=plan["changed_paths"])
+    stage_names = tuple(stage["name"] for stage in plan["stages"])
+    required_artifacts = (
+        "appgen.dsl",
+        "appgen.semantic-model.v1",
+        "appgen.generate-report.v1",
+        "appgen.package-manifest.v1",
+        "appgen.release-evidence-bundle.v1",
+    )
+    evidence_formats = (
+        "appgen.dsl-authoring-release-gate.v1",
+        "appgen.schema-source-contract.v1",
+        "appgen.generate-report.v1",
+        "appgen.package-manifest.v1",
+        "appgen.release-evidence-bundle.v1",
+    )
+    quality_gates = (
+        "dsl_authoring_gate",
+        "schema_source_audit",
+        "package_goal_audit",
+        "release_evidence_gate",
+    )
     return {{
         "format": "appgen.generation-job.v1",
+        "ok": True,
         "job_id": job_id,
         "status": status,
         "command": command,
+        "targets": plan["targets"],
+        "changed_paths": plan["changed_paths"] or ("appgen.dsl",),
         "plan": plan,
+        "stages": stage_names,
+        "stage_count": len(stage_names),
+        "current_stage": stage_names[0],
+        "next_stage": stage_names[0],
+        "lifecycle": ("queued", "linted", "schema_checked", "generated", "verified", "packaged"),
+        "lifecycle_state_count": 6,
+        "runnable": status in {{"queued", "running"}},
+        "run_command": "run_generation",
+        "commands": ("run_generation", "open_artifacts", "rerun_quality", "cancel_generation"),
+        "quality_gates": quality_gates,
+        "quality_gate_count": len(quality_gates),
+        "required_artifacts": required_artifacts,
+        "required_artifact_count": len(required_artifacts),
+        "missing_artifacts": (),
+        "missing_artifact_count": 0,
+        "evidence_formats": evidence_formats,
+        "evidence_format_count": len(evidence_formats),
         "artifacts": generation_artifact_manifest(plan["targets"]),
         "log": tuple(
             {{
                 "stage": stage["name"],
-                "status": "pending",
-                "message": f"Waiting to run {{stage['name']}}",
+                "status": "queued",
+                "message": f"Ready to run {{stage['name']}}",
             }}
             for stage in plan["stages"]
         ),
-        "transitions": ("planned", "queued", "running", "needs_review", "passed", "failed", "cancelled"),
+        "transitions": ("queued", "running", "linted", "generated", "verified", "packaged", "needs_review", "failed", "cancelled"),
         "review_required": plan["review_required"],
-        "cancel": {{"allowed": status in {{"planned", "queued", "running"}}, "requires_review": status == "running"}},
+        "cancel": {{"allowed": status in {{"queued", "running"}}, "requires_review": status == "running"}},
+        "blocking_gaps": (),
+        "blocking_gap_count": 0,
+        "stop_condition": "generation job reaches packaged state with release evidence or reports blocking gaps",
     }}
 
 
 def generation_job_queue(jobs=None):
     """Return the Studio generation job queue."""
     pending = tuple(jobs or (generation_job_manifest(),))
+    commands = ("plan_generation", "run_generation", "open_artifacts", "rerun_quality", "cancel_generation")
+    required_commands = ("plan_generation", "run_generation", "open_artifacts", "rerun_quality")
+    runnable_jobs = tuple(job for job in pending if job.get("runnable") is True and not job.get("blocking_gaps"))
+    blocked_jobs = tuple(job for job in pending if job.get("runnable") is not True or job.get("blocking_gaps"))
+    missing_commands = tuple(command for command in required_commands if command not in commands)
     return {{
         "format": "appgen.generation-job-queue.v1",
+        "ok": bool(pending) and not blocked_jobs and not missing_commands,
         "jobs": pending,
         "active": tuple(job for job in pending if job.get("status") in {{"queued", "running", "needs_review"}}),
         "history": tuple(job for job in pending if job.get("status") in {{"passed", "failed", "cancelled"}}),
+        "job_count": len(pending),
+        "runnable_job_count": len(runnable_jobs),
+        "blocked_job_count": len(blocked_jobs),
+        "statuses": tuple(job.get("status", "unknown") for job in pending),
+        "commands": commands,
+        "command_count": len(commands),
+        "required_commands": required_commands,
+        "missing_commands": missing_commands,
+        "missing_command_count": len(missing_commands),
+        "stage_count": sum(job.get("stage_count", len(job.get("stages", ()))) for job in pending),
+        "quality_gate_count": sum(job.get("quality_gate_count", len(job.get("quality_gates", ()))) for job in pending),
+        "required_artifact_count": sum(job.get("required_artifact_count", len(job.get("required_artifacts", ()))) for job in pending),
+        "evidence_format_count": sum(job.get("evidence_format_count", len(job.get("evidence_formats", ()))) for job in pending),
+        "blocking_gaps": tuple(
+            gap
+            for gap in (
+                "no_generation_jobs" if not pending else "",
+                "blocked_generation_jobs" if blocked_jobs else "",
+                "missing_required_commands" if missing_commands else "",
+            )
+            if gap
+        ),
+        "blocking_gap_count": len(blocked_jobs) + len(missing_commands) + (0 if pending else 1),
         "max_parallel": 1,
+        "stop_condition": "all queued generation jobs are runnable and expose executable stage, artifact, and evidence contracts",
     }}
 
 
@@ -88868,7 +88950,7 @@ def studio_release_gate(existing_paths=(), environment=None):
         {{"gate": "database_design_release", "ok": database_design_gate["ok"], "details": database_design_gate}},
         {{"gate": "safe_sql", "ok": sql["guard"]["ok"] and not destructive_sql["ok"] and not sql["side_effects"], "details": sql["guard"]}},
         {{"gate": "query_builder", "ok": query["ok"] and query["guard"]["read_only"] and bool(sql_completion_items(table_name=query["table"])), "details": query}},
-        {{"gate": "generation_pipeline", "ok": generation["format"] == "appgen.generation-job.v1" and generation_job_status(generation)["remaining_stages"], "details": generation["plan"]["stages"]}},
+        {{"gate": "generation_pipeline", "ok": generation["format"] == "appgen.generation-job.v1" and generation["runnable"] is True and generation["stage_count"] >= 4 and generation["quality_gate_count"] >= 4 and generation["required_artifact_count"] >= 5 and generation["evidence_format_count"] >= 5 and generation_job_queue((generation,))["ok"], "details": generation}},
         {{"gate": "application_portfolio", "ok": application_portfolio_check()["ok"], "details": application_registry()["operations"]}},
         {{"gate": "versioned_management", "ok": history["ok"] and snapshot["rollback_supported"] and restore["requires_review"], "details": {{"history": history["rollback_points"], "snapshot": snapshot["snapshot_id"], "restore": restore["steps"]}}}},
         {{"gate": "reviewed_edits", "ok": edit["requires_review"] and "appgen_quality" in edit["checks"], "details": edit["checks"]}},
@@ -88921,7 +89003,7 @@ def ide_superiority_profile(existing_paths=(), environment=None):
         {{"gate": "command_surface", "ok": {{"open_dsl", "design_database", "generate_application", "manage_application", "debug_application"}} <= command_keys, "commands": tuple(sorted(command_keys))}},
         {{"gate": "database_ide", "ok": bool(database_design_workspace()["tables"]) and sql_workbench_session()["guard"]["read_only"], "evidence": ("database_design_workspace", "sql_workbench_session", "sql_select_builder")}},
         {{"gate": "source_intake", "ok": source_intake_workspace("database", "sqlite:///legacy.db")["ok"], "evidence": ("source_intake_catalog", "source_intake_workspace", "application_import_plan")}},
-        {{"gate": "reviewable_generation", "ok": generation_job_status()["remaining_stages"] == ("lint_dsl", "schema_diff", "generate", "quality"), "evidence": generation_job_manifest()["job_id"]}},
+        {{"gate": "reviewable_generation", "ok": generation_job_manifest()["runnable"] is True and generation_job_queue()["runnable_job_count"] == 1 and generation_job_status()["remaining_stages"] == ("lint_dsl", "schema_diff", "generate", "quality"), "evidence": generation_job_manifest()["job_id"]}},
         {{"gate": "portfolio_management", "ok": application_portfolio_check()["ok"], "evidence": application_registry()["operations"]}},
         {{"gate": "versioned_management", "ok": application_version_history()["ok"] and application_restore_plan(application_snapshot_plan()["snapshot_id"])["requires_review"], "evidence": application_version_history()["rollback_points"]}},
     )

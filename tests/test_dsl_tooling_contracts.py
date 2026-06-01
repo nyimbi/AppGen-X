@@ -7416,6 +7416,7 @@ def test_studio_generation_jobs_are_executable_lifecycle_contracts() -> None:
     job = generated_studio.generation_job_manifest(changed_paths=("appgen.dsl",))
     queue = generated_studio.generation_job_queue((job,))
     run = generated_studio.run_generation_job(job=job)
+    generated_app_smoke = generated_studio.studio_generation_smoke_audit()
     audit = appgen_dsl._tooling_audit_studio_generation_queue()
 
     assert job["format"] == "appgen.package-generation-job.v1"
@@ -7470,6 +7471,15 @@ def test_studio_generation_jobs_are_executable_lifecycle_contracts() -> None:
     assert run["release_artifact_count"] >= 4
     assert run["package_manifest_count"] >= 3
     assert run["evidence_bundle_format"] == "appgen.release-evidence-bundle.v1"
+    assert generated_app_smoke["ok"] is True
+    assert generated_app_smoke["generation_job_format"] == "appgen.generation-job.v1"
+    assert generated_app_smoke["generation_job_status"] == "queued"
+    assert generated_app_smoke["generation_job_runnable"] is True
+    assert generated_app_smoke["generation_job_stage_count"] >= 4
+    assert generated_app_smoke["generation_job_quality_gate_count"] >= 4
+    assert generated_app_smoke["generation_job_required_artifact_count"] >= 5
+    assert generated_app_smoke["generation_job_evidence_format_count"] >= 5
+    assert generated_app_smoke["generation_queue_ok"] is True
     assert audit["generation_run_ok"] is True
     assert audit["generation_run_executed_stage_count"] >= 5
     assert audit["generation_run_missing_stage_count"] == 0

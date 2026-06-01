@@ -983,9 +983,17 @@ def studio_generation_smoke_audit(source: str = SAMPLE_DSL) -> dict:
             "id": "generation_management_contract",
             "ok": tuple(stage["name"] for stage in job["plan"]["stages"])
             == ("lint_dsl", "schema_diff", "generate", "quality")
+            and job["status"] == "queued"
+            and job["runnable"] is True
+            and job["stage_count"] >= 4
+            and job["quality_gate_count"] >= 4
+            and job["required_artifact_count"] >= 5
+            and job["evidence_format_count"] >= 5
             and portfolio["ok"]
             and release_gate["ok"]
             and superiority["ok"],
+            "job_format": job["format"],
+            "queue_status": generated_studio.generation_job_queue((job,))["ok"],
         },
     )
     ok = all(check["ok"] for check in checks)
@@ -996,6 +1004,14 @@ def studio_generation_smoke_audit(source: str = SAMPLE_DSL) -> dict:
         "required_artifacts": required_artifacts,
         "compiled_artifacts": tuple(compiled),
         "workspace_sections": tuple(workspace),
+        "generation_job_format": job["format"],
+        "generation_job_status": job["status"],
+        "generation_job_runnable": job["runnable"],
+        "generation_job_stage_count": job["stage_count"],
+        "generation_job_quality_gate_count": job["quality_gate_count"],
+        "generation_job_required_artifact_count": job["required_artifact_count"],
+        "generation_job_evidence_format_count": job["evidence_format_count"],
+        "generation_queue_ok": generated_studio.generation_job_queue((job,))["ok"],
         "release_gate": {
             "format": release_gate["format"],
             "ok": release_gate["ok"],

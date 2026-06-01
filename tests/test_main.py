@@ -1681,7 +1681,12 @@ def test_package_studio_audit_covers_ide_database_and_generation(
 
     job = generation_job_manifest(targets=("web", "desktop"), changed_paths=("appgen.dsl",))
     assert job["format"] == "appgen.package-generation-job.v1"
-    assert job["stages"] == ("lint_dsl", "schema_diff", "generate", "quality", "package")
+    assert job["stages"] == ("lint_dsl", "schema_diff", "generate_sources", "quality_gates", "package_artifacts")
+    assert job["status"] == "queued"
+    assert job["runnable"] is True
+    assert job["quality_gate_count"] == 4
+    assert job["required_artifact_count"] == 5
+    assert job["evidence_format_count"] == 5
 
     audit = studio_release_audit()
     assert audit["format"] == "appgen.package-studio-release-audit.v1"
@@ -15029,10 +15034,22 @@ def test_appgen_dsl_normalizes_low_code_model_and_generates(tmp_path) -> None:
     assert [stage["name"] for stage in job["stages"]] == ["lint_dsl", "schema_diff", "generate", "quality"]
     job_manifest = studio.generation_job_manifest(targets=("web", "mobile"), changed_paths=("appgen.dsl",))
     assert job_manifest["format"] == "appgen.generation-job.v1"
+    assert job_manifest["status"] == "queued"
+    assert job_manifest["runnable"] is True
+    assert job_manifest["stage_count"] == 4
+    assert job_manifest["quality_gate_count"] == 4
+    assert job_manifest["required_artifact_count"] == 5
+    assert job_manifest["evidence_format_count"] == 5
+    assert "appgen.release-evidence-bundle.v1" in job_manifest["evidence_formats"]
     assert job_manifest["job_id"] == studio.generation_job_id(targets=("web", "mobile"), changed_paths=("appgen.dsl",))
     assert studio.generation_job_status(job_manifest)["remaining_stages"] == ("lint_dsl", "schema_diff", "generate", "quality")
     assert studio.generation_job_log(job_manifest)["entries"][0]["stage"] == "lint_dsl"
-    assert studio.generation_job_queue((job_manifest,))["jobs"][0]["job_id"] == job_manifest["job_id"]
+    queue = studio.generation_job_queue((job_manifest,))
+    assert queue["jobs"][0]["job_id"] == job_manifest["job_id"]
+    assert queue["ok"] is True
+    assert queue["runnable_job_count"] == 1
+    assert queue["blocked_job_count"] == 0
+    assert queue["missing_command_count"] == 0
     artifacts = studio.generation_artifact_manifest(("web", "mobile"))
     assert artifacts["format"] == "appgen.generation-artifacts.v1"
     assert {item["target"] for item in artifacts["artifacts"]} == {"web", "mobile"}
