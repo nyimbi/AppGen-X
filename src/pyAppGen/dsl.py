@@ -1959,6 +1959,9 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
     doctor_parser = subparsers.add_parser("doctor")
     doctor_parser.add_argument("--json", action="store_true")
 
+    command_docs_parser = subparsers.add_parser("command-docs")
+    command_docs_parser.add_argument("--json", action="store_true")
+
     contributor_tasks_parser = subparsers.add_parser("contributor-tasks")
     contributor_tasks_parser.add_argument("--json", action="store_true")
 
@@ -2212,6 +2215,10 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
         return 0 if report["ok"] else 1
     if args.command == "doctor":
         report = doctor_report_dsl()
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "command-docs":
+        report = tooling_command_docs_report_dsl()
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     if args.command == "contributor-tasks":
@@ -2755,6 +2762,21 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         for surface in payload.get("missing_surfaces", ()):
             print(f"missing-surface {surface}")
         return
+    if payload.get("format") == "appgen.tooling-command-docs-audit.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        print(
+            f"command-docs {status}: format={payload.get('format')} "
+            f"manifest={payload.get('documented_manifest_command_count', 0)}/{payload.get('manifest_command_count', 0)} "
+            f"documented={payload.get('documented_command_count', 0)} "
+            f"missing_manifest={payload.get('missing_manifest_command_count', 0)} "
+            f"unknown={payload.get('unknown_documented_command_count', 0)} "
+            f"fence_ignored={payload.get('ignored_fenced_command_count', 0)}"
+        )
+        for command in payload.get("missing_manifest_commands", ()):
+            print(f"missing-manifest-command {command}")
+        for command in payload.get("unknown_documented_commands", ()):
+            print(f"unknown-documented-command {command}")
+        return
     if payload.get("format") == "appgen.contributor-task-contract-audit.v1":
         status = "ok" if payload.get("ok") else "failed"
         print(
@@ -2815,6 +2837,8 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
             f"anchors_missing={payload.get('missing_anchor_count', 0)} "
             f"sections={section.get('covered_section_count', 0)}/{section.get('required_section_count', 0)} "
             f"subsections={section.get('covered_subsection_count', 0)}/{section.get('required_subsection_count', 0)} "
+            f"missing_commands={payload.get('missing_manifest_command_count', 0)} "
+            f"unknown_commands={payload.get('unknown_documented_command_count', 0)} "
             f"runtime_format_gaps={anchor.get('runtime_reference_gap_count', 0)} "
             f"test_format_gaps={anchor.get('test_reference_gap_count', 0)}"
         )
@@ -9073,6 +9097,7 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.tooling-doc-language-audit.v1",
     "appgen.tooling-docs-audit.v1",
     "appgen.tooling-status.v1",
+    "appgen.tooling-command-docs-audit.v1",
     "appgen.tooling-implementation-phase-audit.v1",
     "appgen.implementation-phase-doc-alignment.v1",
     "appgen.test-strategy-cli-audit.v1",
@@ -12109,14 +12134,17 @@ def _contract_schema_catalog() -> dict[str, dict]:
         ),
         "appgen.tooling-docs-audit.v1": _contract_format_schema(
             "appgen.tooling-docs-audit.v1",
-            required=("format", "ok", "doc_anchor_integrity", "section_coverage", "doc_language_policy"),
+            required=("format", "ok", "doc_anchor_integrity", "section_coverage", "doc_language_policy", "command_docs"),
             properties={
                 "doc_anchor_integrity": {"type": "object"},
                 "section_coverage": {"type": "object"},
                 "doc_language_policy": {"type": "object"},
+                "command_docs": {"type": "object"},
                 "missing_anchor_count": {"type": "integer", "minimum": 0},
                 "missing_section_count": {"type": "integer", "minimum": 0},
                 "missing_subsection_count": {"type": "integer", "minimum": 0},
+                "missing_manifest_command_count": {"type": "integer", "minimum": 0},
+                "unknown_documented_command_count": {"type": "integer", "minimum": 0},
             },
         ),
         "appgen.tooling-status.v1": _contract_format_schema(
@@ -12144,6 +12172,23 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "missing_priorities": {"type": "array", "items": {"type": "string"}},
                 "next_action_count": {"type": "integer", "minimum": 0},
                 "next_actions": {"type": "array", "items": {"type": "object"}},
+            },
+        ),
+        "appgen.tooling-command-docs-audit.v1": _contract_format_schema(
+            "appgen.tooling-command-docs-audit.v1",
+            required=("format", "ok", "manifest_commands", "documented_commands"),
+            properties={
+                "manifest_commands": {"type": "array", "items": {"type": "string"}},
+                "documented_commands": {"type": "array", "items": {"type": "string"}},
+                "manifest_command_count": {"type": "integer", "minimum": 0},
+                "documented_command_count": {"type": "integer", "minimum": 0},
+                "documented_manifest_command_count": {"type": "integer", "minimum": 0},
+                "missing_manifest_command_count": {"type": "integer", "minimum": 0},
+                "missing_manifest_commands": {"type": "array", "items": {"type": "string"}},
+                "unknown_documented_command_count": {"type": "integer", "minimum": 0},
+                "unknown_documented_commands": {"type": "array", "items": {"type": "string"}},
+                "ignored_fenced_command_count": {"type": "integer", "minimum": 0},
+                "ignored_fenced_commands": {"type": "array", "items": {"type": "string"}},
             },
         ),
         "appgen.tooling-implementation-phase-audit.v1": _contract_format_schema(
@@ -12803,6 +12848,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     language_quality = dsl_language_quality_contract()
     runtime_contract_inventory = runtime_contract_inventory_report(root)
     doc_language_policy = _tooling_audit_doc_language_policy(root)
+    command_docs = _tooling_audit_command_docs(root)
     module_boundaries = module_boundary_audit_dsl()
     non_goal_policy = _tooling_audit_non_goal_policy()
     component_publish_text_renderer = _component_publish_text_renderer_contract()
@@ -13115,6 +13161,16 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "docs/tooling.md uses current completion language for runtime contracts and rejects stale backlog wording.",
             "docs/tooling.md#appgen-runtime-contracts",
             doc_language_policy,
+        ),
+        _tooling_audit_check(
+            "tooling_command_docs_manifest",
+            command_docs["ok"]
+            and command_docs.get("missing_manifest_command_count") == 0
+            and command_docs.get("unknown_documented_command_count") == 0
+            and command_docs.get("documented_manifest_command_count") == command_docs.get("manifest_command_count"),
+            "docs/tooling.md command references stay synchronized with the shared tooling command manifest.",
+            "docs/tooling.md#cli-contracts",
+            command_docs,
         ),
         _tooling_audit_check(
             "diagnostic_registry_and_fixtures",
@@ -17020,6 +17076,64 @@ def _tooling_audit_doc_language_policy(root: Path) -> dict:
     }
 
 
+def _strip_markdown_fenced_blocks(markdown: str) -> str:
+    return re.sub(r"^```.*?^```", "", markdown, flags=re.M | re.S)
+
+
+def _tooling_audit_command_docs(root: Path) -> dict:
+    docs_text = (root / "docs" / "tooling.md").read_text(encoding="utf-8")
+    unfenced_text = _strip_markdown_fenced_blocks(docs_text)
+    manifest_commands = tuple(TOOLING_SUBCOMMANDS)
+    command_set = set(manifest_commands)
+
+    documented_commands = tuple(
+        sorted(
+            {
+                match.group(1).split()[0]
+                for match in re.finditer(r"`appgen\s+([^`]+)`", unfenced_text)
+                if match.group(1).split() and match.group(1).split()[0] != "..."
+            }
+        )
+    )
+    fenced_commands = tuple(
+        sorted(
+            {
+                match.group(1).split()[0]
+                for match in re.finditer(r"`appgen\s+([^`]+)`", docs_text)
+                if match.group(1).split()
+                and match.group(1).split()[0] != "..."
+                and match.group(1).split()[0] not in documented_commands
+            }
+        )
+    )
+    missing_manifest_commands = tuple(command for command in manifest_commands if command not in documented_commands)
+    unknown_documented_commands = tuple(command for command in documented_commands if command not in command_set)
+    documented_manifest_commands = tuple(command for command in manifest_commands if command in documented_commands)
+    inline_reference_counts = {
+        command: len(re.findall(rf"`appgen\s+{re.escape(command)}(?:\s|`)", unfenced_text))
+        for command in manifest_commands
+    }
+    return {
+        "format": "appgen.tooling-command-docs-audit.v1",
+        "ok": not missing_manifest_commands and not unknown_documented_commands,
+        "source": "docs/tooling.md",
+        "manifest_commands": manifest_commands,
+        "manifest_command_count": len(manifest_commands),
+        "documented_commands": documented_commands,
+        "documented_command_count": len(documented_commands),
+        "documented_manifest_commands": documented_manifest_commands,
+        "documented_manifest_command_count": len(documented_manifest_commands),
+        "missing_manifest_commands": missing_manifest_commands,
+        "missing_manifest_command_count": len(missing_manifest_commands),
+        "unknown_documented_commands": unknown_documented_commands,
+        "unknown_documented_command_count": len(unknown_documented_commands),
+        "ignored_fenced_commands": fenced_commands,
+        "ignored_fenced_command_count": len(fenced_commands),
+        "inline_reference_counts": inline_reference_counts,
+        "source_of_truth": "docs/tooling.md#cli-contracts",
+    }
+
+
 def _tooling_audit_doc_anchor_integrity(root: Path, section_refs: Iterable[str]) -> dict:
     docs_path = root / "docs" / "tooling.md"
     docs_text = docs_path.read_text(encoding="utf-8")
@@ -17110,6 +17224,7 @@ def _tooling_audit_section_coverage(root: Path, checks: Iterable[dict]) -> dict:
         "formatter-specification": ("formatter_idempotent", "formatter_write_organize_contracts"),
         "cli-contracts": (
             "dsl_language_cli_contracts",
+            "tooling_command_docs_manifest",
             "contract_schema_cli_contracts",
             "contract_validation_cli_contracts",
             "runtime_contract_inventory_contracts",
@@ -17182,6 +17297,7 @@ def _tooling_audit_section_coverage(root: Path, checks: Iterable[dict]) -> dict:
         "appgen-graph-suite": ("graph_rendering_contracts",),
         "appgen-explain": ("explain_cli_contracts",),
         "appgen-doctor": ("doctor_cli_text_contracts",),
+        "appgen-command-docs": ("tooling_command_docs_manifest",),
         "appgen-contract-schema": ("contract_schema_cli_contracts",),
         "appgen-contract-validate": ("contract_validation_cli_contracts",),
         "appgen-runtime-contracts": ("runtime_contract_inventory_contracts", "tooling_doc_language_policy"),
@@ -24508,6 +24624,11 @@ def implementation_phases_report_dsl() -> dict:
     )
 
 
+def tooling_command_docs_report_dsl() -> dict:
+    """Return command-documentation parity evidence for docs/tooling.md."""
+    return _tooling_audit_command_docs(Path(__file__).resolve().parents[2])
+
+
 def tooling_status_report_dsl() -> dict:
     """Return a compact, machine-readable answer to what remains in tooling."""
     return _tooling_status_report_from_audit(tooling_audit_report_dsl())
@@ -24520,6 +24641,7 @@ def _tooling_status_report_from_audit(report: dict) -> dict:
     contributor_detail = checks_by_id.get("contributor_task_breakdown_contracts", {}).get("detail", {})
     priority_detail = checks_by_id.get("priority_order_contracts", {}).get("detail", {})
     doc_detail = checks_by_id.get("tooling_doc_anchor_integrity", {}).get("detail", {})
+    command_doc_detail = checks_by_id.get("tooling_command_docs_manifest", {}).get("detail", {})
     failing_checks = tuple(check.get("id") for check in checks if check.get("ok") is not True)
     blocking_gaps = tuple(report.get("blocking_gaps", ()))
     phases = tuple(phase_detail.get("phases", ()))
@@ -24530,6 +24652,8 @@ def _tooling_status_report_from_audit(report: dict) -> dict:
     missing_priorities = tuple(priority_detail.get("missing_priorities", ()))
     missing_doc_runtime_formats = tuple(doc_detail.get("missing_runtime_formats", ()))
     missing_doc_test_formats = tuple(doc_detail.get("missing_test_formats", ()))
+    missing_manifest_commands = tuple(command_doc_detail.get("missing_manifest_commands", ()))
+    unknown_documented_commands = tuple(command_doc_detail.get("unknown_documented_commands", ()))
     next_actions: list[dict] = []
     for check_id in failing_checks:
         next_actions.append(
@@ -24550,6 +24674,10 @@ def _tooling_status_report_from_audit(report: dict) -> dict:
         next_actions.append({"kind": "doc_runtime_format", "id": format_name, "source": "docs/tooling.md#appgen-tooling-audit"})
     for format_name in missing_doc_test_formats:
         next_actions.append({"kind": "doc_test_format", "id": format_name, "source": "docs/tooling.md#appgen-tooling-audit"})
+    for command in missing_manifest_commands:
+        next_actions.append({"kind": "missing_command_doc", "id": command, "source": "docs/tooling.md#cli-contracts"})
+    for command in unknown_documented_commands:
+        next_actions.append({"kind": "unknown_documented_command", "id": command, "source": "docs/tooling.md#cli-contracts"})
     for gap in blocking_gaps:
         gap_id = gap.get("id") if isinstance(gap, dict) else str(gap)
         next_actions.append({"kind": "blocking_gap", "id": gap_id, "source": "appgen.tooling-audit.v1"})
@@ -24562,6 +24690,8 @@ def _tooling_status_report_from_audit(report: dict) -> dict:
         and not missing_priorities
         and not missing_doc_runtime_formats
         and not missing_doc_test_formats
+        and not missing_manifest_commands
+        and not unknown_documented_commands
     )
     return {
         "format": "appgen.tooling-status.v1",
@@ -24590,6 +24720,10 @@ def _tooling_status_report_from_audit(report: dict) -> dict:
         "missing_doc_runtime_formats": missing_doc_runtime_formats,
         "missing_doc_test_format_count": len(missing_doc_test_formats),
         "missing_doc_test_formats": missing_doc_test_formats,
+        "missing_manifest_command_count": len(missing_manifest_commands),
+        "missing_manifest_commands": missing_manifest_commands,
+        "unknown_documented_command_count": len(unknown_documented_commands),
+        "unknown_documented_commands": unknown_documented_commands,
         "next_action_count": len(next_actions),
         "next_actions": tuple(next_actions),
         "source_of_truth": "docs/tooling.md#cli-contracts",
@@ -24613,14 +24747,21 @@ def tooling_docs_report_dsl() -> dict:
         "tooling_doc_language_policy",
         "appgen.tooling-doc-language-audit.v1",
     )
+    command_docs = _tooling_audit_report_detail(
+        "tooling_command_docs_manifest",
+        "appgen.tooling-command-docs-audit.v1",
+    )
     missing_anchor_count = len(doc_anchor.get("missing_sections", ()))
     ok = (
         doc_anchor.get("ok") is True
         and section_coverage.get("ok") is True
         and doc_language_policy.get("ok") is True
+        and command_docs.get("ok") is True
         and missing_anchor_count == 0
         and doc_anchor.get("runtime_reference_gap_count", 0) == 0
         and doc_anchor.get("test_reference_gap_count", 0) == 0
+        and command_docs.get("missing_manifest_command_count", 0) == 0
+        and command_docs.get("unknown_documented_command_count", 0) == 0
         and section_coverage.get("missing_section_count", 0) == 0
         and section_coverage.get("missing_subsection_count", 0) == 0
         and section_coverage.get("stale_mapping_count", 0) == 0
@@ -24634,9 +24775,12 @@ def tooling_docs_report_dsl() -> dict:
         "doc_anchor_integrity": doc_anchor,
         "section_coverage": section_coverage,
         "doc_language_policy": doc_language_policy,
+        "command_docs": command_docs,
         "missing_anchor_count": missing_anchor_count,
         "missing_language_fragment_count": doc_language_policy.get("missing_fragment_count", 0),
         "forbidden_language_phrase_hit_count": doc_language_policy.get("forbidden_phrase_hit_count", 0),
+        "missing_manifest_command_count": command_docs.get("missing_manifest_command_count", 0),
+        "unknown_documented_command_count": command_docs.get("unknown_documented_command_count", 0),
         "runtime_reference_gap_count": doc_anchor.get("runtime_reference_gap_count", 0),
         "test_reference_gap_count": doc_anchor.get("test_reference_gap_count", 0),
         "missing_section_count": section_coverage.get("missing_section_count", 0),
@@ -26333,6 +26477,17 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
                             "missing_test_formats": (),
                         },
                     },
+                    {
+                        "id": "tooling_command_docs_manifest",
+                        "ok": True,
+                        "section": "docs/tooling.md#cli-contracts",
+                        "detail": {
+                            "format": "appgen.tooling-command-docs-audit.v1",
+                            "ok": True,
+                            "missing_manifest_commands": (),
+                            "unknown_documented_commands": (),
+                        },
+                    },
                 ),
                 "blocking_gaps": (),
             }
@@ -26551,6 +26706,7 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
                 ({"section": "docs/tooling.md#appgen-tooling-audit"},),
             ),
             "appgen.tooling-doc-language-audit.v1": _tooling_audit_doc_language_policy(repo_root),
+            "appgen.tooling-command-docs-audit.v1": _tooling_audit_command_docs(repo_root),
             "appgen.tooling-docs-audit.v1": {
                 "format": "appgen.tooling-docs-audit.v1",
                 "ok": True,
@@ -26571,9 +26727,17 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
                     "missing_fragments": (),
                     "forbidden_phrase_hits": (),
                 },
+                "command_docs": {
+                    "format": "appgen.tooling-command-docs-audit.v1",
+                    "ok": True,
+                    "missing_manifest_commands": (),
+                    "unknown_documented_commands": (),
+                },
                 "missing_anchor_count": 0,
                 "missing_section_count": 0,
                 "missing_subsection_count": 0,
+                "missing_manifest_command_count": 0,
+                "unknown_documented_command_count": 0,
             },
             "appgen.tooling-status.v1": tooling_status,
             "appgen.tooling-implementation-phase-audit.v1": implementation_phases,
@@ -29536,6 +29700,7 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         ("runtime-contracts",): ("--json",),
         ("drift",): ("--json",),
         ("doctor",): ("--json",),
+        ("command-docs",): ("--json",),
         ("contributor-tasks",): ("--json",),
         ("priority-order",): ("--json",),
         ("implementation-phases",): ("--json",),

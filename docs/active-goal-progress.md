@@ -4642,3 +4642,8 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   completed and incomplete phases, missing contributor tasks, missing priorities,
   doc runtime/test format gaps, and ordered next actions for maintainers and
   external coding agents.
+- Current command-documentation expansion adds `appgen command-docs` and
+  `appgen.tooling-command-docs-audit.v1`, comparing `docs/tooling.md` command
+  references with the shared `TOOLING_SUBCOMMANDS` manifest while ignoring fenced
+  DSL examples. The tooling docs gate now fails on undocumented implemented
+  commands or unknown documented commands.

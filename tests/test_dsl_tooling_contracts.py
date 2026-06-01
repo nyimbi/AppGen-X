@@ -7395,6 +7395,17 @@ def test_tooling_status_report_compacts_remaining_work_for_agents(monkeypatch) -
                     "missing_test_formats": ("appgen.lsp-service.v1",),
                 },
             },
+            {
+                "id": "tooling_command_docs_manifest",
+                "ok": False,
+                "section": "docs/tooling.md#cli-contracts",
+                "detail": {
+                    "format": "appgen.tooling-command-docs-audit.v1",
+                    "ok": False,
+                    "missing_manifest_commands": ("command-docs",),
+                    "unknown_documented_commands": ("ghost-command",),
+                },
+            },
         ),
         "blocking_gaps": ({"id": "language_server_core_features"},),
     }
@@ -7418,6 +7429,7 @@ def test_tooling_status_report_compacts_remaining_work_for_agents(monkeypatch) -
         "contributor_task_breakdown_contracts",
         "priority_order_contracts",
         "tooling_doc_anchor_integrity",
+        "tooling_command_docs_manifest",
     )
     assert status["completed_phase_ids"] == ("phase_0_inventory_and_stabilization",)
     assert status["incomplete_phase_ids"] == ("phase_4_language_server",)
@@ -7428,9 +7440,13 @@ def test_tooling_status_report_compacts_remaining_work_for_agents(monkeypatch) -
     assert status["missing_priorities"] == ("language_server",)
     assert status["missing_doc_runtime_formats"] == ("appgen.lsp-service.v1",)
     assert status["missing_doc_test_formats"] == ("appgen.lsp-service.v1",)
-    assert status["next_action_count"] == 11
+    assert status["missing_manifest_commands"] == ("command-docs",)
+    assert status["unknown_documented_commands"] == ("ghost-command",)
+    assert status["next_action_count"] == 14
     assert {"kind": "exit_criterion", "id": "lsp_transport_rpc_contracts", "source": "phase_4_language_server"} in status["next_actions"]
     assert {"kind": "doc_runtime_format", "id": "appgen.lsp-service.v1", "source": "docs/tooling.md#appgen-tooling-audit"} in status["next_actions"]
+    assert {"kind": "missing_command_doc", "id": "command-docs", "source": "docs/tooling.md#cli-contracts"} in status["next_actions"]
+    assert {"kind": "unknown_documented_command", "id": "ghost-command", "source": "docs/tooling.md#cli-contracts"} in status["next_actions"]
     assert payload["format"] == "appgen.tooling-status.v1"
     assert payload["next_action_count"] == status["next_action_count"]
     assert json_exit == 1
@@ -7488,6 +7504,14 @@ def test_governance_reports_are_first_class_cli_commands(monkeypatch) -> None:
         "missing_fragment_count": 0,
         "forbidden_phrase_hit_count": 0,
     }
+    fake_command_docs = {
+        "format": "appgen.tooling-command-docs-audit.v1",
+        "ok": True,
+        "missing_manifest_command_count": 0,
+        "unknown_documented_command_count": 0,
+        "missing_manifest_commands": (),
+        "unknown_documented_commands": (),
+    }
     fake_report = {
         "format": "appgen.tooling-audit.v1",
         "ok": True,
@@ -7512,6 +7536,11 @@ def test_governance_reports_are_first_class_cli_commands(monkeypatch) -> None:
                 "id": "tooling_doc_language_policy",
                 "section": "docs/tooling.md#appgen-runtime-contracts",
                 "detail": fake_doc_language,
+            },
+            {
+                "id": "tooling_command_docs_manifest",
+                "section": "docs/tooling.md#cli-contracts",
+                "detail": fake_command_docs,
             },
         ),
     }
@@ -7556,6 +7585,9 @@ def test_governance_reports_are_first_class_cli_commands(monkeypatch) -> None:
     assert docs_payload["doc_anchor_integrity"]["format"] == "appgen.tooling-doc-anchor-audit.v1"
     assert docs_payload["section_coverage"]["format"] == "appgen.tooling-section-coverage-audit.v1"
     assert docs_payload["doc_language_policy"]["format"] == "appgen.tooling-doc-language-audit.v1"
+    assert docs_payload["command_docs"]["format"] == "appgen.tooling-command-docs-audit.v1"
+    assert docs_payload["missing_manifest_command_count"] == 0
+    assert docs_payload["unknown_documented_command_count"] == 0
     assert docs_text_exit == 0
     assert docs_text.getvalue().startswith("tooling-docs ok: format=appgen.tooling-docs-audit.v1")
 
@@ -8968,6 +9000,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "semantic_drift_surface_contracts",
         "doctor_cli_text_contracts",
         "tooling_doc_anchor_integrity",
+        "tooling_command_docs_manifest",
         "non_goal_policy_guards",
         "tooling_audit_text_renderer",
         "component_publish_catalog_contracts",
@@ -13823,6 +13856,37 @@ def test_tooling_doc_language_policy_rejects_stale_runtime_backlog_wording() -> 
     assert "`appgen.missing-contract.v1`" in audit["required_fragments"]
 
 
+def test_tooling_command_docs_audit_matches_manifest_and_ignores_dsl_fences() -> None:
+    root = Path(__file__).resolve().parents[1]
+    audit = appgen_dsl._tooling_audit_command_docs(root)
+    json_stdout = StringIO()
+    text_stdout = StringIO()
+    with redirect_stdout(json_stdout):
+        json_exit = appgen_dsl.dsl_tooling_cli(("command-docs", "--json"))
+    with redirect_stdout(text_stdout):
+        text_exit = appgen_dsl.dsl_tooling_cli(("command-docs",))
+
+    payload = json.loads(json_stdout.getvalue())
+    assert audit["format"] == "appgen.tooling-command-docs-audit.v1"
+    assert audit["ok"] is True
+    assert audit["manifest_commands"] == appgen_dsl.TOOLING_SUBCOMMANDS
+    assert audit["documented_manifest_commands"] == audit["manifest_commands"]
+    assert audit["documented_manifest_command_count"] == audit["manifest_command_count"]
+    assert audit["missing_manifest_command_count"] == 0
+    assert audit["missing_manifest_commands"] == ()
+    assert audit["unknown_documented_command_count"] == 0
+    assert audit["unknown_documented_commands"] == ()
+    assert "view" in audit["ignored_fenced_commands"]
+    assert "view" not in audit["documented_commands"]
+    assert audit["inline_reference_counts"]["command-docs"] >= 1
+    assert payload["format"] == "appgen.tooling-command-docs-audit.v1"
+    assert payload["manifest_commands"] == list(appgen_dsl.TOOLING_SUBCOMMANDS)
+    assert json_exit == 0
+    assert text_exit == 0
+    assert text_stdout.getvalue().startswith("command-docs ok: format=appgen.tooling-command-docs-audit.v1")
+    assert "unknown=0" in text_stdout.getvalue()
+
+
 def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     root = Path(__file__).resolve().parents[1]
     audit = appgen_dsl._tooling_audit_cli_help_surface(root)
@@ -13844,8 +13908,8 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert "diagnostics, parser-golden, module-boundaries, non-goals, test-strategy" in normalized_help
     assert "dsl-quality, dsl-antlr, dsl-authoring-gate, dsl-language-service" in normalized_help
     assert "contract-schema, contract-validate, runtime-contracts" in normalized_help
-    assert "runtime-contracts, drift, doctor, contributor-tasks, priority-order" in normalized_help
-    assert "implementation-phases, tooling-docs, tooling-status, and tooling-audit" in normalized_help
+    assert "runtime-contracts, drift, doctor, command-docs, contributor-tasks" in normalized_help
+    assert "tooling-docs, tooling-status, and tooling-audit" in normalized_help
     assert "apg =" in pyproject
     assert "visual drag-and-drop form design" in normalized_help
     assert audit["format"] == "appgen.cli-help-surface-audit.v1"
@@ -14261,6 +14325,8 @@ def test_contract_schema_catalog_exposes_core_json_schemas() -> None:
         "appgen.tooling-section-coverage-audit.v1",
         "appgen.tooling-doc-language-audit.v1",
         "appgen.tooling-docs-audit.v1",
+        "appgen.tooling-status.v1",
+        "appgen.tooling-command-docs-audit.v1",
         "appgen.tooling-implementation-phase-audit.v1",
         "appgen.implementation-phase-doc-alignment.v1",
         "appgen.test-strategy-cli-audit.v1",

@@ -725,6 +725,13 @@ emits `appgen.module-boundary-audit.v1`, `appgen non-goals` emits
 emits `appgen.tooling-docs-audit.v1` with embedded anchor and section coverage.
 These commands keep architectural and documentation guardrails callable without
 requiring contributors to expand the full aggregate audit.
+`appgen command-docs` emits `appgen.tooling-command-docs-audit.v1`, comparing
+the shared `TOOLING_SUBCOMMANDS` manifest with command references in this
+document after stripping fenced DSL examples. It reports manifest commands,
+documented commands, missing manifest-command documentation, unknown documented
+commands, ignored fenced examples, and per-command inline reference counts, so a
+new command cannot be implemented without documentation and a prose typo cannot
+advertise a command that the launcher does not support.
 `appgen tooling-status` emits `appgen.tooling-status.v1`, a compact "what is
 left" contract distilled from the aggregate audit. It reports passing and
 failing check ids, blocking gaps, completed and incomplete implementation
@@ -873,6 +880,7 @@ audits, semantic-drift and semantic-drift text-renderer audits,
 `appgen.runtime-contract-inventory.v1`, and
 `appgen.runtime-contract-inventory-cli-audit.v1`,
 `appgen.tooling-doc-language-audit.v1`,
+`appgen.tooling-command-docs-audit.v1`,
 `appgen.tooling-status.v1`,
 plus the package-level release audit family:
 `appgen.package-dsl-release-audit.v1`,
@@ -3199,6 +3207,29 @@ Studio, or editor-extension readiness, or when text output hides embedded audit
 format markers, named doctor checks, JSON payload envelopes, exit-code
 contracts, or text-mode non-JSON output.
 
+### `appgen command-docs`
+
+```console
+appgen command-docs --json
+appgen command-docs
+```
+
+Emits `appgen.tooling-command-docs-audit.v1`, the command documentation parity
+gate for this specification. The audit reads the shared `TOOLING_SUBCOMMANDS`
+manifest, strips fenced Markdown examples, extracts inline `appgen ...` command
+references from this document, and reports manifest commands, documented
+commands, documented manifest-command counts, missing manifest-command
+documentation, unknown documented commands, ignored fenced examples, and
+per-command inline reference counts. This keeps DSL examples such as a fenced
+`appgen` code block from being mistaken for CLI documentation while still
+failing when a real command is implemented without a prose reference or when
+the docs advertise a command that the launcher cannot execute.
+The aggregate tooling audit exposes this proof as
+`tooling_command_docs_manifest`, and `appgen tooling-docs` embeds the same
+report so documentation governance can distinguish command-surface drift from
+anchor drift, schema-reference drift, section-coverage drift, or stale-language
+policy drift.
+
 ### `appgen tooling-audit`
 
 ```console
@@ -3238,6 +3269,8 @@ audit gate.
 `appgen.tooling-docs-audit.v1`, embedding both the anchor audit and the section
 coverage audit so CI can distinguish missing anchors, missing major sections,
 missing subsections, runtime format reference gaps, and test reference gaps.
+It also embeds `appgen.tooling-command-docs-audit.v1`, so docs governance can
+separate command-manifest drift from anchor or schema-reference drift.
 The text
 renderer must include embedded audit format names such as
 `appgen.non-goal-policy-audit.v1` and
