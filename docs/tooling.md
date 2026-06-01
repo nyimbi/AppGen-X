@@ -3409,17 +3409,19 @@ appgen lsp --stdio
 
 `--stdio` starts the JSON-RPC language server over standard input/output. It
 accepts `initialize`, `shutdown`, `exit`, `textDocument/didOpen`,
-`textDocument/didChange`, completion, hover, definition, references, document
+`textDocument/didChange`, `textDocument/didSave`, `textDocument/didClose`,
+completion, hover, definition, references, document
 symbols, rename, code actions, formatting, and workspace symbol requests. The
 server keeps an in-memory document cache for open `.appgen` buffers and
-publishes diagnostics after open/change notifications using the same
+publishes diagnostics after open/change/save notifications using the same
 `appgen.semantic-model.v1` and linter reports as the CLI. Workspace symbol,
 definition, reference, and completion requests scan each open DSL document
 individually instead of concatenating files, so editor features keep working
 when an application is split across multiple `.appgen` files. Rename uses the
 active document for identifier validation and migration safety, then returns a
 workspace edit that updates the matching identifier across every open DSL
-document.
+document. Close notifications remove the document from the in-memory workspace
+and publish an empty diagnostic set so editors clear stale errors immediately.
 
 The executable tooling audit includes `appgen.lsp-stdio-transport-audit.v1`,
 which sends real `Content-Length` JSON-RPC frames through the stdio transport
@@ -3439,7 +3441,8 @@ audit.
 The same audit now carries a named editor-lifecycle workflow contract that
 executes initialize, open diagnostics, completion, hover, definition,
 references, document symbols, rename, changed-buffer diagnostics, code actions,
-formatting, workspace symbol search, shutdown, and exit as one continuous
+formatting, save diagnostics, close/diagnostic clearing, workspace symbol
+search, shutdown, and exit as one continuous
 session. It reports required/observed/missing case ids, expected/observed
 methods by case, expected/observed result shapes by case, failing cases,
 diagnostic-transition status, and shutdown/exit status. The aggregate transport
@@ -3506,11 +3509,12 @@ addition to `language_server_core_features`. `lsp_transport_rpc_contracts`
 proves JSON-RPC provider breadth and stdio `Content-Length` framing, including
 diagnostics publication, completion, workspace-symbol, and shutdown responses.
 The stdio transport audit publishes expected and observed response ids by
-method, required and observed notification methods, and required diagnostic-code
-families for changed buffers. The transport gate requires the named missing
-method, notification, and diagnostic-family lists to be empty, so initialize,
-completion, workspace-symbol, shutdown, and diagnostics regressions fail by
-method name rather than only by aggregate response counts.
+method, required and observed notification methods, required diagnostic-code
+families for changed/saved buffers, and close-diagnostic clearing counts. The
+transport gate requires the named missing method, notification, diagnostic-family,
+and close-clearing lists to be empty, so initialize, completion,
+workspace-symbol, shutdown, save/close lifecycle, and diagnostics regressions
+fail by method name rather than only by aggregate response counts.
 `lsp_navigation_completion_contracts` proves completion coverage, LSP symbol
 coverage, lexical reference scoping, definition/reference text markers,
 navigation, formatting, hover, and text-summary evidence remain complete and
@@ -3563,7 +3567,7 @@ scenario cannot hide behind aggregate scenario counts.
 
 | LSP Feature | Required Behavior |
 | --- | --- |
-| `textDocument/didOpen` and `didChange` | Incrementally parse, rebuild affected semantic model parts, publish diagnostics. |
+| `textDocument/didOpen`, `didChange`, `didSave`, and `didClose` | Incrementally parse, rebuild affected semantic model parts, publish diagnostics, and clear diagnostics when a buffer closes. |
 | `textDocument/completion` | Complete keywords, block-local directives, table names, fields, lookup paths, components, handler events, operation targets, flow states, PBC keys, APIs, events, package targets, deployment units, LLM providers, and agent skills. |
 | `textDocument/hover` | Show keyword docs, symbol summary, field type, relationship target, lookup resolution, handler target, PBC catalog metadata, and diagnostic explanation. |
 | `textDocument/definition` | Navigate from references to declarations for fields, tables, views, flows, operations, roles, PBCs, APIs, events, packages, and deployment units. |

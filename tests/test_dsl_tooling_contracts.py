@@ -3866,13 +3866,15 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     assert audit["formatting_edit_count"] >= 1
     assert audit["blocking_gap_count"] == 0
     assert audit["blocking_gaps"] == ()
-    assert audit["method_contract_count"] == 11
+    assert audit["method_contract_count"] == 13
     assert audit["passing_method_contract_count"] == audit["method_contract_count"]
     assert audit["missing_method_contract_count"] == 0
     assert audit["missing_method_contracts"] == ()
     assert set(audit["method_contract_names"]) == {
         "textDocument/didOpen",
         "textDocument/didChange",
+        "textDocument/didSave",
+        "textDocument/didClose",
         "textDocument/completion",
         "textDocument/hover",
         "textDocument/definition",
@@ -3887,9 +3889,11 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     assert all(detail["exercised"] for detail in audit["method_contracts"].values())
     assert audit["method_contracts"]["textDocument/didOpen"]["provider"] == "notification"
     assert audit["method_contracts"]["textDocument/didChange"]["provider"] == "notification"
+    assert audit["method_contracts"]["textDocument/didSave"]["provider"] == "textDocumentSync.save"
+    assert audit["method_contracts"]["textDocument/didClose"]["provider"] == "textDocumentSync.openClose"
     assert audit["method_contracts"]["textDocument/codeAction"]["check"] == "code_action_request"
     assert audit["method_contracts"]["textDocument/formatting"]["check"] == "formatting_request"
-    assert audit["editor_workflow_case_count"] == 14
+    assert audit["editor_workflow_case_count"] == 16
     assert audit["editor_workflow_passing_case_count"] == audit["editor_workflow_case_count"]
     assert audit["editor_workflow_failing_case_count"] == 0
     assert audit["editor_workflow_failing_cases"] == ()
@@ -3906,6 +3910,8 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         "change_diagnostics",
         "code_action",
         "formatting",
+        "save_diagnostics",
+        "close_clears_diagnostics",
         "shutdown",
         "exit",
     )
@@ -3923,6 +3929,8 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     workflow_cases = {case["id"]: case for case in audit["editor_workflow_results"]}
     assert workflow_cases["open_diagnostics"]["notification_method"] == "textDocument/publishDiagnostics"
     assert workflow_cases["change_diagnostics"]["notification_method"] == "textDocument/publishDiagnostics"
+    assert workflow_cases["save_diagnostics"]["notification_method"] == "textDocument/publishDiagnostics"
+    assert workflow_cases["close_clears_diagnostics"]["notification_method"] == "textDocument/publishDiagnostics"
     assert workflow_cases["rename"]["result_shape"] == "workspace_edit"
     assert workflow_cases["exit"]["should_exit"] is True
     assert "enterprise_definition_context" in {check["check"] for check in audit["checks"]}
@@ -5114,7 +5122,7 @@ def test_lsp_json_rpc_server_handles_editor_lifecycle_from_shared_semantics() ->
             "jsonrpc": "2.0",
             "id": 2,
             "method": "textDocument/completion",
-            "params": {"textDocument": {"uri": uri}, "position": _position_of(TOOLING_SAMPLE, "Invoice")},
+            "params": {"textDocument": {"uri": uri}, "position": {"line": 0, "character": 0}},
         },
         documents,
     )
@@ -5144,6 +5152,18 @@ def test_lsp_json_rpc_server_handles_editor_lifecycle_from_shared_semantics() ->
         {"jsonrpc": "2.0", "id": 5, "method": "workspace/symbol", "params": {"query": "Invoice"}},
         documents,
     )
+    save_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didSave",
+            "params": {"textDocument": {"uri": uri, "version": 2}, "text": TOOLING_SAMPLE},
+        },
+        documents,
+    )
+    close_responses, _ = lsp_server_handle_message(
+        {"jsonrpc": "2.0", "method": "textDocument/didClose", "params": {"textDocument": {"uri": uri}}},
+        documents,
+    )
     shutdown_responses, _ = lsp_server_handle_message(
         {"jsonrpc": "2.0", "id": 6, "method": "shutdown"},
         documents,
@@ -5157,10 +5177,14 @@ def test_lsp_json_rpc_server_handles_editor_lifecycle_from_shared_semantics() ->
     assert init_responses[0]["result"]["capabilities"]["completionProvider"]["triggerCharacters"]
     assert open_responses[0]["method"] == "textDocument/publishDiagnostics"
     assert not any(item["severity"] == 1 for item in open_responses[0]["params"]["diagnostics"])
-    assert any(item["label"] == "Invoice" for item in completion_responses[0]["result"]["items"])
+    assert any(item["label"] == "table" for item in completion_responses[0]["result"]["items"])
     assert any(symbol["name"] == "Invoice" for symbol in symbols_responses[0]["result"])
     assert "PostInvoice" in rename_responses[0]["result"]["changes"][uri][0]["newText"]
     assert any(symbol["name"] == "Invoice" for symbol in workspace_responses[0]["result"])
+    assert save_responses[0]["method"] == "textDocument/publishDiagnostics"
+    assert close_responses[0]["method"] == "textDocument/publishDiagnostics"
+    assert close_responses[0]["params"]["diagnostics"] == ()
+    assert uri not in documents
     assert shutdown_responses[0]["result"] is None
     assert exit_responses == ()
     assert should_exit_after_exit is True
@@ -5210,9 +5234,9 @@ def test_lsp_stdio_transport_audit_exercises_editor_requests() -> None:
     assert audit["format"] == "appgen.lsp-stdio-transport-audit.v1"
     assert audit["ok"] is True
     assert audit["exit_code"] == 0
-    assert audit["total_message_count"] == 7
+    assert audit["total_message_count"] == 9
     assert audit["request_message_count"] == 4
-    assert audit["notification_message_count"] == 3
+    assert audit["notification_message_count"] == 5
     assert audit["response_count"] >= audit["request_message_count"]
     assert audit["id_response_count"] >= audit["request_message_count"]
     assert audit["expected_id_count"] == len(audit["expected_ids"]) == 4
@@ -5233,7 +5257,9 @@ def test_lsp_stdio_transport_audit_exercises_editor_requests() -> None:
     assert "textDocument/publishDiagnostics" in audit["observed_notification_methods"]
     assert audit["missing_notification_method_count"] == 0
     assert audit["missing_notification_methods"] == ()
-    assert audit["diagnostic_publication_count"] >= 2
+    assert audit["diagnostic_publication_count"] >= 4
+    assert audit["diagnostic_publication_with_items_count"] >= 1
+    assert audit["close_diagnostic_publication_count"] >= 1
     assert audit["changed_source_differs"] is True
     assert audit["changed_diagnostic_count"] >= 1
     assert audit["changed_error_count"] >= 1
@@ -9143,13 +9169,13 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert lsp_transport_check["detail"]["rpc"]["enabled_provider_count"] == 9
     assert lsp_transport_check["detail"]["rpc"]["request_check_count"] == 8
     assert lsp_transport_check["detail"]["rpc"]["passing_request_check_count"] == 8
-    assert lsp_transport_check["detail"]["rpc"]["method_contract_count"] == 11
+    assert lsp_transport_check["detail"]["rpc"]["method_contract_count"] == 13
     assert lsp_transport_check["detail"]["rpc"]["passing_method_contract_count"] == (
         lsp_transport_check["detail"]["rpc"]["method_contract_count"]
     )
     assert lsp_transport_check["detail"]["rpc"]["missing_method_contract_count"] == 0
     assert lsp_transport_check["detail"]["rpc"]["missing_method_contracts"] == ()
-    assert lsp_transport_check["detail"]["rpc"]["editor_workflow_case_count"] == 14
+    assert lsp_transport_check["detail"]["rpc"]["editor_workflow_case_count"] == 16
     assert lsp_transport_check["detail"]["rpc"]["editor_workflow_passing_case_count"] == (
         lsp_transport_check["detail"]["rpc"]["editor_workflow_case_count"]
     )

@@ -18611,10 +18611,14 @@ def _tooling_audit_lsp_json_rpc(source: str, *, broken_handler_source: str) -> d
         documents,
     )
     capabilities = init_responses[0]["result"]["capabilities"] if init_responses else {}
+    sync_capabilities = capabilities.get("textDocumentSync", {})
     checks.append(
         _release_check(
             "initialize_capabilities",
             bool(init_responses)
+            and sync_capabilities.get("openClose") is True
+            and sync_capabilities.get("change") == 1
+            and sync_capabilities.get("save", {}).get("includeText") is True
             and bool(capabilities.get("completionProvider", {}).get("triggerCharacters"))
             and capabilities.get("hoverProvider") is True
             and capabilities.get("definitionProvider") is True
@@ -18660,6 +18664,53 @@ def _tooling_audit_lsp_json_rpc(source: str, *, broken_handler_source: str) -> d
             and bool(change_responses)
             and change_responses[0]["method"] == "textDocument/publishDiagnostics",
         )
+    )
+    saved_source = source.replace("Main: customer.name, total", "Main: customer.name")
+    if saved_source == source:
+        saved_source = source + "\n// saved\n"
+    save_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didSave",
+            "params": {
+                "textDocument": {"uri": uri, "version": 3},
+                "text": saved_source,
+            },
+        },
+        documents,
+    )
+    checks.append(
+        _release_check(
+            "did_save_diagnostics",
+            documents.get(uri) == saved_source
+            and bool(save_responses)
+            and save_responses[0]["method"] == "textDocument/publishDiagnostics",
+        )
+    )
+    close_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didClose",
+            "params": {"textDocument": {"uri": uri}},
+        },
+        documents,
+    )
+    checks.append(
+        _release_check(
+            "did_close_clears_document",
+            uri not in documents
+            and bool(close_responses)
+            and close_responses[0]["method"] == "textDocument/publishDiagnostics"
+            and close_responses[0].get("params", {}).get("diagnostics") == (),
+        )
+    )
+    lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": {"textDocument": {"uri": uri, "languageId": "appgen", "version": 4, "text": source}},
+        },
+        documents,
     )
 
     request_checks = (
@@ -19914,6 +19965,36 @@ operation SubmitInvoice { draft -> posted }
             "formatting_edits",
         ),
         (
+            "save_diagnostics",
+            {
+                "jsonrpc": "2.0",
+                "method": "textDocument/didSave",
+                "params": {
+                    "textDocument": {"uri": editor_workflow_uri, "version": 3},
+                    "text": editor_workflow_changed_source,
+                },
+            },
+            lambda responses, should_exit: bool(responses)
+            and responses[0].get("method") == "textDocument/publishDiagnostics"
+            and any(item.get("severity") == 1 for item in responses[0].get("params", {}).get("diagnostics", ()))
+            and should_exit is False,
+            "saved_diagnostics",
+        ),
+        (
+            "close_clears_diagnostics",
+            {
+                "jsonrpc": "2.0",
+                "method": "textDocument/didClose",
+                "params": {"textDocument": {"uri": editor_workflow_uri}},
+            },
+            lambda responses, should_exit: bool(responses)
+            and responses[0].get("method") == "textDocument/publishDiagnostics"
+            and responses[0].get("params", {}).get("diagnostics") == ()
+            and editor_workflow_uri not in editor_workflow_documents
+            and should_exit is False,
+            "closed_diagnostics",
+        ),
+        (
             "shutdown",
             {"jsonrpc": "2.0", "id": 111, "method": "shutdown", "params": {}},
             lambda responses, should_exit: bool(responses)
@@ -19975,7 +20056,9 @@ operation SubmitInvoice { draft -> posted }
     editor_workflow_diagnostic_transition_ok = (
         next((item for item in editor_workflow_results if item["id"] == "open_diagnostics"), {}).get("ok") is True
         and next((item for item in editor_workflow_results if item["id"] == "change_diagnostics"), {}).get("ok") is True
-        and editor_workflow_documents.get(editor_workflow_uri) == editor_workflow_changed_source
+        and next((item for item in editor_workflow_results if item["id"] == "save_diagnostics"), {}).get("ok") is True
+        and next((item for item in editor_workflow_results if item["id"] == "close_clears_diagnostics"), {}).get("ok") is True
+        and editor_workflow_uri not in editor_workflow_documents
     )
     editor_workflow_shutdown_exit_ok = (
         next((item for item in editor_workflow_results if item["id"] == "shutdown"), {}).get("ok") is True
@@ -20023,6 +20106,18 @@ operation SubmitInvoice { draft -> posted }
             "exercised": check_ok_by_name.get("did_change_diagnostics") is True,
             "provider": "notification",
             "check": "did_change_diagnostics",
+        },
+        "textDocument/didSave": {
+            "advertised": sync_capabilities.get("save", {}).get("includeText") is True,
+            "exercised": check_ok_by_name.get("did_save_diagnostics") is True,
+            "provider": "textDocumentSync.save",
+            "check": "did_save_diagnostics",
+        },
+        "textDocument/didClose": {
+            "advertised": sync_capabilities.get("openClose") is True,
+            "exercised": check_ok_by_name.get("did_close_clears_document") is True,
+            "provider": "textDocumentSync.openClose",
+            "check": "did_close_clears_document",
         },
         "textDocument/completion": {
             "advertised": provider_flags["completion"],
@@ -20235,6 +20330,16 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
                 "contentChanges": ({"text": changed_source},),
             },
         },
+        {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didSave",
+            "params": {"textDocument": {"uri": uri, "version": 3}, "text": changed_source},
+        },
+        {
+            "jsonrpc": "2.0",
+            "method": "textDocument/didClose",
+            "params": {"textDocument": {"uri": uri}},
+        },
         {"jsonrpc": "2.0", "id": 4, "method": "shutdown"},
         {"jsonrpc": "2.0", "method": "exit"},
     )
@@ -20276,7 +20381,22 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
     diagnostic_publications = tuple(
         response for response in responses if response.get("method") == "textDocument/publishDiagnostics"
     )
-    changed_diagnostics = tuple(diagnostic_publications[-1].get("params", {}).get("diagnostics", ())) if diagnostic_publications else ()
+    diagnostic_publications_with_items = tuple(
+        publication
+        for publication in diagnostic_publications
+        if publication.get("params", {}).get("diagnostics", ())
+    )
+    changed_diagnostics = (
+        tuple(diagnostic_publications_with_items[-1].get("params", {}).get("diagnostics", ()))
+        if diagnostic_publications_with_items
+        else ()
+    )
+    close_diagnostic_publications = tuple(
+        publication
+        for publication in diagnostic_publications
+        if publication.get("params", {}).get("uri") == uri
+        and not publication.get("params", {}).get("diagnostics", ())
+    )
     changed_diagnostic_codes = tuple(item.get("code") for item in changed_diagnostics)
     required_changed_diagnostic_code_families = {
         "unresolved_binding_or_table": ("AGX0401", "AGX0402"),
@@ -20306,11 +20426,12 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
         "format": "appgen.lsp-stdio-transport-audit.v1",
         "ok": exit_code == 0
         and any(response.get("id") == 1 and "capabilities" in response.get("result", {}) for response in responses)
-        and diagnostic_publication_count >= 2
+        and diagnostic_publication_count >= 4
         and completion_response_count >= 1
         and workspace_symbol_response_count >= 1
         and changed_error_count >= 1
         and any(code in {"AGX0401", "AGX0402"} for code in changed_diagnostic_codes)
+        and bool(close_diagnostic_publications)
         and shutdown_response_count >= 1
         and not missing_response_ids
         and not missing_response_methods
@@ -20339,6 +20460,8 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
         "missing_notification_methods": missing_notification_methods,
         "ids": tuple(response.get("id") for response in responses if "id" in response),
         "diagnostic_publication_count": diagnostic_publication_count,
+        "diagnostic_publication_with_items_count": len(diagnostic_publications_with_items),
+        "close_diagnostic_publication_count": len(close_diagnostic_publications),
         "changed_source_differs": changed_source != source,
         "changed_diagnostic_count": len(changed_diagnostics),
         "changed_error_count": changed_error_count,
@@ -29276,6 +29399,8 @@ def lsp_capabilities_dsl() -> dict:
         "features": {
             "textDocument/didOpen": True,
             "textDocument/didChange": True,
+            "textDocument/didSave": True,
+            "textDocument/didClose": True,
             "textDocument/completion": True,
             "textDocument/hover": True,
             "textDocument/definition": True,
@@ -29420,6 +29545,25 @@ def lsp_server_handle_message(message: dict, documents: dict[str, str] | None = 
             docs[uri] = changes[-1].get("text", docs.get(uri, ""))
         responses.append(_lsp_publish_diagnostics_notification(uri, docs.get(uri, "")))
         return tuple(responses), False
+    if method == "textDocument/didSave":
+        text_document = params.get("textDocument") or {}
+        uri = text_document.get("uri") or source_uri or "memory://appgen"
+        if isinstance(params.get("text"), str):
+            docs[uri] = params["text"]
+        responses.append(_lsp_publish_diagnostics_notification(uri, docs.get(uri, "")))
+        return tuple(responses), False
+    if method == "textDocument/didClose":
+        text_document = params.get("textDocument") or {}
+        uri = text_document.get("uri") or source_uri or "memory://appgen"
+        docs.pop(uri, None)
+        responses.append(
+            {
+                "jsonrpc": "2.0",
+                "method": "textDocument/publishDiagnostics",
+                "params": {"uri": uri, "diagnostics": ()},
+            }
+        )
+        return tuple(responses), False
 
     if method == "textDocument/completion":
         result = lsp_completion_dsl(
@@ -29504,7 +29648,11 @@ def lsp_server_handle_message(message: dict, documents: dict[str, str] | None = 
 
 def _lsp_initialize_capabilities() -> dict:
     return {
-        "textDocumentSync": 1,
+        "textDocumentSync": {
+            "openClose": True,
+            "change": 1,
+            "save": {"includeText": True},
+        },
         "completionProvider": {"resolveProvider": False, "triggerCharacters": (".", " ", ":")},
         "hoverProvider": True,
         "definitionProvider": True,
