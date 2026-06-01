@@ -35487,7 +35487,7 @@ def _semantic_human_task(statement: EnterpriseStatementSchema) -> dict:
     values = statement.values
     return {
         "name": values[0] if values else None,
-        "assignee": values[2] if len(values) >= 3 and values[1] == "assigned" else None,
+        "assignee": _human_task_assignee(statement),
         "to": statement.target,
     }
 
@@ -35499,6 +35499,23 @@ def _semantic_timer(statement: EnterpriseStatementSchema) -> dict:
         "duration": values[1] if len(values) > 1 else None,
         "to": statement.target,
     }
+
+
+def _human_task_assignee(statement: EnterpriseStatementSchema) -> str | None:
+    values = statement.values
+    return values[2] if len(values) >= 3 and values[1] == "assigned" else None
+
+
+def _valid_workflow_duration_literal(value: str | None) -> bool:
+    if not value:
+        return False
+    # ISO-8601 duration subset, enough for workflow SLA/timer authoring.
+    return bool(
+        re.fullmatch(
+            r"P(?=.)(?:\d+Y)?(?:\d+M)?(?:\d+W)?(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?",
+            value,
+        )
+    )
 
 
 def _semantic_pbcs(schema: AppSchema) -> dict:
@@ -35951,6 +35968,12 @@ def _spec_diagnostic_code(legacy_code: str, message: str) -> str:
         return "AGX0601"
     if message.startswith("Human task has no assignee"):
         return "AGX0602"
+    if message.startswith("Unknown human task assignee"):
+        return "AGX0603"
+    if message.startswith("Invalid timer duration"):
+        return "AGX0604"
+    if message.startswith("Unknown compensation target"):
+        return "AGX0605"
     if message.startswith("Unknown PBC catalog entry"):
         return "AGX0901"
     if message.startswith("Unknown cross-PBC contract"):
@@ -35982,6 +36005,9 @@ def _spec_diagnostic_title(code: str) -> str:
         "AGX0502": "Unknown rule field",
         "AGX0601": "Invalid strict workflow state",
         "AGX0602": "Unassigned human task",
+        "AGX0603": "Unknown workflow participant",
+        "AGX0604": "Invalid workflow timer duration",
+        "AGX0605": "Unknown workflow compensation target",
         "AGX0701": "Unknown permission resource",
         "AGX0702": "Secret literal in source",
         "AGX0801": "Invalid deployment or contract reference",
@@ -36938,6 +36964,12 @@ def _diagnostic_code(message: str) -> str:
         return "strict_flow_state"
     if message.startswith("Human task has no assignee"):
         return "unassigned_human_task"
+    if message.startswith("Unknown human task assignee"):
+        return "unknown_human_task_assignee"
+    if message.startswith("Invalid timer duration"):
+        return "invalid_timer_duration"
+    if message.startswith("Unknown compensation target"):
+        return "unknown_compensation_target"
     if message.startswith("Unknown PBC catalog entry"):
         return "unknown_pbc_catalog_entry"
     if message.startswith("Unknown cross-PBC contract"):
@@ -37791,6 +37823,9 @@ DIAGNOSTIC_SPECS = (
     {"code": "AGX0502", "severity": "error", "title": "Unknown rule field", "trigger": "Rule references unknown field.", "example_fix": "Correct field or lookup path."},
     {"code": "AGX0601", "severity": "error", "title": "Invalid strict workflow state", "trigger": "Flow transition references undeclared or unreachable state where strict mode is enabled.", "example_fix": "Add transition or state directive."},
     {"code": "AGX0602", "severity": "warning", "title": "Unassigned human task", "trigger": "Human task has no assignee/participant.", "example_fix": "Add participant or assignment."},
+    {"code": "AGX0603", "severity": "error", "title": "Unknown workflow participant", "trigger": "Strict workflow human task is assigned to an undeclared role or agent.", "example_fix": "Declare the participant as a role or agent, or assign the task to an existing participant."},
+    {"code": "AGX0604", "severity": "error", "title": "Invalid workflow timer duration", "trigger": "Strict workflow timer duration is not an ISO-8601 duration literal.", "example_fix": "Use a duration such as P2D, PT4H, or P1DT2H."},
+    {"code": "AGX0605", "severity": "error", "title": "Unknown workflow compensation target", "trigger": "Strict workflow compensation target does not resolve to an operation or flow.", "example_fix": "Declare the compensation operation or target an existing flow."},
     {"code": "AGX0701", "severity": "error", "title": "Unknown permission resource", "trigger": "Permission references unknown resource.", "example_fix": "Create resource or correct permission subject."},
     {"code": "AGX0702", "severity": "error", "title": "Secret literal in source", "trigger": "Secret literal appears in source.", "example_fix": "Replace with env/secret binding."},
     {"code": "AGX0801", "severity": "error", "title": "Invalid deployment or contract reference", "trigger": "Deployment unit target is unknown.", "example_fix": "Use supported unit kind."},
@@ -37843,6 +37878,9 @@ DIAGNOSTIC_FIXTURES = (
     {"name": "agx0502_rule_field.appgen", "runner": "lint", "expected_codes": ("AGX0502",), "source": "app D { targets: web } table Customer { id: int pk; status: string } rule CustomerPolicy for Customer { missing == active }"},
     {"name": "agx0601_flow_strict.appgen", "runner": "lint", "expected_codes": ("AGX0601",), "source": "app D { targets: web } table Customer { id: int pk } flow Review { draft -> approved; strict on; timer missing \"P1D\" -> escalated }"},
     {"name": "agx0602_human_task.appgen", "runner": "lint", "expected_codes": ("AGX0602",), "source": "app D { targets: web } table Customer { id: int pk } flow Review { draft -> approved; human Review -> approved }"},
+    {"name": "agx0603_human_assignee.appgen", "runner": "lint", "expected_codes": ("AGX0603",), "source": "app D { targets: web } table Customer { id: int pk } flow Review { draft -> approved; strict on; human Review assigned MissingRole -> approved }"},
+    {"name": "agx0604_timer_duration.appgen", "runner": "lint", "expected_codes": ("AGX0604",), "source": "app D { targets: web } table Customer { id: int pk } role Accountant { Customer: read } flow Review { draft -> approved; strict on; timer draft soon -> approved }"},
+    {"name": "agx0605_compensation_target.appgen", "runner": "lint", "expected_codes": ("AGX0605",), "source": "app D { targets: web } table Customer { id: int pk } role Accountant { Customer: read } flow Review { draft -> approved; strict on; compensate approved -> MissingOperation }"},
     {"name": "agx0701_permission.appgen", "runner": "lint", "expected_codes": ("AGX0701",), "source": "app D { targets: web } table Customer { id: int pk } role Clerk { Missing: read }"},
     {"name": "agx0702_secret.appgen", "runner": "lint", "expected_codes": ("AGX0702",), "source": "app D { targets: web } table Customer { id: int pk } llm ApiModel { provider: openai; api_key: \"sk-secret\" }"},
     {"name": "agx0801_deploy.appgen", "runner": "lint", "expected_codes": ("AGX0801",), "source": "app D { targets: web } table Customer { id: int pk } deploy Production { unit Missing as microservice }"},
@@ -38425,6 +38463,10 @@ def _tooling_policy_diagnostics(
     table_map = {table.name: table for table in schema.tables}
     field_map = {table.name: _field_names(table) for table in schema.tables}
     handler_targets = _handler_target_names(schema)
+    workflow_participants = {role.name for role in schema.roles} | {agent.name for agent in schema.agents}
+    compensation_targets = {flow.name for flow in schema.flows} | {
+        block.name for block in schema.platform_blocks if block.kind == "operation"
+    }
     pbc_catalog = _pbc_catalog_by_key()
     local_pbcs = {block.name for block in schema.platform_blocks if block.kind == "pbc"}
     local_contracts = _local_contract_names_by_kind(schema)
@@ -38449,14 +38491,28 @@ def _tooling_policy_diagnostics(
             for directive in flow.directives
         )
         for directive in flow.directives:
-            if directive.verb == "human" and "assigned" not in directive.values:
-                warnings.append(f"Human task has no assignee: {flow.name}.{_first_or_none(directive.values) or 'task'}")
-            if strict and directive.verb in {"timer", "compensate"}:
+            if directive.verb == "human":
+                assignee = _human_task_assignee(directive)
+                if not assignee:
+                    message = f"Human task has no assignee: {flow.name}.{_first_or_none(directive.values) or 'task'}"
+                    (errors if strict else warnings).append(message)
+                elif strict and assignee not in workflow_participants:
+                    errors.append(f"Unknown human task assignee: {flow.name}.{assignee}")
+            if strict and directive.verb == "timer":
                 state = _first_or_none(directive.values)
                 if state and state not in states:
                     errors.append(f"Flow strict state is undeclared: {flow.name}.{state}")
                 if directive.target and directive.target not in states:
                     errors.append(f"Flow strict state is undeclared: {flow.name}.{directive.target}")
+                duration = directive.values[1] if len(directive.values) > 1 else None
+                if duration and not _valid_workflow_duration_literal(duration):
+                    errors.append(f"Invalid timer duration: {flow.name}.{duration}")
+            if strict and directive.verb == "compensate":
+                state = _first_or_none(directive.values)
+                if state and state not in states:
+                    errors.append(f"Flow strict state is undeclared: {flow.name}.{state}")
+                if directive.target and directive.target not in compensation_targets:
+                    errors.append(f"Unknown compensation target: {flow.name}.{directive.target}")
 
     for block in schema.platform_blocks:
         if block.kind != "composition":

@@ -409,6 +409,9 @@ every fixture payload.
 | `AGX0502` | error | Rule references unknown field. | Correct field or lookup path. |
 | `AGX0601` | error | Flow transition references undeclared or unreachable state where strict mode is enabled. | Add transition or state directive. |
 | `AGX0602` | warning | Human task has no assignee/participant. | Add participant or assignment. |
+| `AGX0603` | error | Strict workflow human task assignee is not a declared role or agent. | Declare the participant or assign to an existing participant. |
+| `AGX0604` | error | Strict workflow timer duration is not a recognizable ISO-8601 duration. | Use a duration such as `P2D`, `PT4H`, or `P1DT2H`. |
+| `AGX0605` | error | Strict workflow compensation target is not a declared operation or flow. | Declare the compensation operation or target an existing flow. |
 | `AGX0701` | error | Permission references unknown resource. | Create resource or correct permission subject. |
 | `AGX0702` | error | Secret literal appears in source. | Replace with env/secret binding. |
 | `AGX0801` | error | Deployment unit target is unknown. | Use supported unit kind. |

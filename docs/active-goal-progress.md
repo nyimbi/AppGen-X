@@ -4585,3 +4585,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   completions, and flow-context LSP filtering exposes `human`, `timer`, and
   `compensate` while keeping unrelated table/PBC/provider labels out of flow
   bodies.
+- Current strict workflow lint expansion makes the documented workflow policy
+  checks executable. Strict flows now reject unknown human-task assignees,
+  invalid timer durations, and compensation targets that do not resolve to
+  operations or flows, with dedicated AGX0603-AGX0605 diagnostic fixtures.
