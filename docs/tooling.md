@@ -673,10 +673,10 @@ traceback-free, and
 `passing_option_surface_count` must equal `subcommand_option_surface_count`,
 before the CLI help surface is considered tooling-complete.
 The same audit also runs a breadth matrix across the module entrypoint and
-repo-local alias for `lint`, `contract-schema`, `contract-validate`, and `lsp`;
-every case must return the expected machine contract and no traceback, which
-prevents newly added parser subcommands from existing only behind one command
-path.
+repo-local alias for `lint`, `contract-schema`, `contract-validate`, `lsp`, and
+`agent-handoff`; every case must return the expected machine contract and no
+traceback, which prevents newly added parser subcommands from existing only
+behind one command path.
 Top-level help, lightweight entrypoint dispatch, and the CLI audit use the
 shared `TOOLING_SUBCOMMANDS` manifest so command names are not copied between
 the launcher and release evidence.

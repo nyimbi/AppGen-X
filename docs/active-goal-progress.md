@@ -4614,3 +4614,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   command palette and Agent Handoffs tree, collects operation/vector/backend
   choices, renders `appgen.agent-handoff-report.v1` in a webview, and the
   extension audit rejects missing CLI markers or renderer wiring.
+- Current CLI breadth expansion makes the direct handoff command part of the
+  entrypoint parity matrix. Both `python -m pyAppGen` and repo-local `./apg`
+  must now emit `appgen.agent-handoff-report.v1`, so the short alias cannot
+  silently miss the coding-agent development vector.

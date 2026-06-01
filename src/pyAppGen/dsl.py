@@ -28970,6 +28970,23 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
                 "appgen.contract-validation-report.v1",
             ),
             ("lsp", ("lsp", str(source_path), "--json"), "appgen.lsp-service.v1"),
+            (
+                "agent_handoff",
+                (
+                    "agent-handoff",
+                    str(source_path),
+                    "--prompt",
+                    "Add invoice approval workflow",
+                    "--operation",
+                    "add_flow_transition",
+                    "--vector",
+                    "openai_codex",
+                    "--backend",
+                    "ollama",
+                    "--json",
+                ),
+                "appgen.agent-handoff-report.v1",
+            ),
         )
         entrypoint_case_results = []
         for case_id, case_args, expected_format in entrypoint_case_specs:
