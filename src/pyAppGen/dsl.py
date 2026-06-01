@@ -15,6 +15,7 @@ import sys
 import tempfile
 import tomllib
 from collections import Counter
+from functools import lru_cache
 from pathlib import Path
 from typing import Callable
 from typing import Iterable
@@ -5723,6 +5724,7 @@ def _emit_lsp_service_text(payload: dict) -> None:
             f"workspace_symbols={counts.get('workspace_symbol_count', 0)} "
             f"code_actions={counts.get('code_action_count', 0)} "
             f"formatting_edits={counts.get('formatting_edit_count', 0)} "
+            f"prepare_rename_ok={counts.get('prepare_rename_ok', 0)} "
             f"rename_edits={counts.get('rename_edit_count', 0)}"
         )
     capabilities = payload.get("capabilities", {})
@@ -5743,6 +5745,14 @@ def _emit_lsp_service_text(payload: dict) -> None:
     formatting = payload.get("formatting") or {}
     if formatting:
         print(f"formatting format={formatting.get('format')} edits={len(formatting.get('edits', ()))}")
+    prepare_rename = payload.get("prepareRename") or {}
+    if prepare_rename:
+        print(
+            f"prepare_rename ok={prepare_rename.get('ok')} "
+            f"format={prepare_rename.get('format')} "
+            f"placeholder={prepare_rename.get('placeholder')} "
+            f"scope={prepare_rename.get('lexical_scope')}"
+        )
     rename = payload.get("rename")
     if rename:
         diagnostics = tuple(rename.get("diagnostics", ()))
@@ -5792,6 +5802,7 @@ def _lsp_service_text_renderer_contract() -> dict:
             "workspace_symbol_count": 1,
             "code_action_count": 1,
             "formatting_edit_count": 1,
+            "prepare_rename_ok": 1,
             "rename_edit_count": 0,
         },
         "capabilities": {"source_of_truth": "appgen.semantic-model.v1"},
@@ -5805,6 +5816,12 @@ def _lsp_service_text_renderer_contract() -> dict:
             "locations": ({"uri": "memory://invoice.appgen"}, {"uri": "memory://customer.appgen"}),
         },
         "formatting": {"format": "appgen.lsp-formatting.v1", "edits": ({"newText": "app Invoice"},)},
+        "prepareRename": {
+            "format": "appgen.lsp-prepare-rename.v1",
+            "ok": True,
+            "placeholder": "SubmitInvoice",
+            "lexical_scope": "operation_declarations_and_targets",
+        },
         "rename": {
             "format": "appgen.lsp-rename.v1",
             "ok": False,
@@ -5831,13 +5848,14 @@ def _lsp_service_text_renderer_contract() -> dict:
     text = output.getvalue()
     required_fragments = (
         "lsp ok: format=appgen.lsp-service.v1 semantic_format=appgen.semantic-model.v1 diagnostics=2 completions=2 actions=1 symbols=2 workspace_symbols=1",
-        "service_counts completion_sources=5/6 missing_completion_sources=1 references=2 document_symbols=2 workspace_symbols=1 code_actions=1 formatting_edits=1 rename_edits=0",
+        "service_counts completion_sources=5/6 missing_completion_sources=1 references=2 document_symbols=2 workspace_symbols=1 code_actions=1 formatting_edits=1 prepare_rename_ok=1 rename_edits=0",
         "source_of_truth=appgen.semantic-model.v1",
         "completion_coverage format=appgen.completion-coverage.v1 missing=1",
         "completion-missing agent_actions",
         "definition format=appgen.lsp-definition.v1 ok=True",
         "references format=appgen.lsp-references.v1 locations=2",
         "formatting format=appgen.lsp-formatting.v1 edits=1",
+        "prepare_rename ok=True format=appgen.lsp-prepare-rename.v1 placeholder=SubmitInvoice scope=operation_declarations_and_targets",
         "rename ok=False format=appgen.lsp-rename.v1 changed=False blocked=True diagnostics=1 blockers=1 migration_format=appgen.migration-plan.v1 requires_approval=True",
         "rename-blocker AGX1101: Destructive migration changes require approval. fixes=add_rename_hint",
         "hover_items=2",
@@ -5860,6 +5878,7 @@ def _lsp_service_text_renderer_contract() -> dict:
     definition_lines = tuple(line for line in lines if line.startswith("definition "))
     reference_lines = tuple(line for line in lines if line.startswith("references "))
     formatting_lines = tuple(line for line in lines if line.startswith("formatting "))
+    prepare_rename_lines = tuple(line for line in lines if line.startswith("prepare_rename "))
     rename_lines = tuple(line for line in lines if line.startswith("rename "))
     rename_blocker_lines = tuple(
         line for line in lines if line.startswith("rename-blocker ")
@@ -5874,6 +5893,7 @@ def _lsp_service_text_renderer_contract() -> dict:
         "definition",
         "references",
         "formatting",
+        "prepare_rename",
         "rename",
         "rename_blocker",
         "hover_summary",
@@ -5895,6 +5915,7 @@ def _lsp_service_text_renderer_contract() -> dict:
             ("definition", bool(definition_lines)),
             ("references", bool(reference_lines)),
             ("formatting", bool(formatting_lines)),
+            ("prepare_rename", bool(prepare_rename_lines)),
             ("rename", bool(rename_lines)),
             ("rename_blocker", bool(rename_blocker_lines)),
             ("hover_summary", bool(hover_summary_lines)),
@@ -5912,6 +5933,7 @@ def _lsp_service_text_renderer_contract() -> dict:
         "appgen.lsp-definition.v1",
         "appgen.lsp-references.v1",
         "appgen.lsp-formatting.v1",
+        "appgen.lsp-prepare-rename.v1",
         "appgen.lsp-rename.v1",
         "appgen.migration-plan.v1",
     )
@@ -8828,6 +8850,7 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.lsp-code-action-apply-audit.v1",
     "appgen.lsp-code-action-cli-audit.v1",
     "appgen.lsp-formatting.v1",
+    "appgen.lsp-prepare-rename.v1",
     "appgen.lsp-rename.v1",
     "appgen.lsp-rename-cli-audit.v1",
     "appgen.lsp-json-rpc-audit.v1",
@@ -9847,6 +9870,7 @@ def _designer_projection_schema(title: str, *, properties: dict | None = None) -
     )
 
 
+@lru_cache(maxsize=1)
 def _contract_schema_catalog() -> dict[str, dict]:
     return {
         "appgen.diagnostic.v1": _json_object_schema(
@@ -10738,6 +10762,22 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "edits": {"type": "array", "items": {"type": "object"}},
                 "format_report": {"type": "object"},
             },
+        ),
+        "appgen.lsp-prepare-rename.v1": _json_object_schema(
+            "appgen.lsp-prepare-rename.v1",
+            required=("format", "ok", "token", "range", "placeholder"),
+            properties={
+                "format": _const_schema("appgen.lsp-prepare-rename.v1"),
+                "ok": {"type": "boolean"},
+                "token": {"type": ("string", "null")},
+                "range": {"type": "object"},
+                "placeholder": {"type": ("string", "null")},
+                "symbol": {"type": "object"},
+                "lexical_scope": {"type": ("string", "null")},
+                "occurrence_count": {"type": "integer", "minimum": 0},
+                "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/diagnostic"}},
+            },
+            defs={"diagnostic": _diagnostic_schema_ref_target()},
         ),
         "appgen.lsp-rename.v1": _json_object_schema(
             "appgen.lsp-rename.v1",
@@ -18624,7 +18664,7 @@ def _tooling_audit_lsp_json_rpc(source: str, *, broken_handler_source: str) -> d
             and capabilities.get("definitionProvider") is True
             and capabilities.get("referencesProvider") is True
             and capabilities.get("documentSymbolProvider") is True
-            and bool(capabilities.get("renameProvider"))
+            and capabilities.get("renameProvider", {}).get("prepareProvider") is True
             and capabilities.get("codeActionProvider") is True
             and capabilities.get("documentFormattingProvider") is True
             and bool(capabilities.get("workspaceSymbolProvider")),
@@ -18765,10 +18805,25 @@ def _tooling_audit_lsp_json_rpc(source: str, *, broken_handler_source: str) -> d
             lambda result: any(item.get("name") == "Invoice" for item in result or ()),
         ),
         (
-            "rename",
+            "prepare_rename",
             {
                 "jsonrpc": "2.0",
                 "id": 7,
+                "method": "textDocument/prepareRename",
+                "params": {
+                    "textDocument": {"uri": uri},
+                    "position": _tooling_lsp_position(source, "ReverseInvoice"),
+                },
+            },
+            lambda result: bool(result)
+            and result.get("placeholder") == "ReverseInvoice"
+            and result.get("data", {}).get("format") == "appgen.lsp-prepare-rename.v1",
+        ),
+        (
+            "rename",
+            {
+                "jsonrpc": "2.0",
+                "id": 10,
                 "method": "textDocument/rename",
                 "params": {
                     "textDocument": {"uri": uri},
@@ -19891,6 +19946,23 @@ operation SubmitInvoice { draft -> posted }
             "document_symbols",
         ),
         (
+            "prepare_rename",
+            {
+                "jsonrpc": "2.0",
+                "id": 112,
+                "method": "textDocument/prepareRename",
+                "params": {
+                    "textDocument": {"uri": editor_workflow_uri},
+                    "position": editor_position("SubmitInvoice {", len("")),
+                },
+            },
+            lambda responses, should_exit: bool(responses)
+            and responses[0].get("result", {}).get("placeholder") == "SubmitInvoice"
+            and responses[0].get("result", {}).get("data", {}).get("format") == "appgen.lsp-prepare-rename.v1"
+            and should_exit is False,
+            "prepare_rename_range",
+        ),
+        (
             "rename",
             {
                 "jsonrpc": "2.0",
@@ -20088,6 +20160,7 @@ operation SubmitInvoice { draft -> posted }
         "definition": capabilities.get("definitionProvider") is True,
         "references": capabilities.get("referencesProvider") is True,
         "document_symbols": capabilities.get("documentSymbolProvider") is True,
+        "prepare_rename": capabilities.get("renameProvider", {}).get("prepareProvider") is True,
         "rename": bool(capabilities.get("renameProvider")),
         "code_actions": capabilities.get("codeActionProvider") is True,
         "formatting": capabilities.get("documentFormattingProvider") is True,
@@ -20154,6 +20227,12 @@ operation SubmitInvoice { draft -> posted }
             "exercised": check_ok_by_name.get("rename") is True,
             "provider": "renameProvider",
             "check": "rename",
+        },
+        "textDocument/prepareRename": {
+            "advertised": provider_flags["prepare_rename"],
+            "exercised": check_ok_by_name.get("prepare_rename") is True,
+            "provider": "renameProvider.prepareProvider",
+            "check": "prepare_rename",
         },
         "textDocument/codeAction": {
             "advertised": provider_flags["code_actions"],
@@ -20324,6 +20403,12 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
         {"jsonrpc": "2.0", "id": 3, "method": "workspace/symbol", "params": {"query": "Invoice"}},
         {
             "jsonrpc": "2.0",
+            "id": 5,
+            "method": "textDocument/prepareRename",
+            "params": {"textDocument": {"uri": uri}, "position": _tooling_lsp_position(source, "SubmitInvoice")},
+        },
+        {
+            "jsonrpc": "2.0",
             "method": "textDocument/didChange",
             "params": {
                 "textDocument": {"uri": uri, "version": 2},
@@ -20421,6 +20506,12 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
         if response.get("id") == 3
         and any(item.get("name") == "Invoice" for item in response.get("result", ()))
     )
+    prepare_rename_response_count = sum(
+        1
+        for response in responses
+        if response.get("id") == 5
+        and response.get("result", {}).get("data", {}).get("format") == "appgen.lsp-prepare-rename.v1"
+    )
     shutdown_response_count = sum(1 for response in responses if response.get("id") == 4 and response.get("result") is None)
     return {
         "format": "appgen.lsp-stdio-transport-audit.v1",
@@ -20429,6 +20520,7 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
         and diagnostic_publication_count >= 4
         and completion_response_count >= 1
         and workspace_symbol_response_count >= 1
+        and prepare_rename_response_count >= 1
         and changed_error_count >= 1
         and any(code in {"AGX0401", "AGX0402"} for code in changed_diagnostic_codes)
         and bool(close_diagnostic_publications)
@@ -20439,8 +20531,8 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
         and not missing_changed_diagnostic_code_families,
         "exit_code": exit_code,
         "total_message_count": len(messages),
-        "request_message_count": 4,
-        "notification_message_count": len(messages) - 4,
+        "request_message_count": 5,
+        "notification_message_count": len(messages) - 5,
         "response_count": len(responses),
         "id_response_count": sum(1 for response in responses if "id" in response),
         "expected_id_count": len(expected_ids),
@@ -20472,6 +20564,7 @@ def _tooling_audit_lsp_stdio_transport(source: str) -> dict:
         "missing_changed_diagnostic_code_families": missing_changed_diagnostic_code_families,
         "completion_response_count": completion_response_count,
         "workspace_symbol_response_count": workspace_symbol_response_count,
+        "prepare_rename_response_count": prepare_rename_response_count,
         "shutdown_response_count": shutdown_response_count,
     }
 
@@ -25246,6 +25339,7 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             "appgen.lsp-code-action-apply-audit.v1": lsp_code_action_apply_audit_dsl(),
             "appgen.lsp-code-action-cli-audit.v1": _tooling_audit_lsp_apply_code_action_cli(tmp_path),
             "appgen.lsp-formatting.v1": lsp_payload["formatting"],
+            "appgen.lsp-prepare-rename.v1": lsp_payload["prepareRename"],
             "appgen.lsp-rename.v1": lsp_payload["rename"],
             "appgen.lsp-rename-cli-audit.v1": _tooling_audit_lsp_rename_cli(tmp_path, source),
             "appgen.lsp-json-rpc-audit.v1": _tooling_audit_lsp_json_rpc(
@@ -29406,6 +29500,7 @@ def lsp_capabilities_dsl() -> dict:
             "textDocument/definition": True,
             "textDocument/references": True,
             "textDocument/documentSymbol": True,
+            "textDocument/prepareRename": True,
             "textDocument/rename": True,
             "textDocument/codeAction": True,
             "textDocument/formatting": True,
@@ -29438,6 +29533,7 @@ def lsp_service_dsl(
     symbol_coverage = lsp_symbol_coverage_dsl(source, source_name=source_name)
     code_actions = lsp_code_actions_dsl(source, source_name=source_name)
     formatting = lsp_formatting_dsl(source, source_name=source_name)
+    prepare_rename = lsp_prepare_rename_dsl(source, source_name=source_name, position=active_position)
     rename = (
         lsp_rename_dsl(source, source_name=source_name, position=active_position, new_name=rename_to)
         if rename_to
@@ -29467,6 +29563,7 @@ def lsp_service_dsl(
             "workspace_symbol_missing_kind_count": symbol_coverage.get("workspace_missing_kind_count"),
             "code_action_count": len(code_actions.get("actions", ())),
             "formatting_edit_count": len(formatting.get("edits", ())),
+            "prepare_rename_ok": 1 if prepare_rename.get("ok") else 0,
             "workspace_symbol_count": len(workspace_symbols.get("symbols", ())),
             "rename_edit_count": sum(len(edits) for edits in rename_changes.values()),
         },
@@ -29480,6 +29577,7 @@ def lsp_service_dsl(
         "symbolCoverage": symbol_coverage,
         "codeAction": code_actions,
         "formatting": formatting,
+        "prepareRename": prepare_rename,
         "rename": rename,
         "workspaceSymbol": workspace_symbols,
     }
@@ -29616,6 +29714,24 @@ def lsp_server_handle_message(message: dict, documents: dict[str, str] | None = 
     elif method == "textDocument/formatting":
         result = lsp_formatting_dsl(source, source_name=source_uri)
         responses.append(_lsp_rpc_result(request_id, result["edits"]))
+    elif method == "textDocument/prepareRename":
+        result = lsp_prepare_rename_dsl(source, source_name=source_uri, position=position)
+        responses.append(
+            _lsp_rpc_result(
+                request_id,
+                {
+                    "range": result["range"],
+                    "placeholder": result["placeholder"],
+                    "data": {
+                        "format": result["format"],
+                        "symbol": result.get("symbol"),
+                        "lexical_scope": result.get("lexical_scope"),
+                    },
+                }
+                if result["ok"]
+                else None,
+            )
+        )
     elif method == "textDocument/rename":
         result = lsp_rename_dsl_documents(
             docs or {source_uri or "memory://appgen": source},
@@ -29658,7 +29774,7 @@ def _lsp_initialize_capabilities() -> dict:
         "definitionProvider": True,
         "referencesProvider": True,
         "documentSymbolProvider": True,
-        "renameProvider": {"prepareProvider": False},
+        "renameProvider": {"prepareProvider": True},
         "codeActionProvider": True,
         "documentFormattingProvider": True,
         "workspaceSymbolProvider": True,
@@ -30749,6 +30865,57 @@ def lsp_formatting_dsl(text: str, *, source_name: str | None = None) -> dict:
     }
 
 
+def lsp_prepare_rename_dsl(
+    text: str,
+    *,
+    source_name: str | None = None,
+    position: dict | None = None,
+) -> dict:
+    source = text or ""
+    token_span = _lsp_token_span_at_position(source, position)
+    token = token_span[2] if token_span else ""
+    if not token_span or not _source_span_is_code(source, token_span[0], token_span[1]):
+        return {
+            "format": "appgen.lsp-prepare-rename.v1",
+            "ok": False,
+            "token": token,
+            "range": _lsp_range(None),
+            "placeholder": token,
+            "diagnostics": (
+                _spec_diagnostic(source, "AGX0100", "error", "Prepare rename requires a code identifier."),
+            ),
+        }
+    symbol = _lsp_symbol_for_token(source, token, source_name=source_name, position=position)
+    if not symbol:
+        return {
+            "format": "appgen.lsp-prepare-rename.v1",
+            "ok": False,
+            "token": token,
+            "range": _lsp_absolute_range(source, token_span[0], token_span[1]),
+            "placeholder": token,
+            "diagnostics": (
+                _spec_diagnostic(source, "AGX0100", "error", f"Cannot rename unknown symbol: {token}"),
+            ),
+        }
+    _new_text, occurrence_count, rename_scope = _replace_symbol_identifier_occurrences(
+        source,
+        token,
+        token,
+        symbol,
+    )
+    return {
+        "format": "appgen.lsp-prepare-rename.v1",
+        "ok": True,
+        "token": token,
+        "range": _lsp_absolute_range(source, token_span[0], token_span[1]),
+        "placeholder": token,
+        "symbol": symbol,
+        "lexical_scope": rename_scope,
+        "occurrence_count": occurrence_count,
+        "diagnostics": (),
+    }
+
+
 def lsp_rename_dsl(
     text: str,
     *,
@@ -31218,19 +31385,87 @@ def _lsp_location(source_name: str | None, range_value: dict | None) -> dict:
 def _lsp_token_at_position(source: str, position: dict | None) -> str:
     if not source:
         return ""
+    token_span = _lsp_token_span_at_position(source, position)
+    if token_span:
+        return token_span[2]
     if not position:
         match = re.search(r"[A-Za-z_][A-Za-z0-9_]*", source)
         return match.group(0) if match else ""
+    return ""
+
+
+def _lsp_token_span_at_position(source: str, position: dict | None) -> tuple[int, int, str] | None:
+    if not source or not position:
+        return None
     lines = source.splitlines()
     line_index = int(position.get("line", 0))
     if line_index < 0 or line_index >= len(lines):
-        return ""
+        return None
     line = lines[line_index]
     character = max(min(int(position.get("character", 0)), len(line)), 0)
+    line_start = sum(len(item) + 1 for item in lines[:line_index])
     for match in re.finditer(r"[A-Za-z_][A-Za-z0-9_]*", line):
         if match.start() <= character <= match.end():
-            return match.group(0)
-    return ""
+            return line_start + match.start(), line_start + match.end(), match.group(0)
+    return None
+
+
+def _lsp_absolute_range(source: str, start: int, end: int) -> dict:
+    start_line, start_character = _line_column_for_index(source or "", start)
+    end_line, end_character = _line_column_for_index(source or "", end)
+    return {
+        "start": {"line": start_line, "character": start_character},
+        "end": {"line": end_line, "character": end_character},
+    }
+
+
+def _source_span_is_code(source: str, start: int, end: int) -> bool:
+    text = source or ""
+    index = 0
+    while index < len(text):
+        if text.startswith("//", index):
+            comment_end = text.find("\n", index)
+            comment_end = len(text) if comment_end < 0 else comment_end
+            if index <= start < comment_end:
+                return False
+            index = comment_end
+            continue
+        if text[index] == "#":
+            comment_end = text.find("\n", index)
+            comment_end = len(text) if comment_end < 0 else comment_end
+            if index <= start < comment_end:
+                return False
+            index = comment_end
+            continue
+        if text.startswith("/*", index):
+            comment_end = text.find("*/", index + 2)
+            comment_end = len(text) if comment_end < 0 else comment_end + 2
+            if index <= start < comment_end:
+                return False
+            index = comment_end
+            continue
+        if text[index] in {"'", '"'}:
+            quote = text[index]
+            literal_start = index
+            index += 1
+            escaped = False
+            while index < len(text):
+                current = text[index]
+                if escaped:
+                    escaped = False
+                elif current == "\\":
+                    escaped = True
+                elif current == quote:
+                    index += 1
+                    break
+                index += 1
+            if literal_start <= start < index:
+                return False
+            continue
+        if index >= end:
+            return True
+        index += 1
+    return True
 
 
 def _lsp_token_range(source: str, position: dict | None, token: str) -> dict:

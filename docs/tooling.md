@@ -773,7 +773,8 @@ JSON Schema 2020-12 dialect, and includes schemas for `appgen.diagnostic.v1`,
 `appgen.lsp-code-actions.v1`, `appgen.lsp-code-action-apply.v1`,
 `appgen.lsp-code-action-apply-audit.v1`,
 `appgen.lsp-code-action-cli-audit.v1`, `appgen.lsp-formatting.v1`,
-`appgen.lsp-rename.v1`, `appgen.lsp-rename-cli-audit.v1`,
+`appgen.lsp-prepare-rename.v1`, `appgen.lsp-rename.v1`,
+`appgen.lsp-rename-cli-audit.v1`,
 `appgen.lsp-json-rpc-audit.v1`, `appgen.lsp-stdio-transport-audit.v1`,
 `appgen.lsp-service-text-renderer.v1`, and
 `appgen.lsp-code-action-text-renderer.v1`,
@@ -3411,7 +3412,8 @@ appgen lsp --stdio
 accepts `initialize`, `shutdown`, `exit`, `textDocument/didOpen`,
 `textDocument/didChange`, `textDocument/didSave`, `textDocument/didClose`,
 completion, hover, definition, references, document
-symbols, rename, code actions, formatting, and workspace symbol requests. The
+symbols, prepare-rename, rename, code actions, formatting, and workspace symbol
+requests. The
 server keeps an in-memory document cache for open `.appgen` buffers and
 publishes diagnostics after open/change/save notifications using the same
 `appgen.semantic-model.v1` and linter reports as the CLI. Workspace symbol,
@@ -3420,8 +3422,11 @@ individually instead of concatenating files, so editor features keep working
 when an application is split across multiple `.appgen` files. Rename uses the
 active document for identifier validation and migration safety, then returns a
 workspace edit that updates the matching identifier across every open DSL
-document. Close notifications remove the document from the in-memory workspace
-and publish an empty diagnostic set so editors clear stale errors immediately.
+document. Prepare-rename returns the exact code-identifier range, placeholder,
+symbol metadata, and lexical scope before the edit is offered, and returns
+`null` for comments, string literals, or unknown symbols. Close notifications
+remove the document from the in-memory workspace and publish an empty diagnostic
+set so editors clear stale errors immediately.
 
 The executable tooling audit includes `appgen.lsp-stdio-transport-audit.v1`,
 which sends real `Content-Length` JSON-RPC frames through the stdio transport
@@ -3440,8 +3445,8 @@ method is not both advertised where applicable and exercised by the JSON-RPC
 audit.
 The same audit now carries a named editor-lifecycle workflow contract that
 executes initialize, open diagnostics, completion, hover, definition,
-references, document symbols, rename, changed-buffer diagnostics, code actions,
-formatting, save diagnostics, close/diagnostic clearing, workspace symbol
+references, document symbols, prepare-rename, rename, changed-buffer
+diagnostics, code actions, formatting, save diagnostics, close/diagnostic clearing, workspace symbol
 search, shutdown, and exit as one continuous
 session. It reports required/observed/missing case ids, expected/observed
 methods by case, expected/observed result shapes by case, failing cases,
@@ -3573,6 +3578,7 @@ scenario cannot hide behind aggregate scenario counts.
 | `textDocument/definition` | Navigate from references to declarations for fields, tables, views, flows, operations, roles, PBCs, APIs, events, packages, and deployment units. |
 | `textDocument/references` | Find all references across workspace DSL files and generated contract indexes. |
 | `textDocument/documentSymbol` | Return hierarchical outline: app, tables, fields, views, sections, components, handlers, flows, operations, PBCs, packages, deployment. |
+| `textDocument/prepareRename` | Return the exact renameable identifier range, placeholder, symbol metadata, and lexical scope; reject comments, string literals, and unknown symbols before a workspace edit is offered. |
 | `textDocument/rename` | Rename symbols safely and update references; block unsafe renames when migration impact is ambiguous. |
 | `textDocument/codeAction` | Offer quick fixes for missing declarations, typo suggestions, create operation from handler, create event contract, add lookup directive, add permission, remove secret literal, and remove invalid stream/runtime picker fields. |
 | `textDocument/formatting` | Call the shared formatter. |

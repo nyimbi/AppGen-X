@@ -3845,12 +3845,12 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     assert audit["check_count"] == len(audit["checks"])
     assert audit["passing_check_count"] == audit["check_count"]
     assert audit["failing_check_count"] == 0
-    assert audit["provider_count"] == 9
+    assert audit["provider_count"] == 10
     assert audit["enabled_provider_count"] == audit["provider_count"]
     assert audit["missing_provider_count"] == 0
     assert audit["missing_providers"] == ()
     assert audit["provider_count"] == len(audit["provider_names"])
-    assert audit["request_check_count"] == 8
+    assert audit["request_check_count"] == 9
     assert audit["passing_request_check_count"] == audit["request_check_count"]
     assert audit["request_check_ids"] == (
         "completion",
@@ -3858,6 +3858,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         "definition",
         "references",
         "document_symbols",
+        "prepare_rename",
         "rename",
         "workspace_symbol",
         "workspace_symbol_catalog_metadata",
@@ -3866,7 +3867,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     assert audit["formatting_edit_count"] >= 1
     assert audit["blocking_gap_count"] == 0
     assert audit["blocking_gaps"] == ()
-    assert audit["method_contract_count"] == 13
+    assert audit["method_contract_count"] == 14
     assert audit["passing_method_contract_count"] == audit["method_contract_count"]
     assert audit["missing_method_contract_count"] == 0
     assert audit["missing_method_contracts"] == ()
@@ -3880,6 +3881,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         "textDocument/definition",
         "textDocument/references",
         "textDocument/documentSymbol",
+        "textDocument/prepareRename",
         "textDocument/rename",
         "textDocument/codeAction",
         "textDocument/formatting",
@@ -3891,9 +3893,10 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     assert audit["method_contracts"]["textDocument/didChange"]["provider"] == "notification"
     assert audit["method_contracts"]["textDocument/didSave"]["provider"] == "textDocumentSync.save"
     assert audit["method_contracts"]["textDocument/didClose"]["provider"] == "textDocumentSync.openClose"
+    assert audit["method_contracts"]["textDocument/prepareRename"]["provider"] == "renameProvider.prepareProvider"
     assert audit["method_contracts"]["textDocument/codeAction"]["check"] == "code_action_request"
     assert audit["method_contracts"]["textDocument/formatting"]["check"] == "formatting_request"
-    assert audit["editor_workflow_case_count"] == 16
+    assert audit["editor_workflow_case_count"] == 17
     assert audit["editor_workflow_passing_case_count"] == audit["editor_workflow_case_count"]
     assert audit["editor_workflow_failing_case_count"] == 0
     assert audit["editor_workflow_failing_cases"] == ()
@@ -3905,6 +3908,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         "definition",
         "references",
         "document_symbols",
+        "prepare_rename",
         "rename",
         "workspace_symbol",
         "change_diagnostics",
@@ -3931,6 +3935,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     assert workflow_cases["change_diagnostics"]["notification_method"] == "textDocument/publishDiagnostics"
     assert workflow_cases["save_diagnostics"]["notification_method"] == "textDocument/publishDiagnostics"
     assert workflow_cases["close_clears_diagnostics"]["notification_method"] == "textDocument/publishDiagnostics"
+    assert workflow_cases["prepare_rename"]["result_shape"] == "prepare_rename_range"
     assert workflow_cases["rename"]["result_shape"] == "workspace_edit"
     assert workflow_cases["exit"]["should_exit"] is True
     assert "enterprise_definition_context" in {check["check"] for check in audit["checks"]}
@@ -4029,7 +4034,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     assert capabilities["definitionProvider"] is True
     assert capabilities["referencesProvider"] is True
     assert capabilities["documentSymbolProvider"] is True
-    assert capabilities["renameProvider"]["prepareProvider"] is False
+    assert capabilities["renameProvider"]["prepareProvider"] is True
     assert capabilities["codeActionProvider"] is True
     assert capabilities["documentFormattingProvider"] is True
     assert capabilities["workspaceSymbolProvider"] is True
@@ -4248,6 +4253,49 @@ deploy Production {
     assert "SubmitInvoice: string" in change
     assert 'evidence: "SubmitInvoice"' in change
     assert "// SubmitInvoice should remain in this comment" in change
+
+
+def test_lsp_prepare_rename_reports_scope_and_rejects_non_code_tokens() -> None:
+    source = """
+app RenamePrepare { targets: web }
+table Invoice { id: int pk }
+view InvoiceForm for Invoice {
+  Main: id
+  on Save -> SubmitInvoice
+}
+operation SubmitInvoice { draft -> posted }
+report Audit {
+  evidence: "SubmitInvoice remains in this string"
+}
+// SubmitInvoice remains in this comment
+"""
+    code_prepare = appgen_dsl.lsp_prepare_rename_dsl(
+        source,
+        source_name="prepare-rename.appgen",
+        position=_position_of(source, "SubmitInvoice {"),
+    )
+    string_prepare = appgen_dsl.lsp_prepare_rename_dsl(
+        source,
+        source_name="prepare-rename.appgen",
+        position=_position_of(source, '"SubmitInvoice'),
+    )
+    comment_prepare = appgen_dsl.lsp_prepare_rename_dsl(
+        source,
+        source_name="prepare-rename.appgen",
+        position=_position_of(source, "// SubmitInvoice"),
+    )
+
+    assert code_prepare["format"] == "appgen.lsp-prepare-rename.v1"
+    assert code_prepare["ok"] is True
+    assert code_prepare["placeholder"] == "SubmitInvoice"
+    assert code_prepare["symbol"]["kind"] == "operation"
+    assert code_prepare["lexical_scope"] == "operation_declarations_and_targets"
+    assert code_prepare["occurrence_count"] == 2
+    assert code_prepare["range"]["start"]["line"] == 7
+    assert string_prepare["ok"] is False
+    assert comment_prepare["ok"] is False
+    assert {item["code"] for item in string_prepare["diagnostics"]} == {"AGX0100"}
+    assert {item["code"] for item in comment_prepare["diagnostics"]} == {"AGX0100"}
 
 
 def test_lsp_table_rename_candidate_scopes_references_and_preserves_fields() -> None:
@@ -5152,6 +5200,18 @@ def test_lsp_json_rpc_server_handles_editor_lifecycle_from_shared_semantics() ->
         {"jsonrpc": "2.0", "id": 5, "method": "workspace/symbol", "params": {"query": "Invoice"}},
         documents,
     )
+    prepare_rename_responses, _ = lsp_server_handle_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 7,
+            "method": "textDocument/prepareRename",
+            "params": {
+                "textDocument": {"uri": uri},
+                "position": _position_of(TOOLING_SAMPLE, "SubmitInvoice"),
+            },
+        },
+        documents,
+    )
     save_responses, _ = lsp_server_handle_message(
         {
             "jsonrpc": "2.0",
@@ -5181,6 +5241,8 @@ def test_lsp_json_rpc_server_handles_editor_lifecycle_from_shared_semantics() ->
     assert any(symbol["name"] == "Invoice" for symbol in symbols_responses[0]["result"])
     assert "PostInvoice" in rename_responses[0]["result"]["changes"][uri][0]["newText"]
     assert any(symbol["name"] == "Invoice" for symbol in workspace_responses[0]["result"])
+    assert prepare_rename_responses[0]["result"]["placeholder"] == "SubmitInvoice"
+    assert prepare_rename_responses[0]["result"]["data"]["format"] == "appgen.lsp-prepare-rename.v1"
     assert save_responses[0]["method"] == "textDocument/publishDiagnostics"
     assert close_responses[0]["method"] == "textDocument/publishDiagnostics"
     assert close_responses[0]["params"]["diagnostics"] == ()
@@ -5234,18 +5296,19 @@ def test_lsp_stdio_transport_audit_exercises_editor_requests() -> None:
     assert audit["format"] == "appgen.lsp-stdio-transport-audit.v1"
     assert audit["ok"] is True
     assert audit["exit_code"] == 0
-    assert audit["total_message_count"] == 9
-    assert audit["request_message_count"] == 4
+    assert audit["total_message_count"] == 10
+    assert audit["request_message_count"] == 5
     assert audit["notification_message_count"] == 5
     assert audit["response_count"] >= audit["request_message_count"]
     assert audit["id_response_count"] >= audit["request_message_count"]
-    assert audit["expected_id_count"] == len(audit["expected_ids"]) == 4
+    assert audit["expected_id_count"] == len(audit["expected_ids"]) == 5
     assert audit["missing_response_id_count"] == 0
     assert audit["missing_response_ids"] == ()
     assert audit["expected_response_ids_by_method"] == {
         "initialize": 1,
         "textDocument/completion": 2,
         "workspace/symbol": 3,
+        "textDocument/prepareRename": 5,
         "shutdown": 4,
     }
     assert audit["response_ids_by_method"] == audit["expected_response_ids_by_method"]
@@ -5272,8 +5335,9 @@ def test_lsp_stdio_transport_audit_exercises_editor_requests() -> None:
     assert audit["missing_changed_diagnostic_code_families"] == ()
     assert audit["completion_response_count"] >= 1
     assert audit["workspace_symbol_response_count"] >= 1
+    assert audit["prepare_rename_response_count"] >= 1
     assert audit["shutdown_response_count"] >= 1
-    assert {1, 2, 3, 4} <= set(audit["ids"])
+    assert {1, 2, 3, 4, 5} <= set(audit["ids"])
     assert "textDocument/publishDiagnostics" in audit["methods"]
 
 
@@ -8021,12 +8085,12 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         },
         lsp_rpc={
             **ok("appgen.lsp-json-rpc-audit.v1"),
-                "provider_count": 9,
-                "enabled_provider_count": 9,
-                "request_check_count": 8,
-                "passing_request_check_count": 8,
-                "editor_workflow_case_count": 8,
-                "editor_workflow_passing_case_count": 8,
+                "provider_count": 10,
+                "enabled_provider_count": 10,
+                "request_check_count": 9,
+                "passing_request_check_count": 9,
+                "editor_workflow_case_count": 17,
+                "editor_workflow_passing_case_count": 17,
                 "editor_workflow_failing_case_count": 0,
                 "missing_editor_workflow_case_count": 0,
                 "missing_editor_workflow_method_case_count": 0,
@@ -9051,13 +9115,13 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert lsp_check["detail"]["rpc"]["blocking_gaps"] == ()
     assert lsp_check["detail"]["rpc"]["check_count"] == len(lsp_check["detail"]["rpc"]["checks"])
     assert lsp_check["detail"]["rpc"]["passing_check_count"] == lsp_check["detail"]["rpc"]["check_count"]
-    assert lsp_check["detail"]["rpc"]["provider_count"] == 9
-    assert lsp_check["detail"]["rpc"]["enabled_provider_count"] == 9
-    assert lsp_check["detail"]["rpc"]["request_check_count"] == 8
+    assert lsp_check["detail"]["rpc"]["provider_count"] == 10
+    assert lsp_check["detail"]["rpc"]["enabled_provider_count"] == 10
+    assert lsp_check["detail"]["rpc"]["request_check_count"] == 9
     assert lsp_check["detail"]["rpc"]["code_action_count"] >= 1
     assert lsp_check["detail"]["rpc"]["formatting_edit_count"] >= 1
     assert lsp_check["detail"]["stdio"]["format"] == "appgen.lsp-stdio-transport-audit.v1"
-    assert lsp_check["detail"]["stdio"]["request_message_count"] == 4
+    assert lsp_check["detail"]["stdio"]["request_message_count"] == 5
     assert lsp_check["detail"]["stdio"]["response_count"] >= lsp_check["detail"]["stdio"]["request_message_count"]
     assert lsp_check["detail"]["stdio"]["id_response_count"] >= lsp_check["detail"]["stdio"]["request_message_count"]
     assert lsp_check["detail"]["stdio"]["notification_count"] >= 2
@@ -9160,22 +9224,23 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "editor_lifecycle_workflow",
         "enterprise_definition_context",
         "lexical_reference_scope",
+        "prepare_rename",
         "code_action_request",
         "formatting_request",
     } <= {check["check"] for check in lsp_check["detail"]["rpc"]["checks"]}
     lsp_transport_check = next(check for check in report["checks"] if check["id"] == "lsp_transport_rpc_contracts")
     assert lsp_transport_check["detail"]["rpc"]["format"] == "appgen.lsp-json-rpc-audit.v1"
-    assert lsp_transport_check["detail"]["rpc"]["provider_count"] == 9
-    assert lsp_transport_check["detail"]["rpc"]["enabled_provider_count"] == 9
-    assert lsp_transport_check["detail"]["rpc"]["request_check_count"] == 8
-    assert lsp_transport_check["detail"]["rpc"]["passing_request_check_count"] == 8
-    assert lsp_transport_check["detail"]["rpc"]["method_contract_count"] == 13
+    assert lsp_transport_check["detail"]["rpc"]["provider_count"] == 10
+    assert lsp_transport_check["detail"]["rpc"]["enabled_provider_count"] == 10
+    assert lsp_transport_check["detail"]["rpc"]["request_check_count"] == 9
+    assert lsp_transport_check["detail"]["rpc"]["passing_request_check_count"] == 9
+    assert lsp_transport_check["detail"]["rpc"]["method_contract_count"] == 14
     assert lsp_transport_check["detail"]["rpc"]["passing_method_contract_count"] == (
         lsp_transport_check["detail"]["rpc"]["method_contract_count"]
     )
     assert lsp_transport_check["detail"]["rpc"]["missing_method_contract_count"] == 0
     assert lsp_transport_check["detail"]["rpc"]["missing_method_contracts"] == ()
-    assert lsp_transport_check["detail"]["rpc"]["editor_workflow_case_count"] == 16
+    assert lsp_transport_check["detail"]["rpc"]["editor_workflow_case_count"] == 17
     assert lsp_transport_check["detail"]["rpc"]["editor_workflow_passing_case_count"] == (
         lsp_transport_check["detail"]["rpc"]["editor_workflow_case_count"]
     )
@@ -9201,11 +9266,14 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert set(lsp_transport_check["detail"]["rpc"]["method_contracts"]) == {
         "textDocument/didOpen",
         "textDocument/didChange",
+        "textDocument/didSave",
+        "textDocument/didClose",
         "textDocument/completion",
         "textDocument/hover",
         "textDocument/definition",
         "textDocument/references",
         "textDocument/documentSymbol",
+        "textDocument/prepareRename",
         "textDocument/rename",
         "textDocument/codeAction",
         "textDocument/formatting",
@@ -9217,7 +9285,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     )
     assert lsp_transport_check["detail"]["rpc"]["blocking_gap_count"] == 0
     assert lsp_transport_check["detail"]["stdio"]["format"] == "appgen.lsp-stdio-transport-audit.v1"
-    assert lsp_transport_check["detail"]["stdio"]["request_message_count"] == 4
+    assert lsp_transport_check["detail"]["stdio"]["request_message_count"] == 5
     assert lsp_transport_check["detail"]["stdio"]["missing_response_ids"] == ()
     assert lsp_transport_check["detail"]["stdio"]["response_ids_by_method"] == lsp_transport_check["detail"]["stdio"][
         "expected_response_ids_by_method"
@@ -9233,6 +9301,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert lsp_transport_check["detail"]["stdio"]["missing_changed_diagnostic_code_families"] == ()
     assert lsp_transport_check["detail"]["stdio"]["completion_response_count"] == 1
     assert lsp_transport_check["detail"]["stdio"]["workspace_symbol_response_count"] == 1
+    assert lsp_transport_check["detail"]["stdio"]["prepare_rename_response_count"] == 1
     assert lsp_transport_check["detail"]["stdio"]["shutdown_response_count"] == 1
     lsp_navigation_check = next(check for check in report["checks"] if check["id"] == "lsp_navigation_completion_contracts")
     assert lsp_navigation_check["detail"]["completion_coverage"]["format"] == "appgen.completion-coverage.v1"
@@ -9365,6 +9434,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "definition",
         "references",
         "formatting",
+        "prepare_rename",
         "rename",
         "rename_blocker",
         "hover_summary",
@@ -9379,6 +9449,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "appgen.lsp-definition.v1",
         "appgen.lsp-references.v1",
         "appgen.lsp-formatting.v1",
+        "appgen.lsp-prepare-rename.v1",
         "appgen.lsp-rename.v1",
         "appgen.migration-plan.v1",
     )
@@ -12869,6 +12940,7 @@ def test_lsp_service_text_renderer_contract_proves_editor_log_markers() -> None:
         "definition",
         "references",
         "formatting",
+        "prepare_rename",
         "rename",
         "rename_blocker",
         "hover_summary",
@@ -12884,6 +12956,7 @@ def test_lsp_service_text_renderer_contract_proves_editor_log_markers() -> None:
         "appgen.lsp-definition.v1",
         "appgen.lsp-references.v1",
         "appgen.lsp-formatting.v1",
+        "appgen.lsp-prepare-rename.v1",
         "appgen.lsp-rename.v1",
         "appgen.migration-plan.v1",
     )
@@ -12929,12 +13002,13 @@ def test_lsp_service_text_renderer_contract_proves_editor_log_markers() -> None:
         "lsp ok: format=appgen.lsp-service.v1 semantic_format=appgen.semantic-model.v1"
     )
     assert {
-        "service_counts completion_sources=5/6 missing_completion_sources=1 references=2 document_symbols=2 workspace_symbols=1 code_actions=1 formatting_edits=1 rename_edits=0",
+        "service_counts completion_sources=5/6 missing_completion_sources=1 references=2 document_symbols=2 workspace_symbols=1 code_actions=1 formatting_edits=1 prepare_rename_ok=1 rename_edits=0",
         "source_of_truth=appgen.semantic-model.v1",
         "completion_coverage format=appgen.completion-coverage.v1 missing=1",
         "completion-missing agent_actions",
         "definition format=appgen.lsp-definition.v1 ok=True",
         "references format=appgen.lsp-references.v1 locations=2",
+        "prepare_rename ok=True format=appgen.lsp-prepare-rename.v1 placeholder=SubmitInvoice scope=operation_declarations_and_targets",
         "rename ok=False format=appgen.lsp-rename.v1 changed=False blocked=True diagnostics=1 blockers=1 migration_format=appgen.migration-plan.v1 requires_approval=True",
         "rename-blocker AGX1101: Destructive migration changes require approval. fixes=add_rename_hint",
         "hover table Invoice",
