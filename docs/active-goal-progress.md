@@ -4604,3 +4604,8 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   semantic contract validation commands, Reports-view actions, webview
   renderers, and audit requirements for the same schema contracts used by the
   CLI and LSP tooling.
+- Current coding-agent handoff expansion promotes Claude Code, OpenAI Codex,
+  OpenCode, Ollama, vLLM, and API-key runners into a direct `appgen
+  agent-handoff` contract. The report exposes launcher names, backend filters,
+  compact model briefs, token-budget notes, guardrails, and canonical AppGen-X
+  commands without requiring a natural-language patch first.

@@ -3254,6 +3254,66 @@ def test_appgen_nl_plan_subcommand_emits_json_and_text_contracts(tmp_path: Path)
     ) in text_result.stdout
 
 
+def test_appgen_agent_handoff_subcommand_emits_first_class_agent_vectors(tmp_path: Path) -> None:
+    path = tmp_path / "finance.appgen"
+    path.write_text(TOOLING_SAMPLE, encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "agent-handoff",
+            str(path),
+            "--prompt",
+            "Add invoice approval workflow",
+            "--operation",
+            "add_flow_transition",
+            "--json",
+        ],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+    text_result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pyAppGen",
+            "agent-handoff",
+            "--vector",
+            "openai_codex",
+            "--backend",
+            "ollama",
+        ],
+        check=False,
+        cwd=Path(__file__).resolve().parents[1],
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["format"] == "appgen.agent-handoff-report.v1"
+    assert payload["ok"] is True
+    assert payload["semantic_model_format"] == "appgen.semantic-model.v1"
+    assert payload["observed_vectors"] == ["claude_code", "openai_codex", "opencode"]
+    assert {"api-key", "ollama", "vllm"} <= set(payload["observed_backends"])
+    assert payload["prompt_digest"]["format"] == "appgen.compact-generation-brief.v1"
+    assert {"qwen3.5-2b", "qwen3.5-4b", "local-4b-vllm"} <= {
+        brief["model"] for brief in payload["compact_model_briefs"]
+    }
+    assert all(brief["ok"] for brief in payload["compact_model_briefs"])
+    assert "appgen contract-validate semantic.json --format appgen.semantic-model.v1 --json" in payload["commands"]
+
+    assert text_result.returncode == 0, text_result.stderr
+    assert text_result.stdout.startswith("agent-handoff ok: format=appgen.agent-handoff-report.v1")
+    assert "agent-handoff openai_codex launcher=codex backends=ollama" in text_result.stdout
+    assert "compact-model qwen3.5-2b backend=ollama" in text_result.stdout
+    assert "token-budget-note " in text_result.stdout
+
+
 def test_nl_plan_contract_audit_covers_supported_edit_operations_and_rejections() -> None:
     audit = nl_plan_contract_audit_dsl(TOOLING_SAMPLE, source_name="finance.appgen")
     case_ids = {case["id"] for case in audit["cases"]}
@@ -8205,8 +8265,8 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
             **ok("appgen.cli-help-surface-audit.v1"),
             "documented_missing_subcommand_count": 0,
             "help_missing_subcommand_count": 0,
-            "subcommand_option_surface_count": 27,
-            "passing_option_surface_count": 27,
+            "subcommand_option_surface_count": 28,
+            "passing_option_surface_count": 28,
             "failing_option_surface_count": 0,
             "missing_option_count": 0,
             "command_alias_count": 2,
@@ -13572,6 +13632,7 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert help_result.returncode == 0, help_result.stderr
     assert "Tooling subcommands are also available" in normalized_help
     assert "lint, semantic, format, validate, generate, graph, graph-suite" in normalized_help
+    assert "migration-plan, nl-plan, agent-handoff" in normalized_help
     assert "component-publish, pbc, designer-sync" in normalized_help
     assert "diagnostics, parser-golden, module-boundaries, non-goals, test-strategy" in normalized_help
     assert "dsl-quality, dsl-antlr, dsl-authoring-gate, dsl-language-service" in normalized_help

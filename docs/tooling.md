@@ -729,6 +729,13 @@ the dependency-ordered implementation roadmap. These commands exist so
 contributors and coding agents do not have to run the full `tooling-audit`
 payload just to decide what to build next or verify that a DSL file still
 exercises the required strategy surface.
+Coding-agent handoff is a direct CLI contract: `appgen agent-handoff` emits
+`appgen.agent-handoff-report.v1` so Claude Code, OpenAI Codex, OpenCode,
+Ollama, vLLM, and API-key backed runners can receive launcher names, allowed
+backends, required outputs, compact model briefs, token-budget notes, guardrails,
+and the canonical AppGen-X command sequence without first creating an
+`appgen.nl-plan.v1` patch. This makes external agents first-class development
+vectors even when the user already knows the desired operation.
 DSL language-quality commands are first-class CLI contracts: `appgen
 dsl-quality`, `appgen dsl-antlr`, `appgen dsl-authoring-gate <file>`, and
 `appgen dsl-language-service <file>` expose the same grammar, parser, keyword,
@@ -874,7 +881,8 @@ plus the first-class agentic development-vector contracts:
 `appgen.package-agent-execution-matrix.v1`,
 `appgen.coding-agent-backend-matrix.v1`,
 `appgen.coding-agent-development-workflow.v1`,
-`appgen.coding-agent-release-gate.v1`, and
+`appgen.coding-agent-release-gate.v1`,
+`appgen.agent-handoff-report.v1`, and
 `appgen.agentic-generation-smoke-audit.v1`,
 plus the Application Composition Platform and compact generation contracts:
 `appgen.acp-stream-processing-policy.v1`,
@@ -4383,6 +4391,27 @@ case. The aggregate gate requires those named missing lists to be empty, so
 small-model agent workflows cannot pass by emitting a patch-shaped payload for
 unsupported requests, returning the wrong process status, or hiding an
 out-of-DSL rejection behind aggregate counts.
+
+### `appgen agent-handoff`
+
+```console
+appgen agent-handoff app.appgen --prompt "Add invoice approval" --operation add_flow_transition --json
+appgen agent-handoff --vector openai_codex --backend ollama
+```
+
+`appgen agent-handoff` emits `appgen.agent-handoff-report.v1`, a compact
+development-vector contract for external coding agents. It returns the supported
+agent vectors (`claude_code`, `openai_codex`, and `opencode`), launcher names,
+`api-key`/`ollama`/`vllm` backend filters, required outputs, AppGen-X guardrails,
+canonical follow-up commands, token-budget notes, and compact model briefs for
+small local models. If a DSL file is provided, the report includes semantic
+symbol counts and a compact prompt digest so agents can operate on symbols plus
+bounded DSL diffs instead of the full generated project.
+
+Text mode prints `agent-handoff ...`, one `agent-handoff <vector> ...` line per
+runner, `compact-model ...` lines, command lines, and `token-budget-note ...`
+guidance. This lets CI, local shells, and small local models route work without
+parsing the full JSON payload.
 
 The test-strategy CLI audit reports case, passing-case, failing-case, case-id,
 required-surface, observed-surface, missing-surface, payload-format, and

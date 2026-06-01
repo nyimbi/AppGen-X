@@ -1857,6 +1857,14 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
     nl_parser.add_argument("--backend", default="postgresql", choices=SUPPORTED_DATABASE_BACKENDS)
     nl_parser.add_argument("--json", action="store_true")
 
+    agent_handoff_parser = subparsers.add_parser("agent-handoff")
+    agent_handoff_parser.add_argument("path", nargs="?")
+    agent_handoff_parser.add_argument("--prompt", default="Build or evolve this AppGen-X application.")
+    agent_handoff_parser.add_argument("--operation", default="bounded_dsl_change")
+    agent_handoff_parser.add_argument("--vector", choices=("all", "claude_code", "openai_codex", "opencode"), default="all")
+    agent_handoff_parser.add_argument("--backend", choices=("all", "api-key", "ollama", "vllm"), default="all")
+    agent_handoff_parser.add_argument("--json", action="store_true")
+
     lsp_parser = subparsers.add_parser("lsp")
     lsp_parser.add_argument("path", nargs="?")
     lsp_parser.add_argument("--position")
@@ -2072,6 +2080,17 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
             prompt=args.prompt,
             source_name=str(path),
             backend=args.backend,
+        )
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "agent-handoff":
+        report = agent_handoff_report_dsl(
+            source,
+            prompt=args.prompt,
+            operation=args.operation,
+            vector=args.vector,
+            backend=args.backend,
+            source_name=str(path) if path else None,
         )
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
@@ -2409,6 +2428,9 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         return
     if payload.get("format") == "appgen.nl-plan.v1":
         _emit_nl_plan_text(payload)
+        return
+    if payload.get("format") == "appgen.agent-handoff-report.v1":
+        _emit_agent_handoff_text(payload)
         return
     if payload.get("format") == "appgen.release-verifier-report.v1":
         _emit_release_verifier_text(payload)
@@ -4629,6 +4651,34 @@ def _emit_nl_plan_text(payload: dict) -> None:
             f"changes={len(migration.get('changes', ()))} "
             f"requires_approval={migration.get('requires_approval', False)}"
         )
+
+
+def _emit_agent_handoff_text(payload: dict) -> None:
+    status = "ok" if payload.get("ok") else "failed"
+    print(
+        f"agent-handoff {status}: format={payload.get('format')} "
+        f"vectors={payload.get('agent_handoff_count', 0)} "
+        f"backends={','.join(payload.get('observed_backends', ())) or 'none'} "
+        f"compact_models={payload.get('compact_model_count', 0)} "
+        f"token_notes={payload.get('token_budget_note_count', 0)}"
+    )
+    print(f"operation {payload.get('operation')}")
+    for handoff in payload.get("agent_handoffs", ()):
+        print(
+            f"agent-handoff {handoff.get('vector')} launcher={handoff.get('launcher')} "
+            f"backends={','.join(handoff.get('backends', ()))} "
+            f"outputs={','.join(handoff.get('required_outputs', ()))}"
+        )
+    for brief in payload.get("compact_model_briefs", ()):
+        print(
+            f"compact-model {brief.get('model')} backend={brief.get('backend')} "
+            f"prompt_tokens={brief.get('prompt_tokens')} patch_tokens={brief.get('patch_tokens')} "
+            f"ok={brief.get('ok')}"
+        )
+    for command in payload.get("commands", ()):
+        print(f"command {command}")
+    for note in payload.get("token_budget_notes", ()):
+        print(f"token-budget-note {note}")
     for diagnostic in payload.get("diagnostics", ()):
         print(f"{diagnostic['severity']} {diagnostic['code']}: {diagnostic['message']}")
 
@@ -6857,6 +6907,7 @@ AGENTIC_DEVELOPMENT_SCHEMA_FORMATS = (
     "appgen.coding-agent-backend-matrix.v1",
     "appgen.coding-agent-development-workflow.v1",
     "appgen.coding-agent-release-gate.v1",
+    "appgen.agent-handoff-report.v1",
     "appgen.agentic-generation-smoke-audit.v1",
 )
 
@@ -9128,6 +9179,7 @@ def _agentic_development_schema(title: str) -> dict:
         "appgen.coding-agent-backend-matrix.v1": ("format", "ok", "vectors", "backends"),
         "appgen.coding-agent-development-workflow.v1": ("format", "ok", "vector", "backend", "stages"),
         "appgen.coding-agent-release-gate.v1": ("format", "ok", "decision", "gates", "blocking_gaps"),
+        "appgen.agent-handoff-report.v1": ("format", "ok", "agent_handoffs", "compact_model_briefs"),
         "appgen.agentic-generation-smoke-audit.v1": ("format", "ok", "decision", "checks", "blocking_gaps"),
     }
     return _contract_format_schema(
@@ -9159,6 +9211,13 @@ def _agentic_development_schema(title: str) -> dict:
             "gates": {"type": "array", "items": {"type": "object"}},
             "required_artifacts": {"type": "array", "items": {"type": "string"}},
             "compiled_artifacts": {"type": "array", "items": {"type": "string"}},
+            "agent_handoffs": {"type": "array", "items": {"type": "object"}},
+            "agent_handoff_count": {"type": "integer", "minimum": 0},
+            "compact_model_briefs": {"type": "array", "items": {"type": "object"}},
+            "compact_model_count": {"type": "integer", "minimum": 0},
+            "token_budget_notes": {"type": "array", "items": {"type": "string"}},
+            "prompt_digest": {"type": "object"},
+            "commands": {"type": "array", "items": {"type": "string"}},
             "stop_condition": {"type": "string"},
         },
     )
@@ -26190,6 +26249,12 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
                 backend="ollama",
             ),
             "appgen.coding-agent-release-gate.v1": coding_agent_release_gate(agentic_env),
+            "appgen.agent-handoff-report.v1": agent_handoff_report_dsl(
+                source,
+                prompt="Add invoice approval workflow and generate AppGen-X release evidence.",
+                operation="add_flow_transition",
+                source_name="contract-schema.appgen",
+            ),
             "appgen.agentic-generation-smoke-audit.v1": agentic_generation_smoke_audit(),
             "appgen.acp-stream-processing-policy.v1": acp_stream_processing_policy(),
             "appgen.acp-event-processing-developer-guidance.v1": acp_event_processing_developer_guidance(),
@@ -28756,7 +28821,7 @@ def _tooling_audit_package_invalid_target(tmp: Path, source: str) -> dict:
 def _tooling_audit_cli_help_surface(root: Path) -> dict:
     pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
     pyproject_data = tomllib.loads(pyproject)
-    entrypoint = (root / "src/pyAppGen/gen.py").read_text(encoding="utf-8")
+    command_manifest = (root / "src/pyAppGen/tooling_manifest.py").read_text(encoding="utf-8")
     module_entrypoint = (root / "src/pyAppGen/__main__.py").read_text(encoding="utf-8")
     required_subcommands = TOOLING_SUBCOMMANDS
     help_output = io.StringIO()
@@ -28768,10 +28833,10 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         except SystemExit as exc:
             help_exit_code = int(exc.code or 0)
     help_text = help_output.getvalue()
-    help_has_subcommands = all(command in entrypoint for command in required_subcommands)
+    help_has_subcommands = all(command in command_manifest for command in required_subcommands)
     help_lists_subcommands = all(command in help_text for command in required_subcommands)
     help_missing_subcommands = tuple(command for command in required_subcommands if command not in help_text)
-    documented_missing_subcommands = tuple(command for command in required_subcommands if command not in entrypoint)
+    documented_missing_subcommands = tuple(command for command in required_subcommands if command not in command_manifest)
     required_option_help = {
         ("lint",): ("--json", "--strict", "--catalog", "--previous-semantic", "--backend"),
         ("semantic",): ("--json",),
@@ -28783,6 +28848,7 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         ("explain",): ("--symbol", "--diagnostic", "--handler", "--json"),
         ("migration-plan",): ("--backend", "--rename-hint", "--json"),
         ("nl-plan",): ("--prompt", "--backend", "--json"),
+        ("agent-handoff",): ("--prompt", "--operation", "--vector", "--backend", "--json"),
         ("lsp",): ("--position", "--prefix", "--rename", "--apply-code-action", "--stdio", "--json"),
         ("verify",): ("--target", "--json"),
         ("package",): ("--target", "--out", "--json"),
@@ -29117,7 +29183,7 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
             "payload_format": repo_alias_lint_payload.get("format"),
             "traceback_free": repo_alias_lint_result["traceback_free"],
         },
-        "subcommands_documented": required_subcommands if help_has_subcommands else tuple(command for command in required_subcommands if command in entrypoint),
+        "subcommands_documented": required_subcommands if help_has_subcommands else tuple(command for command in required_subcommands if command in command_manifest),
         "required_subcommands": required_subcommands,
     }
 
@@ -30073,6 +30139,104 @@ def nl_plan_dsl(
         "agent_handoffs": _nl_agent_handoffs(prompt, operation, patch),
         "compact_model_briefs": _nl_compact_model_briefs(prompt, patch, operation),
         "diagnostics": diagnostics,
+    }
+
+
+def agent_handoff_report_dsl(
+    text: str = "",
+    *,
+    prompt: str = "Build or evolve this AppGen-X application.",
+    operation: str = "bounded_dsl_change",
+    vector: str = "all",
+    backend: str = "all",
+    source_name: str | None = None,
+) -> dict:
+    """Return direct coding-agent handoff contracts without requiring an NL patch."""
+    source = text or ""
+    semantic = semantic_model_dsl(source, source_name=source_name) if source.strip() else None
+    symbols = tuple((semantic or {}).get("symbols", {}).keys())[:16]
+    operation_contract = {
+        "kind": operation or "bounded_dsl_change",
+        "intent": prompt.strip() or "Build or evolve this AppGen-X application.",
+        "affected_symbols": symbols,
+    }
+    vectors = tuple(
+        handoff
+        for handoff in _nl_agent_handoffs(prompt, operation_contract, "")
+        if vector == "all" or handoff.get("vector") == vector
+    )
+    filtered_vectors = tuple(
+        {
+            **handoff,
+            "backends": tuple(item for item in handoff.get("backends", ()) if backend == "all" or item == backend),
+            "local_backends": tuple(
+                item for item in handoff.get("local_backends", ()) if backend == "all" or item == backend
+            ),
+        }
+        for handoff in vectors
+    )
+    filtered_vectors = tuple(handoff for handoff in filtered_vectors if handoff["backends"])
+    compact_briefs = _nl_compact_model_briefs(prompt, "", operation_contract)
+    token_budget_notes = _nl_token_budget_notes()
+    required_vectors = (vector,) if vector != "all" else tuple(item["vector"] for item in _NL_CODING_AGENT_VECTORS)
+    required_backends = (backend,) if backend != "all" else ("api-key", "ollama", "vllm")
+    observed_vectors = tuple(handoff["vector"] for handoff in filtered_vectors)
+    observed_backends = tuple(sorted({item for handoff in filtered_vectors for item in handoff["backends"]}))
+    missing_vectors = tuple(item for item in required_vectors if item not in observed_vectors)
+    missing_backends = tuple(item for item in required_backends if item not in observed_backends)
+    prompt_digest = {
+        "format": "appgen.compact-generation-brief.v1",
+        "prompt": prompt,
+        "operation": operation_contract["kind"],
+        "symbol_count": len(symbols),
+        "symbols": symbols,
+        "max_context_policy": "semantic-symbols-plus-dsl-diff",
+        "required_outputs": (
+            "dsl_patch",
+            "lint_report",
+            "migration_preview",
+            "generated_test_plan",
+            "release_evidence",
+        ),
+    }
+    return {
+        "format": "appgen.agent-handoff-report.v1",
+        "ok": not missing_vectors and not missing_backends and all(brief.get("ok") for brief in compact_briefs),
+        "prompt": prompt,
+        "operation": operation_contract["kind"],
+        "source_name": source_name,
+        "semantic_model_format": (semantic or {}).get("format"),
+        "semantic_ok": (semantic or {}).get("ok") if semantic is not None else None,
+        "symbol_count": len(symbols),
+        "required_vectors": required_vectors,
+        "observed_vectors": observed_vectors,
+        "missing_vectors": missing_vectors,
+        "required_backends": required_backends,
+        "observed_backends": observed_backends,
+        "missing_backends": missing_backends,
+        "agent_handoffs": filtered_vectors,
+        "agent_handoff_count": len(filtered_vectors),
+        "compact_model_briefs": compact_briefs,
+        "compact_model_count": len(compact_briefs),
+        "token_budget_notes": token_budget_notes,
+        "token_budget_note_count": len(token_budget_notes),
+        "prompt_digest": prompt_digest,
+        "guardrails": (
+            "dsl_patch_only",
+            "lint_before_generation",
+            "contract_validate_before_apply",
+            "release_evidence_required",
+            "secret_redaction",
+            "human_review_for_destructive_changes",
+        ),
+        "commands": (
+            "appgen lint app.appgen --json",
+            "appgen semantic app.appgen --json",
+            "appgen contract-validate semantic.json --format appgen.semantic-model.v1 --json",
+            "appgen nl-plan app.appgen --prompt '<change>' --json",
+            "appgen generate app.appgen --out generated/app --json",
+            "appgen verify app.appgen --target all --json",
+        ),
     }
 
 

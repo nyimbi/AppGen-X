@@ -13,6 +13,7 @@ TOOLING_SUBCOMMANDS = (
     "explain",
     "migration-plan",
     "nl-plan",
+    "agent-handoff",
     "lsp",
     "verify",
     "package",
@@ -42,7 +43,8 @@ TOOLING_SUBCOMMANDS = (
 
 TOOLING_HELP_LINES = (
     "lint, semantic, format, validate, generate, graph, graph-suite, explain,",
-    "migration-plan, nl-plan, lsp, verify, package, component-publish, pbc, designer-sync,",
+    "migration-plan, nl-plan, agent-handoff, lsp, verify, package, component-publish, pbc,",
+    "designer-sync,",
     "diagnostics, parser-golden, module-boundaries, non-goals, test-strategy,",
     "dsl-quality, dsl-antlr, dsl-authoring-gate, dsl-language-service,",
     "contract-schema, contract-validate, runtime-contracts, drift, doctor,",
