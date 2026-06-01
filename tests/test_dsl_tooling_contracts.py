@@ -7394,6 +7394,9 @@ def test_studio_semantic_service_audit_proves_panel_contracts() -> None:
     assert report["browser_smoke_checks"]["frontend_semantic_service_bridge"] is True
     assert report["browser_smoke_checks"]["frontend_dsl_editor_bridge"] is True
     assert report["browser_smoke_checks"]["frontend_interaction_audit_bridge"] is True
+    assert report["browser_smoke_checks"]["browser_smoke_interaction_count_text"] is True
+    assert report["browser_smoke_expected_interaction_count_text"] == "10 checks"
+    assert report["browser_smoke_interaction_count_text_present"] is True
     assert report["frontend_semantic_service_format"] == "appgen.frontend-semantic-service-audit.v1"
     assert report["frontend_semantic_service_audit"]["ok"] is True
     assert report["frontend_semantic_service_count"] == 4

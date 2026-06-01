@@ -3998,6 +3998,10 @@ audit covers palette category/search/empty states, component drag payloads,
 actionable drop preview/commit operations with handler definition evidence,
 device and data workbench render inputs, status-rail audit inputs, and the
 semantic-service bridge before the Studio browser-smoke gate can pass.
+The browser-smoke script must assert the rendered interaction-count text that
+matches `appgen.frontend-interaction-audit.v1`'s required scenario count, so a
+stale browser smoke expectation cannot pass while the interaction audit has
+grown.
 The top-level `appgen.tooling-audit.v1` treats these as first-class gates:
 
 The raw Studio bridge payloads are also schema-backed contracts, not just

@@ -293,6 +293,7 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
     frontend_semantic = _frontend_semantic_service_audit(semantic_contract_text, semantic_panel_text)
     frontend_dsl_editor = _frontend_dsl_editor_audit(dsl_editor_catalog_text, dsl_editor_workbench_text)
     frontend_interaction = _frontend_interaction_audit(interaction_audit_text)
+    expected_interaction_count_text = f"{frontend_interaction.get('required_scenario_count', 0)} checks"
     scenarios = (
         "studio_shell",
         "semantic_service_bridge",
@@ -311,6 +312,10 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
             "ok": smoke_script.exists()
             and "appgen.studio-browser-smoke.v1" in script_text
             and all(scenario in script_text for scenario in scenarios),
+        },
+        {
+            "id": "browser_smoke_interaction_count_text",
+            "ok": expected_interaction_count_text in script_text,
         },
         {
             "id": "ci_workflow",
@@ -356,6 +361,8 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
         "frontend_semantic_service_audit": frontend_semantic,
         "frontend_dsl_editor_audit": frontend_dsl_editor,
         "frontend_interaction_audit": frontend_interaction,
+        "expected_interaction_count_text": expected_interaction_count_text,
+        "interaction_count_text_present": expected_interaction_count_text in script_text,
         "scenarios": scenarios,
         "environment": {
             "browser_binary": "APPGEN_CHROME_BIN",

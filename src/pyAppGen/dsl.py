@@ -18454,6 +18454,7 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         and browser_smoke_checks.get("frontend_semantic_service_bridge") is True
         and browser_smoke_checks.get("frontend_dsl_editor_bridge") is True
         and browser_smoke_checks.get("frontend_interaction_audit_bridge") is True
+        and browser_smoke_checks.get("browser_smoke_interaction_count_text") is True
         and frontend_semantic.get("format") == "appgen.frontend-semantic-service-audit.v1"
         and frontend_semantic.get("ok") is True
         and not frontend_semantic.get("missing_services", ())
@@ -18510,6 +18511,8 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         "browser_smoke_format": browser_smoke.get("format"),
         "browser_smoke_scenarios": tuple(browser_smoke.get("scenarios", ())),
         "browser_smoke_checks": browser_smoke_checks,
+        "browser_smoke_expected_interaction_count_text": browser_smoke.get("expected_interaction_count_text"),
+        "browser_smoke_interaction_count_text_present": browser_smoke.get("interaction_count_text_present"),
         "frontend_semantic_service_audit": frontend_semantic,
         "frontend_semantic_service_format": frontend_semantic.get("format"),
         "frontend_semantic_service_count": frontend_semantic.get("service_count"),
