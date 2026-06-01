@@ -18459,6 +18459,7 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         and not frontend_semantic.get("missing_services", ())
         and not frontend_semantic.get("missing_surfaces", ())
         and not frontend_semantic.get("missing_surface_contracts", ())
+        and not frontend_semantic.get("missing_audit_fields", ())
         and frontend_dsl_editor.get("format") == "appgen.frontend-dsl-editor-audit.v1"
         and frontend_dsl_editor.get("ok") is True
         and not frontend_dsl_editor.get("missingCompletionCategories", ())
@@ -18532,9 +18533,12 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         "frontend_semantic_missing_surface_contracts": tuple(
             frontend_semantic.get("missing_surface_contracts", ())
         ),
+        "frontend_semantic_required_audit_fields": tuple(frontend_semantic.get("required_audit_fields", ())),
+        "frontend_semantic_missing_audit_fields": tuple(frontend_semantic.get("missing_audit_fields", ())),
         "frontend_semantic_missing_service_count": frontend_semantic.get("missing_service_count"),
         "frontend_semantic_missing_surface_count": frontend_semantic.get("missing_surface_count"),
         "frontend_semantic_missing_surface_contract_count": frontend_semantic.get("missing_surface_contract_count"),
+        "frontend_semantic_missing_audit_field_count": frontend_semantic.get("missing_audit_field_count"),
         "frontend_dsl_editor_audit": frontend_dsl_editor,
         "frontend_dsl_editor_format": frontend_dsl_editor.get("format"),
         "frontend_dsl_editor_diagnostic_count": frontend_dsl_editor.get("diagnosticCount"),

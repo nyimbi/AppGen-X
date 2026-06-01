@@ -560,11 +560,27 @@ def _frontend_semantic_service_audit(semantic_contract_text: str, semantic_panel
     missing_surface_contracts = tuple(
         contract for contract in required_surface_contracts if contract not in observed_surface_contracts
     )
+    required_audit_fields = (
+        "services",
+        "requiredServices",
+        "missingServices",
+        "surfaces",
+        "requiredSurfaces",
+        "missingSurfaces",
+        "surfaceContracts",
+        "requiredSurfaceContracts",
+        "missingSurfaceContracts",
+        "missingServiceCount",
+        "missingSurfaceCount",
+        "missingSurfaceContractCount",
+    )
+    missing_audit_fields = tuple(field for field in required_audit_fields if field not in semantic_contract_text)
     checks = {
         "contract_format": "appgen.frontend-semantic-service-audit.v1" in semantic_contract_text,
         "service_evidence": not missing_services,
         "surface_ids": not missing_surfaces,
         "surface_contracts": not missing_surface_contracts,
+        "named_audit_fields": not missing_audit_fields,
         "panel_renders_audit": "semanticServiceAudit()" in semantic_panel_text,
         "panel_renders_services": "semanticServices.map" in semantic_panel_text,
         "panel_renders_surfaces": "semanticSurfaces.map" in semantic_panel_text,
@@ -582,6 +598,8 @@ def _frontend_semantic_service_audit(semantic_contract_text: str, semantic_panel
         "surface_contract_count": len(observed_surface_contracts),
         "required_surface_contract_count": len(required_surface_contracts),
         "missing_surface_contract_count": len(missing_surface_contracts),
+        "required_audit_field_count": len(required_audit_fields),
+        "missing_audit_field_count": len(missing_audit_fields),
         "services": observed_services,
         "required_services": required_services,
         "missing_services": missing_services,
@@ -591,6 +609,8 @@ def _frontend_semantic_service_audit(semantic_contract_text: str, semantic_panel
         "surface_contracts": observed_surface_contracts,
         "required_surface_contracts": required_surface_contracts,
         "missing_surface_contracts": missing_surface_contracts,
+        "required_audit_fields": required_audit_fields,
+        "missing_audit_fields": missing_audit_fields,
     }
 
 

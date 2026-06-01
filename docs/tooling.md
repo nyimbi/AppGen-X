@@ -4011,7 +4011,10 @@ external coding agents validate each Studio bridge surface independently before
 they trust the aggregate semantic-service audit.
 `frontend_semantic_service_bridge` reports service, surface, surface-contract,
 required/observed/missing-name, and missing-count evidence from
-`appgen.frontend-semantic-service-audit.v1`;
+`appgen.frontend-semantic-service-audit.v1`; the browser-side audit function
+must return the same named required/observed/missing fields for services,
+surfaces, and surface contracts so release evidence is not only reconstructed
+from static Python parsing;
 `frontend_interaction_audit_bridge` reports scenario, audit-input, helper, and
 required/observed/missing-name evidence from
 `appgen.frontend-interaction-audit.v1`. Either gate can fail independently of

@@ -74,22 +74,53 @@ export function semanticServiceAudit() {
     'graph_explain_panel',
     'natural_language_planner',
   ]
-  const surfaceIds = new Set(semanticSurfaces.map((surface) => surface.id))
-  const evidence = new Set(semanticServices.map((service) => service.evidence))
-  const missingSurfaces = requiredSurfaces.filter((surface) => !surfaceIds.has(surface))
-  const missingEvidence = [
+  const requiredServices = [
     'appgen.lsp-service.v1',
     'appgen.designer-sync-report.v1',
     'appgen.graph-suite-report.v1',
     'appgen.nl-plan.v1',
-  ].filter((item) => !evidence.has(item))
+  ]
+  const requiredSurfaceContracts = [
+    'appgen.designer-dsl-editor.v1',
+    'appgen.designer-component-palette.v1',
+    'appgen.designer-form-projection.v1',
+    'appgen.designer-database-projection.v1',
+    'appgen.designer-workflow-projection.v1',
+    'appgen.designer-pbc-composition-projection.v1',
+    'appgen.designer-package-deployment-projection.v1',
+    'appgen.lsp-diagnostics.v1',
+    'appgen.designer-graph-explain-panel.v1',
+    'appgen.designer-nl-planner-panel.v1',
+  ]
+  const surfaceIds = new Set(semanticSurfaces.map((surface) => surface.id))
+  const services = semanticServices.map((service) => service.evidence)
+  const evidence = new Set(services)
+  const surfaceContracts = semanticSurfaces.map((surface) => surface.contract)
+  const observedSurfaceContracts = new Set(surfaceContracts)
+  const missingSurfaces = requiredSurfaces.filter((surface) => !surfaceIds.has(surface))
+  const missingServices = requiredServices.filter((item) => !evidence.has(item))
+  const missingSurfaceContracts = requiredSurfaceContracts.filter((item) => !observedSurfaceContracts.has(item))
 
   return {
     format: 'appgen.frontend-semantic-service-audit.v1',
-    ok: missingSurfaces.length === 0 && missingEvidence.length === 0,
+    ok: missingSurfaces.length === 0 && missingServices.length === 0 && missingSurfaceContracts.length === 0,
     serviceCount: semanticServices.length,
+    requiredServiceCount: requiredServices.length,
+    services,
+    requiredServices,
+    missingServices,
+    missingServiceCount: missingServices.length,
     surfaceCount: semanticSurfaces.length,
+    requiredSurfaceCount: requiredSurfaces.length,
+    surfaces: semanticSurfaces.map((surface) => surface.id),
+    requiredSurfaces,
     missingSurfaces,
-    missingEvidence,
+    missingSurfaceCount: missingSurfaces.length,
+    surfaceContractCount: surfaceContracts.length,
+    requiredSurfaceContractCount: requiredSurfaceContracts.length,
+    surfaceContracts,
+    requiredSurfaceContracts,
+    missingSurfaceContracts,
+    missingSurfaceContractCount: missingSurfaceContracts.length,
   }
 }

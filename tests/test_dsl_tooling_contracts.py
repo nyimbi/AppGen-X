@@ -7412,9 +7412,23 @@ def test_studio_semantic_service_audit_proves_panel_contracts() -> None:
         report["frontend_semantic_surface_contracts"]
     )
     assert report["frontend_semantic_missing_surface_contracts"] == ()
+    assert {
+        "services",
+        "requiredServices",
+        "missingServices",
+        "surfaces",
+        "requiredSurfaces",
+        "missingSurfaces",
+        "surfaceContracts",
+        "requiredSurfaceContracts",
+        "missingSurfaceContracts",
+    } <= set(report["frontend_semantic_required_audit_fields"])
+    assert report["frontend_semantic_missing_audit_fields"] == ()
     assert report["frontend_semantic_missing_service_count"] == 0
     assert report["frontend_semantic_missing_surface_count"] == 0
     assert report["frontend_semantic_missing_surface_contract_count"] == 0
+    assert report["frontend_semantic_missing_audit_field_count"] == 0
+    assert report["frontend_semantic_service_audit"]["checks"]["named_audit_fields"] is True
     assert report["frontend_semantic_service_audit"]["checks"]["panel_renders_services"] is True
     assert report["frontend_semantic_service_audit"]["checks"]["panel_renders_surfaces"] is True
     assert report["frontend_dsl_editor_format"] == "appgen.frontend-dsl-editor-audit.v1"
