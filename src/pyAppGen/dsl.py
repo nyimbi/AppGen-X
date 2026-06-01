@@ -145,6 +145,9 @@ REQUIRED_SYMBOL_KINDS = (
     "handler",
     "flow",
     "flow_state",
+    "human_task",
+    "timer",
+    "compensation",
     "operation",
     "role",
     "permission",
@@ -23541,7 +23544,23 @@ view InvoiceForm for Invoice {
         + "\n",
         encoding="utf-8",
     )
-    flow_path.write_text("flow SubmitInvoice { draft -> reviewed; reviewed -> posted }\n", encoding="utf-8")
+    flow_path.write_text(
+        """
+flow SubmitInvoice {
+  draft -> reviewed
+  reviewed -> posted
+  human Review assigned Accountant -> reviewed
+  timer reviewed "P2D" -> escalated
+  compensate posted -> ReverseInvoice
+}
+
+operation ReverseInvoice {
+  posted -> reversed
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
     rule_path.write_text(
         """
 rule InvoicePolicy for Invoice {
@@ -23624,6 +23643,10 @@ package WebRelease {
             "flow.SubmitInvoice",
             "flow.SubmitInvoice.draft",
             "flow.SubmitInvoice.reviewed",
+            "flow.SubmitInvoice.human.Review",
+            "flow.SubmitInvoice.timer.reviewed",
+            "flow.SubmitInvoice.compensate.posted",
+            "operation.ReverseInvoice",
             "rule.InvoicePolicy",
             "llm.LocalModel",
             "agent.InvoiceAssistant",
@@ -23649,6 +23672,10 @@ package WebRelease {
         "flow.SubmitInvoice": str(flow_path),
         "flow.SubmitInvoice.draft": str(flow_path),
         "flow.SubmitInvoice.reviewed": str(flow_path),
+        "flow.SubmitInvoice.human.Review": str(flow_path),
+        "flow.SubmitInvoice.timer.reviewed": str(flow_path),
+        "flow.SubmitInvoice.compensate.posted": str(flow_path),
+        "operation.ReverseInvoice": str(flow_path),
         "rule.InvoicePolicy": str(rule_path),
         "llm.LocalModel": str(agent_path),
         "agent.InvoiceAssistant": str(agent_path),
@@ -29370,6 +29397,9 @@ view InvoiceForm for Invoice {
 flow SubmitInvoice {
   draft -> reviewed
   reviewed -> posted
+  human Review assigned Accountant -> reviewed
+  timer reviewed "P2D" -> escalated
+  compensate posted -> ReverseInvoice
 }
 
 operation ReverseInvoice {
@@ -29437,6 +29467,9 @@ view InvoiceForm for Invoice {
 flow SubmitInvoice {
   draft -> reviewed
   reviewed -> posted
+  human Review assigned Accountant -> reviewed
+  timer reviewed "P2D" -> escalated
+  compensate posted -> ReverseInvoice
 }
 
 role Clerk {
@@ -31899,6 +31932,9 @@ def _lsp_symbol_kind(kind: str) -> int:
         "handler": 12,
         "flow": 12,
         "flow_state": 13,
+        "human_task": 12,
+        "timer": 13,
+        "compensation": 12,
         "operation": 12,
         "role": 5,
         "permission": 20,
@@ -34870,16 +34906,27 @@ def _estimate_compact_tokens(text: str) -> int:
 def _semantic_symbols(source: str, schema: AppSchema) -> dict:
     symbols: dict[str, dict] = {}
 
-    def add(kind: str, name: str, *, parent: str | None = None, detail: dict | None = None) -> None:
-        symbol_id = f"{kind}.{name}" if parent is None else f"{parent}.{name}"
-        line, column = _locate_symbol_declaration(source, kind, name, parent=parent)
-        symbols[symbol_id] = {
-            "id": symbol_id,
+    def add(
+        kind: str,
+        name: str,
+        *,
+        parent: str | None = None,
+        detail: dict | None = None,
+        symbol_id: str | None = None,
+        lookup_kind: str | None = None,
+        lookup_name: str | None = None,
+        range_token: str | None = None,
+    ) -> None:
+        resolved_symbol_id = symbol_id or (f"{kind}.{name}" if parent is None else f"{parent}.{name}")
+        line, column = _locate_symbol_declaration(source, lookup_kind or kind, lookup_name or name, parent=parent)
+        range_value = range_token or lookup_name or name
+        symbols[resolved_symbol_id] = {
+            "id": resolved_symbol_id,
             "kind": kind,
             "name": name,
             "parent": parent,
             "file": schema.source,
-            "range": _semantic_range(line, column, name),
+            "range": _semantic_range(line, column, range_value),
             "references": (),
             "detail": detail or {},
         }
@@ -34914,6 +34961,10 @@ def _semantic_symbols(source: str, schema: AppSchema) -> dict:
         add("flow", flow.name)
         for state in _flow_states(flow):
             add("flow_state", state, parent=f"flow.{flow.name}")
+        for directive in flow.directives:
+            directive_symbol = _flow_directive_symbol(flow.name, directive)
+            if directive_symbol:
+                add(**directive_symbol)
     for role in schema.roles:
         add("role", role.name)
         for permission in role.permissions:
@@ -34968,6 +35019,11 @@ def _locate_symbol_declaration(source: str, kind: str, name: str, *, parent: str
             match = re.search(rf"\bunit\s+{re.escape(name)}\b", source[span[0] : span[1]])
             if match:
                 return semantic_line_column(span[0] + match.start() + len("unit "))
+    if kind in {"human_task", "timer", "compensation"} and parent and parent.startswith("flow."):
+        flow_name = parent.split(".", 1)[1]
+        located = _locate_flow_directive_token(source, flow_name, kind, name)
+        if located is not None:
+            return semantic_line_column(located)
     top_level_kinds = {
         "app",
         "group",
@@ -35000,6 +35056,67 @@ def _locate_symbol_declaration(source: str, kind: str, name: str, *, parent: str
         if match:
             return semantic_line_column(match.start() + len(kind) + 1)
     return _locate_token(source, name)
+
+
+def _flow_directive_symbol(flow_name: str, directive: EnterpriseStatementSchema) -> dict | None:
+    verb = directive.verb
+    if verb == "human":
+        task_name = directive.values[0] if directive.values else None
+        if not task_name:
+            return None
+        return {
+            "kind": "human_task",
+            "name": task_name,
+            "parent": f"flow.{flow_name}",
+            "symbol_id": f"flow.{flow_name}.human.{task_name}",
+            "lookup_kind": "human_task",
+            "lookup_name": task_name,
+            "range_token": task_name,
+            "detail": _semantic_human_task(directive),
+        }
+    if verb == "timer":
+        state = directive.values[0] if directive.values else None
+        if not state:
+            return None
+        return {
+            "kind": "timer",
+            "name": state,
+            "parent": f"flow.{flow_name}",
+            "symbol_id": f"flow.{flow_name}.timer.{state}",
+            "lookup_kind": "timer",
+            "lookup_name": state,
+            "range_token": state,
+            "detail": _semantic_timer(directive),
+        }
+    if verb == "compensate":
+        state = directive.values[0] if directive.values else None
+        operation = directive.target
+        name = state or operation
+        if not name:
+            return None
+        return {
+            "kind": "compensation",
+            "name": name,
+            "parent": f"flow.{flow_name}",
+            "symbol_id": f"flow.{flow_name}.compensate.{name}",
+            "lookup_kind": "compensation",
+            "lookup_name": name,
+            "range_token": name,
+            "detail": {"state": state, "operation": operation},
+        }
+    return None
+
+
+def _locate_flow_directive_token(source: str, flow_name: str, kind: str, name: str) -> int | None:
+    span = _source_block_span(source, "flow", flow_name)
+    if not span:
+        return None
+    verb = {"human_task": "human", "timer": "timer", "compensation": "compensate"}[kind]
+    body = source[span[0] : span[1]]
+    match = re.search(rf"\b{verb}\s+{re.escape(name)}\b", body)
+    if match:
+        return span[0] + match.start() + len(verb) + 1
+    return None
 
 
 def _permission_symbol_name(permission: PermissionSchema) -> str:

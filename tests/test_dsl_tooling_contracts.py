@@ -2108,6 +2108,8 @@ def test_semantic_model_exposes_spec_contract_for_tables_views_flows_and_pbcs() 
     assert model["tables"]["Invoice"]["lookup_paths"]["customer.name"]["valid"] is True
     assert model["views"]["InvoiceForm"]["components"][0]["binding"] == "customer.name"
     assert model["flows"]["SubmitInvoice"]["human_tasks"][0]["assignee"] == "Accountant"
+    assert model["flows"]["SubmitInvoice"]["timers"][0]["duration"] == "P2D"
+    assert model["flows"]["SubmitInvoice"]["compensations"][0]["operation"] == "ReverseInvoice"
     assert model["composition"]["FinanceSuite"]["includes"][0]["pbc"] == "gl_core"
     assert model["pbcs"]["gl_core"]["catalog_resolved"] is True
     assert "table.Invoice.customer_id" in model["symbols"]
@@ -2159,7 +2161,23 @@ view InvoiceForm for Invoice {
         + "\n",
         encoding="utf-8",
     )
-    flow_path.write_text("flow SubmitInvoice { draft -> reviewed; reviewed -> posted }\n", encoding="utf-8")
+    flow_path.write_text(
+        """
+flow SubmitInvoice {
+  draft -> reviewed
+  reviewed -> posted
+  human Review assigned Accountant -> reviewed
+  timer reviewed "P2D" -> escalated
+  compensate posted -> ReverseInvoice
+}
+
+operation ReverseInvoice {
+  posted -> reversed
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
 
     model = semantic_model_dsl_path(tmp_path)
 
@@ -2178,6 +2196,10 @@ view InvoiceForm for Invoice {
     assert model["symbols"]["table.Invoice"]["file"] == str(invoice_path)
     assert model["symbols"]["view.InvoiceForm"]["file"] == str(form_path)
     assert model["symbols"]["flow.SubmitInvoice"]["file"] == str(flow_path)
+    assert model["symbols"]["flow.SubmitInvoice.human.Review"]["file"] == str(flow_path)
+    assert model["symbols"]["flow.SubmitInvoice.timer.reviewed"]["file"] == str(flow_path)
+    assert model["symbols"]["flow.SubmitInvoice.compensate.posted"]["file"] == str(flow_path)
+    assert model["symbols"]["operation.ReverseInvoice"]["file"] == str(flow_path)
     assert model["source_file_symbol_counts"][str(app_path)] >= 1
     assert model["source_file_symbol_counts"][str(customer_path)] >= 1
     assert model["source_file_symbol_counts"][str(invoice_path)] >= 1
@@ -2210,7 +2232,13 @@ def test_semantic_symbol_coverage_proves_required_nested_symbol_kinds() -> None:
       @ customer.name Lookup 0 0 6 1
       on Save -> SubmitInvoice
     }
-    flow SubmitInvoice { draft -> reviewed; reviewed -> posted }
+    flow SubmitInvoice {
+      draft -> reviewed
+      reviewed -> posted
+      human Review assigned Accountant -> reviewed
+      timer reviewed "P2D" -> escalated
+      compensate posted -> ReverseInvoice
+    }
     role Clerk { Invoice: read, write }
     rule InvoicePolicy for Invoice { id == 1 }
     llm LocalModel { provider: ollama; mode: local }
@@ -2249,7 +2277,13 @@ def test_semantic_symbol_coverage_proves_required_nested_symbol_kinds() -> None:
     assert coverage["counts"]["permission"] >= 3
     assert coverage["counts"]["agent_skill"] >= 2
     assert coverage["counts"]["deployment_unit"] == 1
+    assert coverage["counts"]["human_task"] == 1
+    assert coverage["counts"]["timer"] == 1
+    assert coverage["counts"]["compensation"] == 1
     assert any(symbol["kind"] == "component_binding" and symbol["name"] == "customer.name" for symbol in model["symbols"].values())
+    assert any(symbol["kind"] == "human_task" and symbol["name"] == "Review" for symbol in model["symbols"].values())
+    assert any(symbol["kind"] == "timer" and symbol["name"] == "reviewed" for symbol in model["symbols"].values())
+    assert any(symbol["kind"] == "compensation" and symbol["name"] == "posted" for symbol in model["symbols"].values())
     assert any(symbol["kind"] == "deployment_unit" and symbol["name"] == "SubmitInvoice" for symbol in model["symbols"].values())
 
 
@@ -13635,6 +13669,10 @@ def test_semantic_cli_audit_proves_directory_json_and_text_contracts(tmp_path: P
     assert audit["symbol_files_by_id"]["view.InvoiceForm.customer.name"].endswith("ui/invoice-form.appgen")
     assert audit["symbol_files_by_id"]["view.InvoiceForm.Save"].endswith("ui/invoice-form.appgen")
     assert audit["symbol_files_by_id"]["flow.SubmitInvoice.draft"].endswith("workflow/submit-invoice.appgen")
+    assert audit["symbol_files_by_id"]["flow.SubmitInvoice.human.Review"].endswith("workflow/submit-invoice.appgen")
+    assert audit["symbol_files_by_id"]["flow.SubmitInvoice.timer.reviewed"].endswith("workflow/submit-invoice.appgen")
+    assert audit["symbol_files_by_id"]["flow.SubmitInvoice.compensate.posted"].endswith("workflow/submit-invoice.appgen")
+    assert audit["symbol_files_by_id"]["operation.ReverseInvoice"].endswith("workflow/submit-invoice.appgen")
     assert audit["symbol_files_by_id"]["agent.InvoiceAssistant"].endswith("agents/invoice-assistant.appgen")
     assert audit["symbol_files_by_id"]["agent.InvoiceAssistant.read"].endswith("agents/invoice-assistant.appgen")
     assert audit["symbol_files_by_id"]["agent.InvoiceAssistant.Invoice:read"].endswith("agents/invoice-assistant.appgen")

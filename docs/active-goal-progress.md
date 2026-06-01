@@ -4565,3 +4565,8 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   custom designer, inspector, data tooling, enterprise data IDE, visual design
   IDE, and visual runtime pipeline contracts now validate through the tooling
   schema catalog.
+- Current workflow semantic expansion makes flow internals first-class IDE
+  symbols. Human tasks, escalation timers, and compensation directives now carry
+  owned symbols under their flow, resolve back to the workflow source file in
+  directory-mode semantic audits, appear in symbol coverage, and are documented
+  as navigable outline entries alongside states and transitions.

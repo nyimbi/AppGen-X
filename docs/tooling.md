@@ -167,6 +167,9 @@ Symbol kinds include:
 - `handler`
 - `flow`
 - `flow_state`
+- `human_task`
+- `timer`
+- `compensation`
 - `operation`
 - `role`
 - `permission`
@@ -306,6 +309,15 @@ tasks, timers, compensation, and handler targets.
   "compensations": [{"state": "posted", "operation": "ReverseInvoice"}]
 }
 ```
+
+Workflow internals are first-class symbols. A flow with `human Review assigned
+Accountant -> reviewed`, `timer reviewed "P2D" -> escalated`, and
+`compensate posted -> ReverseInvoice` emits `human_task`, `timer`, and
+`compensation` symbols owned by `flow.SubmitInvoice`, with source ranges scoped
+to the owning flow block. Directory-mode semantic audits require those symbols
+to point back to the workflow file, so large applications can split tables,
+forms, rules, agents, and workflows across files without losing IDE navigation
+or release evidence.
 
 ### PBC And Composition Model
 
@@ -3619,13 +3631,16 @@ Document-symbol outline depth is executable. View symbols include child
 `view_section`, `component_binding`, and `handler` entries so IDE outline trees
 can navigate form layout sections, dropped components, and event wiring without
 reparsing view bodies.
+Flow symbols include child `flow_state`, `human_task`, `timer`, and
+`compensation` entries so workflow designers can navigate transitions, human
+work queues, escalation timers, and rollback logic from the same outline tree.
 Symbol-surface coverage is executable through `appgen.lsp-symbol-coverage.v1`.
 The language service includes this report as `symbolCoverage`, and
 `appgen doctor --json` checks `lsp_symbol_coverage` against a fixture that
-exercises tables, fields, groups, enums, views, handlers, flows, roles,
-permissions, rules, LLMs, agents, PBCs, composition, APIs, events, jobs,
-reports, menus, component contracts, packages, tests, deployments, audits,
-versions, and security blocks.
+exercises tables, fields, groups, enums, views, handlers, flows, workflow
+states, human tasks, timers, compensation, roles, permissions, rules, LLMs,
+agents, PBCs, composition, APIs, events, jobs, reports, menus, component
+contracts, packages, tests, deployments, audits, versions, and security blocks.
 
 Hover depth is executable. Hovering a registered PBC key returns
 `appgen.lsp-pbc-hover.v1` metadata with label, mesh, datastore profile, and
