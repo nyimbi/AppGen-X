@@ -4580,3 +4580,8 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   entries on open/change/save, reuses cached semantic models for document and
   workspace symbols, drops cache entries on close, and exposes hit/miss/revision
   evidence through the LSP audit.
+- Current workflow completion expansion makes flow-authoring snippets executable
+  instead of implicit prose. Completion coverage now requires workflow directive
+  completions, and flow-context LSP filtering exposes `human`, `timer`, and
+  `compensate` while keeping unrelated table/PBC/provider labels out of flow
+  bodies.

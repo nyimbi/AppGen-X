@@ -4132,9 +4132,11 @@ def test_lsp_completion_coverage_proves_required_context_sources() -> None:
     assert service["service_counts"]["completion_missing_source_count"] == 0
     assert coverage["source_label_counts"]["operation_targets"] >= 1
     assert coverage["source_label_counts"]["lookup_paths"] >= 1
+    assert coverage["source_label_counts"]["workflow_directives"] == 3
     assert coverage["source_label_counts"]["pbc_apis"] >= 1
     assert coverage["source_label_counts"]["agent_skills"] >= 1
     assert "SubmitInvoice" in coverage["labels_by_source"]["operation_targets"]
+    assert {"human", "timer", "compensate"} <= set(coverage["labels_by_source"]["workflow_directives"])
     assert "customer.name" in coverage["labels_by_source"]["lookup_paths"]
     assert "Lookup" in coverage["labels_by_source"]["components"]
     assert "gl_core" in coverage["labels_by_source"]["pbc_keys"]
@@ -4213,7 +4215,7 @@ agent Builder { provider: LocalModel; tools: read, schema }
     assert not {"gl_core", "LocalModel", "table"} & view_labels
 
     flow_labels = labels_at("flow SubmitInvoice {\n\n", len("flow SubmitInvoice {\n\n"), "flow")
-    assert {"draft", "posted", "ReverseInvoice"} <= flow_labels
+    assert {"draft", "posted", "ReverseInvoice", "human", "timer", "compensate"} <= flow_labels
     assert not {"gl_core", "LocalModel", "Invoice"} & flow_labels
 
     composition_labels = labels_at("include pbc gl_core", len("include pbc "), "composition")

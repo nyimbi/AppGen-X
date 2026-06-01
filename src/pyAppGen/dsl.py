@@ -104,6 +104,7 @@ REQUIRED_COMPLETION_SOURCES = (
     "handler_events",
     "operation_targets",
     "flow_states",
+    "workflow_directives",
     "pbc_keys",
     "pbc_contracts",
     "pbc_apis",
@@ -494,6 +495,12 @@ def dsl_completion_items(prefix: str = "", *, source: str | None = None) -> tupl
                 items.append({"label": event_name, "insert": event_name, "kind": "handler_event"})
             for target_name in sorted(_handler_target_names(schema)):
                 items.append({"label": target_name, "insert": target_name, "kind": "handler_target"})
+            for directive, insert in (
+                ("human", "human Review assigned Role -> reviewed"),
+                ("timer", 'timer reviewed "P2D" -> escalated'),
+                ("compensate", "compensate posted -> ReverseOperation"),
+            ):
+                items.append({"label": directive, "insert": insert, "kind": "workflow_directive"})
             for flow in schema.flows:
                 for transition in flow.steps:
                     items.append({"label": transition.source, "insert": transition.source, "kind": "flow_state", "detail": flow.name})
@@ -19591,7 +19598,7 @@ agent Builder { provider: LocalModel; tools: read, schema }
         (
             "flow",
             audit_position("flow SubmitInvoice {\n\n", len("flow SubmitInvoice {\n\n")),
-            {"draft", "posted", "ReverseInvoice"},
+            {"draft", "posted", "ReverseInvoice", "human", "timer", "compensate"},
             {"gl_core", "LocalModel", "Invoice"},
         ),
         (
@@ -30745,7 +30752,7 @@ def _lsp_completion_allowed_kinds(context: str) -> frozenset[str] | None:
         "top_level": frozenset({"keyword", "snippet"}),
         "table": frozenset({"field", "reference", "table", "snippet", "table_directive", "field_group"}),
         "view": frozenset({"field", "reference", "lookup_path", "component", "handler_event", "handler_target", "table"}),
-        "flow": frozenset({"flow_state", "handler_target", "flow", "snippet"}),
+        "flow": frozenset({"flow_state", "handler_target", "flow", "snippet", "workflow_directive"}),
         "composition": frozenset({"pbc", "pbc_contract", "pbc_api", "pbc_event", "pbc_command"}),
         "deploy": frozenset({"deployment_unit", "package_target", "snippet"}),
         "agent": frozenset({"llm", "handler_target", "agent_skill"}),
@@ -30801,6 +30808,7 @@ def _completion_source_for_kind(kind: str) -> str | None:
         "handler_target": "operation_targets",
         "flow": "operation_targets",
         "flow_state": "flow_states",
+        "workflow_directive": "workflow_directives",
         "pbc": "pbc_keys",
         "pbc_contract": "pbc_contracts",
         "pbc_api": "pbc_apis",

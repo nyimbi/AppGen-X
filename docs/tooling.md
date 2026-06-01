@@ -3628,7 +3628,7 @@ scenario cannot hide behind aggregate scenario counts.
 | LSP Feature | Required Behavior |
 | --- | --- |
 | `textDocument/didOpen`, `didChange`, `didSave`, and `didClose` | Incrementally parse, rebuild affected semantic model parts, publish diagnostics, and clear diagnostics when a buffer closes. |
-| `textDocument/completion` | Complete keywords, block-local directives, table names, fields, lookup paths, components, handler events, operation targets, flow states, PBC keys, APIs, events, package targets, deployment units, LLM providers, and agent skills. |
+| `textDocument/completion` | Complete keywords, block-local directives, table names, fields, lookup paths, components, handler events, operation targets, flow states, workflow directive snippets, PBC keys, APIs, events, package targets, deployment units, LLM providers, and agent skills. |
 | `textDocument/hover` | Show keyword docs, symbol summary, field type, relationship target, lookup resolution, handler target, PBC catalog metadata, and diagnostic explanation. |
 | `textDocument/definition` | Navigate from references to declarations for fields, tables, views, flows, operations, roles, PBCs, APIs, events, packages, and deployment units. |
 | `textDocument/references` | Find all references across workspace DSL files and generated contract indexes. |
@@ -3737,7 +3737,8 @@ Completions should be context-aware:
   `composition`, `deploy`, `agent`;
 - table body: field snippets, directives, relationship targets, group spreads;
 - view body: table fields, lookup paths, component names, handler snippets;
-- flow body: state names, directive snippets, operation targets;
+- flow body: state names, `human`, `timer`, and `compensate` directive snippets,
+  operation targets;
 - composition body: registered PBC keys, versions, APIs, events, commands;
 - deploy body: declared units, target kinds, health/check/resource snippets;
 - agent body: LLM names, operation targets, permission subjects.
@@ -3746,9 +3747,9 @@ Completion coverage is executable through `appgen.completion-coverage.v1`.
 The language service includes this report as `completionCoverage`, and
 `appgen doctor --json` checks `lsp_completion_coverage` against a fixture that
 exercises keywords, snippets, table names, fields, lookup paths, components,
-handler events, operation targets, flow states, PBC keys, aggregate PBC
-contracts, explicit PBC APIs, PBC events, PBC command-style contracts, package
-targets, deployment units, LLM providers, and agent skills.
+handler events, operation targets, flow states, workflow directive snippets, PBC
+keys, aggregate PBC contracts, explicit PBC APIs, PBC events, PBC command-style
+contracts, package targets, deployment units, LLM providers, and agent skills.
 JSON-RPC completion requests must also report the detected cursor context and
 filter labels to the relevant completion family; top-level, table, view, flow,
 composition, deployment, package, and agent contexts are release-audited
