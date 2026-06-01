@@ -4575,3 +4575,8 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   states, expiry outcomes, and rollback operations, so workflow designers and
   release evidence can render assignments, escalations, and compensations from
   `appgen.graph.workflow.v1` instead of inferring them from raw DSL text.
+- Current LSP cache expansion makes the advertised semantic-cache contract real.
+  The JSON-RPC server now refreshes versioned semantic and diagnostic cache
+  entries on open/change/save, reuses cached semantic models for document and
+  workspace symbols, drops cache entries on close, and exposes hit/miss/revision
+  evidence through the LSP audit.

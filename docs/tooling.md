@@ -3501,6 +3501,13 @@ methods by case, expected/observed result shapes by case, failing cases,
 diagnostic-transition status, and shutdown/exit status. The aggregate transport
 gate requires all of those named gaps to be empty, so the IDE path cannot pass by
 testing isolated requests while the actual editing lifecycle is broken.
+The lifecycle audit also proves the advertised semantic cache. `didOpen`,
+`didChange`, and `didSave` refresh a versioned semantic/diagnostic cache;
+document-symbol and workspace-symbol requests reuse that cached semantic model;
+`didClose` removes the cached document and clears diagnostics. The JSON-RPC
+audit reports cache document, refresh, hit, miss, revision, version, diagnostic,
+and symbol counts, and includes a `semantic_cache_lifecycle` check so the server
+cannot claim `full-document-with-semantic-cache` while only storing raw text.
 It also checks
 `workspace_document_scan_and_rename`, which opens multiple DSL buffers and
 proves definition, references, completion, workspace symbol, and rename

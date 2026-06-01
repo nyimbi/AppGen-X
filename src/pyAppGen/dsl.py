@@ -170,6 +170,8 @@ REQUIRED_SYMBOL_KINDS = (
     "security",
 )
 
+_LSP_WORKSPACE_STATE: dict[int, dict[str, dict]] = {}
+
 
 class AppGenSyntaxError(ValueError):
     """Raised when AppGen DSL parsing fails."""
@@ -19111,6 +19113,7 @@ def _tooling_audit_lsp_json_rpc(source: str, *, broken_handler_source: str) -> d
             bool(open_responses) and open_responses[0]["method"] == "textDocument/publishDiagnostics",
         )
     )
+    open_cache_report = _lsp_cache_report(documents)
 
     change_responses, _ = lsp_server_handle_message(
         {
@@ -19131,6 +19134,7 @@ def _tooling_audit_lsp_json_rpc(source: str, *, broken_handler_source: str) -> d
             and change_responses[0]["method"] == "textDocument/publishDiagnostics",
         )
     )
+    change_cache_report = _lsp_cache_report(documents)
     saved_source = source.replace("Main: customer.name, total", "Main: customer.name")
     if saved_source == source:
         saved_source = source + "\n// saved\n"
@@ -19153,6 +19157,7 @@ def _tooling_audit_lsp_json_rpc(source: str, *, broken_handler_source: str) -> d
             and save_responses[0]["method"] == "textDocument/publishDiagnostics",
         )
     )
+    save_cache_report = _lsp_cache_report(documents)
     close_responses, _ = lsp_server_handle_message(
         {
             "jsonrpc": "2.0",
@@ -19170,6 +19175,7 @@ def _tooling_audit_lsp_json_rpc(source: str, *, broken_handler_source: str) -> d
             and close_responses[0].get("params", {}).get("diagnostics") == (),
         )
     )
+    close_cache_report = _lsp_cache_report(documents)
     lsp_server_handle_message(
         {
             "jsonrpc": "2.0",
@@ -19178,6 +19184,7 @@ def _tooling_audit_lsp_json_rpc(source: str, *, broken_handler_source: str) -> d
         },
         documents,
     )
+    reopen_cache_report = _lsp_cache_report(documents)
 
     request_checks = (
         (
@@ -19281,6 +19288,7 @@ def _tooling_audit_lsp_json_rpc(source: str, *, broken_handler_source: str) -> d
         result = responses[0].get("result") if responses else None
         request_results[name] = result
         checks.append(_release_check(name, bool(responses) and predicate(result)))
+    request_cache_report = _lsp_cache_report(documents)
 
     catalog_pbc_symbol_responses, _ = lsp_server_handle_message(
         {"jsonrpc": "2.0", "id": 25, "method": "workspace/symbol", "params": {"query": "ledger"}},
@@ -19318,6 +19326,35 @@ def _tooling_audit_lsp_json_rpc(source: str, *, broken_handler_source: str) -> d
                 "catalog_pbc_result_count": len(catalog_pbc_matches),
                 "catalog_contract_result_count": len(catalog_contract_matches),
                 "missing_catalog_workspace_queries": missing_catalog_workspace_queries,
+            },
+        )
+    )
+    cache_document = (request_cache_report.get("documents") or ({},))[0]
+    cache_lifecycle_ok = (
+        open_cache_report.get("document_count") == 1
+        and (open_cache_report.get("documents") or ({},))[0].get("version") == 1
+        and change_cache_report.get("refresh_count") >= 2
+        and (change_cache_report.get("documents") or ({},))[0].get("version") == 2
+        and save_cache_report.get("refresh_count") >= 3
+        and (save_cache_report.get("documents") or ({},))[0].get("version") == 3
+        and close_cache_report.get("document_count") == 0
+        and reopen_cache_report.get("document_count") == 1
+        and (reopen_cache_report.get("documents") or ({},))[0].get("version") == 4
+        and request_cache_report.get("hit_count", 0) >= 2
+        and request_cache_report.get("miss_count", 0) >= 1
+        and cache_document.get("semantic_format") == "appgen.semantic-model.v1"
+    )
+    checks.append(
+        _release_check(
+            "semantic_cache_lifecycle",
+            cache_lifecycle_ok,
+            detail={
+                "open": open_cache_report,
+                "change": change_cache_report,
+                "save": save_cache_report,
+                "close": close_cache_report,
+                "reopen": reopen_cache_report,
+                "request": request_cache_report,
             },
         )
     )
@@ -20738,6 +20775,16 @@ operation SubmitInvoice { draft -> posted }
             for item in catalog_pbc_matches
         ),
         "workspace_symbol_catalog_contract_names": tuple(item.get("name") for item in catalog_contract_matches),
+        "semantic_cache": request_cache_report,
+        "semantic_cache_open": open_cache_report,
+        "semantic_cache_change": change_cache_report,
+        "semantic_cache_save": save_cache_report,
+        "semantic_cache_close": close_cache_report,
+        "semantic_cache_reopen": reopen_cache_report,
+        "semantic_cache_hit_count": request_cache_report.get("hit_count"),
+        "semantic_cache_miss_count": request_cache_report.get("miss_count"),
+        "semantic_cache_refresh_count": request_cache_report.get("refresh_count"),
+        "semantic_cache_document_count": request_cache_report.get("document_count"),
         "definition_context_expected_lines": definition_expected_lines,
         "definition_context_observed_lines": definition_observed_lines,
         "definition_context_matches": definition_context_matches,
@@ -30240,7 +30287,8 @@ def lsp_server_handle_message(message: dict, documents: dict[str, str] | None = 
         text_document = params.get("textDocument") or {}
         uri = text_document.get("uri") or source_uri or "memory://appgen"
         docs[uri] = text_document.get("text", "")
-        responses.append(_lsp_publish_diagnostics_notification(uri, docs[uri]))
+        _lsp_refresh_document_cache(docs, uri, docs[uri], version=text_document.get("version"), reason="open")
+        responses.append(_lsp_publish_diagnostics_notification(uri, docs[uri], docs))
         return tuple(responses), False
     if method == "textDocument/didChange":
         text_document = params.get("textDocument") or {}
@@ -30248,19 +30296,22 @@ def lsp_server_handle_message(message: dict, documents: dict[str, str] | None = 
         changes = params.get("contentChanges") or ()
         if changes:
             docs[uri] = changes[-1].get("text", docs.get(uri, ""))
-        responses.append(_lsp_publish_diagnostics_notification(uri, docs.get(uri, "")))
+        _lsp_refresh_document_cache(docs, uri, docs.get(uri, ""), version=text_document.get("version"), reason="change")
+        responses.append(_lsp_publish_diagnostics_notification(uri, docs.get(uri, ""), docs))
         return tuple(responses), False
     if method == "textDocument/didSave":
         text_document = params.get("textDocument") or {}
         uri = text_document.get("uri") or source_uri or "memory://appgen"
         if isinstance(params.get("text"), str):
             docs[uri] = params["text"]
-        responses.append(_lsp_publish_diagnostics_notification(uri, docs.get(uri, "")))
+        _lsp_refresh_document_cache(docs, uri, docs.get(uri, ""), version=text_document.get("version"), reason="save")
+        responses.append(_lsp_publish_diagnostics_notification(uri, docs.get(uri, ""), docs))
         return tuple(responses), False
     if method == "textDocument/didClose":
         text_document = params.get("textDocument") or {}
         uri = text_document.get("uri") or source_uri or "memory://appgen"
         docs.pop(uri, None)
+        _lsp_drop_document_cache(docs, uri)
         responses.append(
             {
                 "jsonrpc": "2.0",
@@ -30313,7 +30364,8 @@ def lsp_server_handle_message(message: dict, documents: dict[str, str] | None = 
         result = lsp_references_dsl_documents(docs, source_uri=source_uri, position=position)
         responses.append(_lsp_rpc_result(request_id, result["locations"]))
     elif method == "textDocument/documentSymbol":
-        result = lsp_document_symbols_dsl(source, source_name=source_uri)
+        semantic = _lsp_cached_semantic_model(docs, source_uri, source)
+        result = _lsp_document_symbols_from_semantic(semantic)
         responses.append(_lsp_rpc_result(request_id, result["symbols"]))
     elif method == "textDocument/codeAction":
         result = lsp_code_actions_dsl(source, source_name=source_uri)
@@ -30403,12 +30455,107 @@ def _lsp_document_source(uri: str | None, documents: dict[str, str]) -> str:
     return ""
 
 
-def _lsp_publish_diagnostics_notification(uri: str, source: str) -> dict:
+def _lsp_workspace_cache(documents: dict[str, str]) -> dict[str, dict]:
+    return _LSP_WORKSPACE_STATE.setdefault(id(documents), {})
+
+
+def _lsp_refresh_document_cache(
+    documents: dict[str, str],
+    uri: str,
+    source: str,
+    *,
+    version: int | None = None,
+    reason: str,
+) -> dict:
+    cache = _lsp_workspace_cache(documents)
+    previous = cache.get(uri, {})
+    semantic = semantic_model_dsl(source, source_name=uri)
     diagnostics = lsp_diagnostics_dsl(source, source_name=uri)
+    state = {
+        "uri": uri,
+        "version": version,
+        "text": source,
+        "semantic": semantic,
+        "diagnostics": diagnostics,
+        "revision": int(previous.get("revision", 0) or 0) + 1,
+        "refresh_count": int(previous.get("refresh_count", 0) or 0) + 1,
+        "hit_count": int(previous.get("hit_count", 0) or 0),
+        "miss_count": int(previous.get("miss_count", 0) or 0) + 1,
+        "last_reason": reason,
+        "semantic_format": semantic.get("format"),
+        "diagnostic_count": len(diagnostics.get("diagnostics", ())),
+        "symbol_count": len(semantic.get("symbols", {})),
+    }
+    cache[uri] = state
+    return state
+
+
+def _lsp_cached_semantic_model(documents: dict[str, str], uri: str | None, source: str) -> dict:
+    if not uri:
+        return semantic_model_dsl(source)
+    cache = _lsp_workspace_cache(documents)
+    state = cache.get(uri)
+    if state and state.get("text") == source:
+        state["hit_count"] = int(state.get("hit_count", 0) or 0) + 1
+        return state["semantic"]
+    return _lsp_refresh_document_cache(documents, uri, source, version=None, reason="request")["semantic"]
+
+
+def _lsp_cached_diagnostics(documents: dict[str, str], uri: str, source: str) -> dict:
+    cache = _lsp_workspace_cache(documents)
+    state = cache.get(uri)
+    if state and state.get("text") == source:
+        state["hit_count"] = int(state.get("hit_count", 0) or 0) + 1
+        return state["diagnostics"]
+    return _lsp_refresh_document_cache(documents, uri, source, version=None, reason="diagnostics")["diagnostics"]
+
+
+def _lsp_drop_document_cache(documents: dict[str, str], uri: str) -> None:
+    cache = _lsp_workspace_cache(documents)
+    cache.pop(uri, None)
+    if not cache and not documents:
+        _LSP_WORKSPACE_STATE.pop(id(documents), None)
+
+
+def _lsp_cache_report(documents: dict[str, str]) -> dict:
+    document_reports = tuple(
+        {
+            "uri": uri,
+            "version": state.get("version"),
+            "revision": state.get("revision"),
+            "refresh_count": state.get("refresh_count"),
+            "hit_count": state.get("hit_count"),
+            "miss_count": state.get("miss_count"),
+            "last_reason": state.get("last_reason"),
+            "semantic_format": state.get("semantic_format"),
+            "diagnostic_count": state.get("diagnostic_count"),
+            "symbol_count": state.get("symbol_count"),
+        }
+        for uri, state in sorted(_lsp_workspace_cache(documents).items())
+    )
+    return {
+        "enabled": True,
+        "document_count": len(document_reports),
+        "uris": tuple(item["uri"] for item in document_reports),
+        "refresh_count": sum(int(item.get("refresh_count", 0) or 0) for item in document_reports),
+        "hit_count": sum(int(item.get("hit_count", 0) or 0) for item in document_reports),
+        "miss_count": sum(int(item.get("miss_count", 0) or 0) for item in document_reports),
+        "documents": document_reports,
+    }
+
+
+def _lsp_publish_diagnostics_notification(uri: str, source: str, documents: dict[str, str] | None = None) -> dict:
+    diagnostics = _lsp_cached_diagnostics(documents, uri, source) if documents is not None else lsp_diagnostics_dsl(source, source_name=uri)
+    state = _lsp_workspace_cache(documents).get(uri, {}) if documents is not None else {}
     return {
         "jsonrpc": "2.0",
         "method": "textDocument/publishDiagnostics",
-        "params": {"uri": uri, "diagnostics": diagnostics["diagnostics"]},
+        "params": {
+            "uri": uri,
+            "version": state.get("version"),
+            "diagnostics": diagnostics["diagnostics"],
+            "cache": {"revision": state.get("revision"), "hit_count": state.get("hit_count")},
+        },
     }
 
 
@@ -30981,6 +31128,10 @@ def lsp_references_dsl_documents(
 
 def lsp_document_symbols_dsl(text: str, *, source_name: str | None = None) -> dict:
     semantic = semantic_model_dsl(text, source_name=source_name)
+    return _lsp_document_symbols_from_semantic(semantic)
+
+
+def _lsp_document_symbols_from_semantic(semantic: dict) -> dict:
     symbols = []
     for symbol in semantic.get("symbols", {}).values():
         parent = symbol.get("parent")
@@ -31022,7 +31173,7 @@ def lsp_workspace_symbols_dsl_documents(documents: dict[str, str], *, query: str
     symbols: list[dict] = []
     models: list[dict] = []
     for uri, source in documents.items():
-        semantic = semantic_model_dsl(source, source_name=uri)
+        semantic = _lsp_cached_semantic_model(documents, uri, source)
         models.append(semantic)
         symbols.extend(
             {

@@ -3938,6 +3938,16 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     assert audit["method_contracts"]["textDocument/prepareRename"]["provider"] == "renameProvider.prepareProvider"
     assert audit["method_contracts"]["textDocument/codeAction"]["check"] == "code_action_request"
     assert audit["method_contracts"]["textDocument/formatting"]["check"] == "formatting_request"
+    assert audit["semantic_cache_document_count"] == 1
+    assert audit["semantic_cache_hit_count"] >= 2
+    assert audit["semantic_cache_miss_count"] >= 1
+    assert audit["semantic_cache_refresh_count"] >= 1
+    assert audit["semantic_cache_open"]["documents"][0]["version"] == 1
+    assert audit["semantic_cache_change"]["documents"][0]["version"] == 2
+    assert audit["semantic_cache_save"]["documents"][0]["version"] == 3
+    assert audit["semantic_cache_close"]["document_count"] == 0
+    assert audit["semantic_cache_reopen"]["documents"][0]["version"] == 4
+    assert any(check["check"] == "semantic_cache_lifecycle" and check["ok"] for check in audit["checks"])
     assert audit["editor_workflow_case_count"] == 17
     assert audit["editor_workflow_passing_case_count"] == audit["editor_workflow_case_count"]
     assert audit["editor_workflow_failing_case_count"] == 0
