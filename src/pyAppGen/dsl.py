@@ -28888,16 +28888,75 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
     }
     with tempfile.TemporaryDirectory(prefix="appgen-entrypoint-audit-") as tmp:
         source_path = Path(tmp) / "entrypoint.appgen"
-        source_path.write_text("app EntryPoint { targets: web }\ntable Thing { id: int pk }\n", encoding="utf-8")
-        module_lint = subprocess.run(
-            [sys.executable, "-m", "pyAppGen", "lint", str(source_path), "--json"],
-            check=False,
-            cwd=root,
-            text=True,
-            capture_output=True,
-            timeout=10,
+        source_text = "app EntryPoint { targets: web }\ntable Thing { id: int pk }\n"
+        source_path.write_text(source_text, encoding="utf-8")
+        semantic_path = Path(tmp) / "semantic.json"
+        semantic_path.write_text(
+            json.dumps(semantic_model_dsl(source_text, source_name=str(source_path)), default=list),
+            encoding="utf-8",
         )
         repo_alias_path = root / "apg"
+
+        def run_entrypoint_case(entrypoint: str, args: tuple[str, ...]) -> subprocess.CompletedProcess:
+            if entrypoint == "python_module":
+                command = [sys.executable, "-m", "pyAppGen", *args]
+            elif repo_alias_path.exists():
+                command = [str(repo_alias_path), *args]
+            else:
+                return subprocess.CompletedProcess(
+                    [str(repo_alias_path), *args],
+                    127,
+                    "",
+                    "missing executable",
+                )
+            return subprocess.run(
+                command,
+                check=False,
+                cwd=root,
+                text=True,
+                capture_output=True,
+                timeout=10,
+            )
+
+        entrypoint_case_specs = (
+            ("lint", ("lint", str(source_path), "--json"), "appgen.lint-report.v1"),
+            ("contract_schema", ("contract-schema", "--json"), "appgen.contract-schema-catalog.v1"),
+            (
+                "contract_validate",
+                ("contract-validate", str(semantic_path), "--format", "appgen.semantic-model.v1", "--json"),
+                "appgen.contract-validation-report.v1",
+            ),
+            ("lsp", ("lsp", str(source_path), "--json"), "appgen.lsp-service.v1"),
+        )
+        entrypoint_case_results = []
+        for case_id, case_args, expected_format in entrypoint_case_specs:
+            for entrypoint_id in ("python_module", "repo_alias"):
+                process = run_entrypoint_case(entrypoint_id, case_args)
+                try:
+                    payload = json.loads(process.stdout)
+                except json.JSONDecodeError:
+                    payload = {}
+                entrypoint_case_results.append(
+                    {
+                        "id": f"{entrypoint_id}:{case_id}",
+                        "entrypoint": entrypoint_id,
+                        "case": case_id,
+                        "args": case_args,
+                        "expected_format": expected_format,
+                        "exit_code": process.returncode,
+                        "payload_format": payload.get("format"),
+                        "traceback_free": "Traceback" not in process.stderr,
+                        "ok": process.returncode == 0
+                        and payload.get("format") == expected_format
+                        and "Traceback" not in process.stderr,
+                    }
+                )
+        module_lint_result = next(
+            result for result in entrypoint_case_results if result["id"] == "python_module:lint"
+        )
+        repo_alias_lint_result = next(
+            result for result in entrypoint_case_results if result["id"] == "repo_alias:lint"
+        )
         if repo_alias_path.exists():
             repo_alias_lint = subprocess.run(
                 [str(repo_alias_path), "lint", str(source_path), "--json"],
@@ -28914,14 +28973,18 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
                 "",
                 "missing executable",
             )
-    try:
-        module_lint_payload = json.loads(module_lint.stdout)
-    except json.JSONDecodeError:
-        module_lint_payload = {}
+    module_lint_payload = {"format": module_lint_result["payload_format"]}
     try:
         repo_alias_lint_payload = json.loads(repo_alias_lint.stdout)
     except json.JSONDecodeError:
         repo_alias_lint_payload = {}
+    entrypoint_case_count = len(entrypoint_case_results)
+    passing_entrypoint_case_count = sum(1 for result in entrypoint_case_results if result["ok"])
+    failing_entrypoint_case_ids = tuple(result["id"] for result in entrypoint_case_results if not result["ok"])
+    entrypoint_case_payload_formats_by_id = {
+        result["id"]: result["payload_format"] for result in entrypoint_case_results
+    }
+    entrypoint_case_exit_codes_by_id = {result["id"]: result["exit_code"] for result in entrypoint_case_results}
     required_entrypoint_ids = ("python_module", "repo_alias")
     expected_entrypoint_exit_codes_by_id = {entrypoint_id: 0 for entrypoint_id in required_entrypoint_ids}
     expected_entrypoint_payload_formats_by_id = {
@@ -28932,16 +28995,16 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         "repo_alias": repo_alias_path.exists(),
     }
     entrypoint_exit_codes_by_id = {
-        "python_module": module_lint.returncode,
-        "repo_alias": repo_alias_lint.returncode,
+        "python_module": module_lint_result["exit_code"],
+        "repo_alias": repo_alias_lint_result["exit_code"],
     }
     entrypoint_payload_formats_by_id = {
         "python_module": module_lint_payload.get("format"),
         "repo_alias": repo_alias_lint_payload.get("format"),
     }
     entrypoint_traceback_free_by_id = {
-        "python_module": "Traceback" not in module_lint.stderr,
-        "repo_alias": "Traceback" not in repo_alias_lint.stderr,
+        "python_module": module_lint_result["traceback_free"],
+        "repo_alias": repo_alias_lint_result["traceback_free"],
     }
     observed_entrypoint_ids = tuple(
         entrypoint_id for entrypoint_id in required_entrypoint_ids if entrypoint_declared_by_id.get(entrypoint_id) is True
@@ -28988,13 +29051,21 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         and subcommand_option_help_ok
         and alias_contract["ok"]
         and module_dispatches_tooling
-        and repo_alias_dispatches_tooling,
+        and repo_alias_dispatches_tooling
+        and passing_entrypoint_case_count == entrypoint_case_count,
         "alias_declared": alias_declared,
         "command_alias_count": len(alias_contract["commands"]),
         "entrypoint_dispatch_count": sum(1 for ok in (module_dispatches_tooling, repo_alias_dispatches_tooling) if ok),
         "failing_entrypoint_dispatch_count": sum(
             1 for ok in (module_dispatches_tooling, repo_alias_dispatches_tooling) if not ok
         ),
+        "entrypoint_case_count": entrypoint_case_count,
+        "passing_entrypoint_case_count": passing_entrypoint_case_count,
+        "failing_entrypoint_case_count": entrypoint_case_count - passing_entrypoint_case_count,
+        "failing_entrypoint_case_ids": failing_entrypoint_case_ids,
+        "entrypoint_case_payload_formats_by_id": entrypoint_case_payload_formats_by_id,
+        "entrypoint_case_exit_codes_by_id": entrypoint_case_exit_codes_by_id,
+        "entrypoint_cases": tuple(entrypoint_case_results),
         "required_entrypoint_ids": required_entrypoint_ids,
         "observed_entrypoint_ids": observed_entrypoint_ids,
         "missing_entrypoint_ids": missing_entrypoint_ids,
@@ -29061,17 +29132,17 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         "subcommand_option_help": option_help,
         "module_entrypoint": {
             "ok": module_dispatches_tooling,
-            "exit_code": module_lint.returncode,
+            "exit_code": module_lint_result["exit_code"],
             "payload_format": module_lint_payload.get("format"),
-            "traceback_free": "Traceback" not in module_lint.stderr,
+            "traceback_free": module_lint_result["traceback_free"],
         },
         "repo_alias_command": {
             "ok": repo_alias_dispatches_tooling,
             "path": "apg",
             "exists": repo_alias_path.exists(),
-            "exit_code": repo_alias_lint.returncode,
+            "exit_code": repo_alias_lint_result["exit_code"],
             "payload_format": repo_alias_lint_payload.get("format"),
-            "traceback_free": "Traceback" not in repo_alias_lint.stderr,
+            "traceback_free": repo_alias_lint_result["traceback_free"],
         },
         "subcommands_documented": required_subcommands if help_has_subcommands else tuple(command for command in required_subcommands if command in entrypoint),
         "required_subcommands": required_subcommands,

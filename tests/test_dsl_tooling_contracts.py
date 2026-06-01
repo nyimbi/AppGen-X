@@ -13565,6 +13565,7 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert "component-publish, pbc, designer-sync" in normalized_help
     assert "diagnostics, parser-golden, module-boundaries, non-goals, test-strategy" in normalized_help
     assert "dsl-quality, dsl-antlr, dsl-authoring-gate, dsl-language-service" in normalized_help
+    assert "contract-schema, contract-validate, runtime-contracts" in normalized_help
     assert "runtime-contracts, drift, doctor, contributor-tasks, priority-order" in normalized_help
     assert "implementation-phases, tooling-docs, and tooling-audit" in normalized_help
     assert "apg =" in pyproject
@@ -13597,6 +13598,16 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert audit["entrypoint_traceback_free_by_id"] == {"python_module": True, "repo_alias": True}
     assert audit["missing_entrypoint_traceback_free_ids"] == ()
     assert audit["missing_entrypoint_traceback_free_count"] == 0
+    assert audit["entrypoint_case_count"] == 8
+    assert audit["passing_entrypoint_case_count"] == audit["entrypoint_case_count"]
+    assert audit["failing_entrypoint_case_count"] == 0
+    assert audit["failing_entrypoint_case_ids"] == ()
+    assert audit["entrypoint_case_payload_formats_by_id"]["python_module:contract_schema"] == "appgen.contract-schema-catalog.v1"
+    assert audit["entrypoint_case_payload_formats_by_id"]["repo_alias:contract_schema"] == "appgen.contract-schema-catalog.v1"
+    assert audit["entrypoint_case_payload_formats_by_id"]["python_module:contract_validate"] == "appgen.contract-validation-report.v1"
+    assert audit["entrypoint_case_payload_formats_by_id"]["repo_alias:contract_validate"] == "appgen.contract-validation-report.v1"
+    assert audit["entrypoint_case_payload_formats_by_id"]["python_module:lsp"] == "appgen.lsp-service.v1"
+    assert audit["entrypoint_case_payload_formats_by_id"]["repo_alias:lsp"] == "appgen.lsp-service.v1"
     assert audit["alias_contract"]["format"] == "appgen.cli-alias-contract.v1"
     assert audit["alias_contract"]["ok"] is True
     assert audit["alias_contract"]["commands"] == ("appgen", "apg")

@@ -672,6 +672,11 @@ entrypoint must emit `appgen.lint-report.v1`, every entrypoint must be
 traceback-free, and
 `passing_option_surface_count` must equal `subcommand_option_surface_count`,
 before the CLI help surface is considered tooling-complete.
+The same audit also runs a breadth matrix across the module entrypoint and
+repo-local alias for `lint`, `contract-schema`, `contract-validate`, and `lsp`;
+every case must return the expected machine contract and no traceback, which
+prevents newly added parser subcommands from existing only behind one command
+path.
 `appgen.missing-required-option-exit-audit.v1` covers required command options,
 including generator output directories, natural-language prompts, and component
 publication names, plus the required `appgen explain` selector family

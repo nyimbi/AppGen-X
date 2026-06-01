@@ -4589,3 +4589,8 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   checks executable. Strict flows now reject unknown human-task assignees,
   invalid timer durations, and compensation targets that do not resolve to
   operations or flows, with dedicated AGX0603-AGX0605 diagnostic fixtures.
+- Current CLI entrypoint expansion closes a command-surface drift gap. The
+  `python -m pyAppGen` entrypoint and repo-local `./apg` alias now dispatch
+  `contract-schema` and `contract-validate`, and the CLI help audit verifies
+  lint, contract-schema, contract-validate, and LSP payloads through both
+  entrypoints.

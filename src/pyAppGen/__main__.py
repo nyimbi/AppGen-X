@@ -30,6 +30,8 @@ _TOOLING_SUBCOMMANDS = {
     "dsl-antlr",
     "dsl-authoring-gate",
     "dsl-language-service",
+    "contract-schema",
+    "contract-validate",
     "runtime-contracts",
     "drift",
     "doctor",
@@ -53,8 +55,9 @@ Tooling subcommands are also available:
   migration-plan, nl-plan, lsp, verify, package, component-publish, pbc, designer-sync,
   diagnostics, parser-golden, module-boundaries, non-goals, test-strategy,
   dsl-quality, dsl-antlr, dsl-authoring-gate, dsl-language-service,
-  runtime-contracts, drift, doctor, contributor-tasks, priority-order,
-  implementation-phases, tooling-docs, and tooling-audit
+  contract-schema, contract-validate, runtime-contracts, drift, doctor,
+  contributor-tasks, priority-order, implementation-phases, tooling-docs,
+  and tooling-audit
 
 The platform supports visual drag-and-drop form design, database design,
 workflow design, PBC composition, packaging, and release evidence.
