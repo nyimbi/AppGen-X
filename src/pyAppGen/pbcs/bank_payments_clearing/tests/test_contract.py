@@ -39,6 +39,9 @@ def test_generated_schema_service_and_release_evidence():
     assert database_model_contract()["ok"] is True
     assert SERVICE_CONTRACT["pbc"] == PBC_KEY
     assert SERVICE_CONTRACT["ok"] is True
+    assert SERVICE_CONTRACT["command_methods"]
+    assert SERVICE_CONTRACT["query_methods"]
+    assert SERVICE_CONTRACT["shared_table_access"] is False
     assert validate_service_contract()["ok"] is True
     assert release_evidence.build_release_evidence()["ok"] is True
     assert release_evidence.validate_release_evidence()["ok"] is True

@@ -25,8 +25,12 @@ from pyAppGen.pbcs.advertising_campaign_operations.workflows import workflow_cat
 
 
 def test_schema_service_and_release_evidence_are_executable():
+    service_contract = build_service_contract()
     assert build_schema_contract()["ok"] is True
-    assert build_service_contract()["ok"] is True
+    assert service_contract["ok"] is True
+    assert service_contract["command_methods"]
+    assert service_contract["query_methods"]
+    assert service_contract["shared_table_access"] is False
     assert build_release_evidence()["ok"] is True
     assert release_readiness_manifest()["ok"] is True
     assert validate_release_evidence()["ok"] is True

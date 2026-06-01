@@ -18,6 +18,8 @@ def build_service_contract() -> dict:
         "service_class": manifest["service_class"],
         "command_operations": manifest["command_operations"],
         "query_operations": manifest["query_operations"],
+        "command_methods": tuple(manifest["command_operations"]),
+        "query_methods": tuple(manifest["query_operations"]),
         "workflow_operations": manifest["workflow_operations"],
         "contracts": contracts["contracts"],
         "event_contract": manifest["event_contract"],
