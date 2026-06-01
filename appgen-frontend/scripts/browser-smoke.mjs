@@ -179,7 +179,7 @@ async function main() {
     {
       id: 'interaction_audit_bridge',
       path: '/',
-      includes: ['Interactions', '10 checks', 'Device APIs', 'Data Services', 'Editors'],
+      includes: ['Interactions', '10 checks', 'Device APIs', 'Data Services', 'Editors', 'operational runbook package'],
     },
     {
       id: 'device_palette_filter',

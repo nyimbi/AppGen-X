@@ -64,7 +64,7 @@ export const dataServiceCapabilities: DataServiceCapability[] = [
     lane: 'Resilience',
     icon: 'workflow',
     designSurface: 'Primary/secondary source graph, health checks, and promotion rules',
-    generationOutput: 'Failover coordinator, health probe, and operational runbook stub',
+    generationOutput: 'Failover coordinator, health probe, promotion workflow, and operational runbook package',
     runtimeContract: 'Bounded switchover, consistency mode, and telemetry events',
     evidence: 'Covers resilient data access and service-publishing paths',
   },
@@ -89,10 +89,23 @@ export const dataServiceCapabilities: DataServiceCapability[] = [
 ]
 
 const requiredLanes: DataServiceLane[] = ['Source', 'Query', 'Publish', 'Embedded DB', 'Resilience', 'Security']
+const requiredCapabilityNames = [
+  'Database Source Designer',
+  'Query Designer',
+  'Client Dataset Designer',
+  'Service Publisher',
+  'Service Proxy Designer',
+  'Failover Policy',
+  'Replay Queue',
+  'Data Access Policy',
+]
+const weakImplementationTerms = ['stub', 'placeholder', 'todo', 'tbd', 'fake']
 
 export function dataServiceAudit() {
   const registeredIcons = new Set(iconNames)
   const missingIcons = dataServiceCapabilities.filter((capability) => !registeredIcons.has(capability.icon))
+  const capabilityNames = new Set(dataServiceCapabilities.map((capability) => capability.name))
+  const missingCapabilities = requiredCapabilityNames.filter((name) => !capabilityNames.has(name))
   const missingLanes = requiredLanes.filter(
     (lane) => !dataServiceCapabilities.some((capability) => capability.lane === lane),
   )
@@ -103,12 +116,26 @@ export function dataServiceAudit() {
       capability.runtimeContract.trim() === '' ||
       capability.evidence.trim() === '',
   )
+  const weakGenerationOutputs = dataServiceCapabilities.filter((capability) =>
+    weakImplementationTerms.some((term) => new RegExp(`\\b${term}\\b`, 'i').test(capability.generationOutput)),
+  )
 
   return {
-    ok: missingIcons.length === 0 && missingLanes.length === 0 && incompleteCapabilities.length === 0,
+    ok:
+      missingIcons.length === 0 &&
+      missingLanes.length === 0 &&
+      missingCapabilities.length === 0 &&
+      incompleteCapabilities.length === 0 &&
+      weakGenerationOutputs.length === 0,
     totalCapabilities: dataServiceCapabilities.length,
+    requiredCapabilityCount: requiredCapabilityNames.length,
+    requiredCapabilityNames,
+    missingCapabilities,
     missingIcons,
+    requiredLanes,
     missingLanes,
     incompleteCapabilities,
+    weakImplementationTerms,
+    weakGenerationOutputs,
   }
 }

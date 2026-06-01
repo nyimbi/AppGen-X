@@ -278,6 +278,7 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
     semantic_panel = frontend / "src" / "SemanticServicePanel.tsx"
     dsl_editor_catalog = frontend / "src" / "dslEditorCatalog.ts"
     dsl_editor_workbench = frontend / "src" / "DslEditorWorkbench.tsx"
+    data_service_catalog = frontend / "src" / "dataServiceCatalog.ts"
     interaction_audit = frontend / "src" / "interactionAudit.ts"
     workflow_path = root / ".github" / "workflows" / "studio-browser-smoke.yml"
     package = {}
@@ -288,10 +289,12 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
     semantic_panel_text = semantic_panel.read_text(encoding="utf-8") if semantic_panel.exists() else ""
     dsl_editor_catalog_text = dsl_editor_catalog.read_text(encoding="utf-8") if dsl_editor_catalog.exists() else ""
     dsl_editor_workbench_text = dsl_editor_workbench.read_text(encoding="utf-8") if dsl_editor_workbench.exists() else ""
+    data_service_catalog_text = data_service_catalog.read_text(encoding="utf-8") if data_service_catalog.exists() else ""
     interaction_audit_text = interaction_audit.read_text(encoding="utf-8") if interaction_audit.exists() else ""
     workflow_text = workflow_path.read_text(encoding="utf-8") if workflow_path.exists() else ""
     frontend_semantic = _frontend_semantic_service_audit(semantic_contract_text, semantic_panel_text)
     frontend_dsl_editor = _frontend_dsl_editor_audit(dsl_editor_catalog_text, dsl_editor_workbench_text)
+    frontend_data_service = _frontend_data_service_audit(data_service_catalog_text)
     frontend_interaction = _frontend_interaction_audit(interaction_audit_text)
     expected_interaction_count_text = f"{frontend_interaction.get('required_scenario_count', 0)} checks"
     scenarios = (
@@ -342,6 +345,10 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
             "ok": dsl_editor_catalog.exists() and dsl_editor_workbench.exists() and frontend_dsl_editor["ok"],
         },
         {
+            "id": "frontend_data_service_catalog_depth",
+            "ok": data_service_catalog.exists() and frontend_data_service["ok"],
+        },
+        {
             "id": "frontend_interaction_audit_bridge",
             "ok": interaction_audit.exists() and frontend_interaction["ok"],
         },
@@ -357,9 +364,11 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
         "semantic_panel": str(semantic_panel),
         "dsl_editor_catalog": str(dsl_editor_catalog),
         "dsl_editor_workbench": str(dsl_editor_workbench),
+        "data_service_catalog": str(data_service_catalog),
         "interaction_audit": str(interaction_audit),
         "frontend_semantic_service_audit": frontend_semantic,
         "frontend_dsl_editor_audit": frontend_dsl_editor,
+        "frontend_data_service_audit": frontend_data_service,
         "frontend_interaction_audit": frontend_interaction,
         "expected_interaction_count_text": expected_interaction_count_text,
         "interaction_count_text_present": expected_interaction_count_text in script_text,
@@ -450,6 +459,78 @@ def _frontend_dsl_editor_audit(catalog_text: str, workbench_text: str) -> dict:
         "missingWorkbenchMarkers": missing_workbench_markers,
         "missingCatalogHelperCount": len(missing_catalog_helpers),
         "missingWorkbenchMarkerCount": len(missing_workbench_markers),
+    }
+
+
+def _frontend_data_service_audit(catalog_text: str) -> dict:
+    """Return static evidence that the frontend data-service workbench is implementation-ready."""
+    required_capabilities = (
+        "Database Source Designer",
+        "Query Designer",
+        "Client Dataset Designer",
+        "Service Publisher",
+        "Service Proxy Designer",
+        "Failover Policy",
+        "Replay Queue",
+        "Data Access Policy",
+    )
+    required_lanes = ("Source", "Query", "Publish", "Embedded DB", "Resilience", "Security")
+    required_audit_fields = (
+        "requiredCapabilityNames",
+        "missingCapabilities",
+        "requiredLanes",
+        "missingLanes",
+        "weakImplementationTerms",
+        "weakGenerationOutputs",
+    )
+    weak_terms = ("stub", "placeholder", "todo", "tbd", "fake")
+    observed_capabilities = tuple(name for name in required_capabilities if name in catalog_text)
+    observed_lanes = tuple(lane for lane in required_lanes if f"'{lane}'" in catalog_text)
+    observed_audit_fields = tuple(field for field in required_audit_fields if field in catalog_text)
+    missing_capabilities = tuple(name for name in required_capabilities if name not in observed_capabilities)
+    missing_lanes = tuple(lane for lane in required_lanes if lane not in observed_lanes)
+    missing_audit_fields = tuple(field for field in required_audit_fields if field not in observed_audit_fields)
+    generation_outputs = tuple(
+        match.group(1)
+        for match in re.finditer(r"generationOutput:\s*'([^']*)'", catalog_text)
+    )
+    weak_term_hits = tuple(
+        term
+        for term in weak_terms
+        if any(re.search(rf"\b{re.escape(term)}\b", output, flags=re.IGNORECASE) for output in generation_outputs)
+    )
+    checks = {
+        "required_capabilities": not missing_capabilities,
+        "required_lanes": not missing_lanes,
+        "named_audit_fields": not missing_audit_fields,
+        "no_weak_generation_language": not weak_term_hits,
+        "failover_runtime_output": "promotion workflow" in catalog_text and "operational runbook package" in catalog_text,
+    }
+    return {
+        "format": "appgen.frontend-data-service-catalog-audit.v1",
+        "ok": all(checks.values()),
+        "checks": checks,
+        "capability_count": len(observed_capabilities),
+        "required_capability_count": len(required_capabilities),
+        "capabilities": observed_capabilities,
+        "required_capabilities": required_capabilities,
+        "missing_capability_count": len(missing_capabilities),
+        "missing_capabilities": missing_capabilities,
+        "lane_count": len(observed_lanes),
+        "required_lane_count": len(required_lanes),
+        "lanes": observed_lanes,
+        "required_lanes": required_lanes,
+        "missing_lane_count": len(missing_lanes),
+        "missing_lanes": missing_lanes,
+        "required_audit_fields": required_audit_fields,
+        "audit_fields": observed_audit_fields,
+        "missing_audit_field_count": len(missing_audit_fields),
+        "missing_audit_fields": missing_audit_fields,
+        "weak_terms": weak_terms,
+        "weak_term_hits": weak_term_hits,
+        "weak_term_hit_count": len(weak_term_hits),
+        "generation_output_count": len(generation_outputs),
+        "generation_outputs": generation_outputs,
     }
 
 

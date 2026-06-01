@@ -8887,6 +8887,7 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.studio-browser-smoke-ci-contract.v1",
     "appgen.frontend-semantic-service-audit.v1",
     "appgen.frontend-dsl-editor-audit.v1",
+    "appgen.frontend-data-service-catalog-audit.v1",
     "appgen.frontend-interaction-audit.v1",
     "appgen.vscode-extension-audit.v1",
     "appgen.diagnostic-catalog.v1",
@@ -11267,6 +11268,29 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "outlineCount": {"type": "integer", "minimum": 0},
                 "completionCount": {"type": "integer", "minimum": 0},
                 "missingCompletionCategories": {"type": "array", "items": {"type": "string"}},
+            },
+        ),
+        "appgen.frontend-data-service-catalog-audit.v1": _contract_format_schema(
+            "appgen.frontend-data-service-catalog-audit.v1",
+            required=("format", "ok", "capabilities", "lanes", "weak_term_hits"),
+            properties={
+                "capabilities": {"type": "array", "items": {"type": "string"}},
+                "required_capabilities": {"type": "array", "items": {"type": "string"}},
+                "missing_capabilities": {"type": "array", "items": {"type": "string"}},
+                "capability_count": {"type": "integer", "minimum": 0},
+                "required_capability_count": {"type": "integer", "minimum": 0},
+                "missing_capability_count": {"type": "integer", "minimum": 0},
+                "lanes": {"type": "array", "items": {"type": "string"}},
+                "required_lanes": {"type": "array", "items": {"type": "string"}},
+                "missing_lanes": {"type": "array", "items": {"type": "string"}},
+                "lane_count": {"type": "integer", "minimum": 0},
+                "required_lane_count": {"type": "integer", "minimum": 0},
+                "missing_lane_count": {"type": "integer", "minimum": 0},
+                "weak_terms": {"type": "array", "items": {"type": "string"}},
+                "weak_term_hits": {"type": "array", "items": {"type": "string"}},
+                "weak_term_hit_count": {"type": "integer", "minimum": 0},
+                "missing_audit_fields": {"type": "array", "items": {"type": "string"}},
+                "missing_audit_field_count": {"type": "integer", "minimum": 0},
             },
         ),
         "appgen.frontend-interaction-audit.v1": _contract_format_schema(
@@ -14297,8 +14321,9 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and lsp_stdio.get("diagnostic_publication_count", 0) >= 1
             and lsp_stdio.get("completion_response_count", 0) >= 1
             and lsp_stdio.get("workspace_symbol_response_count", 0) >= 1
+            and lsp_stdio.get("prepare_rename_response_count", 0) >= 1
             and lsp_stdio.get("shutdown_response_count", 0) >= 1,
-            "Language server JSON-RPC providers and stdio framing cover editor requests, diagnostics publication, completion, workspace symbols, and shutdown.",
+            "Language server JSON-RPC providers and stdio framing cover editor requests, diagnostics publication, completion, prepare-rename, workspace symbols, and shutdown.",
             "docs/tooling.md#language-server-specification",
             {
                 "rpc": {
@@ -14374,6 +14399,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                     ),
                     "completion_response_count": lsp_stdio.get("completion_response_count"),
                     "workspace_symbol_response_count": lsp_stdio.get("workspace_symbol_response_count"),
+                    "prepare_rename_response_count": lsp_stdio.get("prepare_rename_response_count"),
                     "shutdown_response_count": lsp_stdio.get("shutdown_response_count"),
                 },
             },
@@ -14832,6 +14858,37 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "missing_scenario_count": studio.get("frontend_interaction_missing_scenario_count"),
                 "missing_audit_input_count": studio.get("frontend_interaction_missing_audit_input_count"),
                 "missing_helper_count": studio.get("frontend_interaction_missing_helper_count"),
+            },
+        ),
+        _tooling_audit_check(
+            "frontend_data_service_catalog_depth",
+            studio.get("frontend_data_service_audit", {}).get("ok") is True
+            and studio.get("frontend_data_service_capability_count", 0)
+            >= studio.get("frontend_data_service_required_capability_count", 0)
+            and studio.get("frontend_data_service_lane_count", 0)
+            >= studio.get("frontend_data_service_required_lane_count", 0)
+            and studio.get("frontend_data_service_missing_capability_count") == 0
+            and studio.get("frontend_data_service_missing_lane_count") == 0
+            and studio.get("frontend_data_service_missing_audit_field_count") == 0
+            and studio.get("frontend_data_service_weak_term_hit_count") == 0
+            and studio.get("frontend_data_service_missing_capabilities") == ()
+            and studio.get("frontend_data_service_missing_lanes") == ()
+            and studio.get("frontend_data_service_missing_audit_fields") == ()
+            and studio.get("frontend_data_service_weak_term_hits") == (),
+            "Frontend data-service catalog exposes named source/query/publish/offline/resilience/security capabilities with no stub or placeholder generation language.",
+            "docs/tooling.md#appgen-x-studio-monaco",
+            {
+                "format": studio.get("frontend_data_service_format"),
+                "audit": studio.get("frontend_data_service_audit"),
+                "required_capabilities": studio.get("frontend_data_service_required_capabilities"),
+                "capabilities": studio.get("frontend_data_service_capabilities"),
+                "missing_capabilities": studio.get("frontend_data_service_missing_capabilities"),
+                "required_lanes": studio.get("frontend_data_service_required_lanes"),
+                "lanes": studio.get("frontend_data_service_lanes"),
+                "missing_lanes": studio.get("frontend_data_service_missing_lanes"),
+                "weak_terms": studio.get("frontend_data_service_weak_terms"),
+                "weak_term_hits": studio.get("frontend_data_service_weak_term_hits"),
+                "missing_audit_fields": studio.get("frontend_data_service_missing_audit_fields"),
             },
         ),
         _tooling_audit_check(
@@ -16626,6 +16683,7 @@ def _tooling_audit_section_coverage(root: Path, checks: Iterable[dict]) -> dict:
             "studio_semantic_service",
             "frontend_semantic_service_bridge",
             "frontend_dsl_editor_bridge",
+            "frontend_data_service_catalog_depth",
             "frontend_interaction_audit_bridge",
         ),
         "graph-tooling": ("graph_and_explain_tooling", "graph_rendering_contracts", "explain_cli_contracts"),
@@ -16699,6 +16757,7 @@ def _tooling_audit_section_coverage(root: Path, checks: Iterable[dict]) -> dict:
             "studio_semantic_service",
             "frontend_semantic_service_bridge",
             "frontend_dsl_editor_bridge",
+            "frontend_data_service_catalog_depth",
             "frontend_interaction_audit_bridge",
         ),
         "parser-golden-audit": ("parser_golden_fixture_contracts",),
@@ -17835,8 +17894,10 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     "id": "frontend_browser_smoke_bridges",
                     "ok": evidence["studio"].get("browser_smoke_checks", {}).get("frontend_semantic_service_bridge") is True
                     and evidence["studio"].get("browser_smoke_checks", {}).get("frontend_interaction_audit_bridge") is True
+                    and evidence["studio"].get("browser_smoke_checks", {}).get("frontend_data_service_catalog_depth") is True
                     and evidence["studio"].get("frontend_semantic_service_audit", {}).get("ok") is True
                     and evidence["studio"].get("frontend_interaction_audit", {}).get("ok") is True
+                    and evidence["studio"].get("frontend_data_service_audit", {}).get("ok") is True
                     and evidence["studio"].get("frontend_semantic_missing_services") == ()
                     and evidence["studio"].get("frontend_semantic_missing_surfaces") == ()
                     and evidence["studio"].get("frontend_semantic_missing_surface_contracts") == ()
@@ -17848,7 +17909,11 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                     and evidence["studio"].get("frontend_dsl_editor_missing_workbench_markers") == ()
                     and evidence["studio"].get("frontend_interaction_missing_scenarios") == ()
                     and evidence["studio"].get("frontend_interaction_missing_audit_inputs") == ()
-                    and evidence["studio"].get("frontend_interaction_missing_helpers") == (),
+                    and evidence["studio"].get("frontend_interaction_missing_helpers") == ()
+                    and evidence["studio"].get("frontend_data_service_missing_capabilities") == ()
+                    and evidence["studio"].get("frontend_data_service_missing_lanes") == ()
+                    and evidence["studio"].get("frontend_data_service_missing_audit_fields") == ()
+                    and evidence["studio"].get("frontend_data_service_weak_term_hits") == (),
                     "missing_semantic_services": evidence["studio"].get("frontend_semantic_missing_services"),
                     "missing_semantic_surfaces": evidence["studio"].get("frontend_semantic_missing_surfaces"),
                     "missing_semantic_surface_contracts": evidence["studio"].get(
@@ -17861,6 +17926,11 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                         "frontend_interaction_missing_audit_inputs"
                     ),
                     "missing_interaction_helpers": evidence["studio"].get("frontend_interaction_missing_helpers"),
+                    "missing_data_service_capabilities": evidence["studio"].get(
+                        "frontend_data_service_missing_capabilities"
+                    ),
+                    "missing_data_service_lanes": evidence["studio"].get("frontend_data_service_missing_lanes"),
+                    "data_service_weak_term_hits": evidence["studio"].get("frontend_data_service_weak_term_hits"),
                     "missing_dsl_completion_categories": evidence["studio"].get(
                         "frontend_dsl_editor_missing_completion_categories"
                     ),
@@ -17874,6 +17944,7 @@ def _tooling_audit_implementation_phases(**evidence: dict) -> dict:
                         evidence["studio"].get("browser_smoke_format"),
                         evidence["studio"].get("frontend_semantic_service_format"),
                         "appgen.frontend-dsl-editor-audit.v1",
+                        evidence["studio"].get("frontend_data_service_format"),
                         evidence["studio"].get("frontend_interaction_format"),
                     ),
                 },
@@ -18409,6 +18480,7 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
     nl_plan = nl.get("plan", {})
     frontend_semantic = browser_smoke.get("frontend_semantic_service_audit", {})
     frontend_dsl_editor = browser_smoke.get("frontend_dsl_editor_audit", {})
+    frontend_data_service = browser_smoke.get("frontend_data_service_audit", {})
     frontend_interaction = browser_smoke.get("frontend_interaction_audit", {})
     browser_smoke_checks = {check.get("id"): check.get("ok") for check in browser_smoke.get("checks", ())}
     panel_counts = {
@@ -18493,6 +18565,7 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         and "interaction_audit_bridge" in browser_smoke.get("scenarios", ())
         and browser_smoke_checks.get("frontend_semantic_service_bridge") is True
         and browser_smoke_checks.get("frontend_dsl_editor_bridge") is True
+        and browser_smoke_checks.get("frontend_data_service_catalog_depth") is True
         and browser_smoke_checks.get("frontend_interaction_audit_bridge") is True
         and browser_smoke_checks.get("browser_smoke_interaction_count_text") is True
         and frontend_semantic.get("format") == "appgen.frontend-semantic-service-audit.v1"
@@ -18508,6 +18581,12 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         and not frontend_dsl_editor.get("missingQuickFixIds", ())
         and not frontend_dsl_editor.get("missingCatalogHelpers", ())
         and not frontend_dsl_editor.get("missingWorkbenchMarkers", ())
+        and frontend_data_service.get("format") == "appgen.frontend-data-service-catalog-audit.v1"
+        and frontend_data_service.get("ok") is True
+        and not frontend_data_service.get("missing_capabilities", ())
+        and not frontend_data_service.get("missing_lanes", ())
+        and not frontend_data_service.get("missing_audit_fields", ())
+        and not frontend_data_service.get("weak_term_hits", ())
         and frontend_interaction.get("format") == "appgen.frontend-interaction-audit.v1"
         and frontend_interaction.get("ok") is True
         and not frontend_interaction.get("missing_scenarios", ())
@@ -18613,6 +18692,31 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         "frontend_dsl_editor_missing_workbench_markers": tuple(
             frontend_dsl_editor.get("missingWorkbenchMarkers", ())
         ),
+        "frontend_data_service_audit": frontend_data_service,
+        "frontend_data_service_format": frontend_data_service.get("format"),
+        "frontend_data_service_capability_count": frontend_data_service.get("capability_count"),
+        "frontend_data_service_required_capability_count": frontend_data_service.get("required_capability_count"),
+        "frontend_data_service_capabilities": tuple(frontend_data_service.get("capabilities", ())),
+        "frontend_data_service_required_capabilities": tuple(
+            frontend_data_service.get("required_capabilities", ())
+        ),
+        "frontend_data_service_missing_capability_count": frontend_data_service.get("missing_capability_count"),
+        "frontend_data_service_missing_capabilities": tuple(
+            frontend_data_service.get("missing_capabilities", ())
+        ),
+        "frontend_data_service_lane_count": frontend_data_service.get("lane_count"),
+        "frontend_data_service_required_lane_count": frontend_data_service.get("required_lane_count"),
+        "frontend_data_service_lanes": tuple(frontend_data_service.get("lanes", ())),
+        "frontend_data_service_required_lanes": tuple(frontend_data_service.get("required_lanes", ())),
+        "frontend_data_service_missing_lane_count": frontend_data_service.get("missing_lane_count"),
+        "frontend_data_service_missing_lanes": tuple(frontend_data_service.get("missing_lanes", ())),
+        "frontend_data_service_weak_terms": tuple(frontend_data_service.get("weak_terms", ())),
+        "frontend_data_service_weak_term_hits": tuple(frontend_data_service.get("weak_term_hits", ())),
+        "frontend_data_service_weak_term_hit_count": frontend_data_service.get("weak_term_hit_count"),
+        "frontend_data_service_missing_audit_fields": tuple(
+            frontend_data_service.get("missing_audit_fields", ())
+        ),
+        "frontend_data_service_missing_audit_field_count": frontend_data_service.get("missing_audit_field_count"),
         "frontend_interaction_audit": frontend_interaction,
         "frontend_interaction_format": frontend_interaction.get("format"),
         "frontend_interaction_scenario_count": frontend_interaction.get("scenario_count"),
@@ -25383,6 +25487,7 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             "appgen.studio-browser-smoke-ci-contract.v1": studio_browser_smoke,
             "appgen.frontend-semantic-service-audit.v1": studio_audit.get("frontend_semantic_service_audit", {}),
             "appgen.frontend-dsl-editor-audit.v1": studio_audit.get("frontend_dsl_editor_audit", {}),
+            "appgen.frontend-data-service-catalog-audit.v1": studio_audit.get("frontend_data_service_audit", {}),
             "appgen.frontend-interaction-audit.v1": studio_audit.get("frontend_interaction_audit", {}),
             "appgen.vscode-extension-audit.v1": _tooling_audit_vscode_extension(repo_root),
             "appgen.diagnostic-catalog.v1": diagnostic_catalog_dsl(),

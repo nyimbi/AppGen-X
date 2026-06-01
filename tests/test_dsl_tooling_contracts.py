@@ -7483,6 +7483,7 @@ def test_studio_semantic_service_audit_proves_panel_contracts() -> None:
     assert "interaction_audit_bridge" in report["browser_smoke_scenarios"]
     assert report["browser_smoke_checks"]["frontend_semantic_service_bridge"] is True
     assert report["browser_smoke_checks"]["frontend_dsl_editor_bridge"] is True
+    assert report["browser_smoke_checks"]["frontend_data_service_catalog_depth"] is True
     assert report["browser_smoke_checks"]["frontend_interaction_audit_bridge"] is True
     assert report["browser_smoke_checks"]["browser_smoke_interaction_count_text"] is True
     assert report["browser_smoke_expected_interaction_count_text"] == "10 checks"
@@ -7542,6 +7543,19 @@ def test_studio_semantic_service_audit_proves_panel_contracts() -> None:
     assert report["frontend_dsl_editor_missing_quick_fix_ids"] == ()
     assert report["frontend_dsl_editor_missing_catalog_helpers"] == ()
     assert report["frontend_dsl_editor_missing_workbench_markers"] == ()
+    assert report["frontend_data_service_format"] == "appgen.frontend-data-service-catalog-audit.v1"
+    assert report["frontend_data_service_audit"]["ok"] is True
+    assert report["frontend_data_service_capability_count"] == report["frontend_data_service_required_capability_count"]
+    assert report["frontend_data_service_lane_count"] == report["frontend_data_service_required_lane_count"]
+    assert "Failover Policy" in report["frontend_data_service_capabilities"]
+    assert "Resilience" in report["frontend_data_service_lanes"]
+    assert report["frontend_data_service_missing_capabilities"] == ()
+    assert report["frontend_data_service_missing_lanes"] == ()
+    assert report["frontend_data_service_missing_audit_fields"] == ()
+    assert report["frontend_data_service_weak_term_hits"] == ()
+    assert report["frontend_data_service_weak_term_hit_count"] == 0
+    assert report["frontend_data_service_audit"]["checks"]["no_weak_generation_language"] is True
+    assert report["frontend_data_service_audit"]["checks"]["failover_runtime_output"] is True
     assert report["frontend_interaction_format"] == "appgen.frontend-interaction-audit.v1"
     assert report["frontend_interaction_audit"]["ok"] is True
     assert report["frontend_interaction_scenario_count"] == 10
@@ -8167,6 +8181,7 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
                 "browser_smoke_checks": {
                     "frontend_semantic_service_bridge": True,
                     "frontend_dsl_editor_bridge": True,
+                    "frontend_data_service_catalog_depth": True,
                     "frontend_interaction_audit_bridge": True,
                 },
                 "frontend_semantic_service_format": "appgen.frontend-semantic-service-audit.v1",
@@ -8188,6 +8203,15 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
                 "frontend_dsl_editor_missing_quick_fix_ids": (),
                 "frontend_dsl_editor_missing_catalog_helpers": (),
                 "frontend_dsl_editor_missing_workbench_markers": (),
+                "frontend_data_service_format": "appgen.frontend-data-service-catalog-audit.v1",
+                "frontend_data_service_audit": {
+                    "format": "appgen.frontend-data-service-catalog-audit.v1",
+                    "ok": True,
+                },
+                "frontend_data_service_missing_capabilities": (),
+                "frontend_data_service_missing_lanes": (),
+                "frontend_data_service_missing_audit_fields": (),
+                "frontend_data_service_weak_term_hits": (),
                 "frontend_interaction_format": "appgen.frontend-interaction-audit.v1",
             "frontend_interaction_audit": {"format": "appgen.frontend-interaction-audit.v1", "ok": True},
             "frontend_interaction_missing_scenarios": (),
@@ -8361,6 +8385,7 @@ def test_tooling_implementation_phase_audit_maps_phase_exit_criteria_to_evidence
         "appgen.studio-browser-smoke-ci-contract.v1",
         "appgen.frontend-semantic-service-audit.v1",
         "appgen.frontend-dsl-editor-audit.v1",
+        "appgen.frontend-data-service-catalog-audit.v1",
         "appgen.frontend-interaction-audit.v1",
     )
     assert {
@@ -8548,6 +8573,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "studio_semantic_service",
         "frontend_semantic_service_bridge",
         "frontend_dsl_editor_bridge",
+        "frontend_data_service_catalog_depth",
         "frontend_interaction_audit_bridge",
         "cli_usage_failure_contracts",
         "validate_target_contracts",
@@ -8833,6 +8859,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "appgen.studio-browser-smoke-ci-contract.v1",
         "appgen.frontend-semantic-service-audit.v1",
         "appgen.frontend-dsl-editor-audit.v1",
+        "appgen.frontend-data-service-catalog-audit.v1",
         "appgen.frontend-interaction-audit.v1",
     )
     phase_doc_check = next(
@@ -9106,6 +9133,17 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert frontend_interaction_check["detail"]["missing_scenario_count"] == 0
     assert frontend_interaction_check["detail"]["missing_audit_input_count"] == 0
     assert frontend_interaction_check["detail"]["missing_helper_count"] == 0
+    frontend_data_check = next(check for check in report["checks"] if check["id"] == "frontend_data_service_catalog_depth")
+    assert frontend_data_check["detail"]["format"] == "appgen.frontend-data-service-catalog-audit.v1"
+    assert frontend_data_check["detail"]["audit"]["ok"] is True
+    assert frontend_data_check["detail"]["capabilities"] == frontend_data_check["detail"]["required_capabilities"]
+    assert set(frontend_data_check["detail"]["required_lanes"]) <= set(frontend_data_check["detail"]["lanes"])
+    assert "Failover Policy" in frontend_data_check["detail"]["capabilities"]
+    assert "Resilience" in frontend_data_check["detail"]["lanes"]
+    assert frontend_data_check["detail"]["missing_capabilities"] == ()
+    assert frontend_data_check["detail"]["missing_lanes"] == ()
+    assert frontend_data_check["detail"]["missing_audit_fields"] == ()
+    assert frontend_data_check["detail"]["weak_term_hits"] == ()
     lsp_check = next(check for check in report["checks"] if check["id"] == "language_server_core_features")
     assert lsp_check["detail"]["symbol_coverage"]["format"] == "appgen.lsp-symbol-coverage.v1"
     assert lsp_check["detail"]["symbol_coverage"]["ok"] is True
@@ -13696,6 +13734,7 @@ def test_contract_schema_catalog_exposes_core_json_schemas() -> None:
         "appgen.studio-browser-smoke-ci-contract.v1",
         "appgen.frontend-semantic-service-audit.v1",
         "appgen.frontend-dsl-editor-audit.v1",
+        "appgen.frontend-data-service-catalog-audit.v1",
         "appgen.frontend-interaction-audit.v1",
         "appgen.vscode-extension-audit.v1",
         "appgen.diagnostic-catalog.v1",

@@ -805,6 +805,7 @@ JSON Schema 2020-12 dialect, and includes schemas for `appgen.diagnostic.v1`,
 `appgen.studio-browser-smoke-ci-contract.v1`,
 `appgen.frontend-semantic-service-audit.v1`,
 `appgen.frontend-dsl-editor-audit.v1`,
+`appgen.frontend-data-service-catalog-audit.v1`,
 `appgen.frontend-interaction-audit.v1`,
 `appgen.vscode-extension-audit.v1`, diagnostic catalog, fixture audit, and
 diagnostic text-renderer reports, parser-golden and parser-golden text-renderer
@@ -4040,6 +4041,16 @@ with empty named-missing tuples. Drag/drop readiness is not counted from static
 markup alone: the audit must see palette drag payload construction, drop preview,
 drop commit, and generated handler wiring helpers, which keeps browser-facing
 bridge regressions actionable in CI logs.
+`frontend_data_service_catalog_depth` reports
+`appgen.frontend-data-service-catalog-audit.v1` evidence for the data-service
+workbench catalog itself: required capability names, required lanes,
+missing-capability/lane/audit-field counters, and weak-generation-term hits. It
+must prove source, query, publish, embedded database, resilience, and security
+lanes with concrete generated artifacts, and it rejects hollow terms such as
+stub, placeholder, TODO, TBD, or fake. The browser-smoke script also checks
+rendered data-service generated-artifact text, including the failover policy's
+operational runbook package, so a visually present but implementation-hollow
+data-service card cannot satisfy the Studio gate.
 
 ## Graph Tooling
 
