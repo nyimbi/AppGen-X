@@ -7406,6 +7406,17 @@ def test_tooling_status_report_compacts_remaining_work_for_agents(monkeypatch) -
                     "unknown_documented_commands": ("ghost-command",),
                 },
             },
+            {
+                "id": "tooling_requirements_traceability",
+                "ok": False,
+                "section": "docs/tooling.md#appgen-tooling-audit",
+                "detail": {
+                    "format": "appgen.tooling-requirements-trace-audit.v1",
+                    "ok": False,
+                    "missing_requirements": ("live_ide_feedback",),
+                    "missing_gates": ("language_server_core_features",),
+                },
+            },
         ),
         "blocking_gaps": ({"id": "language_server_core_features"},),
     }
@@ -7430,6 +7441,7 @@ def test_tooling_status_report_compacts_remaining_work_for_agents(monkeypatch) -
         "priority_order_contracts",
         "tooling_doc_anchor_integrity",
         "tooling_command_docs_manifest",
+        "tooling_requirements_traceability",
     )
     assert status["completed_phase_ids"] == ("phase_0_inventory_and_stabilization",)
     assert status["incomplete_phase_ids"] == ("phase_4_language_server",)
@@ -7442,11 +7454,15 @@ def test_tooling_status_report_compacts_remaining_work_for_agents(monkeypatch) -
     assert status["missing_doc_test_formats"] == ("appgen.lsp-service.v1",)
     assert status["missing_manifest_commands"] == ("command-docs",)
     assert status["unknown_documented_commands"] == ("ghost-command",)
-    assert status["next_action_count"] == 14
+    assert status["missing_requirements"] == ("live_ide_feedback",)
+    assert status["missing_requirement_gates"] == ("language_server_core_features",)
+    assert status["next_action_count"] == 17
     assert {"kind": "exit_criterion", "id": "lsp_transport_rpc_contracts", "source": "phase_4_language_server"} in status["next_actions"]
     assert {"kind": "doc_runtime_format", "id": "appgen.lsp-service.v1", "source": "docs/tooling.md#appgen-tooling-audit"} in status["next_actions"]
     assert {"kind": "missing_command_doc", "id": "command-docs", "source": "docs/tooling.md#cli-contracts"} in status["next_actions"]
     assert {"kind": "unknown_documented_command", "id": "ghost-command", "source": "docs/tooling.md#cli-contracts"} in status["next_actions"]
+    assert {"kind": "tooling_requirement", "id": "live_ide_feedback", "source": "docs/tooling.md#goals"} in status["next_actions"]
+    assert {"kind": "tooling_requirement_gate", "id": "language_server_core_features", "source": "docs/tooling.md#appgen-requirements-trace"} in status["next_actions"]
     assert payload["format"] == "appgen.tooling-status.v1"
     assert payload["next_action_count"] == status["next_action_count"]
     assert json_exit == 1
@@ -7512,6 +7528,26 @@ def test_governance_reports_are_first_class_cli_commands(monkeypatch) -> None:
         "missing_manifest_commands": (),
         "unknown_documented_commands": (),
     }
+    fake_requirements_trace = {
+        "format": "appgen.tooling-requirements-trace-audit.v1",
+        "ok": True,
+        "requirement_count": 1,
+        "covered_requirement_count": 1,
+        "missing_requirement_count": 0,
+        "missing_requirements": (),
+        "required_gate_count": 1,
+        "covered_gate_count": 1,
+        "missing_gate_count": 0,
+        "missing_gates": (),
+        "requirements": (
+            {
+                "id": "shared_parser_semantic_model",
+                "ok": True,
+                "section": "docs/tooling.md#goals",
+                "gate_ids": ("shared_semantic_model",),
+            },
+        ),
+    }
     fake_report = {
         "format": "appgen.tooling-audit.v1",
         "ok": True,
@@ -7542,6 +7578,11 @@ def test_governance_reports_are_first_class_cli_commands(monkeypatch) -> None:
                 "section": "docs/tooling.md#cli-contracts",
                 "detail": fake_command_docs,
             },
+            {
+                "id": "tooling_requirements_traceability",
+                "section": "docs/tooling.md#appgen-tooling-audit",
+                "detail": fake_requirements_trace,
+            },
         ),
     }
     monkeypatch.setattr(appgen_dsl, "tooling_audit_report_dsl", lambda: fake_report)
@@ -7552,6 +7593,8 @@ def test_governance_reports_are_first_class_cli_commands(monkeypatch) -> None:
     phase_text = StringIO()
     docs_json = StringIO()
     docs_text = StringIO()
+    requirements_json = StringIO()
+    requirements_text = StringIO()
     with redirect_stdout(module_text):
         module_exit = appgen_dsl.dsl_tooling_cli(("module-boundaries",))
     with redirect_stdout(non_goal_text):
@@ -7564,9 +7607,14 @@ def test_governance_reports_are_first_class_cli_commands(monkeypatch) -> None:
         docs_exit = appgen_dsl.dsl_tooling_cli(("tooling-docs", "--json"))
     with redirect_stdout(docs_text):
         docs_text_exit = appgen_dsl.dsl_tooling_cli(("tooling-docs",))
+    with redirect_stdout(requirements_json):
+        requirements_exit = appgen_dsl.dsl_tooling_cli(("requirements-trace", "--json"))
+    with redirect_stdout(requirements_text):
+        requirements_text_exit = appgen_dsl.dsl_tooling_cli(("requirements-trace",))
 
     phase_payload = json.loads(phase_json.getvalue())
     docs_payload = json.loads(docs_json.getvalue())
+    requirements_payload = json.loads(requirements_json.getvalue())
     assert module_exit == 0
     assert module_text.getvalue().startswith("module-boundaries ok: format=appgen.module-boundary-audit.v1")
     assert "boundary parser:" in module_text.getvalue()
@@ -7586,10 +7634,20 @@ def test_governance_reports_are_first_class_cli_commands(monkeypatch) -> None:
     assert docs_payload["section_coverage"]["format"] == "appgen.tooling-section-coverage-audit.v1"
     assert docs_payload["doc_language_policy"]["format"] == "appgen.tooling-doc-language-audit.v1"
     assert docs_payload["command_docs"]["format"] == "appgen.tooling-command-docs-audit.v1"
+    assert docs_payload["requirements_trace"]["format"] == "appgen.tooling-requirements-trace-audit.v1"
     assert docs_payload["missing_manifest_command_count"] == 0
     assert docs_payload["unknown_documented_command_count"] == 0
+    assert docs_payload["missing_requirement_count"] == 0
+    assert docs_payload["missing_requirement_gate_count"] == 0
     assert docs_text_exit == 0
     assert docs_text.getvalue().startswith("tooling-docs ok: format=appgen.tooling-docs-audit.v1")
+    assert requirements_exit == 0
+    assert requirements_payload["format"] == "appgen.tooling-requirements-trace-audit.v1"
+    assert requirements_payload["parent_check_id"] == "tooling_requirements_traceability"
+    assert requirements_text_exit == 0
+    assert requirements_text.getvalue().startswith(
+        "requirements-trace ok: format=appgen.tooling-requirements-trace-audit.v1"
+    )
 
 
 def test_module_boundary_audit_proves_documented_tooling_surfaces() -> None:
@@ -13887,6 +13945,38 @@ def test_tooling_command_docs_audit_matches_manifest_and_ignores_dsl_fences() ->
     assert "unknown=0" in text_stdout.getvalue()
 
 
+def test_tooling_requirements_trace_maps_docs_requirements_to_audit_gates() -> None:
+    json_stdout = StringIO()
+    text_stdout = StringIO()
+    with redirect_stdout(json_stdout):
+        json_exit = appgen_dsl.dsl_tooling_cli(("requirements-trace", "--json"))
+    with redirect_stdout(text_stdout):
+        text_exit = appgen_dsl.dsl_tooling_cli(("requirements-trace",))
+
+    payload = json.loads(json_stdout.getvalue())
+    requirements_by_id = {item["id"]: item for item in payload["requirements"]}
+    assert payload["format"] == "appgen.tooling-requirements-trace-audit.v1"
+    assert payload["ok"] is True
+    assert payload["requirement_count"] >= 18
+    assert payload["covered_requirement_count"] == payload["requirement_count"]
+    assert payload["missing_requirement_count"] == 0
+    assert payload["missing_gate_count"] == 0
+    assert payload["source_of_truth"] == "docs/tooling.md#appgen-tooling-audit"
+    assert "shared_parser_semantic_model" in requirements_by_id
+    assert "natural_language_dsl_diff_first" in requirements_by_id
+    assert "docs_requirements_traceability" in requirements_by_id
+    assert "shared_semantic_model" in requirements_by_id["shared_parser_semantic_model"]["gate_ids"]
+    assert "natural_language_cli_agent_contracts" in requirements_by_id["natural_language_dsl_diff_first"]["gate_ids"]
+    assert "tooling_section_coverage_contracts" in requirements_by_id["docs_requirements_traceability"]["gate_ids"]
+    assert "docs/tooling.md#appgen-requirements-trace" in payload["sections"]
+    assert json_exit == 0
+    assert text_exit == 0
+    assert text_stdout.getvalue().startswith(
+        "requirements-trace ok: format=appgen.tooling-requirements-trace-audit.v1"
+    )
+    assert "missing_requirements=0" in text_stdout.getvalue()
+
+
 def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     root = Path(__file__).resolve().parents[1]
     audit = appgen_dsl._tooling_audit_cli_help_surface(root)
@@ -13908,7 +13998,7 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert "diagnostics, parser-golden, module-boundaries, non-goals, test-strategy" in normalized_help
     assert "dsl-quality, dsl-antlr, dsl-authoring-gate, dsl-language-service" in normalized_help
     assert "contract-schema, contract-validate, runtime-contracts" in normalized_help
-    assert "runtime-contracts, drift, doctor, command-docs, contributor-tasks" in normalized_help
+    assert "runtime-contracts, drift, doctor, command-docs, requirements-trace, contributor-tasks" in normalized_help
     assert "tooling-docs, tooling-status, and tooling-audit" in normalized_help
     assert "apg =" in pyproject
     assert "visual drag-and-drop form design" in normalized_help

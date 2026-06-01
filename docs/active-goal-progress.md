@@ -4647,3 +4647,8 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   references with the shared `TOOLING_SUBCOMMANDS` manifest while ignoring fenced
   DSL examples. The tooling docs gate now fails on undocumented implemented
   commands or unknown documented commands.
+- Current requirements-trace expansion adds `appgen requirements-trace` and
+  `appgen.tooling-requirements-trace-audit.v1`, mapping documented tooling
+  goals, non-goals, command governance, and documentation governance to concrete
+  aggregate audit gates. `appgen tooling-docs` and `appgen tooling-status` now
+  surface missing requirements and missing gate references directly.

@@ -1962,6 +1962,9 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
     command_docs_parser = subparsers.add_parser("command-docs")
     command_docs_parser.add_argument("--json", action="store_true")
 
+    requirements_trace_parser = subparsers.add_parser("requirements-trace")
+    requirements_trace_parser.add_argument("--json", action="store_true")
+
     contributor_tasks_parser = subparsers.add_parser("contributor-tasks")
     contributor_tasks_parser.add_argument("--json", action="store_true")
 
@@ -2219,6 +2222,10 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
         return 0 if report["ok"] else 1
     if args.command == "command-docs":
         report = tooling_command_docs_report_dsl()
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "requirements-trace":
+        report = tooling_requirements_trace_report_dsl()
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     if args.command == "contributor-tasks":
@@ -2777,6 +2784,25 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         for command in payload.get("unknown_documented_commands", ()):
             print(f"unknown-documented-command {command}")
         return
+    if payload.get("format") == "appgen.tooling-requirements-trace-audit.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        print(
+            f"requirements-trace {status}: format={payload.get('format')} "
+            f"requirements={payload.get('covered_requirement_count', 0)}/{payload.get('requirement_count', 0)} "
+            f"gates={payload.get('covered_gate_count', 0)}/{payload.get('required_gate_count', 0)} "
+            f"missing_requirements={payload.get('missing_requirement_count', 0)} "
+            f"missing_gates={payload.get('missing_gate_count', 0)}"
+        )
+        for requirement in payload.get("requirements", ()):
+            print(
+                f"{'ok' if requirement.get('ok') else 'fail'} requirement {requirement.get('id')} "
+                f"section={requirement.get('section')} gates={len(requirement.get('gate_ids', ()))}"
+            )
+        for requirement_id in payload.get("missing_requirements", ()):
+            print(f"missing-requirement {requirement_id}")
+        for gate_id in payload.get("missing_gates", ()):
+            print(f"missing-gate {gate_id}")
+        return
     if payload.get("format") == "appgen.contributor-task-contract-audit.v1":
         status = "ok" if payload.get("ok") else "failed"
         print(
@@ -2839,6 +2865,8 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
             f"subsections={section.get('covered_subsection_count', 0)}/{section.get('required_subsection_count', 0)} "
             f"missing_commands={payload.get('missing_manifest_command_count', 0)} "
             f"unknown_commands={payload.get('unknown_documented_command_count', 0)} "
+            f"missing_requirements={payload.get('missing_requirement_count', 0)} "
+            f"missing_requirement_gates={payload.get('missing_requirement_gate_count', 0)} "
             f"runtime_format_gaps={anchor.get('runtime_reference_gap_count', 0)} "
             f"test_format_gaps={anchor.get('test_reference_gap_count', 0)}"
         )
@@ -9098,6 +9126,7 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.tooling-docs-audit.v1",
     "appgen.tooling-status.v1",
     "appgen.tooling-command-docs-audit.v1",
+    "appgen.tooling-requirements-trace-audit.v1",
     "appgen.tooling-implementation-phase-audit.v1",
     "appgen.implementation-phase-doc-alignment.v1",
     "appgen.test-strategy-cli-audit.v1",
@@ -12134,17 +12163,28 @@ def _contract_schema_catalog() -> dict[str, dict]:
         ),
         "appgen.tooling-docs-audit.v1": _contract_format_schema(
             "appgen.tooling-docs-audit.v1",
-            required=("format", "ok", "doc_anchor_integrity", "section_coverage", "doc_language_policy", "command_docs"),
+            required=(
+                "format",
+                "ok",
+                "doc_anchor_integrity",
+                "section_coverage",
+                "doc_language_policy",
+                "command_docs",
+                "requirements_trace",
+            ),
             properties={
                 "doc_anchor_integrity": {"type": "object"},
                 "section_coverage": {"type": "object"},
                 "doc_language_policy": {"type": "object"},
                 "command_docs": {"type": "object"},
+                "requirements_trace": {"type": "object"},
                 "missing_anchor_count": {"type": "integer", "minimum": 0},
                 "missing_section_count": {"type": "integer", "minimum": 0},
                 "missing_subsection_count": {"type": "integer", "minimum": 0},
                 "missing_manifest_command_count": {"type": "integer", "minimum": 0},
                 "unknown_documented_command_count": {"type": "integer", "minimum": 0},
+                "missing_requirement_count": {"type": "integer", "minimum": 0},
+                "missing_requirement_gate_count": {"type": "integer", "minimum": 0},
             },
         ),
         "appgen.tooling-status.v1": _contract_format_schema(
@@ -12170,6 +12210,10 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "missing_tasks": {"type": "array", "items": {"type": "string"}},
                 "missing_priority_count": {"type": "integer", "minimum": 0},
                 "missing_priorities": {"type": "array", "items": {"type": "string"}},
+                "missing_requirement_count": {"type": "integer", "minimum": 0},
+                "missing_requirements": {"type": "array", "items": {"type": "string"}},
+                "missing_requirement_gate_count": {"type": "integer", "minimum": 0},
+                "missing_requirement_gates": {"type": "array", "items": {"type": "string"}},
                 "next_action_count": {"type": "integer", "minimum": 0},
                 "next_actions": {"type": "array", "items": {"type": "object"}},
             },
@@ -12189,6 +12233,23 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "unknown_documented_commands": {"type": "array", "items": {"type": "string"}},
                 "ignored_fenced_command_count": {"type": "integer", "minimum": 0},
                 "ignored_fenced_commands": {"type": "array", "items": {"type": "string"}},
+            },
+        ),
+        "appgen.tooling-requirements-trace-audit.v1": _contract_format_schema(
+            "appgen.tooling-requirements-trace-audit.v1",
+            required=("format", "ok", "requirements", "requirement_count", "required_gates", "missing_requirements"),
+            properties={
+                "requirements": {"type": "array", "items": {"type": "object"}},
+                "requirement_count": {"type": "integer", "minimum": 0},
+                "covered_requirement_count": {"type": "integer", "minimum": 0},
+                "missing_requirement_count": {"type": "integer", "minimum": 0},
+                "missing_requirements": {"type": "array", "items": {"type": "string"}},
+                "sections": {"type": "array", "items": {"type": "string"}},
+                "required_gates": {"type": "array", "items": {"type": "string"}},
+                "required_gate_count": {"type": "integer", "minimum": 0},
+                "covered_gate_count": {"type": "integer", "minimum": 0},
+                "missing_gate_count": {"type": "integer", "minimum": 0},
+                "missing_gates": {"type": "array", "items": {"type": "string"}},
             },
         ),
         "appgen.tooling-implementation-phase-audit.v1": _contract_format_schema(
@@ -16546,6 +16607,19 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             text_renderer,
         ),
     )
+    requirements_trace = _tooling_audit_requirements_trace(root, checks)
+    checks = checks + (
+        _tooling_audit_check(
+            "tooling_requirements_traceability",
+            requirements_trace["ok"]
+            and requirements_trace.get("missing_requirement_count") == 0
+            and requirements_trace.get("missing_gate_count") == 0
+            and requirements_trace.get("covered_requirement_count") == requirements_trace.get("requirement_count"),
+            "docs/tooling.md goals, non-goals, and command governance requirements map to executable tooling gates.",
+            "docs/tooling.md#appgen-tooling-audit",
+            requirements_trace,
+        ),
+    )
     doc_anchor_integrity = _tooling_audit_doc_anchor_integrity(root, _tooling_audit_doc_refs(checks))
     checks = checks + (
         _tooling_audit_check(
@@ -17134,6 +17208,223 @@ def _tooling_audit_command_docs(root: Path) -> dict:
     }
 
 
+def _tooling_requirement_trace_specs() -> tuple[dict, ...]:
+    return (
+        {
+            "id": "shared_parser_semantic_model",
+            "section": "docs/tooling.md#goals",
+            "requirement": "Every authoring and generation surface must use one shared parser and semantic model.",
+            "fragments": ("one shared parser and semantic model used by every surface",),
+            "gate_ids": ("shared_semantic_model", "module_boundaries"),
+        },
+        {
+            "id": "deterministic_lint_format_validate",
+            "section": "docs/tooling.md#goals",
+            "requirement": "Linting, formatting, and validation must be deterministic release gates.",
+            "fragments": ("deterministic linting, formatting, and validation",),
+            "gate_ids": (
+                "lint_directory_and_strict_profiles",
+                "formatter_idempotent",
+                "formatter_write_organize_contracts",
+                "cli_validation_and_generation_contracts",
+            ),
+        },
+        {
+            "id": "live_ide_feedback",
+            "section": "docs/tooling.md#goals",
+            "requirement": "The IDE must provide feedback while the user types.",
+            "fragments": ("IDE feedback while the user types",),
+            "gate_ids": (
+                "language_server_core_features",
+                "lsp_transport_rpc_contracts",
+                "studio_semantic_service",
+                "frontend_dsl_editor_bridge",
+            ),
+        },
+        {
+            "id": "safe_refactors_across_enterprise_symbols",
+            "section": "docs/tooling.md#goals",
+            "requirement": "Refactors must stay safe across enterprise declarations and package boundaries.",
+            "fragments": ("safe refactors across tables, fields, views, flows, operations, PBC contracts",),
+            "gate_ids": ("lsp_navigation_completion_contracts", "lsp_quick_fix_application", "semantic_drift_surface_contracts"),
+        },
+        {
+            "id": "generator_ready_normalized_metadata",
+            "section": "docs/tooling.md#goals",
+            "requirement": "Generators must consume normalized application metadata.",
+            "fragments": ("generator-ready normalized application metadata",),
+            "gate_ids": ("shared_semantic_model", "cli_validation_and_generation_contracts", "package_manifest_handoff_contracts"),
+        },
+        {
+            "id": "machine_readable_diagnostics_and_fixes",
+            "section": "docs/tooling.md#goals",
+            "requirement": "Diagnostics and fix suggestions must be machine-readable.",
+            "fragments": ("machine-readable diagnostics and fix suggestions",),
+            "gate_ids": ("diagnostic_catalog_fixture_contracts", "lsp_quick_fix_coverage_contracts", "contract_schema_cli_contracts"),
+        },
+        {
+            "id": "graph_and_explain_review_outputs",
+            "section": "docs/tooling.md#goals",
+            "requirement": "Graphs and explain output must be available for human review.",
+            "fragments": ("graph and explain output for human review",),
+            "gate_ids": ("graph_and_explain_tooling", "graph_rendering_contracts", "explain_cli_contracts"),
+        },
+        {
+            "id": "migration_planning_for_supported_backends",
+            "section": "docs/tooling.md#goals",
+            "requirement": "Migration planning must target PostgreSQL and MySQL-compatible backends.",
+            "fragments": ("migration planning for PostgreSQL and MySQL-compatible backends",),
+            "gate_ids": ("migration_detection_coverage", "migration_safety_text_contracts"),
+        },
+        {
+            "id": "natural_language_dsl_diff_first",
+            "section": "docs/tooling.md#goals",
+            "requirement": "Natural-language evolution must produce DSL diffs before code changes.",
+            "fragments": ("natural-language change planning that produces DSL diffs before code changes",),
+            "gate_ids": (
+                "natural_language_patch_planner",
+                "natural_language_operation_contracts",
+                "natural_language_cli_agent_contracts",
+                "agent_handoff_cli_contracts",
+            ),
+        },
+        {
+            "id": "release_evidence_for_apps_and_pbcs",
+            "section": "docs/tooling.md#goals",
+            "requirement": "Generated applications and PBCs must have release evidence.",
+            "fragments": ("release evidence for generated apps and PBCs",),
+            "gate_ids": ("package_and_release_verifiers", "release_text_evidence_contracts", "pbc_manifest_catalog_commands"),
+        },
+        {
+            "id": "no_hard_coded_pbc_names",
+            "section": "docs/tooling.md#non-goals",
+            "requirement": "Specific PBC names must not be hard-coded into the grammar.",
+            "fragments": ("hard-code specific PBC names into the grammar",),
+            "gate_ids": ("non_goal_policy_guards", "pbc_manifest_catalog_commands"),
+        },
+        {
+            "id": "database_backed_fields_must_resolve",
+            "section": "docs/tooling.md#non-goals",
+            "requirement": "Database-backed visual fields must resolve to columns, calculated fields, or valid lookup paths.",
+            "fragments": ("columns, calculated fields, or valid lookup paths",),
+            "gate_ids": ("ide_visual_designer_round_trip", "lint_cli_directory_contracts", "frontend_data_service_catalog_depth"),
+        },
+        {
+            "id": "dsl_source_of_truth",
+            "section": "docs/tooling.md#non-goals",
+            "requirement": "Generated code must not become the source of truth when the DSL can express intent.",
+            "fragments": ("generated code as the source of truth",),
+            "gate_ids": ("non_goal_policy_guards", "natural_language_cli_agent_contracts", "semantic_drift_surface_contracts"),
+        },
+        {
+            "id": "bounded_backend_runtime_matrix",
+            "section": "docs/tooling.md#non-goals",
+            "requirement": "Backend and runtime choices must not create an arbitrary generator matrix.",
+            "fragments": ("arbitrary backend/runtime pickers",),
+            "gate_ids": ("non_goal_policy_guards", "migration_detection_coverage", "package_and_release_verifiers"),
+        },
+        {
+            "id": "secret_literals_rejected",
+            "section": "docs/tooling.md#non-goals",
+            "requirement": "Secret literals must not be accepted in DSL files.",
+            "fragments": ("direct secret literals in DSL files",),
+            "gate_ids": ("non_goal_policy_guards", "diagnostic_catalog_fixture_contracts"),
+        },
+        {
+            "id": "agents_cannot_bypass_quality_gates",
+            "section": "docs/tooling.md#non-goals",
+            "requirement": "Agents must not bypass linting, semantic validation, or release evidence.",
+            "fragments": ("let agents bypass linting, semantic validation, or release evidence",),
+            "gate_ids": ("non_goal_policy_guards", "agent_handoff_cli_contracts", "natural_language_cli_agent_contracts"),
+        },
+        {
+            "id": "cli_command_manifest_traceability",
+            "section": "docs/tooling.md#cli-contracts",
+            "requirement": "Every manifest command must remain documented in the tooling spec.",
+            "fragments": ("shared `TOOLING_SUBCOMMANDS` manifest",),
+            "gate_ids": ("tooling_command_docs_manifest", "cli_help_alias_contracts"),
+        },
+        {
+            "id": "docs_requirements_traceability",
+            "section": "docs/tooling.md#appgen-requirements-trace",
+            "requirement": "Each normative tooling requirement must map to named executable audit gates.",
+            "fragments": ("maps documented requirements to executable tooling gates",),
+            "gate_ids": ("tooling_section_coverage_contracts", "tooling_audit_text_renderer"),
+        },
+    )
+
+
+def _tooling_audit_requirements_trace(root: Path, checks: Iterable[dict]) -> dict:
+    docs_text = (root / "docs" / "tooling.md").read_text(encoding="utf-8")
+    docs_text_folded = re.sub(r"\s+", " ", docs_text.lower())
+    checks_by_id = {str(check.get("id")): check for check in checks}
+    required_gate_ids = tuple(
+        dict.fromkeys(gate_id for spec in _tooling_requirement_trace_specs() for gate_id in spec["gate_ids"])
+    )
+    missing_gates = tuple(gate_id for gate_id in required_gate_ids if gate_id not in checks_by_id)
+    requirements = []
+    for spec in _tooling_requirement_trace_specs():
+        missing_requirement_gates = tuple(gate_id for gate_id in spec["gate_ids"] if gate_id not in checks_by_id)
+        missing_fragments = tuple(
+            fragment for fragment in spec["fragments"] if re.sub(r"\s+", " ", fragment.lower()) not in docs_text_folded
+        )
+        gate_results = tuple(
+            {
+                "gate_id": gate_id,
+                "ok": checks_by_id.get(gate_id, {}).get("ok") is True,
+                "section": checks_by_id.get(gate_id, {}).get("section"),
+                "evidence": checks_by_id.get(gate_id, {}).get("evidence"),
+            }
+            for gate_id in spec["gate_ids"]
+            if gate_id in checks_by_id
+        )
+        requirements.append(
+            {
+                "id": spec["id"],
+                "section": spec["section"],
+                "requirement": spec["requirement"],
+                "fragments": spec["fragments"],
+                "missing_fragments": missing_fragments,
+                "missing_fragment_count": len(missing_fragments),
+                "gate_ids": spec["gate_ids"],
+                "gate_count": len(spec["gate_ids"]),
+                "gate_results": gate_results,
+                "missing_gates": missing_requirement_gates,
+                "missing_gate_count": len(missing_requirement_gates),
+                "ok": not missing_requirement_gates
+                and not missing_fragments
+                and all(item.get("ok") is True for item in gate_results),
+            }
+        )
+    missing_requirements = tuple(item["id"] for item in requirements if not item["ok"])
+    sections = tuple(dict.fromkeys(item["section"] for item in requirements))
+    covered_gates = tuple(gate_id for gate_id in required_gate_ids if gate_id in checks_by_id)
+    return {
+        "format": "appgen.tooling-requirements-trace-audit.v1",
+        "ok": not missing_requirements and not missing_gates,
+        "source": "docs/tooling.md",
+        "source_of_truth": "docs/tooling.md#goals",
+        "requirements": tuple(requirements),
+        "requirement_count": len(requirements),
+        "covered_requirements": tuple(item["id"] for item in requirements if item["ok"]),
+        "covered_requirement_count": sum(1 for item in requirements if item["ok"]),
+        "missing_requirements": missing_requirements,
+        "missing_requirement_count": len(missing_requirements),
+        "sections": sections,
+        "section_count": len(sections),
+        "required_gates": required_gate_ids,
+        "required_gate_count": len(required_gate_ids),
+        "covered_gates": covered_gates,
+        "covered_gate_count": len(covered_gates),
+        "missing_gates": missing_gates,
+        "missing_gate_count": len(missing_gates),
+        "requirements_by_section": {
+            section: tuple(item["id"] for item in requirements if item["section"] == section)
+            for section in sections
+        },
+    }
+
+
 def _tooling_audit_doc_anchor_integrity(root: Path, section_refs: Iterable[str]) -> dict:
     docs_path = root / "docs" / "tooling.md"
     docs_text = docs_path.read_text(encoding="utf-8")
@@ -17231,6 +17522,7 @@ def _tooling_audit_section_coverage(root: Path, checks: Iterable[dict]) -> dict:
             "cli_validation_and_generation_contracts",
             "cli_usage_failure_contracts",
             "cli_help_alias_contracts",
+            "tooling_requirements_traceability",
         ),
         "language-server-specification": (
             "language_server_core_features",
@@ -17298,6 +17590,7 @@ def _tooling_audit_section_coverage(root: Path, checks: Iterable[dict]) -> dict:
         "appgen-explain": ("explain_cli_contracts",),
         "appgen-doctor": ("doctor_cli_text_contracts",),
         "appgen-command-docs": ("tooling_command_docs_manifest",),
+        "appgen-requirements-trace": ("tooling_requirements_traceability",),
         "appgen-contract-schema": ("contract_schema_cli_contracts",),
         "appgen-contract-validate": ("contract_validation_cli_contracts",),
         "appgen-runtime-contracts": ("runtime_contract_inventory_contracts", "tooling_doc_language_policy"),
@@ -17335,6 +17628,7 @@ def _tooling_audit_section_coverage(root: Path, checks: Iterable[dict]) -> dict:
     check_ids = {check.get("id") for check in checks}
     coverage_check_ids = check_ids | {
         "tooling_section_coverage_contracts",
+        "tooling_requirements_traceability",
         "tooling_audit_text_renderer",
         "tooling_doc_anchor_integrity",
     }
@@ -24629,6 +24923,14 @@ def tooling_command_docs_report_dsl() -> dict:
     return _tooling_audit_command_docs(Path(__file__).resolve().parents[2])
 
 
+def tooling_requirements_trace_report_dsl() -> dict:
+    """Return docs/tooling.md requirement-to-gate traceability evidence."""
+    return _tooling_audit_report_detail(
+        "tooling_requirements_traceability",
+        "appgen.tooling-requirements-trace-audit.v1",
+    )
+
+
 def tooling_status_report_dsl() -> dict:
     """Return a compact, machine-readable answer to what remains in tooling."""
     return _tooling_status_report_from_audit(tooling_audit_report_dsl())
@@ -24642,6 +24944,7 @@ def _tooling_status_report_from_audit(report: dict) -> dict:
     priority_detail = checks_by_id.get("priority_order_contracts", {}).get("detail", {})
     doc_detail = checks_by_id.get("tooling_doc_anchor_integrity", {}).get("detail", {})
     command_doc_detail = checks_by_id.get("tooling_command_docs_manifest", {}).get("detail", {})
+    requirements_trace_detail = checks_by_id.get("tooling_requirements_traceability", {}).get("detail", {})
     failing_checks = tuple(check.get("id") for check in checks if check.get("ok") is not True)
     blocking_gaps = tuple(report.get("blocking_gaps", ()))
     phases = tuple(phase_detail.get("phases", ()))
@@ -24654,6 +24957,8 @@ def _tooling_status_report_from_audit(report: dict) -> dict:
     missing_doc_test_formats = tuple(doc_detail.get("missing_test_formats", ()))
     missing_manifest_commands = tuple(command_doc_detail.get("missing_manifest_commands", ()))
     unknown_documented_commands = tuple(command_doc_detail.get("unknown_documented_commands", ()))
+    missing_requirements = tuple(requirements_trace_detail.get("missing_requirements", ()))
+    missing_requirement_gates = tuple(requirements_trace_detail.get("missing_gates", ()))
     next_actions: list[dict] = []
     for check_id in failing_checks:
         next_actions.append(
@@ -24678,6 +24983,10 @@ def _tooling_status_report_from_audit(report: dict) -> dict:
         next_actions.append({"kind": "missing_command_doc", "id": command, "source": "docs/tooling.md#cli-contracts"})
     for command in unknown_documented_commands:
         next_actions.append({"kind": "unknown_documented_command", "id": command, "source": "docs/tooling.md#cli-contracts"})
+    for requirement in missing_requirements:
+        next_actions.append({"kind": "tooling_requirement", "id": requirement, "source": "docs/tooling.md#goals"})
+    for gate_id in missing_requirement_gates:
+        next_actions.append({"kind": "tooling_requirement_gate", "id": gate_id, "source": "docs/tooling.md#appgen-requirements-trace"})
     for gap in blocking_gaps:
         gap_id = gap.get("id") if isinstance(gap, dict) else str(gap)
         next_actions.append({"kind": "blocking_gap", "id": gap_id, "source": "appgen.tooling-audit.v1"})
@@ -24692,6 +25001,8 @@ def _tooling_status_report_from_audit(report: dict) -> dict:
         and not missing_doc_test_formats
         and not missing_manifest_commands
         and not unknown_documented_commands
+        and not missing_requirements
+        and not missing_requirement_gates
     )
     return {
         "format": "appgen.tooling-status.v1",
@@ -24724,6 +25035,10 @@ def _tooling_status_report_from_audit(report: dict) -> dict:
         "missing_manifest_commands": missing_manifest_commands,
         "unknown_documented_command_count": len(unknown_documented_commands),
         "unknown_documented_commands": unknown_documented_commands,
+        "missing_requirement_count": len(missing_requirements),
+        "missing_requirements": missing_requirements,
+        "missing_requirement_gate_count": len(missing_requirement_gates),
+        "missing_requirement_gates": missing_requirement_gates,
         "next_action_count": len(next_actions),
         "next_actions": tuple(next_actions),
         "source_of_truth": "docs/tooling.md#cli-contracts",
@@ -24751,17 +25066,24 @@ def tooling_docs_report_dsl() -> dict:
         "tooling_command_docs_manifest",
         "appgen.tooling-command-docs-audit.v1",
     )
+    requirements_trace = _tooling_audit_report_detail(
+        "tooling_requirements_traceability",
+        "appgen.tooling-requirements-trace-audit.v1",
+    )
     missing_anchor_count = len(doc_anchor.get("missing_sections", ()))
     ok = (
         doc_anchor.get("ok") is True
         and section_coverage.get("ok") is True
         and doc_language_policy.get("ok") is True
         and command_docs.get("ok") is True
+        and requirements_trace.get("ok") is True
         and missing_anchor_count == 0
         and doc_anchor.get("runtime_reference_gap_count", 0) == 0
         and doc_anchor.get("test_reference_gap_count", 0) == 0
         and command_docs.get("missing_manifest_command_count", 0) == 0
         and command_docs.get("unknown_documented_command_count", 0) == 0
+        and requirements_trace.get("missing_requirement_count", 0) == 0
+        and requirements_trace.get("missing_gate_count", 0) == 0
         and section_coverage.get("missing_section_count", 0) == 0
         and section_coverage.get("missing_subsection_count", 0) == 0
         and section_coverage.get("stale_mapping_count", 0) == 0
@@ -24776,11 +25098,14 @@ def tooling_docs_report_dsl() -> dict:
         "section_coverage": section_coverage,
         "doc_language_policy": doc_language_policy,
         "command_docs": command_docs,
+        "requirements_trace": requirements_trace,
         "missing_anchor_count": missing_anchor_count,
         "missing_language_fragment_count": doc_language_policy.get("missing_fragment_count", 0),
         "forbidden_language_phrase_hit_count": doc_language_policy.get("forbidden_phrase_hit_count", 0),
         "missing_manifest_command_count": command_docs.get("missing_manifest_command_count", 0),
         "unknown_documented_command_count": command_docs.get("unknown_documented_command_count", 0),
+        "missing_requirement_count": requirements_trace.get("missing_requirement_count", 0),
+        "missing_requirement_gate_count": requirements_trace.get("missing_gate_count", 0),
         "runtime_reference_gap_count": doc_anchor.get("runtime_reference_gap_count", 0),
         "test_reference_gap_count": doc_anchor.get("test_reference_gap_count", 0),
         "missing_section_count": section_coverage.get("missing_section_count", 0),
@@ -26435,6 +26760,31 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
                 },
             ),
         }
+        requirements_trace = {
+            "format": "appgen.tooling-requirements-trace-audit.v1",
+            "ok": True,
+            "requirements": (
+                {
+                    "id": "shared_parser_semantic_model",
+                    "section": "docs/tooling.md#goals",
+                    "requirement": "Every authoring and generation surface must use one shared parser and semantic model.",
+                    "gate_ids": ("shared_semantic_model",),
+                    "missing_gates": (),
+                    "ok": True,
+                },
+            ),
+            "requirement_count": 1,
+            "covered_requirement_count": 1,
+            "missing_requirement_count": 0,
+            "missing_requirements": (),
+            "sections": ("docs/tooling.md#goals",),
+            "required_gates": ("shared_semantic_model",),
+            "required_gate_count": 1,
+            "covered_gates": ("shared_semantic_model",),
+            "covered_gate_count": 1,
+            "missing_gates": (),
+            "missing_gate_count": 0,
+        }
         tooling_status = _tooling_status_report_from_audit(
             {
                 "format": "appgen.tooling-audit.v1",
@@ -26487,6 +26837,12 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
                             "missing_manifest_commands": (),
                             "unknown_documented_commands": (),
                         },
+                    },
+                    {
+                        "id": "tooling_requirements_traceability",
+                        "ok": True,
+                        "section": "docs/tooling.md#appgen-tooling-audit",
+                        "detail": requirements_trace,
                     },
                 ),
                 "blocking_gaps": (),
@@ -26707,6 +27063,7 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             ),
             "appgen.tooling-doc-language-audit.v1": _tooling_audit_doc_language_policy(repo_root),
             "appgen.tooling-command-docs-audit.v1": _tooling_audit_command_docs(repo_root),
+            "appgen.tooling-requirements-trace-audit.v1": requirements_trace,
             "appgen.tooling-docs-audit.v1": {
                 "format": "appgen.tooling-docs-audit.v1",
                 "ok": True,
@@ -26733,11 +27090,14 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
                     "missing_manifest_commands": (),
                     "unknown_documented_commands": (),
                 },
+                "requirements_trace": requirements_trace,
                 "missing_anchor_count": 0,
                 "missing_section_count": 0,
                 "missing_subsection_count": 0,
                 "missing_manifest_command_count": 0,
                 "unknown_documented_command_count": 0,
+                "missing_requirement_count": 0,
+                "missing_requirement_gate_count": 0,
             },
             "appgen.tooling-status.v1": tooling_status,
             "appgen.tooling-implementation-phase-audit.v1": implementation_phases,
@@ -29701,6 +30061,7 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         ("drift",): ("--json",),
         ("doctor",): ("--json",),
         ("command-docs",): ("--json",),
+        ("requirements-trace",): ("--json",),
         ("contributor-tasks",): ("--json",),
         ("priority-order",): ("--json",),
         ("implementation-phases",): ("--json",),

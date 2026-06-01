@@ -721,8 +721,10 @@ command stops producing the same lint contract.
 Governance commands are also direct CLI contracts: `appgen module-boundaries`
 emits `appgen.module-boundary-audit.v1`, `appgen non-goals` emits
 `appgen.non-goal-policy-audit.v1`, `appgen implementation-phases` emits
-`appgen.tooling-implementation-phase-audit.v1`, and `appgen tooling-docs`
-emits `appgen.tooling-docs-audit.v1` with embedded anchor and section coverage.
+`appgen.tooling-implementation-phase-audit.v1`, `appgen requirements-trace`
+emits `appgen.tooling-requirements-trace-audit.v1`, and `appgen tooling-docs`
+emits `appgen.tooling-docs-audit.v1` with embedded anchor, section, command,
+and requirement trace coverage.
 These commands keep architectural and documentation guardrails callable without
 requiring contributors to expand the full aggregate audit.
 `appgen command-docs` emits `appgen.tooling-command-docs-audit.v1`, comparing
@@ -732,14 +734,21 @@ documented commands, missing manifest-command documentation, unknown documented
 commands, ignored fenced examples, and per-command inline reference counts, so a
 new command cannot be implemented without documentation and a prose typo cannot
 advertise a command that the launcher does not support.
+`appgen requirements-trace` emits
+`appgen.tooling-requirements-trace-audit.v1`, which maps documented
+requirements to executable tooling gates. It traces goals, non-goals, command
+governance, and documentation governance to named aggregate check ids; reports
+requirement counts, covered requirement counts, missing requirements, required
+gates, covered gates, and missing gates; and fails when a normative requirement
+becomes prose-only or points at a gate that no longer exists.
 `appgen tooling-status` emits `appgen.tooling-status.v1`, a compact "what is
 left" contract distilled from the aggregate audit. It reports passing and
 failing check ids, blocking gaps, completed and incomplete implementation
 phases, missing contributor tasks, missing priorities, documentation runtime/test
-format gaps, and ordered next actions. This gives maintainers and external
-coding agents one deterministic status surface for deciding whether to keep
-building, hand off a blocked area, or release without manually scanning the full
-audit payload.
+format gaps, missing tooling requirements, missing requirement gates, and ordered
+next actions. This gives maintainers and external coding agents one
+deterministic status surface for deciding whether to keep building, hand off a
+blocked area, or release without manually scanning the full audit payload.
 Test strategy and roadmap commands are first-class CLI contracts:
 `appgen test-strategy <file>` emits the same cross-tool strategy evidence used
 by the aggregate audit, `appgen contributor-tasks` prints the evidence-backed
@@ -3230,6 +3239,31 @@ report so documentation governance can distinguish command-surface drift from
 anchor drift, schema-reference drift, section-coverage drift, or stale-language
 policy drift.
 
+### `appgen requirements-trace`
+
+```console
+appgen requirements-trace --json
+appgen requirements-trace
+```
+
+Emits `appgen.tooling-requirements-trace-audit.v1`, the requirement
+traceability contract for this specification. The audit maps documented
+requirements to executable tooling gates, including the goals for the shared
+semantic model, deterministic lint/format/validate behavior, IDE feedback,
+safe refactors, normalized generator metadata, diagnostics, graph/explain
+outputs, supported database migrations, natural-language DSL diffs, release
+evidence, non-goal policy guards, command-manifest governance, and documentation
+governance.
+
+The report includes requirement ids, source sections, requirement text,
+required documentation fragments, gate ids, per-gate results, missing
+requirements, missing fragments, required gate counts, covered gate counts, and
+missing gate ids. The aggregate tooling audit exposes this proof as
+`tooling_requirements_traceability`, and `appgen tooling-docs` embeds the same
+payload so documentation governance can fail when a normative requirement
+becomes prose-only even if headings, anchors, command docs, and schema
+references still pass.
+
 ### `appgen tooling-audit`
 
 ```console
@@ -3271,6 +3305,9 @@ coverage audit so CI can distinguish missing anchors, missing major sections,
 missing subsections, runtime format reference gaps, and test reference gaps.
 It also embeds `appgen.tooling-command-docs-audit.v1`, so docs governance can
 separate command-manifest drift from anchor or schema-reference drift.
+It embeds `appgen.tooling-requirements-trace-audit.v1` as well, so docs
+governance can separate prose-only requirement drift from heading, anchor,
+schema-reference, and command-manifest drift.
 The text
 renderer must include embedded audit format names such as
 `appgen.non-goal-policy-audit.v1` and

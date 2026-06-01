@@ -35,6 +35,7 @@ TOOLING_SUBCOMMANDS = (
     "drift",
     "doctor",
     "command-docs",
+    "requirements-trace",
     "contributor-tasks",
     "priority-order",
     "implementation-phases",
@@ -50,7 +51,7 @@ TOOLING_HELP_LINES = (
     "diagnostics, parser-golden, module-boundaries, non-goals, test-strategy,",
     "dsl-quality, dsl-antlr, dsl-authoring-gate, dsl-language-service,",
     "contract-schema, contract-validate, runtime-contracts, drift, doctor,",
-    "command-docs, contributor-tasks, priority-order, implementation-phases,",
+    "command-docs, requirements-trace, contributor-tasks, priority-order, implementation-phases,",
     "tooling-docs, tooling-status, and tooling-audit",
 )
 
