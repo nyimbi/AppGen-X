@@ -4609,3 +4609,8 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   agent-handoff` contract. The report exposes launcher names, backend filters,
   compact model briefs, token-budget notes, guardrails, and canonical AppGen-X
   commands without requiring a natural-language patch first.
+- Current editor handoff expansion makes that direct coding-agent contract a
+  first-class VS Code action. The extension now exposes Coding Agent Handoff in
+  command palette and Agent Handoffs tree, collects operation/vector/backend
+  choices, renders `appgen.agent-handoff-report.v1` in a webview, and the
+  extension audit rejects missing CLI markers or renderer wiring.

@@ -37,6 +37,7 @@ function activate(context) {
   registerCommand(context, "appgen.previewDesigner", previewDesignerSync);
   registerCommand(context, "appgen.migrationPlan", migrationPlan);
   registerCommand(context, "appgen.nlPlan", naturalLanguagePlan);
+  registerCommand(context, "appgen.agentHandoff", agentHandoff);
   registerCommand(context, "appgen.explain", explainActiveSymbol);
   registerCommand(context, "appgen.generate", generateActiveFile);
   registerCommand(context, "appgen.previewArtifacts", previewGeneratedArtifacts);
@@ -291,6 +292,7 @@ function registerViews(context) {
     ],
     "appgen.agents": [
       { label: "Natural Language Plan", command: "appgen.nlPlan", icon: "sparkle" },
+      { label: "Coding Agent Handoff", command: "appgen.agentHandoff", icon: "robot" },
       { label: "Semantic Preview", command: "appgen.previewSemantic", icon: "symbol-class" },
       { label: "PBC Catalog", command: "appgen.pbcCatalog", icon: "library" }
     ]
@@ -605,19 +607,41 @@ function renderMigrationPlan(payload) {
 }
 
 function renderNaturalLanguagePlan(payload) {
-  const operations = payload.operations || [];
+  const operations = payload.edit_operations || payload.operations || [];
   const handoffs = payload.agent_handoffs || [];
-  const compactModels = payload.compact_models || [];
+  const compactModels = payload.compact_model_briefs || payload.compact_models || [];
   const body = `<p>Status: ${escapeHtml(payload.ok ? "ok" : "failed")}</p>
     <h2>Operations</h2>
     <ul>${operations.map((operation) => `<li>${escapeHtml(operation.kind || operation.type || JSON.stringify(operation))}</li>`).join("")}</ul>
     <h2>Agent Handoffs</h2>
-    <ul>${handoffs.map((handoff) => `<li>${escapeHtml(handoff.agent || handoff.id || "agent")}: ${escapeHtml(handoff.summary || handoff.brief || "")}</li>`).join("")}</ul>
+    <ul>${handoffs.map((handoff) => `<li>${escapeHtml(handoff.vector || handoff.agent || handoff.id || "agent")}: ${escapeHtml((handoff.backends || []).join(", "))}</li>`).join("")}</ul>
     <h2>Compact Model Briefs</h2>
-    <ul>${compactModels.map((model) => `<li>${escapeHtml(model.model || model.id || "")}: ${escapeHtml(model.token_budget || model.tokens || "")}</li>`).join("")}</ul>
+    <ul>${compactModels.map((model) => `<li>${escapeHtml(model.model || model.id || "")}: prompt ${escapeHtml(model.prompt_tokens || "")}, patch ${escapeHtml(model.patch_tokens || "")}, ok ${escapeHtml(model.ok)}</li>`).join("")}</ul>
     <details><summary>DSL Patch</summary><pre>${escapeHtml(payload.dsl_patch || "")}</pre></details>
     <details><summary>Raw natural language plan</summary><pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre></details>`;
   return previewShell("AppGen-X Natural Language Plan", body);
+}
+
+function renderAgentHandoff(payload) {
+  const handoffs = payload.agent_handoffs || [];
+  const compactModels = payload.compact_model_briefs || [];
+  const commands = payload.commands || [];
+  const notes = payload.token_budget_notes || [];
+  const digest = payload.prompt_digest || {};
+  const body = `<p>Status: ${escapeHtml(payload.ok ? "ok" : "failed")}</p>
+    <p>Operation: ${escapeHtml(payload.operation || "")}</p>
+    <p>Backends: ${escapeHtml((payload.observed_backends || []).join(", ") || "none")}</p>
+    <h2>Agent Vectors</h2>
+    <ul>${handoffs.map((handoff) => `<li><strong>${escapeHtml(handoff.vector || "")}</strong> launcher=${escapeHtml(handoff.launcher || "")}; backends=${escapeHtml((handoff.backends || []).join(", "))}; outputs=${escapeHtml((handoff.required_outputs || []).join(", "))}</li>`).join("")}</ul>
+    <h2>Compact Model Briefs</h2>
+    <ul>${compactModels.map((model) => `<li>${escapeHtml(model.model || "")}: ${escapeHtml(model.backend || "")}; prompt ${escapeHtml(model.prompt_tokens || "")}; patch ${escapeHtml(model.patch_tokens || "")}; ok ${escapeHtml(model.ok)}</li>`).join("")}</ul>
+    <h2>Commands</h2>
+    <ol>${commands.map((command) => `<li><code>${escapeHtml(command)}</code></li>`).join("")}</ol>
+    <h2>Token Budget Notes</h2>
+    <ul>${notes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul>
+    <details><summary>Prompt digest</summary><pre>${escapeHtml(JSON.stringify(digest, null, 2))}</pre></details>
+    <details><summary>Raw agent handoff</summary><pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre></details>`;
+  return previewShell("AppGen-X Coding Agent Handoff", body);
 }
 
 function renderReleaseVerifier(payload) {
@@ -792,6 +816,48 @@ async function naturalLanguagePlan() {
   }
   return runAppGenJson(["nl-plan", file, "--prompt", prompt.trim(), "--backend", "postgresql", "--json"], "AppGen-X Natural Language Plan").then((result) => {
     showJsonPreview("AppGen-X Natural Language Plan", result.payload, renderNaturalLanguagePlan);
+  });
+}
+
+async function agentHandoff() {
+  const file = activeFile();
+  const prompt = await vscode.window.showInputBox({
+    title: "AppGen-X Coding Agent Handoff",
+    prompt: "Describe the bounded AppGen-X operation for the coding agent handoff.",
+    value: "Build or evolve this AppGen-X application.",
+    ignoreFocusOut: true
+  });
+  if (!prompt || !prompt.trim()) {
+    return;
+  }
+  const operation = await vscode.window.showInputBox({
+    title: "AppGen-X Operation Kind",
+    prompt: "Use a compact operation label for the handoff contract.",
+    value: "bounded_dsl_change",
+    ignoreFocusOut: true
+  });
+  if (!operation || !operation.trim()) {
+    return;
+  }
+  const vector = await vscode.window.showQuickPick(
+    ["all", "claude_code", "openai_codex", "opencode"],
+    { title: "Coding Agent Vector", placeHolder: "Select the target coding agent vector." }
+  );
+  if (!vector) {
+    return;
+  }
+  const backend = await vscode.window.showQuickPick(
+    ["all", "api-key", "ollama", "vllm"],
+    { title: "LLM Backend", placeHolder: "Select the model/backend path." }
+  );
+  if (!backend) {
+    return;
+  }
+  return runAppGenJson(
+    ["agent-handoff", file, "--prompt", prompt.trim(), "--operation", operation.trim(), "--vector", vector, "--backend", backend, "--json"],
+    "AppGen-X Coding Agent Handoff"
+  ).then((result) => {
+    showJsonPreview("AppGen-X Coding Agent Handoff", result.payload, renderAgentHandoff);
   });
 }
 

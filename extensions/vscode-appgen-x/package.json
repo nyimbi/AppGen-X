@@ -23,6 +23,7 @@
     "onCommand:appgen.previewDesigner",
     "onCommand:appgen.migrationPlan",
     "onCommand:appgen.nlPlan",
+    "onCommand:appgen.agentHandoff",
     "onCommand:appgen.explain",
     "onCommand:appgen.generate",
     "onCommand:appgen.previewArtifacts",
@@ -114,6 +115,10 @@
         "title": "AppGen-X: Plan Natural Language Change"
       },
       {
+        "command": "appgen.agentHandoff",
+        "title": "AppGen-X: Prepare Coding Agent Handoff"
+      },
+      {
         "command": "appgen.explain",
         "title": "AppGen-X: Explain Symbol"
       },
@@ -191,6 +196,9 @@
           "command": "appgen.nlPlan"
         },
         {
+          "command": "appgen.agentHandoff"
+        },
+        {
           "command": "appgen.explain"
         },
         {
@@ -261,7 +269,7 @@
       },
       {
         "view": "appgen.agents",
-        "contents": "Use Natural Language Plan to produce compact handoffs for coding agents and local models."
+        "contents": "Use Natural Language Plan or Coding Agent Handoff to produce compact handoffs for coding agents and local models."
       }
     ]
   }

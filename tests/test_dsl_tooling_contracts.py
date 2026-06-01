@@ -5711,6 +5711,7 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
         "appgen.previewDesigner",
         "appgen.migrationPlan",
         "appgen.nlPlan",
+        "appgen.agentHandoff",
         "appgen.explain",
         "appgen.generate",
         "appgen.previewArtifacts",
@@ -5747,6 +5748,10 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     assert '["designer-sync", file, "--json"]' in source
     assert '["migration-plan", previous[0].fsPath, current, "--backend", "postgresql", "--json"]' in source
     assert '["nl-plan", file, "--prompt", prompt.trim(), "--backend", "postgresql", "--json"]' in source
+    assert (
+        '["agent-handoff", file, "--prompt", prompt.trim(), "--operation", operation.trim(), "--vector", vector, "--backend", backend, "--json"]'
+        in source
+    )
     assert '["verify", file, "--target", "all", "--json"]' in source
     assert '["doctor", "--json"]' in source
     assert '["tooling-audit", "--json"]' in source
@@ -5765,6 +5770,7 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     assert "renderDesignerSync" in source
     assert "renderMigrationPlan" in source
     assert "renderNaturalLanguagePlan" in source
+    assert "renderAgentHandoff" in source
     assert "renderReleaseVerifier" in source
     assert "renderToolingAudit" in source
     assert "renderContractSchema" in source
@@ -5807,8 +5813,8 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     assert audit["missing_view_welcome_count"] == 0
     assert audit["missing_tree_command_count"] == 0
     assert audit["missing_tree_commands"] == ()
-    assert audit["required_tree_command_count"] == 14
-    assert audit["tree_command_count"] == 14
+    assert audit["required_tree_command_count"] == 15
+    assert audit["tree_command_count"] == 15
     assert audit["tree_commands_by_view"]["appgen.workspace"] == (
         "appgen.validate",
         "appgen.previewDesigner",
@@ -5826,6 +5832,7 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     )
     assert audit["tree_commands_by_view"]["appgen.agents"] == (
         "appgen.nlPlan",
+        "appgen.agentHandoff",
         "appgen.previewSemantic",
         "appgen.pbcCatalog",
     )
@@ -5843,6 +5850,10 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     assert '["semantic", activeFile(), "--json"]' in audit["command_cli_markers"]
     assert '["semantic", file, "--json"]' in audit["command_cli_markers"]
     assert '["nl-plan", file, "--prompt", prompt.trim(), "--backend", "postgresql", "--json"]' in audit["command_cli_markers"]
+    assert (
+        '["agent-handoff", file, "--prompt", prompt.trim(), "--operation", operation.trim(), "--vector", vector, "--backend", backend, "--json"]'
+        in audit["command_cli_markers"]
+    )
     assert '["tooling-audit", "--json"]' in audit["command_cli_markers"]
     assert '["contract-schema", "--json"]' in audit["command_cli_markers"]
     assert '["contract-validate", semanticPath, "--format", "appgen.semantic-model.v1", "--json"]' in audit[
