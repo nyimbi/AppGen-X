@@ -2704,22 +2704,25 @@ Inventories `appgen.*.v1` runtime envelopes across top-level package modules
 outside the active PBC implementation tree. The command returns
 `appgen.runtime-contract-inventory.v1` with module-level format lists,
 documented format counts, schema-promoted format counts, and explicit
-unpromoted/undocumented format lists. The inventory is intentionally
-non-blocking: a large backlog is expected while package-level release gates are
-promoted into reusable tooling contracts, but the backlog must be visible so
-contributors and coding agents can work in batches instead of rediscovering
-formats by source scraping.
+unpromoted/undocumented format lists. The inventory is now a blocking
+completion gate for non-PBC top-level runtime contracts: actionable
+`unpromoted_runtime_formats` and `undocumented_runtime_formats` must both be
+empty. The only allowed non-schema runtime literal is the controlled
+missing-schema sentinel `appgen.missing-contract.v1`, reported separately in
+`sentinel_runtime_formats` so contract-schema negative tests do not look like
+real implementation backlog.
 
 Text mode prints the inventory envelope format, runtime format count,
 schema-promoted count, documented count, unpromoted count, undocumented count,
-module count, and sample unpromoted/undocumented format names. JSON remains the
-authoritative handoff.
+sentinel count, module count, controlled sentinel names, and any actionable
+unpromoted/undocumented format names. JSON remains the authoritative handoff.
 
 `appgen.runtime-contract-inventory-cli-audit.v1` proves JSON and text modes for
 this command. The aggregate tooling audit exposes it through
 `runtime_contract_inventory_contracts`, which fails if the inventory command
-stops scanning package modules, stops skipping PBC paths, loses text markers, or
-falls back to raw JSON.
+stops scanning package modules, stops skipping PBC paths, loses text markers,
+falls back to raw JSON, leaves an actionable non-PBC schema/documentation
+backlog, or loses the controlled missing-schema sentinel.
 
 ### `appgen semantic`
 

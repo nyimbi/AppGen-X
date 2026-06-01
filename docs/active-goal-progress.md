@@ -4623,3 +4623,8 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   JSON output, filtered OpenAI Codex plus Ollama JSON output, filtered text
   output, compact model briefs, token-budget notes, canonical commands, and
   section-coverage enforcement for `docs/tooling.md#appgen-agent-handoff`.
+- Current runtime inventory expansion converts `appgen runtime-contracts` from
+  backlog reporting into a zero-actionable-backlog gate for top-level non-PBC
+  runtime contracts. The deliberate negative-test sentinel
+  `appgen.missing-contract.v1` is now reported separately from real
+  unpromoted or undocumented formats.

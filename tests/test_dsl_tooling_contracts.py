@@ -9031,7 +9031,11 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert runtime_inventory_check["detail"]["inventory"]["format"] == "appgen.runtime-contract-inventory.v1"
     assert runtime_inventory_check["detail"]["inventory"]["ok"] is True
     assert runtime_inventory_check["detail"]["inventory"]["pbc_paths_skipped"] is True
-    assert runtime_inventory_check["detail"]["inventory"]["unpromoted_runtime_format_count"] > 0
+    assert runtime_inventory_check["detail"]["inventory"]["unpromoted_runtime_format_count"] == 0
+    assert runtime_inventory_check["detail"]["inventory"]["undocumented_runtime_format_count"] == 0
+    assert runtime_inventory_check["detail"]["inventory"]["sentinel_runtime_formats"] == (
+        "appgen.missing-contract.v1",
+    )
     assert runtime_inventory_check["detail"]["cli"]["format"] == "appgen.runtime-contract-inventory-cli-audit.v1"
     assert runtime_inventory_check["detail"]["cli"]["ok"] is True
     assert runtime_inventory_check["detail"]["cli"]["missing_text_marker_count"] == 0
@@ -14394,13 +14398,20 @@ def test_runtime_contract_inventory_cli_audit_exposes_package_contract_backlog()
     assert report["module_count"] > 0
     assert report["runtime_format_count"] >= report["schema_promoted_runtime_format_count"]
     assert report["runtime_format_count"] >= report["documented_runtime_format_count"]
-    assert report["unpromoted_runtime_format_count"] > 0
+    assert report["unpromoted_runtime_format_count"] == 0
+    assert report["undocumented_runtime_format_count"] == 0
+    assert report["sentinel_runtime_format_count"] == 1
+    assert report["sentinel_runtime_formats"] == ("appgen.missing-contract.v1",)
+    assert report["missing_sentinel_runtime_formats"] == ()
     assert "appgen.runtime-contract-inventory.v1" in report["schema_promoted_runtime_formats"]
     assert audit["format"] == "appgen.runtime-contract-inventory-cli-audit.v1"
     assert audit["ok"] is True
     assert audit["json_payload_format"] == "appgen.runtime-contract-inventory.v1"
     assert audit["json_exit_code"] == 0
     assert audit["text_exit_code"] == 0
+    assert audit["unpromoted_runtime_format_count"] == 0
+    assert audit["undocumented_runtime_format_count"] == 0
+    assert audit["sentinel_runtime_formats"] == ("appgen.missing-contract.v1",)
     assert audit["missing_text_marker_count"] == 0
     assert audit["text_json_fallback"] is False
 

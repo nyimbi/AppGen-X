@@ -2562,10 +2562,13 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
             f"schema_promoted={payload.get('schema_promoted_runtime_format_count', 0)} "
             f"documented={payload.get('documented_runtime_format_count', 0)} "
             f"unpromoted={payload.get('unpromoted_runtime_format_count', 0)} "
-            f"undocumented={payload.get('undocumented_runtime_format_count', 0)}"
+            f"undocumented={payload.get('undocumented_runtime_format_count', 0)} "
+            f"sentinels={payload.get('sentinel_runtime_format_count', 0)}"
         )
         modules = tuple(payload.get("modules", ()))
         print(f"modules scanned={len(modules)} pbc_paths_skipped={payload.get('pbc_paths_skipped', True)}")
+        for item in tuple(payload.get("sentinel_runtime_formats", ()))[:20]:
+            print(f"sentinel-format {item}")
         for item in tuple(payload.get("unpromoted_runtime_formats", ()))[:20]:
             print(f"unpromoted-format {item}")
         for item in tuple(payload.get("undocumented_runtime_formats", ()))[:20]:
@@ -12173,6 +12176,8 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "documented_runtime_formats": {"type": "array", "items": {"type": "string"}},
                 "schema_promoted_runtime_format_count": {"type": "integer", "minimum": 0},
                 "schema_promoted_runtime_formats": {"type": "array", "items": {"type": "string"}},
+                "sentinel_runtime_format_count": {"type": "integer", "minimum": 0},
+                "sentinel_runtime_formats": {"type": "array", "items": {"type": "string"}},
                 "unpromoted_runtime_format_count": {"type": "integer", "minimum": 0},
                 "unpromoted_runtime_formats": {"type": "array", "items": {"type": "string"}},
                 "undocumented_runtime_format_count": {"type": "integer", "minimum": 0},
@@ -12193,6 +12198,7 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "module_count": {"type": "integer", "minimum": 0},
                 "schema_promoted_runtime_format_count": {"type": "integer", "minimum": 0},
                 "documented_runtime_format_count": {"type": "integer", "minimum": 0},
+                "sentinel_runtime_format_count": {"type": "integer", "minimum": 0},
                 "unpromoted_runtime_format_count": {"type": "integer", "minimum": 0},
                 "undocumented_runtime_format_count": {"type": "integer", "minimum": 0},
                 "pbc_paths_skipped": {"type": "boolean"},
@@ -13017,10 +13023,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and runtime_contract_inventory.get("module_count", 0) > 0
             and runtime_contract_inventory.get("runtime_format_count", 0)
             >= runtime_contract_inventory.get("schema_promoted_runtime_format_count", 0)
+            and runtime_contract_inventory.get("unpromoted_runtime_format_count") == 0
+            and runtime_contract_inventory.get("undocumented_runtime_format_count") == 0
+            and runtime_contract_inventory.get("sentinel_runtime_format_count") == len(RUNTIME_CONTRACT_INVENTORY_SENTINELS)
             and runtime_contract_inventory.get("pbc_paths_skipped") is True
             and runtime_contract_inventory_cli.get("missing_text_marker_count") == 0
             and runtime_contract_inventory_cli.get("text_json_fallback") is False,
-            "Runtime contract inventory exposes package-level contract formats, schema promotion counts, documentation promotion counts, and the non-PBC backlog for batch implementation.",
+            "Runtime contract inventory enforces zero actionable non-PBC schema/documentation backlog while reporting controlled missing-schema sentinels separately.",
             "docs/tooling.md#appgen-runtime-contracts",
             {
                 "inventory": runtime_contract_inventory,
@@ -24370,6 +24379,9 @@ def tooling_docs_report_dsl() -> dict:
     }
 
 
+RUNTIME_CONTRACT_INVENTORY_SENTINELS = ("appgen.missing-contract.v1",)
+
+
 def runtime_contract_inventory_report(repo_root: Path | None = None) -> dict:
     """Inventory runtime contract envelopes across top-level package modules."""
     root = repo_root or Path(__file__).resolve().parents[2]
@@ -24398,21 +24410,33 @@ def runtime_contract_inventory_report(repo_root: Path | None = None) -> dict:
     runtime_sorted = tuple(sorted(runtime_formats))
     documented_runtime_formats = tuple(item for item in runtime_sorted if item in documented_formats)
     schema_promoted_runtime_formats = tuple(item for item in runtime_sorted if item in schema_formats)
-    unpromoted_runtime_formats = tuple(item for item in runtime_sorted if item not in schema_formats)
-    undocumented_runtime_formats = tuple(item for item in runtime_sorted if item not in documented_formats)
+    sentinel_runtime_formats = tuple(item for item in runtime_sorted if item in RUNTIME_CONTRACT_INVENTORY_SENTINELS)
+    actionable_runtime_formats = tuple(item for item in runtime_sorted if item not in set(RUNTIME_CONTRACT_INVENTORY_SENTINELS))
+    unpromoted_runtime_formats = tuple(item for item in actionable_runtime_formats if item not in schema_formats)
+    undocumented_runtime_formats = tuple(item for item in actionable_runtime_formats if item not in documented_formats)
     return {
         "format": "appgen.runtime-contract-inventory.v1",
-        "ok": True,
+        "ok": not unpromoted_runtime_formats
+        and not undocumented_runtime_formats
+        and set(sentinel_runtime_formats) == set(RUNTIME_CONTRACT_INVENTORY_SENTINELS),
         "source": "src/pyAppGen/*.py",
         "docs_source": "docs/tooling.md",
         "pbc_paths_skipped": True,
         "module_count": len(modules),
         "runtime_format_count": len(runtime_sorted),
         "runtime_formats": runtime_sorted,
+        "actionable_runtime_format_count": len(actionable_runtime_formats),
+        "actionable_runtime_formats": actionable_runtime_formats,
         "documented_runtime_format_count": len(documented_runtime_formats),
         "documented_runtime_formats": documented_runtime_formats,
         "schema_promoted_runtime_format_count": len(schema_promoted_runtime_formats),
         "schema_promoted_runtime_formats": schema_promoted_runtime_formats,
+        "sentinel_runtime_format_count": len(sentinel_runtime_formats),
+        "sentinel_runtime_formats": sentinel_runtime_formats,
+        "expected_sentinel_runtime_formats": RUNTIME_CONTRACT_INVENTORY_SENTINELS,
+        "missing_sentinel_runtime_formats": tuple(
+            item for item in RUNTIME_CONTRACT_INVENTORY_SENTINELS if item not in sentinel_runtime_formats
+        ),
         "unpromoted_runtime_format_count": len(unpromoted_runtime_formats),
         "unpromoted_runtime_formats": unpromoted_runtime_formats,
         "undocumented_runtime_format_count": len(undocumented_runtime_formats),
@@ -24458,7 +24482,9 @@ def _tooling_audit_runtime_contract_inventory_cli() -> dict:
         "schema_promoted=",
         "unpromoted=",
         "undocumented=",
+        "sentinels=",
         "modules scanned=",
+        "sentinel-format appgen.missing-contract.v1",
     )
     missing_text_markers = tuple(marker for marker in required_markers if marker not in text_output)
     json_ok = (
@@ -24469,6 +24495,10 @@ def _tooling_audit_runtime_contract_inventory_cli() -> dict:
         and json_payload.get("runtime_format_count", 0) >= json_payload.get("documented_runtime_format_count", 0)
         and json_payload.get("module_count", 0) > 0
         and json_payload.get("pbc_paths_skipped") is True
+        and json_payload.get("unpromoted_runtime_format_count") == 0
+        and json_payload.get("undocumented_runtime_format_count") == 0
+        and json_payload.get("sentinel_runtime_format_count") == len(RUNTIME_CONTRACT_INVENTORY_SENTINELS)
+        and tuple(json_payload.get("sentinel_runtime_formats", ())) == RUNTIME_CONTRACT_INVENTORY_SENTINELS
     )
     text_json_fallback = text_output.lstrip().startswith("{")
     text_ok = text_exit == 0 and not missing_text_markers and not text_json_fallback
@@ -24482,8 +24512,13 @@ def _tooling_audit_runtime_contract_inventory_cli() -> dict:
         "module_count": json_payload.get("module_count", 0),
         "schema_promoted_runtime_format_count": json_payload.get("schema_promoted_runtime_format_count", 0),
         "documented_runtime_format_count": json_payload.get("documented_runtime_format_count", 0),
+        "sentinel_runtime_format_count": json_payload.get("sentinel_runtime_format_count", 0),
+        "sentinel_runtime_formats": tuple(json_payload.get("sentinel_runtime_formats", ())),
+        "expected_sentinel_runtime_formats": RUNTIME_CONTRACT_INVENTORY_SENTINELS,
         "unpromoted_runtime_format_count": json_payload.get("unpromoted_runtime_format_count", 0),
+        "unpromoted_runtime_formats": tuple(json_payload.get("unpromoted_runtime_formats", ())),
         "undocumented_runtime_format_count": json_payload.get("undocumented_runtime_format_count", 0),
+        "undocumented_runtime_formats": tuple(json_payload.get("undocumented_runtime_formats", ())),
         "pbc_paths_skipped": json_payload.get("pbc_paths_skipped"),
         "required_text_markers": required_markers,
         "missing_text_markers": missing_text_markers,
