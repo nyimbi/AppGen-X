@@ -1926,6 +1926,54 @@ REMAINING_RUNTIME_SCHEMA_FORMATS = (
 )
 
 
+PBC_RUNTIME_SCHEMA_FORMATS = (
+    "appgen.generated-pbc-composition-runtime-workbench.v1",
+    "appgen.generated-pbc-package-discovery-plan.v1",
+    "appgen.generated-pbc-package-metadata-validation.v1",
+    "appgen.generated-pbc-package-metadata.v1",
+    "appgen.generated-pbc-registration-plan.v1",
+    "appgen.generated-pbc-release-evidence.v1",
+    "appgen.generated-pbc-runtime-manifest.v1",
+    "appgen.generated-pbc-runtime-smoke.v1",
+    "appgen.generated-pbc-runtime-validation.v1",
+    "appgen.generated-pbc-schema-contract.v1",
+    "appgen.generated-pbc-service-contract.v1",
+    "appgen.implemented-pbc-capability-audit.v1",
+    "appgen.pbc-advanced-runtime-evidence.v1",
+    "appgen.pbc-agent-capability-contract.v1",
+    "appgen.pbc-agent-capability-release-audit.v1",
+    "appgen.pbc-catalog-report.v1",
+    "appgen.pbc-composition-plan.v1",
+    "appgen.pbc-domain-functionality-contract.v1",
+    "appgen.pbc-eventing-choice-lint.v1",
+    "appgen.pbc-generation-smoke-audit.v1",
+    "appgen.pbc-implementation-contract.v1",
+    "appgen.pbc-implementation-release-audit.v1",
+    "appgen.pbc-lifecycle-documentation-audit.v1",
+    "appgen.pbc-manifest-schema.v1",
+    "appgen.pbc-manifest-validation.v1",
+    "appgen.pbc-natural-language-selection.v1",
+    "appgen.pbc-package-contract.v1",
+    "appgen.pbc-package-discovery-report.v1",
+    "appgen.pbc-package-index-discovery-report.v1",
+    "appgen.pbc-package-index-schema.v1",
+    "appgen.pbc-package-loading-smoke-audit.v1",
+    "appgen.pbc-package-local-assurance-audit.v1",
+    "appgen.pbc-package-local-assurance-contract.v1",
+    "appgen.pbc-registration-plan.v1",
+    "appgen.pbc-release-audit.v1",
+    "appgen.pbc-source-artifact-contract.v1",
+    "appgen.pbc-source-artifact-release-audit.v1",
+    "appgen.pbc-source-package.v1",
+    "appgen.pbc-source-runtime-test-coverage-audit.v1",
+    "appgen.pbc-specification-contract.v1",
+    "appgen.pbc-specification-manifest-traceability.v1",
+    "appgen.pbc-specification-release-audit.v1",
+    "appgen.pbc-table-stakes-evidence.v1",
+    "appgen.pbc-topology-report.v1",
+)
+
+
 TOOLING_SAMPLE = """
 app FinanceOps { targets: web, mobile, desktop }
 
@@ -13639,6 +13687,7 @@ def test_contract_schema_catalog_exposes_core_json_schemas() -> None:
         *GENERATED_VISUAL_DATA_MOBILE_RUNTIME_SCHEMA_FORMATS,
         *MOBILE_NATIVE_IDE_RUNTIME_SCHEMA_FORMATS,
         *REMAINING_RUNTIME_SCHEMA_FORMATS,
+        *PBC_RUNTIME_SCHEMA_FORMATS,
     } <= set(catalog["required_schema_formats"])
     assert BINDING_DESIGNER_SCHEMA_FORMATS == appgen_dsl.BINDING_DESIGNER_SCHEMA_FORMATS
     assert PASCAL_RUNTIME_SCHEMA_FORMATS == appgen_dsl.PASCAL_RUNTIME_SCHEMA_FORMATS
@@ -13660,6 +13709,7 @@ def test_contract_schema_catalog_exposes_core_json_schemas() -> None:
     )
     assert MOBILE_NATIVE_IDE_RUNTIME_SCHEMA_FORMATS == appgen_dsl.MOBILE_NATIVE_IDE_RUNTIME_SCHEMA_FORMATS
     assert REMAINING_RUNTIME_SCHEMA_FORMATS == appgen_dsl.REMAINING_RUNTIME_SCHEMA_FORMATS
+    assert PBC_RUNTIME_SCHEMA_FORMATS == appgen_dsl.PBC_RUNTIME_SCHEMA_FORMATS
     assert catalog["missing_required_schema_count"] == 0
     assert catalog["missing_required_schema_formats"] == ()
     assert catalog["schema_count"] == catalog["required_schema_count"]
