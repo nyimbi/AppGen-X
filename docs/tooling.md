@@ -677,6 +677,9 @@ repo-local alias for `lint`, `contract-schema`, `contract-validate`, and `lsp`;
 every case must return the expected machine contract and no traceback, which
 prevents newly added parser subcommands from existing only behind one command
 path.
+Top-level help, lightweight entrypoint dispatch, and the CLI audit use the
+shared `TOOLING_SUBCOMMANDS` manifest so command names are not copied between
+the launcher and release evidence.
 `appgen.missing-required-option-exit-audit.v1` covers required command options,
 including generator output directories, natural-language prompts, and component
 publication names, plus the required `appgen explain` selector family

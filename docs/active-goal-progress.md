@@ -4594,3 +4594,8 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `contract-schema` and `contract-validate`, and the CLI help audit verifies
   lint, contract-schema, contract-validate, and LSP payloads through both
   entrypoints.
+- Current tooling manifest expansion removes the duplicated lightweight
+  entrypoint command list. Top-level help, entrypoint dispatch, and the CLI
+  surface audit now read the same `TOOLING_SUBCOMMANDS` manifest, so new
+  parser-level tooling commands are less likely to be stranded behind only one
+  command path.

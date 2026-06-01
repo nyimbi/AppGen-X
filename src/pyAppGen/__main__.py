@@ -4,60 +4,21 @@ from __future__ import annotations
 
 import sys
 
-_TOOLING_SUBCOMMANDS = {
-    "lint",
-    "semantic",
-    "format",
-    "validate",
-    "generate",
-    "graph",
-    "graph-suite",
-    "explain",
-    "migration-plan",
-    "nl-plan",
-    "lsp",
-    "verify",
-    "package",
-    "component-publish",
-    "pbc",
-    "designer-sync",
-    "diagnostics",
-    "parser-golden",
-    "module-boundaries",
-    "non-goals",
-    "test-strategy",
-    "dsl-quality",
-    "dsl-antlr",
-    "dsl-authoring-gate",
-    "dsl-language-service",
-    "contract-schema",
-    "contract-validate",
-    "runtime-contracts",
-    "drift",
-    "doctor",
-    "contributor-tasks",
-    "priority-order",
-    "implementation-phases",
-    "tooling-docs",
-    "tooling-audit",
-}
+from .tooling_manifest import tooling_command_set
+from .tooling_manifest import tooling_help_block
+
+_TOOLING_SUBCOMMANDS = tooling_command_set()
 _HELP_FLAGS = {"-h", "--help"}
 
 
 def _print_help() -> None:
     print(
-        """Usage: appgen [OPTIONS] COMMAND [ARGS]...
+        f"""Usage: appgen [OPTIONS] COMMAND [ARGS]...
 
 AppGen-X application generator and DSL tooling.
 
 Tooling subcommands are also available:
-  lint, semantic, format, validate, generate, graph, graph-suite, explain,
-  migration-plan, nl-plan, lsp, verify, package, component-publish, pbc, designer-sync,
-  diagnostics, parser-golden, module-boundaries, non-goals, test-strategy,
-  dsl-quality, dsl-antlr, dsl-authoring-gate, dsl-language-service,
-  contract-schema, contract-validate, runtime-contracts, drift, doctor,
-  contributor-tasks, priority-order, implementation-phases, tooling-docs,
-  and tooling-audit
+{tooling_help_block()}
 
 The platform supports visual drag-and-drop form design, database design,
 workflow design, PBC composition, packaging, and release evidence.

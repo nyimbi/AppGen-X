@@ -52,6 +52,7 @@ from .schema import TableDirectiveSchema
 from .schema import ViewSchema
 from .schema import ViewSectionSchema
 from .schema import normalize_platform_targets
+from .tooling_manifest import TOOLING_SUBCOMMANDS
 
 
 _GENERATED_DIR = Path(__file__).resolve().parent / "dsl_generated" / "lang"
@@ -28749,43 +28750,7 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
     pyproject_data = tomllib.loads(pyproject)
     entrypoint = (root / "src/pyAppGen/gen.py").read_text(encoding="utf-8")
     module_entrypoint = (root / "src/pyAppGen/__main__.py").read_text(encoding="utf-8")
-    required_subcommands = (
-        "lint",
-        "semantic",
-        "format",
-        "validate",
-        "generate",
-        "graph",
-        "graph-suite",
-        "explain",
-        "migration-plan",
-        "nl-plan",
-        "lsp",
-        "verify",
-        "package",
-        "component-publish",
-        "pbc",
-        "designer-sync",
-        "diagnostics",
-        "parser-golden",
-        "module-boundaries",
-        "non-goals",
-        "test-strategy",
-        "dsl-quality",
-        "dsl-antlr",
-        "dsl-authoring-gate",
-        "dsl-language-service",
-        "contract-schema",
-        "contract-validate",
-        "runtime-contracts",
-        "drift",
-        "doctor",
-        "contributor-tasks",
-        "priority-order",
-        "implementation-phases",
-        "tooling-docs",
-        "tooling-audit",
-    )
+    required_subcommands = TOOLING_SUBCOMMANDS
     help_output = io.StringIO()
     help_error = io.StringIO()
     help_exit_code = 0
