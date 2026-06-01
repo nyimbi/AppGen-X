@@ -860,6 +860,7 @@ audits, semantic-drift and semantic-drift text-renderer audits,
 `appgen.contract-validation-report.v1`,
 `appgen.runtime-contract-inventory.v1`, and
 `appgen.runtime-contract-inventory-cli-audit.v1`,
+`appgen.tooling-doc-language-audit.v1`,
 plus the package-level release audit family:
 `appgen.package-dsl-release-audit.v1`,
 `appgen.package-studio-release-audit.v1`,
@@ -2487,7 +2488,8 @@ distribution, DSL-quality, ERP-template, and ideas evidence reusable without
 running heavyweight generated-app smoke checks during every schema audit. These
 schemas keep package release gates, generated smoke envelopes, template
 manifests, seed fixtures, and goal-readiness audits visible to CI and external
-agents while the runtime inventory continues to expose the larger backlog.
+agents while the runtime inventory enforces the zero-actionable-backlog contract
+for top-level non-PBC runtime formats.
 
 Binding-designer schemas make visual data-binding handoffs reusable without
 scraping generated release audits. IDEs and agents can validate graph JSON,
@@ -2723,6 +2725,11 @@ this command. The aggregate tooling audit exposes it through
 stops scanning package modules, stops skipping PBC paths, loses text markers,
 falls back to raw JSON, leaves an actionable non-PBC schema/documentation
 backlog, or loses the controlled missing-schema sentinel.
+`appgen.tooling-doc-language-audit.v1` guards the same policy in this document:
+the runtime-contracts section must say zero-actionable-backlog, name
+`sentinel_runtime_formats`, name `appgen.missing-contract.v1`, and avoid stale
+phrases that describe the runtime inventory as a larger or intentionally
+non-blocking backlog.
 
 ### `appgen semantic`
 

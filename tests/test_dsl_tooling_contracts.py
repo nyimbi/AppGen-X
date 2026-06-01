@@ -7379,6 +7379,12 @@ def test_governance_reports_are_first_class_cli_commands(monkeypatch) -> None:
         "runtime_reference_gap_count": 0,
         "test_reference_gap_count": 0,
     }
+    fake_doc_language = {
+        "format": "appgen.tooling-doc-language-audit.v1",
+        "ok": True,
+        "missing_fragment_count": 0,
+        "forbidden_phrase_hit_count": 0,
+    }
     fake_report = {
         "format": "appgen.tooling-audit.v1",
         "ok": True,
@@ -7398,6 +7404,11 @@ def test_governance_reports_are_first_class_cli_commands(monkeypatch) -> None:
                 "id": "tooling_doc_anchor_integrity",
                 "section": "docs/tooling.md#appgen-tooling-audit",
                 "detail": fake_doc_anchor,
+            },
+            {
+                "id": "tooling_doc_language_policy",
+                "section": "docs/tooling.md#appgen-runtime-contracts",
+                "detail": fake_doc_language,
             },
         ),
     }
@@ -7441,6 +7452,7 @@ def test_governance_reports_are_first_class_cli_commands(monkeypatch) -> None:
     assert docs_payload["format"] == "appgen.tooling-docs-audit.v1"
     assert docs_payload["doc_anchor_integrity"]["format"] == "appgen.tooling-doc-anchor-audit.v1"
     assert docs_payload["section_coverage"]["format"] == "appgen.tooling-section-coverage-audit.v1"
+    assert docs_payload["doc_language_policy"]["format"] == "appgen.tooling-doc-language-audit.v1"
     assert docs_text_exit == 0
     assert docs_text.getvalue().startswith("tooling-docs ok: format=appgen.tooling-docs-audit.v1")
 
@@ -13675,6 +13687,21 @@ def test_tooling_doc_anchor_audit_proves_documented_contract_formats() -> None:
         assert report["format_reference_matrix"][format_name]["tests"] >= 1
 
 
+def test_tooling_doc_language_policy_rejects_stale_runtime_backlog_wording() -> None:
+    root = Path(__file__).resolve().parents[1]
+    audit = appgen_dsl._tooling_audit_doc_language_policy(root)
+
+    assert audit["format"] == "appgen.tooling-doc-language-audit.v1"
+    assert audit["ok"] is True
+    assert audit["runtime_contracts_section_present"] is True
+    assert audit["missing_fragment_count"] == 0
+    assert audit["missing_runtime_section_fragment_count"] == 0
+    assert audit["forbidden_phrase_hit_count"] == 0
+    assert "runtime inventory continues to expose the larger backlog" in audit["forbidden_phrases"]
+    assert "zero-actionable-backlog" in audit["required_fragments"]
+    assert "`appgen.missing-contract.v1`" in audit["required_fragments"]
+
+
 def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     root = Path(__file__).resolve().parents[1]
     audit = appgen_dsl._tooling_audit_cli_help_surface(root)
@@ -14111,6 +14138,7 @@ def test_contract_schema_catalog_exposes_core_json_schemas() -> None:
         "appgen.tooling-audit-text-renderer.v1",
         "appgen.tooling-doc-anchor-audit.v1",
         "appgen.tooling-section-coverage-audit.v1",
+        "appgen.tooling-doc-language-audit.v1",
         "appgen.tooling-docs-audit.v1",
         "appgen.tooling-implementation-phase-audit.v1",
         "appgen.implementation-phase-doc-alignment.v1",

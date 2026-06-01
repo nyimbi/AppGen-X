@@ -4628,3 +4628,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   runtime contracts. The deliberate negative-test sentinel
   `appgen.missing-contract.v1` is now reported separately from real
   unpromoted or undocumented formats.
+- Current tooling-doc language expansion adds
+  `appgen.tooling-doc-language-audit.v1` so `docs/tooling.md` cannot drift back
+  to stale runtime-backlog wording after the runtime inventory became a
+  zero-actionable-backlog gate with an explicit missing-schema sentinel.

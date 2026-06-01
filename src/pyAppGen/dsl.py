@@ -9047,6 +9047,7 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.tooling-audit-text-renderer.v1",
     "appgen.tooling-doc-anchor-audit.v1",
     "appgen.tooling-section-coverage-audit.v1",
+    "appgen.tooling-doc-language-audit.v1",
     "appgen.tooling-docs-audit.v1",
     "appgen.tooling-implementation-phase-audit.v1",
     "appgen.implementation-phase-doc-alignment.v1",
@@ -12063,12 +12064,26 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "missing_section_count": {"type": "integer", "minimum": 0},
             },
         ),
+        "appgen.tooling-doc-language-audit.v1": _contract_format_schema(
+            "appgen.tooling-doc-language-audit.v1",
+            required=("format", "ok", "required_fragments", "forbidden_phrases"),
+            properties={
+                "required_fragments": {"type": "array", "items": {"type": "string"}},
+                "missing_fragments": {"type": "array", "items": {"type": "string"}},
+                "missing_fragment_count": {"type": "integer", "minimum": 0},
+                "forbidden_phrases": {"type": "array", "items": {"type": "string"}},
+                "forbidden_phrase_hits": {"type": "array", "items": {"type": "string"}},
+                "forbidden_phrase_hit_count": {"type": "integer", "minimum": 0},
+                "runtime_contracts_section_present": {"type": "boolean"},
+            },
+        ),
         "appgen.tooling-docs-audit.v1": _contract_format_schema(
             "appgen.tooling-docs-audit.v1",
-            required=("format", "ok", "doc_anchor_integrity", "section_coverage"),
+            required=("format", "ok", "doc_anchor_integrity", "section_coverage", "doc_language_policy"),
             properties={
                 "doc_anchor_integrity": {"type": "object"},
                 "section_coverage": {"type": "object"},
+                "doc_language_policy": {"type": "object"},
                 "missing_anchor_count": {"type": "integer", "minimum": 0},
                 "missing_section_count": {"type": "integer", "minimum": 0},
                 "missing_subsection_count": {"type": "integer", "minimum": 0},
@@ -12730,6 +12745,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     doctor_cli_modes = _tooling_audit_doctor_cli_modes()
     language_quality = dsl_language_quality_contract()
     runtime_contract_inventory = runtime_contract_inventory_report(root)
+    doc_language_policy = _tooling_audit_doc_language_policy(root)
     module_boundaries = module_boundary_audit_dsl()
     non_goal_policy = _tooling_audit_non_goal_policy()
     component_publish_text_renderer = _component_publish_text_renderer_contract()
@@ -13035,6 +13051,13 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
                 "inventory": runtime_contract_inventory,
                 "cli": runtime_contract_inventory_cli,
             },
+        ),
+        _tooling_audit_check(
+            "tooling_doc_language_policy",
+            doc_language_policy["ok"],
+            "docs/tooling.md uses current completion language for runtime contracts and rejects stale backlog wording.",
+            "docs/tooling.md#appgen-runtime-contracts",
+            doc_language_policy,
         ),
         _tooling_audit_check(
             "diagnostic_registry_and_fixtures",
@@ -16849,6 +16872,64 @@ def _tooling_audit_non_goal_policy() -> dict:
     }
 
 
+def _tooling_audit_doc_language_policy(root: Path) -> dict:
+    """Reject stale completion wording that would weaken docs/tooling.md gates."""
+    docs_path = root / "docs" / "tooling.md"
+    docs_text = docs_path.read_text(encoding="utf-8")
+    runtime_heading = "### `appgen runtime-contracts`"
+    runtime_start = docs_text.find(runtime_heading)
+    runtime_end = docs_text.find("\n### ", runtime_start + len(runtime_heading)) if runtime_start >= 0 else -1
+    runtime_contracts_section = (
+        docs_text[runtime_start : runtime_end if runtime_end >= 0 else len(docs_text)]
+        if runtime_start >= 0
+        else ""
+    )
+    required_fragments = (
+        "appgen.tooling-doc-language-audit.v1",
+        "zero-actionable-backlog",
+        "`unpromoted_runtime_formats` and `undocumented_runtime_formats` must both be\nempty",
+        "`sentinel_runtime_formats`",
+        "`appgen.missing-contract.v1`",
+        "`runtime_contract_inventory_contracts`",
+    )
+    forbidden_phrases = (
+        "runtime inventory continues to expose the larger backlog",
+        "inventory is intentionally non-blocking",
+        "large backlog is expected",
+        "unpromoted_runtime_format_count` > 0",
+        "unpromoted_runtime_format_count > 0",
+    )
+    missing_fragments = tuple(fragment for fragment in required_fragments if fragment not in docs_text)
+    forbidden_phrase_hits = tuple(phrase for phrase in forbidden_phrases if phrase in docs_text)
+    runtime_section_required_fragments = (
+        "zero-actionable-backlog",
+        "`sentinel_runtime_formats`",
+        "`appgen.missing-contract.v1`",
+        "appgen.tooling-doc-language-audit.v1",
+    )
+    missing_runtime_section_fragments = tuple(
+        fragment for fragment in runtime_section_required_fragments if fragment not in runtime_contracts_section
+    )
+    return {
+        "format": "appgen.tooling-doc-language-audit.v1",
+        "ok": not missing_fragments
+        and not forbidden_phrase_hits
+        and bool(runtime_contracts_section)
+        and not missing_runtime_section_fragments,
+        "source": "docs/tooling.md",
+        "required_fragments": required_fragments,
+        "missing_fragments": missing_fragments,
+        "missing_fragment_count": len(missing_fragments),
+        "forbidden_phrases": forbidden_phrases,
+        "forbidden_phrase_hits": forbidden_phrase_hits,
+        "forbidden_phrase_hit_count": len(forbidden_phrase_hits),
+        "runtime_contracts_section_present": bool(runtime_contracts_section),
+        "runtime_section_required_fragments": runtime_section_required_fragments,
+        "missing_runtime_section_fragments": missing_runtime_section_fragments,
+        "missing_runtime_section_fragment_count": len(missing_runtime_section_fragments),
+    }
+
+
 def _tooling_audit_doc_anchor_integrity(root: Path, section_refs: Iterable[str]) -> dict:
     docs_path = root / "docs" / "tooling.md"
     docs_text = docs_path.read_text(encoding="utf-8")
@@ -17013,7 +17094,7 @@ def _tooling_audit_section_coverage(root: Path, checks: Iterable[dict]) -> dict:
         "appgen-doctor": ("doctor_cli_text_contracts",),
         "appgen-contract-schema": ("contract_schema_cli_contracts",),
         "appgen-contract-validate": ("contract_validation_cli_contracts",),
-        "appgen-runtime-contracts": ("runtime_contract_inventory_contracts",),
+        "appgen-runtime-contracts": ("runtime_contract_inventory_contracts", "tooling_doc_language_policy"),
         "appgen-tooling-audit": ("tooling_audit_text_renderer", "tooling_doc_anchor_integrity"),
         "appgen-package": ("package_manifest_handoff_contracts", "release_text_evidence_contracts"),
         "appgen-component-publish": ("component_publish_catalog_contracts",),
@@ -24350,10 +24431,15 @@ def tooling_docs_report_dsl() -> dict:
         "tooling_section_coverage_contracts",
         "appgen.tooling-section-coverage-audit.v1",
     )
+    doc_language_policy = _tooling_audit_report_detail(
+        "tooling_doc_language_policy",
+        "appgen.tooling-doc-language-audit.v1",
+    )
     missing_anchor_count = len(doc_anchor.get("missing_sections", ()))
     ok = (
         doc_anchor.get("ok") is True
         and section_coverage.get("ok") is True
+        and doc_language_policy.get("ok") is True
         and missing_anchor_count == 0
         and doc_anchor.get("runtime_reference_gap_count", 0) == 0
         and doc_anchor.get("test_reference_gap_count", 0) == 0
@@ -24369,7 +24455,10 @@ def tooling_docs_report_dsl() -> dict:
         "source_of_truth": "docs/tooling.md#appgen-tooling-audit",
         "doc_anchor_integrity": doc_anchor,
         "section_coverage": section_coverage,
+        "doc_language_policy": doc_language_policy,
         "missing_anchor_count": missing_anchor_count,
+        "missing_language_fragment_count": doc_language_policy.get("missing_fragment_count", 0),
+        "forbidden_language_phrase_hit_count": doc_language_policy.get("forbidden_phrase_hit_count", 0),
         "runtime_reference_gap_count": doc_anchor.get("runtime_reference_gap_count", 0),
         "test_reference_gap_count": doc_anchor.get("test_reference_gap_count", 0),
         "missing_section_count": section_coverage.get("missing_section_count", 0),
@@ -26237,6 +26326,7 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
                 repo_root,
                 ({"section": "docs/tooling.md#appgen-tooling-audit"},),
             ),
+            "appgen.tooling-doc-language-audit.v1": _tooling_audit_doc_language_policy(repo_root),
             "appgen.tooling-docs-audit.v1": {
                 "format": "appgen.tooling-docs-audit.v1",
                 "ok": True,
@@ -26250,6 +26340,12 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
                     "ok": True,
                     "missing_sections": (),
                     "missing_subsections": (),
+                },
+                "doc_language_policy": {
+                    "format": "appgen.tooling-doc-language-audit.v1",
+                    "ok": True,
+                    "missing_fragments": (),
+                    "forbidden_phrase_hits": (),
                 },
                 "missing_anchor_count": 0,
                 "missing_section_count": 0,
