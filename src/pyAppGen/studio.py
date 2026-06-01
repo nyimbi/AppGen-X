@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import tempfile
 from pathlib import Path
 
 from .dsl import dsl_authoring_release_gate
@@ -18,10 +19,13 @@ from .dsl import dsl_completion_items
 from .dsl import dsl_outline
 from .dsl import designer_sync_report_dsl
 from .dsl import format_dsl
+from .dsl import generate_report_dsl
 from .dsl import graph_suite_report_dsl
 from .dsl import lint_dsl
 from .dsl import lsp_service_dsl
 from .dsl import nl_plan_dsl
+from .dsl import release_verifier_report_dsl
+from .dsl import validate_report_dsl
 from .schema import schema_source_contract
 
 
@@ -326,6 +330,96 @@ def generation_job_queue(jobs: tuple[dict, ...] = ()) -> dict:
         "blocking_gap_count": len(blocking_gaps),
         "stop_condition": "all queued generation jobs are runnable and expose executable stage, artifact, and evidence contracts",
     }
+
+
+def run_generation_job(
+    source: str = SAMPLE_DSL,
+    *,
+    job: dict | None = None,
+    output_dir: str | Path | None = None,
+) -> dict:
+    """Execute the Studio generation pipeline and return package-ready evidence."""
+    active_job = job or generation_job_manifest(changed_paths=("appgen.dsl",))
+
+    def execute(run_root: Path) -> dict:
+        generation_root = run_root / "generated"
+        release_root = run_root / "release"
+        validation = validate_report_dsl(source, source_name="studio.dsl", targets=active_job.get("targets", ()))
+        generated = generate_report_dsl(
+            source,
+            source_name="studio.dsl",
+            output_dir=generation_root,
+            targets=active_job.get("targets", ()),
+            allow_warnings=True,
+        )
+        release = release_verifier_report_dsl(
+            source,
+            source_name="studio.dsl",
+            targets=active_job.get("targets", ()),
+            output_dir=str(release_root),
+        )
+        release_artifacts = tuple(release.get("written_artifacts", ()))
+        generated_artifacts = tuple(generated.get("artifacts", ()))
+        package_manifests = tuple(
+            artifact for artifact in release_artifacts if str(artifact.get("kind", "")).endswith("_package_manifest")
+        )
+        executed_stages = tuple(
+            stage
+            for stage, ok in (
+                ("lint_dsl", validation.get("lint", {}).get("ok") is True),
+                ("schema_diff", validation.get("semantic_model", {}).get("ok") is True),
+                ("generate_sources", generated.get("generated") is True),
+                ("quality_gates", validation.get("ok") is True and generated.get("ok") is True),
+                ("package_artifacts", bool(package_manifests)),
+            )
+            if ok
+        )
+        missing_stages = tuple(stage for stage in active_job.get("stages", ()) if stage not in executed_stages)
+        blocking_gaps = tuple(
+            gap
+            for gap in (
+                "validation_failed" if validation.get("ok") is not True else "",
+                "generation_failed" if generated.get("ok") is not True else "",
+                "release_evidence_missing" if not release_artifacts else "",
+                "package_manifests_missing" if not package_manifests else "",
+                "stage_execution_incomplete" if missing_stages else "",
+            )
+            if gap
+        )
+        return {
+            "format": "appgen.studio-generation-smoke-audit.v1",
+            "ok": not blocking_gaps,
+            "job": active_job,
+            "queue": generation_job_queue((active_job,)),
+            "source": "studio.dsl",
+            "run_root": str(run_root),
+            "validation": validation,
+            "validation_format": validation.get("format"),
+            "generation": generated,
+            "generation_format": generated.get("format"),
+            "release": release,
+            "release_format": release.get("format"),
+            "executed_stages": executed_stages,
+            "executed_stage_count": len(executed_stages),
+            "missing_stages": missing_stages,
+            "missing_stage_count": len(missing_stages),
+            "generated_artifacts": generated_artifacts,
+            "generated_artifact_count": len(generated_artifacts),
+            "release_artifacts": release_artifacts,
+            "release_artifact_count": len(release_artifacts),
+            "package_manifests": package_manifests,
+            "package_manifest_count": len(package_manifests),
+            "evidence_bundle_format": release.get("evidence_bundle", {}).get("format"),
+            "blocking_gaps": blocking_gaps,
+            "blocking_gap_count": len(blocking_gaps),
+            "stop_condition": "generation run validates DSL, writes generated artifacts, and emits package release evidence",
+        }
+
+    if output_dir is not None:
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
+        return execute(Path(output_dir))
+    with tempfile.TemporaryDirectory(prefix="appgen-studio-generation-") as tmp:
+        return execute(Path(tmp))
 
 
 def application_management_plan() -> dict:

@@ -7415,6 +7415,7 @@ def test_doctor_cli_audit_proves_json_and_text_modes() -> None:
 def test_studio_generation_jobs_are_executable_lifecycle_contracts() -> None:
     job = generated_studio.generation_job_manifest(changed_paths=("appgen.dsl",))
     queue = generated_studio.generation_job_queue((job,))
+    run = generated_studio.run_generation_job(job=job)
     audit = appgen_dsl._tooling_audit_studio_generation_queue()
 
     assert job["format"] == "appgen.package-generation-job.v1"
@@ -7461,6 +7462,21 @@ def test_studio_generation_jobs_are_executable_lifecycle_contracts() -> None:
     assert audit["missing_lifecycle_state_count"] == 0
     assert audit["missing_evidence_format_count"] == 0
     assert audit["weak_status_value_count"] == 0
+    assert run["format"] == "appgen.studio-generation-smoke-audit.v1"
+    assert run["ok"] is True
+    assert run["executed_stage_count"] == len(job["stages"])
+    assert run["missing_stage_count"] == 0
+    assert run["generated_artifact_count"] > 0
+    assert run["release_artifact_count"] >= 4
+    assert run["package_manifest_count"] >= 3
+    assert run["evidence_bundle_format"] == "appgen.release-evidence-bundle.v1"
+    assert audit["generation_run_ok"] is True
+    assert audit["generation_run_executed_stage_count"] >= 5
+    assert audit["generation_run_missing_stage_count"] == 0
+    assert audit["generation_run_generated_artifact_count"] > 0
+    assert audit["generation_run_release_artifact_count"] >= 4
+    assert audit["generation_run_package_manifest_count"] >= 3
+    assert audit["generation_run_evidence_bundle_format"] == "appgen.release-evidence-bundle.v1"
 
 
 def test_studio_semantic_service_audit_proves_panel_contracts() -> None:
@@ -8662,6 +8678,15 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert studio_generation_check["detail"]["missing_lifecycle_state_count"] == 0
     assert studio_generation_check["detail"]["missing_evidence_format_count"] == 0
     assert studio_generation_check["detail"]["weak_status_value_count"] == 0
+    assert studio_generation_check["detail"]["generation_run_ok"] is True
+    assert studio_generation_check["detail"]["generation_run_executed_stage_count"] >= 5
+    assert studio_generation_check["detail"]["generation_run_missing_stage_count"] == 0
+    assert studio_generation_check["detail"]["generation_run_generated_artifact_count"] > 0
+    assert studio_generation_check["detail"]["generation_run_release_artifact_count"] >= 4
+    assert studio_generation_check["detail"]["generation_run_package_manifest_count"] >= 3
+    assert studio_generation_check["detail"]["generation_run_evidence_bundle_format"] == (
+        "appgen.release-evidence-bundle.v1"
+    )
     tooling_text_check = next(check for check in report["checks"] if check["id"] == "tooling_audit_text_renderer")
     assert tooling_text_check["detail"]["format"] == "appgen.tooling-audit-text-renderer.v1"
     assert tooling_text_check["detail"]["ok"] is True

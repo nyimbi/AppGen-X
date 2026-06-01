@@ -14846,8 +14846,16 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             and studio_generation_queue.get("missing_command_count") == 0
             and studio_generation_queue.get("missing_lifecycle_state_count") == 0
             and studio_generation_queue.get("missing_evidence_format_count") == 0
-            and studio_generation_queue.get("weak_status_value_count") == 0,
-            "Studio generation jobs are executable queue items with lifecycle states, commands, artifacts, schema validation, and release evidence.",
+            and studio_generation_queue.get("weak_status_value_count") == 0
+            and studio_generation_queue.get("generation_run_ok") is True
+            and studio_generation_queue.get("generation_run_executed_stage_count", 0) >= 5
+            and studio_generation_queue.get("generation_run_missing_stage_count") == 0
+            and studio_generation_queue.get("generation_run_generated_artifact_count", 0) > 0
+            and studio_generation_queue.get("generation_run_release_artifact_count", 0) >= 4
+            and studio_generation_queue.get("generation_run_package_manifest_count", 0) >= 3
+            and studio_generation_queue.get("generation_run_evidence_bundle_format")
+            == "appgen.release-evidence-bundle.v1",
+            "Studio generation jobs are executable queue items with lifecycle states, commands, generated artifacts, package manifests, schema validation, and release evidence.",
             "docs/tooling.md#appgen-x-studio-monaco",
             studio_generation_queue,
         ),
@@ -18860,6 +18868,7 @@ def _tooling_audit_studio_generation_queue() -> dict:
     try:
         from .studio import generation_job_manifest
         from .studio import generation_job_queue
+        from .studio import run_generation_job
         from .studio import studio_workspace
     except Exception as exc:  # pragma: no cover - import boundary
         return {
@@ -18869,6 +18878,7 @@ def _tooling_audit_studio_generation_queue() -> dict:
         }
     job = generation_job_manifest(changed_paths=("appgen.dsl",))
     queue = generation_job_queue((job,))
+    run = run_generation_job(job=job)
     workspace = studio_workspace()
     workspace_queue = workspace.get("generation_jobs", {})
     job_validation = contract_validation_report_dsl(
@@ -18937,6 +18947,16 @@ def _tooling_audit_studio_generation_queue() -> dict:
         "workspace_embeds_queue": workspace_queue.get("format") == "appgen.package-generation-queue.v1"
         and workspace_queue.get("ok") is True
         and workspace_queue.get("job_count", 0) >= 1,
+        "runner_executes_stages": run.get("ok") is True
+        and run.get("executed_stage_count", 0) >= 5
+        and run.get("missing_stage_count") == 0,
+        "runner_writes_artifacts": run.get("generated_artifact_count", 0) > 0
+        and run.get("release_artifact_count", 0) >= 4
+        and run.get("package_manifest_count", 0) >= 3,
+        "runner_evidence_formats": run.get("validation_format") == "appgen.validate-report.v1"
+        and run.get("generation_format") == "appgen.generate-report.v1"
+        and run.get("release_format") == "appgen.release-verifier-report.v1"
+        and run.get("evidence_bundle_format") == "appgen.release-evidence-bundle.v1",
         "required_fields": not missing_job_fields and not missing_queue_fields,
         "lifecycle_states": not missing_lifecycle_states,
         "no_weak_status_values": not weak_status_values,
@@ -18955,6 +18975,14 @@ def _tooling_audit_studio_generation_queue() -> dict:
         "queue_format": queue.get("format"),
         "job_schema_validation": job_validation,
         "queue_schema_validation": queue_validation,
+        "generation_run": run,
+        "generation_run_ok": run.get("ok"),
+        "generation_run_executed_stage_count": run.get("executed_stage_count"),
+        "generation_run_missing_stage_count": run.get("missing_stage_count"),
+        "generation_run_generated_artifact_count": run.get("generated_artifact_count"),
+        "generation_run_release_artifact_count": run.get("release_artifact_count"),
+        "generation_run_package_manifest_count": run.get("package_manifest_count"),
+        "generation_run_evidence_bundle_format": run.get("evidence_bundle_format"),
         "job_status": job.get("status"),
         "job_runnable": job.get("runnable"),
         "job_stage_count": job.get("stage_count"),
