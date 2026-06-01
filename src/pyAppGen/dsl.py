@@ -1971,6 +1971,9 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
     tooling_docs_parser = subparsers.add_parser("tooling-docs")
     tooling_docs_parser.add_argument("--json", action="store_true")
 
+    tooling_status_parser = subparsers.add_parser("tooling-status")
+    tooling_status_parser.add_argument("--json", action="store_true")
+
     tooling_audit_parser = subparsers.add_parser("tooling-audit")
     tooling_audit_parser.add_argument("--json", action="store_true")
 
@@ -2225,6 +2228,10 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
         return 0 if report["ok"] else 1
     if args.command == "tooling-docs":
         report = tooling_docs_report_dsl()
+        _emit_tooling_payload(report, as_json=args.json)
+        return 0 if report["ok"] else 1
+    if args.command == "tooling-status":
+        report = tooling_status_report_dsl()
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
     if args.command == "tooling-audit":
@@ -2817,6 +2824,22 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
             print(f"missing-section {missing}")
         for missing in section.get("missing_subsections", ()):
             print(f"missing-subsection {missing}")
+        return
+    if payload.get("format") == "appgen.tooling-status.v1":
+        status = "ok" if payload.get("ok") else "failed"
+        print(
+            f"tooling-status {status}: format={payload.get('format')} "
+            f"checks={payload.get('passing_check_count', 0)}/{payload.get('check_count', 0)} "
+            f"phases={payload.get('completed_phase_count', 0)}/{payload.get('phase_count', 0)} "
+            f"blocking_gaps={payload.get('blocking_gap_count', 0)} "
+            f"next_actions={payload.get('next_action_count', 0)}"
+        )
+        for phase_id in payload.get("incomplete_phase_ids", ()):
+            print(f"incomplete-phase {phase_id}")
+        for check_id in payload.get("failing_check_ids", ()):
+            print(f"failing-check {check_id}")
+        for action in payload.get("next_actions", ()):
+            print(f"next-action {action.get('kind')}:{action.get('id')} source={action.get('source')}")
         return
     print(json.dumps(payload, indent=2, sort_keys=True, default=list))
 
@@ -9049,6 +9072,7 @@ CONTRACT_SCHEMA_REQUIRED_FORMATS = (
     "appgen.tooling-section-coverage-audit.v1",
     "appgen.tooling-doc-language-audit.v1",
     "appgen.tooling-docs-audit.v1",
+    "appgen.tooling-status.v1",
     "appgen.tooling-implementation-phase-audit.v1",
     "appgen.implementation-phase-doc-alignment.v1",
     "appgen.test-strategy-cli-audit.v1",
@@ -12093,6 +12117,33 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "missing_anchor_count": {"type": "integer", "minimum": 0},
                 "missing_section_count": {"type": "integer", "minimum": 0},
                 "missing_subsection_count": {"type": "integer", "minimum": 0},
+            },
+        ),
+        "appgen.tooling-status.v1": _contract_format_schema(
+            "appgen.tooling-status.v1",
+            required=("format", "ok", "summary", "check_count", "phase_count", "next_actions"),
+            properties={
+                "summary": {"type": "string"},
+                "tooling_audit_format": {"type": "string"},
+                "tooling_audit_ok": {"type": "boolean"},
+                "check_count": {"type": "integer", "minimum": 0},
+                "passing_check_count": {"type": "integer", "minimum": 0},
+                "failing_check_count": {"type": "integer", "minimum": 0},
+                "failing_check_ids": {"type": "array", "items": {"type": "string"}},
+                "blocking_gap_count": {"type": "integer", "minimum": 0},
+                "blocking_gaps": {"type": "array", "items": {"type": "object"}},
+                "phase_count": {"type": "integer", "minimum": 0},
+                "completed_phase_count": {"type": "integer", "minimum": 0},
+                "completed_phase_ids": {"type": "array", "items": {"type": "string"}},
+                "incomplete_phase_count": {"type": "integer", "minimum": 0},
+                "incomplete_phase_ids": {"type": "array", "items": {"type": "string"}},
+                "missing_exit_criteria_by_phase": {"type": "object"},
+                "missing_task_count": {"type": "integer", "minimum": 0},
+                "missing_tasks": {"type": "array", "items": {"type": "string"}},
+                "missing_priority_count": {"type": "integer", "minimum": 0},
+                "missing_priorities": {"type": "array", "items": {"type": "string"}},
+                "next_action_count": {"type": "integer", "minimum": 0},
+                "next_actions": {"type": "array", "items": {"type": "object"}},
             },
         ),
         "appgen.tooling-implementation-phase-audit.v1": _contract_format_schema(
@@ -24457,6 +24508,94 @@ def implementation_phases_report_dsl() -> dict:
     )
 
 
+def tooling_status_report_dsl() -> dict:
+    """Return a compact, machine-readable answer to what remains in tooling."""
+    return _tooling_status_report_from_audit(tooling_audit_report_dsl())
+
+
+def _tooling_status_report_from_audit(report: dict) -> dict:
+    checks = tuple(report.get("checks", ()))
+    checks_by_id = {check.get("id"): check for check in checks}
+    phase_detail = checks_by_id.get("implementation_phase_exit_criteria", {}).get("detail", {})
+    contributor_detail = checks_by_id.get("contributor_task_breakdown_contracts", {}).get("detail", {})
+    priority_detail = checks_by_id.get("priority_order_contracts", {}).get("detail", {})
+    doc_detail = checks_by_id.get("tooling_doc_anchor_integrity", {}).get("detail", {})
+    failing_checks = tuple(check.get("id") for check in checks if check.get("ok") is not True)
+    blocking_gaps = tuple(report.get("blocking_gaps", ()))
+    phases = tuple(phase_detail.get("phases", ()))
+    completed_phase_ids = tuple(phase.get("id") for phase in phases if phase.get("ok") is True)
+    incomplete_phase_ids = tuple(phase.get("id") for phase in phases if phase.get("ok") is not True)
+    missing_exit_criteria_by_phase = dict(phase_detail.get("missing_exit_criteria_by_phase", {}))
+    missing_tasks = tuple(contributor_detail.get("missing_tasks", ()))
+    missing_priorities = tuple(priority_detail.get("missing_priorities", ()))
+    missing_doc_runtime_formats = tuple(doc_detail.get("missing_runtime_formats", ()))
+    missing_doc_test_formats = tuple(doc_detail.get("missing_test_formats", ()))
+    next_actions: list[dict] = []
+    for check_id in failing_checks:
+        next_actions.append(
+            {
+                "kind": "check",
+                "id": str(check_id),
+                "source": checks_by_id.get(check_id, {}).get("section"),
+            }
+        )
+    for phase_id, criteria in sorted(missing_exit_criteria_by_phase.items()):
+        for criterion in criteria:
+            next_actions.append({"kind": "exit_criterion", "id": criterion, "source": phase_id})
+    for task in missing_tasks:
+        next_actions.append({"kind": "contributor_task", "id": task, "source": "docs/tooling.md#contributor-task-breakdown"})
+    for priority in missing_priorities:
+        next_actions.append({"kind": "priority", "id": priority, "source": "docs/tooling.md#priority-order"})
+    for format_name in missing_doc_runtime_formats:
+        next_actions.append({"kind": "doc_runtime_format", "id": format_name, "source": "docs/tooling.md#appgen-tooling-audit"})
+    for format_name in missing_doc_test_formats:
+        next_actions.append({"kind": "doc_test_format", "id": format_name, "source": "docs/tooling.md#appgen-tooling-audit"})
+    for gap in blocking_gaps:
+        gap_id = gap.get("id") if isinstance(gap, dict) else str(gap)
+        next_actions.append({"kind": "blocking_gap", "id": gap_id, "source": "appgen.tooling-audit.v1"})
+    ok = (
+        report.get("ok") is True
+        and not failing_checks
+        and not blocking_gaps
+        and not incomplete_phase_ids
+        and not missing_tasks
+        and not missing_priorities
+        and not missing_doc_runtime_formats
+        and not missing_doc_test_formats
+    )
+    return {
+        "format": "appgen.tooling-status.v1",
+        "ok": ok,
+        "summary": "complete" if ok else "incomplete",
+        "tooling_audit_format": report.get("format"),
+        "tooling_audit_ok": report.get("ok") is True,
+        "check_count": len(checks),
+        "passing_check_count": sum(1 for check in checks if check.get("ok") is True),
+        "failing_check_count": len(failing_checks),
+        "failing_check_ids": failing_checks,
+        "blocking_gap_count": len(blocking_gaps),
+        "blocking_gaps": blocking_gaps,
+        "phase_count": len(phases),
+        "completed_phase_count": len(completed_phase_ids),
+        "completed_phase_ids": completed_phase_ids,
+        "incomplete_phase_count": len(incomplete_phase_ids),
+        "incomplete_phase_ids": incomplete_phase_ids,
+        "missing_exit_criteria_by_phase": missing_exit_criteria_by_phase,
+        "missing_exit_criteria_phase_count": len(missing_exit_criteria_by_phase),
+        "missing_task_count": len(missing_tasks),
+        "missing_tasks": missing_tasks,
+        "missing_priority_count": len(missing_priorities),
+        "missing_priorities": missing_priorities,
+        "missing_doc_runtime_format_count": len(missing_doc_runtime_formats),
+        "missing_doc_runtime_formats": missing_doc_runtime_formats,
+        "missing_doc_test_format_count": len(missing_doc_test_formats),
+        "missing_doc_test_formats": missing_doc_test_formats,
+        "next_action_count": len(next_actions),
+        "next_actions": tuple(next_actions),
+        "source_of_truth": "docs/tooling.md#cli-contracts",
+    }
+
+
 def tooling_docs_report_dsl() -> dict:
     """Return docs anchor and section coverage evidence as a direct CLI/report surface."""
     report = tooling_audit_report_dsl()
@@ -26152,6 +26291,52 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
                 },
             ),
         }
+        tooling_status = _tooling_status_report_from_audit(
+            {
+                "format": "appgen.tooling-audit.v1",
+                "ok": True,
+                "checks": (
+                    {
+                        "id": "implementation_phase_exit_criteria",
+                        "ok": True,
+                        "section": "docs/tooling.md#implementation-phases",
+                        "detail": implementation_phases,
+                    },
+                    {
+                        "id": "contributor_task_breakdown_contracts",
+                        "ok": True,
+                        "section": "docs/tooling.md#contributor-task-breakdown",
+                        "detail": {
+                            "format": "appgen.contributor-task-contract-audit.v1",
+                            "ok": True,
+                            "missing_tasks": (),
+                        },
+                    },
+                    {
+                        "id": "priority_order_contracts",
+                        "ok": True,
+                        "section": "docs/tooling.md#priority-order",
+                        "detail": {
+                            "format": "appgen.priority-order-contract-audit.v1",
+                            "ok": True,
+                            "missing_priorities": (),
+                        },
+                    },
+                    {
+                        "id": "tooling_doc_anchor_integrity",
+                        "ok": True,
+                        "section": "docs/tooling.md#appgen-tooling-audit",
+                        "detail": {
+                            "format": "appgen.tooling-doc-anchor-audit.v1",
+                            "ok": True,
+                            "missing_runtime_formats": (),
+                            "missing_test_formats": (),
+                        },
+                    },
+                ),
+                "blocking_gaps": (),
+            }
+        )
         sample_payloads = {
             "appgen.diagnostic.v1": _spec_diagnostic(source, "AGX0402", "error", "Unknown view field memo on Invoice."),
             "appgen.lint-report.v1": lint_report_dsl(source, source_name="contract-schema.appgen"),
@@ -26390,6 +26575,7 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
                 "missing_section_count": 0,
                 "missing_subsection_count": 0,
             },
+            "appgen.tooling-status.v1": tooling_status,
             "appgen.tooling-implementation-phase-audit.v1": implementation_phases,
             "appgen.implementation-phase-doc-alignment.v1": _tooling_audit_phase_doc_alignment(
                 repo_root,
@@ -29354,6 +29540,7 @@ def _tooling_audit_cli_help_surface(root: Path) -> dict:
         ("priority-order",): ("--json",),
         ("implementation-phases",): ("--json",),
         ("tooling-docs",): ("--json",),
+        ("tooling-status",): ("--json",),
         ("tooling-audit",): ("--json",),
     }
     option_help = {}

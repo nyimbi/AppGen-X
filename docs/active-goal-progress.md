@@ -4636,3 +4636,9 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   field-specific. `appgen.non-goal-policy-audit.v1` now reports required,
   observed, missing, and removed picker fields so generic `AGX0801` counts cannot
   hide a missing picker-family rejection.
+- Current tooling status expansion adds `appgen tooling-status` and
+  `appgen.tooling-status.v1` as the compact "what is left" surface. It distills
+  the aggregate tooling audit into passing/failing check ids, blocking gaps,
+  completed and incomplete phases, missing contributor tasks, missing priorities,
+  doc runtime/test format gaps, and ordered next actions for maintainers and
+  external coding agents.

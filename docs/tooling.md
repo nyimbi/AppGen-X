@@ -725,6 +725,14 @@ emits `appgen.module-boundary-audit.v1`, `appgen non-goals` emits
 emits `appgen.tooling-docs-audit.v1` with embedded anchor and section coverage.
 These commands keep architectural and documentation guardrails callable without
 requiring contributors to expand the full aggregate audit.
+`appgen tooling-status` emits `appgen.tooling-status.v1`, a compact "what is
+left" contract distilled from the aggregate audit. It reports passing and
+failing check ids, blocking gaps, completed and incomplete implementation
+phases, missing contributor tasks, missing priorities, documentation runtime/test
+format gaps, and ordered next actions. This gives maintainers and external
+coding agents one deterministic status surface for deciding whether to keep
+building, hand off a blocked area, or release without manually scanning the full
+audit payload.
 Test strategy and roadmap commands are first-class CLI contracts:
 `appgen test-strategy <file>` emits the same cross-tool strategy evidence used
 by the aggregate audit, `appgen contributor-tasks` prints the evidence-backed
@@ -865,6 +873,7 @@ audits, semantic-drift and semantic-drift text-renderer audits,
 `appgen.runtime-contract-inventory.v1`, and
 `appgen.runtime-contract-inventory-cli-audit.v1`,
 `appgen.tooling-doc-language-audit.v1`,
+`appgen.tooling-status.v1`,
 plus the package-level release audit family:
 `appgen.package-dsl-release-audit.v1`,
 `appgen.package-studio-release-audit.v1`,

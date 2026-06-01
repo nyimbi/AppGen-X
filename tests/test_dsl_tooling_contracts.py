@@ -7337,6 +7337,109 @@ def test_contributor_and_priority_reports_are_first_class_cli_commands(monkeypat
     assert "1. ok shared_parser_and_semantic_model" in priority_text.getvalue()
 
 
+def test_tooling_status_report_compacts_remaining_work_for_agents(monkeypatch) -> None:
+    fake_report = {
+        "format": "appgen.tooling-audit.v1",
+        "ok": False,
+        "checks": (
+            {
+                "id": "implementation_phase_exit_criteria",
+                "ok": False,
+                "section": "docs/tooling.md#implementation-phases",
+                "detail": {
+                    "format": "appgen.tooling-implementation-phase-audit.v1",
+                    "ok": False,
+                    "phases": (
+                        {"id": "phase_0_inventory_and_stabilization", "ok": True},
+                        {"id": "phase_4_language_server", "ok": False},
+                    ),
+                    "missing_exit_criteria_by_phase": {
+                        "phase_4_language_server": ("lsp_transport_rpc_contracts",),
+                    },
+                },
+            },
+            {
+                "id": "language_server_core_features",
+                "ok": False,
+                "section": "docs/tooling.md#lsp-language-server",
+                "detail": {"format": "appgen.lsp-service.v1"},
+            },
+            {
+                "id": "contributor_task_breakdown_contracts",
+                "ok": False,
+                "section": "docs/tooling.md#contributor-task-breakdown",
+                "detail": {
+                    "format": "appgen.contributor-task-contract-audit.v1",
+                    "ok": False,
+                    "missing_tasks": ("safe_rename_across_workspace",),
+                },
+            },
+            {
+                "id": "priority_order_contracts",
+                "ok": False,
+                "section": "docs/tooling.md#priority-order",
+                "detail": {
+                    "format": "appgen.priority-order-contract-audit.v1",
+                    "ok": False,
+                    "missing_priorities": ("language_server",),
+                },
+            },
+            {
+                "id": "tooling_doc_anchor_integrity",
+                "ok": False,
+                "section": "docs/tooling.md#appgen-tooling-audit",
+                "detail": {
+                    "format": "appgen.tooling-doc-anchor-audit.v1",
+                    "ok": False,
+                    "missing_runtime_formats": ("appgen.lsp-service.v1",),
+                    "missing_test_formats": ("appgen.lsp-service.v1",),
+                },
+            },
+        ),
+        "blocking_gaps": ({"id": "language_server_core_features"},),
+    }
+    monkeypatch.setattr(appgen_dsl, "tooling_audit_report_dsl", lambda: fake_report)
+
+    status = appgen_dsl.tooling_status_report_dsl()
+    json_stdout = StringIO()
+    text_stdout = StringIO()
+    with redirect_stdout(json_stdout):
+        json_exit = appgen_dsl.dsl_tooling_cli(("tooling-status", "--json"))
+    with redirect_stdout(text_stdout):
+        text_exit = appgen_dsl.dsl_tooling_cli(("tooling-status",))
+
+    payload = json.loads(json_stdout.getvalue())
+    assert status["format"] == "appgen.tooling-status.v1"
+    assert status["ok"] is False
+    assert status["summary"] == "incomplete"
+    assert status["failing_check_ids"] == (
+        "implementation_phase_exit_criteria",
+        "language_server_core_features",
+        "contributor_task_breakdown_contracts",
+        "priority_order_contracts",
+        "tooling_doc_anchor_integrity",
+    )
+    assert status["completed_phase_ids"] == ("phase_0_inventory_and_stabilization",)
+    assert status["incomplete_phase_ids"] == ("phase_4_language_server",)
+    assert status["missing_exit_criteria_by_phase"] == {
+        "phase_4_language_server": ("lsp_transport_rpc_contracts",)
+    }
+    assert status["missing_tasks"] == ("safe_rename_across_workspace",)
+    assert status["missing_priorities"] == ("language_server",)
+    assert status["missing_doc_runtime_formats"] == ("appgen.lsp-service.v1",)
+    assert status["missing_doc_test_formats"] == ("appgen.lsp-service.v1",)
+    assert status["next_action_count"] == 11
+    assert {"kind": "exit_criterion", "id": "lsp_transport_rpc_contracts", "source": "phase_4_language_server"} in status["next_actions"]
+    assert {"kind": "doc_runtime_format", "id": "appgen.lsp-service.v1", "source": "docs/tooling.md#appgen-tooling-audit"} in status["next_actions"]
+    assert payload["format"] == "appgen.tooling-status.v1"
+    assert payload["next_action_count"] == status["next_action_count"]
+    assert json_exit == 1
+    assert text_exit == 1
+    assert text_stdout.getvalue().startswith("tooling-status failed: format=appgen.tooling-status.v1")
+    assert "incomplete-phase phase_4_language_server" in text_stdout.getvalue()
+    assert "next-action exit_criterion:lsp_transport_rpc_contracts" in text_stdout.getvalue()
+
+
 def test_governance_reports_are_first_class_cli_commands(monkeypatch) -> None:
     fake_phase = {
         "format": "appgen.tooling-implementation-phase-audit.v1",
@@ -13742,7 +13845,7 @@ def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:
     assert "dsl-quality, dsl-antlr, dsl-authoring-gate, dsl-language-service" in normalized_help
     assert "contract-schema, contract-validate, runtime-contracts" in normalized_help
     assert "runtime-contracts, drift, doctor, contributor-tasks, priority-order" in normalized_help
-    assert "implementation-phases, tooling-docs, and tooling-audit" in normalized_help
+    assert "implementation-phases, tooling-docs, tooling-status, and tooling-audit" in normalized_help
     assert "apg =" in pyproject
     assert "visual drag-and-drop form design" in normalized_help
     assert audit["format"] == "appgen.cli-help-surface-audit.v1"

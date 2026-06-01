@@ -38,6 +38,7 @@ TOOLING_SUBCOMMANDS = (
     "priority-order",
     "implementation-phases",
     "tooling-docs",
+    "tooling-status",
     "tooling-audit",
 )
 
@@ -49,7 +50,7 @@ TOOLING_HELP_LINES = (
     "dsl-quality, dsl-antlr, dsl-authoring-gate, dsl-language-service,",
     "contract-schema, contract-validate, runtime-contracts, drift, doctor,",
     "contributor-tasks, priority-order, implementation-phases, tooling-docs,",
-    "and tooling-audit",
+    "tooling-status, and tooling-audit",
 )
 
 
