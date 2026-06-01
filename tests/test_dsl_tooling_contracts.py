@@ -7507,6 +7507,22 @@ def test_tooling_status_report_compacts_remaining_work_for_agents(monkeypatch) -
     assert "next-action exit_criterion:lsp_transport_rpc_contracts" in text_stdout.getvalue()
 
 
+def test_fast_tooling_status_audit_is_schema_promoted_and_actionable() -> None:
+    fast = appgen_dsl._tooling_fast_status_audit_report()
+    schema = appgen_dsl._contract_schema_catalog()["appgen.tooling-audit-fast-status.v1"]
+
+    assert fast["format"] == "appgen.tooling-audit-fast-status.v1"
+    assert fast["ok"] is True
+    assert fast["deep_audit_command"] == "appgen tooling-audit"
+    assert schema["properties"]["format"]["const"] == "appgen.tooling-audit-fast-status.v1"
+    assert {check["id"] for check in fast["checks"]} >= {
+        "tooling_command_docs_manifest",
+        "tooling_requirements_traceability",
+        "module_boundaries",
+        "pbc_manifest_catalog_commands",
+    }
+
+
 def test_governance_reports_are_first_class_cli_commands(monkeypatch) -> None:
     fake_phase = {
         "format": "appgen.tooling-implementation-phase-audit.v1",

@@ -4665,3 +4665,8 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   Requirements trace now uses a fast gate registry with 305/305 normative
   statements covered, and tooling status reports the focused governance status
   while leaving `appgen tooling-audit` as the deep release-grade aggregate.
+- Current tooling-docs acceleration removes full aggregate audit execution from
+  daily documentation governance. `appgen tooling-docs` now builds anchor,
+  section, language, command, and requirements coverage from focused registries;
+  `appgen.tooling-audit-fast-status.v1` is schema-promoted, documented, and
+  test-covered as the contract behind the fast status path.

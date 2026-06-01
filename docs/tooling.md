@@ -755,6 +755,10 @@ requirements, missing requirement gates, and ordered next actions. This gives
 maintainers and external coding agents one deterministic status surface for
 deciding whether to keep building, hand off a blocked area, or release without
 manually scanning the full audit payload.
+The focused status source is itself schema-backed as
+`appgen.tooling-audit-fast-status.v1`; it reports the focused check set,
+passing counts, blocking gaps, covered sections, and the `deep_audit_command`
+that runs the release-grade aggregate when stronger evidence is required.
 Test strategy and roadmap commands are first-class CLI contracts:
 `appgen test-strategy <file>` emits the same cross-tool strategy evidence used
 by the aggregate audit, `appgen contributor-tasks` prints the evidence-backed
@@ -896,6 +900,7 @@ audits, semantic-drift and semantic-drift text-renderer audits,
 `appgen.runtime-contract-inventory-cli-audit.v1`,
 `appgen.tooling-doc-language-audit.v1`,
 `appgen.tooling-command-docs-audit.v1`,
+`appgen.tooling-audit-fast-status.v1`,
 `appgen.tooling-status.v1`,
 plus the package-level release audit family:
 `appgen.package-dsl-release-audit.v1`,
