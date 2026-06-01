@@ -7535,6 +7535,18 @@ def test_governance_reports_are_first_class_cli_commands(monkeypatch) -> None:
         "covered_requirement_count": 1,
         "missing_requirement_count": 0,
         "missing_requirements": (),
+        "normative_statement_count": 1,
+        "covered_normative_statement_count": 1,
+        "missing_normative_statement_count": 0,
+        "missing_normative_statement_ids": (),
+        "normative_statements": (
+            {
+                "id": "normative_goals_1",
+                "ok": True,
+                "section": "docs/tooling.md#goals",
+                "gate_ids": ("shared_semantic_model",),
+            },
+        ),
         "required_gate_count": 1,
         "covered_gate_count": 1,
         "missing_gate_count": 0,
@@ -13960,6 +13972,10 @@ def test_tooling_requirements_trace_maps_docs_requirements_to_audit_gates() -> N
     assert payload["requirement_count"] >= 18
     assert payload["covered_requirement_count"] == payload["requirement_count"]
     assert payload["missing_requirement_count"] == 0
+    assert payload["normative_statement_count"] >= 300
+    assert payload["covered_normative_statement_count"] == payload["normative_statement_count"]
+    assert payload["missing_normative_statement_count"] == 0
+    assert payload["missing_normative_statement_ids"] == []
     assert payload["missing_gate_count"] == 0
     assert payload["source_of_truth"] == "docs/tooling.md#appgen-tooling-audit"
     assert "shared_parser_semantic_model" in requirements_by_id
@@ -13969,12 +13985,15 @@ def test_tooling_requirements_trace_maps_docs_requirements_to_audit_gates() -> N
     assert "natural_language_cli_agent_contracts" in requirements_by_id["natural_language_dsl_diff_first"]["gate_ids"]
     assert "tooling_section_coverage_contracts" in requirements_by_id["docs_requirements_traceability"]["gate_ids"]
     assert "docs/tooling.md#appgen-requirements-trace" in payload["sections"]
+    assert payload["normative_statement_counts_by_section"]["docs/tooling.md#goals"] >= 1
+    assert payload["normative_statement_counts_by_section"]["docs/tooling.md#core-architecture"] >= 1
     assert json_exit == 0
     assert text_exit == 0
     assert text_stdout.getvalue().startswith(
         "requirements-trace ok: format=appgen.tooling-requirements-trace-audit.v1"
     )
     assert "missing_requirements=0" in text_stdout.getvalue()
+    assert "missing_normative=0" in text_stdout.getvalue()
 
 
 def test_top_level_help_exposes_tooling_subcommands_and_apg_alias() -> None:

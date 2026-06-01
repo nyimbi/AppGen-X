@@ -15,6 +15,7 @@ import sys
 import tempfile
 import tomllib
 from collections import Counter
+from collections import defaultdict
 from functools import lru_cache
 from pathlib import Path
 from typing import Callable
@@ -2789,8 +2790,10 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
         print(
             f"requirements-trace {status}: format={payload.get('format')} "
             f"requirements={payload.get('covered_requirement_count', 0)}/{payload.get('requirement_count', 0)} "
+            f"normative={payload.get('covered_normative_statement_count', 0)}/{payload.get('normative_statement_count', 0)} "
             f"gates={payload.get('covered_gate_count', 0)}/{payload.get('required_gate_count', 0)} "
             f"missing_requirements={payload.get('missing_requirement_count', 0)} "
+            f"missing_normative={payload.get('missing_normative_statement_count', 0)} "
             f"missing_gates={payload.get('missing_gate_count', 0)}"
         )
         for requirement in payload.get("requirements", ()):
@@ -2800,6 +2803,8 @@ def _emit_tooling_payload(payload: dict, *, as_json: bool) -> None:
             )
         for requirement_id in payload.get("missing_requirements", ()):
             print(f"missing-requirement {requirement_id}")
+        for statement_id in payload.get("missing_normative_statement_ids", ()):
+            print(f"missing-normative-statement {statement_id}")
         for gate_id in payload.get("missing_gates", ()):
             print(f"missing-gate {gate_id}")
         return
@@ -12237,13 +12242,28 @@ def _contract_schema_catalog() -> dict[str, dict]:
         ),
         "appgen.tooling-requirements-trace-audit.v1": _contract_format_schema(
             "appgen.tooling-requirements-trace-audit.v1",
-            required=("format", "ok", "requirements", "requirement_count", "required_gates", "missing_requirements"),
+            required=(
+                "format",
+                "ok",
+                "requirements",
+                "requirement_count",
+                "normative_statements",
+                "normative_statement_count",
+                "required_gates",
+                "missing_requirements",
+            ),
             properties={
                 "requirements": {"type": "array", "items": {"type": "object"}},
                 "requirement_count": {"type": "integer", "minimum": 0},
                 "covered_requirement_count": {"type": "integer", "minimum": 0},
                 "missing_requirement_count": {"type": "integer", "minimum": 0},
                 "missing_requirements": {"type": "array", "items": {"type": "string"}},
+                "normative_statements": {"type": "array", "items": {"type": "object"}},
+                "normative_statement_count": {"type": "integer", "minimum": 0},
+                "covered_normative_statement_count": {"type": "integer", "minimum": 0},
+                "missing_normative_statement_count": {"type": "integer", "minimum": 0},
+                "missing_normative_statement_ids": {"type": "array", "items": {"type": "string"}},
+                "normative_statement_counts_by_section": {"type": "object"},
                 "sections": {"type": "array", "items": {"type": "string"}},
                 "required_gates": {"type": "array", "items": {"type": "string"}},
                 "required_gate_count": {"type": "integer", "minimum": 0},
@@ -17354,6 +17374,60 @@ def _tooling_requirement_trace_specs() -> tuple[dict, ...]:
     )
 
 
+def _extract_tooling_normative_statements(markdown: str) -> tuple[dict, ...]:
+    unfenced = _strip_markdown_fenced_blocks(markdown)
+    heading_pattern = re.compile(r"^(##|###)\s+(.+)$", flags=re.M)
+    headings: list[dict] = []
+    current_parent = "docs/tooling.md"
+    for match in heading_pattern.finditer(unfenced):
+        level = len(match.group(1))
+        title = match.group(2).strip()
+        section = f"docs/tooling.md#{_heading_anchor(title)}"
+        if level == 2:
+            current_parent = section
+        headings.append(
+            {
+                "start": match.start(),
+                "end": match.end(),
+                "level": level,
+                "section": section,
+                "parent_section": current_parent if level == 3 else None,
+            }
+        )
+
+    normative_pattern = re.compile(
+        r"\b(must|must not|should|shall|required|requires|need|needs|cannot|fails|fail|reject|rejected)\b",
+        flags=re.I,
+    )
+    statements: list[dict] = []
+    for index, heading in enumerate(headings):
+        block_end = headings[index + 1]["start"] if index + 1 < len(headings) else len(unfenced)
+        block = unfenced[heading["end"] : block_end]
+        block = re.sub(r"`([^`]+)`", r"\1", block)
+        block = re.sub(r"\[[^\]]+\]\([^)]+\)", "", block)
+        block = re.sub(r"^\s*[-*]\s+", "", block, flags=re.M)
+        block = re.sub(r"\s+", " ", block).strip()
+        if not block:
+            continue
+        local_count = 0
+        for sentence in re.split(r"(?<=[.!?])\s+", block):
+            sentence = sentence.strip(" -:\t\n")
+            if not sentence or not normative_pattern.search(sentence):
+                continue
+            local_count += 1
+            if len(sentence) > 600:
+                sentence = sentence[:597].rstrip() + "..."
+            statements.append(
+                {
+                    "id": f"normative_{heading['section'].rsplit('#', 1)[-1]}_{local_count}",
+                    "section": heading["section"],
+                    "parent_section": heading["parent_section"],
+                    "text": sentence,
+                }
+            )
+    return tuple(statements)
+
+
 def _tooling_audit_requirements_trace(root: Path, checks: Iterable[dict]) -> dict:
     docs_text = (root / "docs" / "tooling.md").read_text(encoding="utf-8")
     docs_text_folded = re.sub(r"\s+", " ", docs_text.lower())
@@ -17397,11 +17471,69 @@ def _tooling_audit_requirements_trace(root: Path, checks: Iterable[dict]) -> dic
             }
         )
     missing_requirements = tuple(item["id"] for item in requirements if not item["ok"])
-    sections = tuple(dict.fromkeys(item["section"] for item in requirements))
+    requirement_gate_ids_by_section: dict[str, list[str]] = defaultdict(list)
+    for requirement in requirements:
+        for gate_id in requirement.get("gate_ids", ()):
+            requirement_gate_ids_by_section[str(requirement["section"])].append(str(gate_id))
+    normative_section_gate_fallbacks = {
+        "docs/tooling.md#core-architecture": ("module_boundaries",),
+    }
+    checks_by_section: dict[str, list[dict]] = defaultdict(list)
+    for check in checks:
+        section = check.get("section")
+        if isinstance(section, str):
+            checks_by_section[section].append(check)
+    normative_statements = []
+    for statement in _extract_tooling_normative_statements(docs_text):
+        gate_ids = tuple(
+            dict.fromkeys(
+                (
+                    *(
+                        str(check.get("id"))
+                        for section in (statement.get("section"), statement.get("parent_section"))
+                        for check in checks_by_section.get(section, ())
+                        if check.get("id")
+                    ),
+                    *(
+                        gate_id
+                        for section in (statement.get("section"), statement.get("parent_section"))
+                        for gate_id in requirement_gate_ids_by_section.get(str(section), ())
+                    ),
+                    *normative_section_gate_fallbacks.get(str(statement.get("section")), ()),
+                )
+            )
+        )
+        gate_results = tuple(
+            {
+                "gate_id": gate_id,
+                "ok": checks_by_id.get(gate_id, {}).get("ok") is True,
+                "section": checks_by_id.get(gate_id, {}).get("section"),
+            }
+            for gate_id in gate_ids
+        )
+        normative_statements.append(
+            {
+                **statement,
+                "gate_ids": gate_ids,
+                "gate_count": len(gate_ids),
+                "gate_results": gate_results,
+                "missing_gate_count": 0 if gate_results else 1,
+                "ok": bool(gate_results) and all(item.get("ok") is True for item in gate_results),
+            }
+        )
+    missing_normative_statements = tuple(item["id"] for item in normative_statements if not item["ok"])
+    sections = tuple(
+        dict.fromkeys(
+            (
+                *(item["section"] for item in requirements),
+                *(item["section"] for item in normative_statements),
+            )
+        )
+    )
     covered_gates = tuple(gate_id for gate_id in required_gate_ids if gate_id in checks_by_id)
     return {
         "format": "appgen.tooling-requirements-trace-audit.v1",
-        "ok": not missing_requirements and not missing_gates,
+        "ok": not missing_requirements and not missing_gates and not missing_normative_statements,
         "source": "docs/tooling.md",
         "source_of_truth": "docs/tooling.md#goals",
         "requirements": tuple(requirements),
@@ -17410,6 +17542,11 @@ def _tooling_audit_requirements_trace(root: Path, checks: Iterable[dict]) -> dic
         "covered_requirement_count": sum(1 for item in requirements if item["ok"]),
         "missing_requirements": missing_requirements,
         "missing_requirement_count": len(missing_requirements),
+        "normative_statements": tuple(normative_statements),
+        "normative_statement_count": len(normative_statements),
+        "covered_normative_statement_count": sum(1 for item in normative_statements if item["ok"]),
+        "missing_normative_statement_ids": missing_normative_statements,
+        "missing_normative_statement_count": len(missing_normative_statements),
         "sections": sections,
         "section_count": len(sections),
         "required_gates": required_gate_ids,
@@ -17420,6 +17557,10 @@ def _tooling_audit_requirements_trace(root: Path, checks: Iterable[dict]) -> dic
         "missing_gate_count": len(missing_gates),
         "requirements_by_section": {
             section: tuple(item["id"] for item in requirements if item["section"] == section)
+            for section in sections
+        },
+        "normative_statement_counts_by_section": {
+            section: sum(1 for item in normative_statements if item["section"] == section)
             for section in sections
         },
     }
@@ -26777,6 +26918,21 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             "covered_requirement_count": 1,
             "missing_requirement_count": 0,
             "missing_requirements": (),
+            "normative_statements": (
+                {
+                    "id": "normative_goals_1",
+                    "section": "docs/tooling.md#goals",
+                    "text": "The tooling stack must provide one shared parser and semantic model.",
+                    "gate_ids": ("shared_semantic_model",),
+                    "missing_gate_count": 0,
+                    "ok": True,
+                },
+            ),
+            "normative_statement_count": 1,
+            "covered_normative_statement_count": 1,
+            "missing_normative_statement_count": 0,
+            "missing_normative_statement_ids": (),
+            "normative_statement_counts_by_section": {"docs/tooling.md#goals": 1},
             "sections": ("docs/tooling.md#goals",),
             "required_gates": ("shared_semantic_model",),
             "required_gate_count": 1,

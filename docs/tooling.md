@@ -739,8 +739,10 @@ advertise a command that the launcher does not support.
 requirements to executable tooling gates. It traces goals, non-goals, command
 governance, and documentation governance to named aggregate check ids; reports
 requirement counts, covered requirement counts, missing requirements, required
-gates, covered gates, and missing gates; and fails when a normative requirement
-becomes prose-only or points at a gate that no longer exists.
+gates, covered gates, missing gates, normative statement counts, covered
+normative statement counts, and missing normative statements; and fails when a
+normative requirement becomes prose-only or points at a gate that no longer
+exists.
 `appgen tooling-status` emits `appgen.tooling-status.v1`, a compact "what is
 left" contract distilled from the aggregate audit. It reports passing and
 failing check ids, blocking gaps, completed and incomplete implementation
@@ -3258,7 +3260,11 @@ governance.
 The report includes requirement ids, source sections, requirement text,
 required documentation fragments, gate ids, per-gate results, missing
 requirements, missing fragments, required gate counts, covered gate counts, and
-missing gate ids. The aggregate tooling audit exposes this proof as
+missing gate ids. It also extracts normative statements containing words such
+as `must`, `should`, `requires`, `fails`, `cannot`, or `rejected` from each
+Markdown section after stripping fenced examples, then proves each extracted
+statement is covered by a live section or parent-section gate. The aggregate
+tooling audit exposes this proof as
 `tooling_requirements_traceability`, and `appgen tooling-docs` embeds the same
 payload so documentation governance can fail when a normative requirement
 becomes prose-only even if headings, anchors, command docs, and schema
@@ -3306,8 +3312,8 @@ missing subsections, runtime format reference gaps, and test reference gaps.
 It also embeds `appgen.tooling-command-docs-audit.v1`, so docs governance can
 separate command-manifest drift from anchor or schema-reference drift.
 It embeds `appgen.tooling-requirements-trace-audit.v1` as well, so docs
-governance can separate prose-only requirement drift from heading, anchor,
-schema-reference, and command-manifest drift.
+governance can separate prose-only requirement drift and uncovered normative
+statements from heading, anchor, schema-reference, and command-manifest drift.
 The text
 renderer must include embedded audit format names such as
 `appgen.non-goal-policy-audit.v1` and

@@ -4652,3 +4652,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   goals, non-goals, command governance, and documentation governance to concrete
   aggregate audit gates. `appgen tooling-docs` and `appgen tooling-status` now
   surface missing requirements and missing gate references directly.
+- Current normative trace expansion makes that proof scale beyond the curated
+  requirement list. `appgen requirements-trace` now extracts normative
+  statements from `docs/tooling.md` sections after stripping fenced examples and
+  fails when any statement lacks a live section or parent-section audit gate.
