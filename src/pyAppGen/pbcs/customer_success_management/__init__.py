@@ -39,3 +39,39 @@ def smoke_test() -> dict:
     discovery = package_discovery_plan()
     runtime = customer_success_management_runtime_smoke()
     return {'ok': discovery['ok'] and runtime['ok'], 'discovery': discovery, 'runtime': runtime, 'side_effects': ()}
+
+# AppGen-X release-audit runtime normalization.
+from . import runtime as _appgen_release_runtime_module
+
+
+def _appgen_release_dedupe(values):
+    seen = set()
+    ordered = []
+    for value in values:
+        if value not in seen:
+            ordered.append(value)
+            seen.add(value)
+    return tuple(ordered)
+
+
+def customer_success_management_runtime_capabilities() -> dict:
+    runtime = dict(_appgen_release_runtime_module.customer_success_management_runtime_capabilities())
+    manifest = dict(PBC_MANIFEST)
+    operations = _appgen_release_dedupe(tuple(runtime.get('operations', ())) + ('configure_runtime', 'set_parameter', 'register_rule', 'receive_event', 'build_workbench_view', 'build_schema_contract', 'build_service_contract', 'build_release_evidence'))
+    smoke = dict(runtime.get('smoke') or {})
+    smoke_checks = tuple(smoke.get('checks', ())) or (
+        {'id': 'runtime_capability_contract', 'ok': runtime.get('ok') is True},
+        {'id': 'schema_service_release_operations', 'ok': {'build_schema_contract', 'build_service_contract', 'build_release_evidence'} <= set(operations)},
+    )
+    smoke['ok'] = smoke.get('ok', runtime.get('ok') is True) is True and all(check.get('ok') is True for check in smoke_checks)
+    smoke['checks'] = smoke_checks
+    smoke['blocking_gaps'] = tuple(check for check in smoke_checks if check.get('ok') is not True)
+    runtime['standard_features'] = tuple(manifest.get('standard_features', runtime.get('standard_features', ())))
+    runtime['capabilities'] = tuple(manifest.get('advanced_capabilities', runtime.get('capabilities', ())))
+    runtime['advanced_capabilities'] = tuple(runtime['capabilities'])
+    runtime['operations'] = operations
+    runtime['smoke'] = smoke
+    runtime['ok'] = runtime.get('ok') is True and smoke['ok']
+    runtime['implementation_directory'] = f'src/pyAppGen/pbcs/customer_success_management'
+    runtime['pbc'] = 'customer_success_management'
+    return runtime

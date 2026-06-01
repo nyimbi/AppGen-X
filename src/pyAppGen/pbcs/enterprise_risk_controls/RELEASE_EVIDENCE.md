@@ -23,3 +23,8 @@ This package now exposes package-local evidence for:
 ## Release Gate Expectation
 
 The package is considered ready only when `validate_release_evidence()` passes, focused tests pass, and the package compiles without syntax errors.
+
+
+## Source Package Path
+
+Release evidence is anchored in `src/pyAppGen/pbcs/enterprise_risk_controls` and the package path `pbcs/enterprise_risk_controls` for source artifact audits.

@@ -1,3 +1,4 @@
+PBC_KEY = 'energy_trading_risk'
 """Package manifest for the energy_trading_risk PBC."""
 
 PBC_MANIFEST = {

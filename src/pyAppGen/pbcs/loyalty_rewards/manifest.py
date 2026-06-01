@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+PBC_KEY = 'loyalty_rewards'
+
 from .runtime import LOYALTY_REWARDS_CONSUMED_EVENT_TYPES
 from .runtime import LOYALTY_REWARDS_EMITTED_EVENT_TYPES
 from .runtime import LOYALTY_REWARDS_OWNED_TABLES

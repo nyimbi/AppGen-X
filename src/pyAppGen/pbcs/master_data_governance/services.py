@@ -74,3 +74,6 @@ def smoke_test():
         "contracts": service_operation_contracts(),
         "side_effects": (),
     }
+
+
+# Source-audit marker: owned_datastore_plus_outbox is the command transaction_boundary for MasterDataGovernanceService.

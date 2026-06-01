@@ -1,3 +1,4 @@
+PBC_KEY = 'laboratory_information_management'
 """Package manifest for the laboratory_information_management PBC."""
 
 PBC_MANIFEST = {

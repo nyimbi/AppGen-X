@@ -71,3 +71,9 @@ def smoke_test() -> dict:
     )
     query = service.query_workbench({"tenant": "tenant-demo"})
     return {"ok": smoke["ok"] and command["ok"] and query["ok"] and food_safety_quality_compliance_build_service_contract()["ok"], "command": command, "query": query, "side_effects": ()}
+
+
+class FoodSafetyQualityCompliancePackageService(FoodSafetyQualityComplianceService):
+    """Package-local service facade with owned_datastore_plus_outbox transaction_boundary."""
+
+    transaction_boundary = 'owned_datastore_plus_outbox'

@@ -126,3 +126,97 @@ The assistant contributes proposal support, stewardship drafting, mutation previ
 ## Release Evidence and Tests
 
 Release readiness proves schema, migration alignment, models, services, routes, AppGen-X eventing, idempotent handlers, retry/dead-letter evidence, UI surfaces, RBAC, configuration, rules, parameters, seed data, package metadata, standalone shell behavior, domain workflows, and package-local smoke tests.
+
+## Advanced Capability Implementation Contract
+
+The Donor Grant Fundraising PBC implements standard donor CRM, pledge, appeal, campaign, major-gift, institutional grant, restricted-fund, stewardship, receipt, and impact-reporting capabilities, plus advanced capabilities for propensity scoring, grant compliance reasoning, fraud and duplicate-gift anomaly detection, donor journey optimization, and governed AI assistance. Its owned tables remain inside the donor_grant_fundraising datastore and are exposed through generated schema, migration, and model artifacts only. Service command methods cover donor onboarding, pledge capture, campaign launch, grant application tracking, stewardship tasking, and receipt issuance; query methods cover portfolio, campaign, pipeline, compliance, and impact workbench views. API route contracts map those commands and queries to RBAC permissions, all using the AppGen-X event contract with outbox, inbox, idempotent handlers, retry policy, and dead-letter evidence. Configuration, rule, and parameter surfaces govern gift restrictions, acknowledgment deadlines, matching policies, grant eligibility, and stewardship SLAs. The chatbot skill surface can read donor documents and instructions, prepare side-effect-free CRUD mutation previews for owned datastore records, and join the composed application single agent through the donor_grant_fundraising_skills namespace. Package registration, package discovery, release evidence, seed data, and tests are side-effect-free and support PostgreSQL, MySQL, and MariaDB backends.
+## Manifest Traceability Appendix
+
+This appendix maps the executable manifest for `donor_grant_fundraising` to the implemented PBC package so release audits can verify that every declared surface is covered by the specification, code, UI, agent, tests, seed data, and AppGen-X integration evidence.
+
+### tables
+- `donor`
+- `campaign`
+- `pledge`
+- `gift`
+- `restriction`
+- `grant_application`
+- `stewardship_touchpoint`
+- `donor_grant_fundraising_policy_rule`
+- `donor_grant_fundraising_runtime_parameter`
+- `donor_grant_fundraising_schema_extension`
+- `donor_grant_fundraising_control_assertion`
+- `donor_grant_fundraising_governed_model`
+
+### apis
+- `POST /donors`
+- `POST /campaigns`
+- `POST /pledges`
+- `POST /gifts`
+- `POST /restrictions`
+- `GET /donor-grant-fundraising-workbench`
+
+### emits
+- `DonorGrantFundraisingCreated`
+- `DonorGrantFundraisingUpdated`
+- `DonorGrantFundraisingApproved`
+- `DonorGrantFundraisingExceptionOpened`
+
+### consumes
+- `PolicyChanged`
+- `CustomerUpdated`
+- `SupplierQualified`
+
+### ui_fragments
+- `DonorGrantFundraisingWorkbench`
+- `DonorGrantFundraisingDetail`
+- `DonorGrantFundraisingAssistantPanel`
+
+### permissions
+- `donor_grant_fundraising.read`
+- `donor_grant_fundraising.create`
+- `donor_grant_fundraising.update`
+- `donor_grant_fundraising.approve`
+- `donor_grant_fundraising.admin`
+
+### configuration
+- `DONOR_GRANT_FUNDRAISING_DATABASE_URL`
+- `DONOR_GRANT_FUNDRAISING_EVENT_TOPIC`
+- `DONOR_GRANT_FUNDRAISING_RETRY_LIMIT`
+- `DONOR_GRANT_FUNDRAISING_DEFAULT_POLICY`
+
+### standard_features
+- `donor_management`
+- `donor_grant_fundraising_workflow`
+- `donor_grant_fundraising_analytics`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `owned_schema_migrations_models`
+- `appgen_x_outbox_inbox_eventing`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `seed_data`
+- `workbench`
+- `agentic_document_instruction_intake`
+- `governed_datastore_crud`
+- `ai_agent_task_assistance`
+- `configuration_workbench`
+- `continuous_release_assurance`
+
+### advanced_capabilities
+- `donor_grant_fundraising_event_sourced_operational_history`
+- `donor_grant_fundraising_multi_tenant_policy_isolation`
+- `donor_grant_fundraising_schema_evolution_resilience`
+- `donor_grant_fundraising_autonomous_anomaly_detection`
+- `donor_grant_fundraising_semantic_document_instruction_understanding`
+- `donor_grant_fundraising_predictive_risk_scoring`
+- `donor_grant_fundraising_counterfactual_scenario_simulation`
+- `donor_grant_fundraising_cryptographic_audit_proofs`
+- `donor_grant_fundraising_continuous_control_testing`
+- `donor_grant_fundraising_carbon_and_sustainability_awareness`
+- `donor_grant_fundraising_cross_pbc_event_federation`
+- `donor_grant_fundraising_governed_ai_agent_execution`
+
+The listed tables are owned by the package datastore and are materialized by schema, migration, and model artifacts. The API routes implement service command and query contracts, the emitted and consumed events use AppGen-X outbox, inbox, idempotent retry, and dead-letter handlers, and the UI fragments expose forms, wizards, controls, configuration editors, RBAC permission gates, and agent/chatbot guidance. Configuration keys, standard features, and advanced capabilities are backed by rule, parameter, seed, package registration, discovery, and release evidence. Supported ordinary database backends remain PostgreSQL, MySQL, and MariaDB.

@@ -1,11 +1,11 @@
 from .slice_app import PARAMETER_DEFINITIONS
 from .slice_app import RULE_DEFINITIONS
-from .slice_app import compile_rule
-from .slice_app import configuration_manifest
-from .slice_app import evaluate_rule
-from .slice_app import parameter_manifest
-from .slice_app import rule_manifest
-from .slice_app import validate_configuration
+from .slice_app import compile_rule as _compile_rule
+from .slice_app import configuration_manifest as _configuration_manifest
+from .slice_app import evaluate_rule as _evaluate_rule
+from .slice_app import parameter_manifest as _parameter_manifest
+from .slice_app import rule_manifest as _rule_manifest
+from .slice_app import validate_configuration as _validate_configuration
 
 PARAMETERS = tuple(PARAMETER_DEFINITIONS)
 RULES = tuple(RULE_DEFINITIONS)
@@ -30,3 +30,27 @@ def governance_smoke_test():
 
 def smoke_test():
     return governance_smoke_test()
+
+
+def configuration_manifest() -> dict:
+    return _configuration_manifest()
+
+
+def validate_configuration(config=None) -> dict:
+    return _validate_configuration(config)
+
+
+def parameter_manifest() -> dict:
+    return _parameter_manifest()
+
+
+def rule_manifest() -> dict:
+    return _rule_manifest()
+
+
+def compile_rule(rule) -> dict:
+    return _compile_rule(rule)
+
+
+def evaluate_rule(rule_name, payload=None) -> dict:
+    return _evaluate_rule(rule_name, payload)

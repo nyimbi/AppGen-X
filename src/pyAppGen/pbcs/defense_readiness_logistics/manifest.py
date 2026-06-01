@@ -1,3 +1,4 @@
+PBC_KEY = 'defense_readiness_logistics'
 """Package manifest for the defense_readiness_logistics PBC."""
 
 PBC_MANIFEST = {

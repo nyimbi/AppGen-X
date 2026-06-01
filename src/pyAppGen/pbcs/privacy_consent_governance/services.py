@@ -251,3 +251,17 @@ def smoke_test() -> dict:
         'query': query,
         'side_effects': (),
     }
+
+
+def service_operation_manifest() -> dict:
+    """Return canonical command/query operation metadata for source package audits."""
+    contracts = service_operation_contracts()
+    return {
+        'ok': contracts['ok'],
+        'pbc': runtime.PBC_KEY,
+        'service_class': 'PrivacyConsentGovernanceService',
+        'command_operations': contracts['command_operations'],
+        'query_operations': contracts['query_operations'],
+        'event_contract': EVENT_CONTRACT,
+        'side_effects': (),
+    }

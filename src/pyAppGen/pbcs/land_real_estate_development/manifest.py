@@ -1,3 +1,4 @@
+PBC_KEY = 'land_real_estate_development'
 """Package manifest for the land_real_estate_development PBC."""
 
 PBC_MANIFEST = {

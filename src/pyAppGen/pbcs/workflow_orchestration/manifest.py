@@ -1,3 +1,4 @@
+PBC_KEY = 'workflow_orchestration'
 """Package manifest for the workflow_orchestration PBC."""
 
 from .runtime import WORKFLOW_ORCHESTRATION_CONSUMED_EVENT_TYPES

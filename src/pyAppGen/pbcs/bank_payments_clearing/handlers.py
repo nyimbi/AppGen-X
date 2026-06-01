@@ -24,7 +24,10 @@ def handler_manifest() -> dict:
 def dispatch_event(event: dict) -> dict:
     idem = event.get("idempotency_key") or event.get("event_id") or repr(event)
     if idem in _HANDLED:
-        return {"ok": True, "duplicate": True, "idempotency_key": idem, "side_effects": ()}
+        duplicate = {"ok": True, "duplicate": True, "idempotency_key": idem, "side_effects": ()}
+        if event.get("event_type") not in CONSUMED:
+            duplicate.update({"dead_letter_table": EVENT_CONTRACT["dead_letter_table"], "retry_policy": EVENT_CONTRACT["retry_policy"]})
+        return duplicate
     _HANDLED.add(idem)
     if event.get("event_type") not in CONSUMED:
         return {

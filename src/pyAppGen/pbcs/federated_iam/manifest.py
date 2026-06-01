@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+PBC_KEY = 'federated_iam'
+
 from .runtime import FEDERATED_IAM_CONSUMED_EVENT_TYPES
 from .runtime import FEDERATED_IAM_EMITTED_EVENT_TYPES
 from .runtime import FEDERATED_IAM_OWNED_TABLES

@@ -1,3 +1,4 @@
+PBC_KEY = 'oil_gas_field_operations'
 """Package manifest for the oil_gas_field_operations PBC."""
 
 PBC_MANIFEST = {

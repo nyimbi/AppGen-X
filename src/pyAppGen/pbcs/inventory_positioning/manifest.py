@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+PBC_KEY = 'inventory_positioning'
+
 from .runtime import INVENTORY_POSITIONING_ALLOWED_DATABASE_BACKENDS
 from .runtime import INVENTORY_POSITIONING_CONSUMED_EVENT_TYPES
 from .runtime import INVENTORY_POSITIONING_EMITTED_EVENT_TYPES

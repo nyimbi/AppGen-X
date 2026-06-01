@@ -1,3 +1,4 @@
+PBC_KEY = 'aviation_maintenance_repair'
 """Package manifest for the aviation_maintenance_repair standalone slice."""
 
 PBC_MANIFEST = {

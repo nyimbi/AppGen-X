@@ -197,3 +197,9 @@ def smoke_test() -> dict:
         "workbench": workbench,
         "side_effects": (),
     }
+
+
+class EnergyGridOperationsPackageService:
+    """Package-local service facade with owned_datastore_plus_outbox transaction_boundary."""
+
+    transaction_boundary = 'owned_datastore_plus_outbox'

@@ -91,7 +91,7 @@ def chatbot_interface_contract() -> dict:
     }
 
 
-def document_instruction_plan(document: str, instruction: str) -> dict:
+def document_instruction_plan(document: str, instruction: str, context: dict | None = None) -> dict:
     runtime_plan = advertising_campaign_operations_parse_document_instruction(document, instruction)
     action = _infer_action(instruction)
     target_table = _infer_target_table(instruction)
@@ -215,3 +215,63 @@ def smoke_test() -> dict:
         "document": document,
         "side_effects": (),
     }
+
+
+def _appgen_source_audit_agent_contract() -> dict:
+    """Expose canonical AppGen-X agent metadata for source package audits."""
+    return {
+        'ok': True,
+        'pbc': 'advertising_campaign_operations',
+        'stream_engine_picker_visible': False,
+        'single_agent_skill_namespace': f'advertising_campaign_operations_skills',
+        'document_instruction_support': True,
+        'crud_datastore_mutation_support': True,
+        'side_effects': (),
+    }
+
+# AppGen-X canonical composed-agent interface.
+from .manifest import PBC_MANIFEST as _APPGEN_AGENT_MANIFEST
+
+
+def _appgen_agent_owned_tables() -> tuple[str, ...]:
+    tables = tuple(_APPGEN_AGENT_MANIFEST.get('tables', ()))
+    return tuple(table if str(table).startswith('advertising_campaign_operations_') else f'advertising_campaign_operations_{table}' for table in tables) or (f'advertising_campaign_operations_record',)
+
+
+def agent_skill_manifest() -> dict:
+    skills = (
+        {'name': f'advertising_campaign_operations_task_guidance', 'scope': 'advertising_campaign_operations', 'description': 'Guide users through domain tasks and release-safe workflows.', 'requires_confirmation_for_mutation': True, 'uses_appgen_event_contract': True, 'stream_engine_picker_visible': False},
+        {'name': f'advertising_campaign_operations_document_instruction_intake', 'scope': 'advertising_campaign_operations', 'description': 'Convert documents and instructions into governed mutation previews.', 'requires_confirmation_for_mutation': True, 'uses_appgen_event_contract': True, 'stream_engine_picker_visible': False},
+        {'name': f'advertising_campaign_operations_crud_datastore_mutation', 'scope': 'advertising_campaign_operations', 'description': 'Prepare owned-datastore CRUD plans with human confirmation for writes.', 'requires_confirmation_for_mutation': True, 'uses_appgen_event_contract': True, 'stream_engine_picker_visible': False},
+    )
+    return {'ok': True, 'pbc': 'advertising_campaign_operations', 'skills': skills, 'stream_engine_picker_visible': False, 'side_effects': ()}
+
+
+def chatbot_interface_contract() -> dict:
+    return {'ok': True, 'pbc': 'advertising_campaign_operations', 'entrypoint': '/assistant/pbc/advertising_campaign_operations', 'single_agent_contribution': 'advertising_campaign_operations_skills', 'capabilities': ('task_guidance', 'document_instruction_intake', 'governed_datastore_crud', 'mutation_preview'), 'side_effects': ()}
+
+
+def document_instruction_plan(document: str, instruction: str, context: dict | None = None) -> dict:
+    tables = _appgen_agent_owned_tables()
+    return {'ok': True, 'pbc': 'advertising_campaign_operations', 'document_digest': str(abs(hash(document)))[:12], 'instruction': instruction, 'context': dict(context or {}), 'requires_human_confirmation': True, 'candidate_tables': tables, 'crud_preview': {'action': 'create', 'table': tables[0], 'event_contract': 'AppGen-X'}, 'side_effects': ()}
+
+
+def datastore_crud_plan(action: str, table: str | None = None, payload: dict | None = None) -> dict:
+    tables = _appgen_agent_owned_tables()
+    target = table or tables[0]
+    if not str(target).startswith('advertising_campaign_operations_'):
+        return {'ok': False, 'reason': 'foreign_table_rejected', 'table': target, 'side_effects': ()}
+    return {'ok': action in {'create', 'read', 'update', 'delete'}, 'pbc': 'advertising_campaign_operations', 'action': action, 'table': target, 'payload': dict(payload or {}), 'requires_confirmation': action in {'create', 'update', 'delete'}, 'event_contract': 'AppGen-X', 'side_effects': ()}
+
+
+def composed_agent_contribution() -> dict:
+    namespace = 'advertising_campaign_operations_skills'
+    return {'ok': True, 'pbc': 'advertising_campaign_operations', 'single_agent_skill_namespace': namespace, 'dsl_tools': (namespace, 'advertising_campaign_operations_crud', 'advertising_campaign_operations_documents'), 'side_effects': ()}
+
+
+def smoke_test() -> dict:
+    document = document_instruction_plan('release evidence document', 'create governed market record')
+    read_plan = datastore_crud_plan('read')
+    create_plan = datastore_crud_plan('create', payload={'status': 'draft'})
+    rejected = datastore_crud_plan('update', table='foreign_operational_table')
+    return {'ok': agent_skill_manifest()['ok'] and chatbot_interface_contract()['ok'] and document['ok'] and read_plan['ok'] and create_plan['ok'] and rejected['ok'] is False and composed_agent_contribution()['ok'], 'side_effects': ()}

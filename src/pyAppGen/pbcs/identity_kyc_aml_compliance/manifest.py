@@ -1,3 +1,4 @@
+PBC_KEY = 'identity_kyc_aml_compliance'
 """Package manifest for the identity KYC / AML compliance slice."""
 
 PBC_MANIFEST = {

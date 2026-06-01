@@ -308,3 +308,16 @@ def smoke_test() -> dict:
         "single_pbc_app": app,
         "side_effects": (),
     }
+
+
+def _appgen_source_audit_ui_contract() -> dict:
+    """Expose canonical UI workbench metadata for source package audits."""
+    return {
+        'ok': True,
+        'pbc': 'bank_payments_clearing',
+        'workbench': True,
+        'configuration_editor': True,
+        'action_permissions': (),
+        'stream_engine_picker_visible': False,
+        'side_effects': (),
+    }

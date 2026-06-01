@@ -1,3 +1,4 @@
+PBC_KEY = 'master_data_governance'
 """Package manifest for the master_data_governance PBC."""
 
 PBC_MANIFEST = {

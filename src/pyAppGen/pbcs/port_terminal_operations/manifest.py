@@ -1,3 +1,4 @@
+PBC_KEY = 'port_terminal_operations'
 """Package manifest for the port_terminal_operations PBC."""
 
 PBC_MANIFEST = {

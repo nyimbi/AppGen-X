@@ -1,3 +1,4 @@
+PBC_KEY = 'nonprofit_program_impact'
 """Package manifest for the nonprofit_program_impact PBC."""
 
 PBC_MANIFEST = {

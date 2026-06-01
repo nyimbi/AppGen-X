@@ -1,9 +1,9 @@
 from .slice_app import CONSUMED_EVENT_TYPES as CONSUMED
 from .slice_app import DEAD_LETTER_TABLE
 from .slice_app import EMITTED_EVENT_TYPES as EMITTED
-from .slice_app import build_event_envelope
-from .slice_app import event_contract_manifest
-from .slice_app import validate_event_contract
+from .slice_app import build_event_envelope as _build_event_envelope
+from .slice_app import event_contract_manifest as _event_contract_manifest
+from .slice_app import validate_event_contract as _validate_event_contract
 
 
 def event_dispatch_plan(event_type, payload=None):
@@ -18,3 +18,19 @@ def smoke_test():
     consumed["table"] = "food_safety_quality_compliance_appgen_inbox_event"
     consumed["dead_letter_table"] = DEAD_LETTER_TABLE
     return {"ok": event_contract_manifest()["ok"] and validate_event_contract()["ok"] and emitted["ok"] and consumed["ok"], "emitted": emitted, "consumed": consumed, "side_effects": ()}
+
+
+def event_contract_manifest() -> dict:
+    manifest = _event_contract_manifest()
+    return {**manifest, 'stream_engine_picker_visible': False, 'side_effects': ()}
+
+
+def validate_event_contract() -> dict:
+    validation = _validate_event_contract()
+    return {**validation, 'side_effects': ()}
+
+
+def build_event_envelope(event_type, payload=None):
+    envelope = _build_event_envelope(event_type, payload)
+    envelope['idempotency_key'] = envelope.get('idempotency_key', f'food_safety_quality_compliance:{event_type}:idempotency')
+    return envelope

@@ -1,3 +1,4 @@
+PBC_KEY = 'hotel_revenue_management'
 """Package manifest for the hotel_revenue_management standalone slice."""
 
 PBC_MANIFEST = {

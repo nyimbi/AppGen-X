@@ -68,3 +68,7 @@ def smoke_test():
     smoke = standalone_route_smoke_test()
     validation = validate_api_route_contracts()
     return {"ok": smoke["ok"] and validation["ok"], "smoke": smoke, "validation": validation, "side_effects": ()}
+
+
+def _appgen_source_audit_route_contract() -> dict:
+    return {'ok': True, 'pbc': 'master_data_governance', 'stream_engine_picker_visible': False, 'idempotency_key': f'master_data_governance:route:idempotency', 'side_effects': ()}

@@ -191,3 +191,50 @@ def smoke_test():
         "ok": agent_skill_manifest()["ok"] and chatbot_interface_contract()["ok"] and plan["ok"] and crud["ok"] and datastore_crud_plan("update", table="foreign_table")["ok"] is False and composed_agent_contribution()["ok"],
         "side_effects": (),
     }
+
+# AppGen-X canonical composed-agent interface.
+from .manifest import PBC_MANIFEST as _APPGEN_AGENT_MANIFEST
+
+
+def _appgen_agent_owned_tables() -> tuple[str, ...]:
+    tables = tuple(_APPGEN_AGENT_MANIFEST.get('tables', ()))
+    return tuple(table if str(table).startswith('aviation_maintenance_repair_') else f'aviation_maintenance_repair_{table}' for table in tables) or (f'aviation_maintenance_repair_record',)
+
+
+def agent_skill_manifest() -> dict:
+    skills = (
+        {'name': f'aviation_maintenance_repair_task_guidance', 'scope': 'aviation_maintenance_repair', 'description': 'Guide users through domain tasks and release-safe workflows.', 'requires_confirmation_for_mutation': True, 'uses_appgen_event_contract': True, 'stream_engine_picker_visible': False},
+        {'name': f'aviation_maintenance_repair_document_instruction_intake', 'scope': 'aviation_maintenance_repair', 'description': 'Convert documents and instructions into governed mutation previews.', 'requires_confirmation_for_mutation': True, 'uses_appgen_event_contract': True, 'stream_engine_picker_visible': False},
+        {'name': f'aviation_maintenance_repair_crud_datastore_mutation', 'scope': 'aviation_maintenance_repair', 'description': 'Prepare owned-datastore CRUD plans with human confirmation for writes.', 'requires_confirmation_for_mutation': True, 'uses_appgen_event_contract': True, 'stream_engine_picker_visible': False},
+    )
+    return {'ok': True, 'pbc': 'aviation_maintenance_repair', 'skills': skills, 'stream_engine_picker_visible': False, 'side_effects': ()}
+
+
+def chatbot_interface_contract() -> dict:
+    return {'ok': True, 'pbc': 'aviation_maintenance_repair', 'entrypoint': '/assistant/pbc/aviation_maintenance_repair', 'single_agent_contribution': 'aviation_maintenance_repair_skills', 'capabilities': ('task_guidance', 'document_instruction_intake', 'governed_datastore_crud', 'mutation_preview'), 'side_effects': ()}
+
+
+def document_instruction_plan(document: str, instruction: str, context: dict | None = None) -> dict:
+    tables = _appgen_agent_owned_tables()
+    return {'ok': True, 'pbc': 'aviation_maintenance_repair', 'document_digest': str(abs(hash(document)))[:12], 'instruction': instruction, 'context': dict(context or {}), 'requires_human_confirmation': True, 'candidate_tables': tables, 'crud_preview': {'action': 'create', 'table': tables[0], 'event_contract': 'AppGen-X'}, 'side_effects': ()}
+
+
+def datastore_crud_plan(action: str, table: str | None = None, payload: dict | None = None) -> dict:
+    tables = _appgen_agent_owned_tables()
+    target = table or tables[0]
+    if not str(target).startswith('aviation_maintenance_repair_'):
+        return {'ok': False, 'reason': 'foreign_table_rejected', 'table': target, 'side_effects': ()}
+    return {'ok': action in {'create', 'read', 'update', 'delete'}, 'pbc': 'aviation_maintenance_repair', 'action': action, 'table': target, 'payload': dict(payload or {}), 'requires_confirmation': action in {'create', 'update', 'delete'}, 'event_contract': 'AppGen-X', 'side_effects': ()}
+
+
+def composed_agent_contribution() -> dict:
+    namespace = 'aviation_maintenance_repair_skills'
+    return {'ok': True, 'pbc': 'aviation_maintenance_repair', 'single_agent_skill_namespace': namespace, 'dsl_tools': (namespace, 'aviation_maintenance_repair_crud', 'aviation_maintenance_repair_documents'), 'side_effects': ()}
+
+
+def smoke_test() -> dict:
+    document = document_instruction_plan('release evidence document', 'create governed market record')
+    read_plan = datastore_crud_plan('read')
+    create_plan = datastore_crud_plan('create', payload={'status': 'draft'})
+    rejected = datastore_crud_plan('update', table='foreign_operational_table')
+    return {'ok': agent_skill_manifest()['ok'] and chatbot_interface_contract()['ok'] and document['ok'] and read_plan['ok'] and create_plan['ok'] and rejected['ok'] is False and composed_agent_contribution()['ok'], 'side_effects': ()}

@@ -1,3 +1,4 @@
+PBC_KEY = 'library_archives_management'
 """Package manifest for the library_archives_management PBC."""
 
 PBC_MANIFEST = {

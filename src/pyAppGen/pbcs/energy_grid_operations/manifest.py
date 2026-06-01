@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+PBC_KEY = 'energy_grid_operations'
+
 from .runtime import (
     ENERGY_GRID_OPERATIONS_CONSUMED_EVENT_TYPES,
     ENERGY_GRID_OPERATIONS_EMITTED_EVENT_TYPES,

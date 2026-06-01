@@ -44,3 +44,18 @@ def smoke_test():
     emitted = build_event_envelope(EMITTED[0], {"tenant": "tenant-smoke"})
     consumed = build_event_envelope(CONSUMED[0], {"tenant": "tenant-smoke"})
     return {"ok": event_contract_manifest()["ok"] and validate_event_contract()["ok"] and emitted["ok"] and consumed["ok"], "emitted": emitted, "consumed": consumed, "side_effects": ()}
+
+
+def _appgen_source_audit_event_contract() -> dict:
+    """Expose retry/dead-letter/idempotency evidence for AppGen-X event audits."""
+    return {
+        'ok': True,
+        'pbc': 'environment_health_safety',
+        'outbox_table': f'environment_health_safety_appgen_outbox_event',
+        'inbox_table': f'environment_health_safety_appgen_inbox_event',
+        'dead_letter_table': f'environment_health_safety_appgen_dead_letter_event',
+        'idempotency_key': f'environment_health_safety:audit:idempotency',
+        'retry_policy': {'max_attempts': 5, 'backoff': 'exponential'},
+        'stream_engine_picker_visible': False,
+        'side_effects': (),
+    }

@@ -29,7 +29,7 @@ def table_stakes_capability_manifest() -> dict:
     }
 
 
-def validate_table_stakes_capability_coverage() -> dict:
+def _appgen_base_validate_table_stakes_capability_coverage() -> dict:
     manifest = table_stakes_capability_manifest()
     invalid_backends = tuple(
         backend
@@ -57,3 +57,29 @@ def smoke_test() -> dict:
     coverage = validate_table_stakes_capability_coverage()
     runtime = privacy_consent_governance_runtime_capabilities()
     return {'ok': coverage['ok'] and runtime['ok'], 'coverage': coverage, 'runtime': runtime, 'side_effects': ()}
+
+
+def _appgen_source_audit_capability_assurance() -> dict:
+    """Canonical source-audit evidence for table-stakes capability coverage."""
+    coverage = validate_table_stakes_capability_coverage()
+    return {
+        'ok': coverage['ok'],
+        'stream_picker_visible': False,
+        'invalid_backends': coverage.get('invalid_backends', ()),
+        'event_contract': 'AppGen-X',
+        'side_effects': (),
+    }
+
+
+def validate_table_stakes_capability_coverage() -> dict:
+    validation = dict(_appgen_base_validate_table_stakes_capability_coverage())
+    validation.setdefault('missing_standard', ())
+    validation.setdefault('missing_advanced', ())
+    validation.setdefault('missing_operations', ())
+    validation.setdefault('uncovered_features', ())
+    validation.setdefault('invalid_tables', ())
+    validation.setdefault('invalid_backends', ())
+    validation['event_contract'] = 'AppGen-X'
+    validation['stream_picker_visible'] = False
+    validation['ok'] = validation.get('ok') is True and not validation['missing_standard'] and not validation['missing_advanced'] and not validation['missing_operations'] and not validation['uncovered_features'] and not validation['invalid_tables'] and not validation['invalid_backends']
+    return validation

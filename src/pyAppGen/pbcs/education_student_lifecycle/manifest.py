@@ -1,3 +1,4 @@
+PBC_KEY = 'education_student_lifecycle'
 """Package manifest for the education_student_lifecycle PBC."""
 
 PBC_MANIFEST = {

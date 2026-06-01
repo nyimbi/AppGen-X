@@ -1,7 +1,7 @@
 from .slice_app import CONSUMED_EVENT_TYPES as CONSUMED
 from .slice_app import DEAD_LETTER_TABLE
 from .slice_app import empty_state
-from .slice_app import handler_manifest
+from .slice_app import handler_manifest as _handler_manifest
 from .slice_app import receive_event
 
 _HANDLER_STATE = empty_state()
@@ -36,3 +36,8 @@ def smoke_test():
     second = dispatch_event({"event_type": CONSUMED[0], "idempotency_key": f"{CONSUMED[0]}:smoke"})
     failed = dispatch_event({"event_type": "Unexpected", "idempotency_key": "bad-food-safety-quality-compliance"})
     return {"ok": handler_manifest()["ok"] and first["ok"] and second["duplicate"] and failed["dead_letter_table"].endswith("dead_letter_event"), "side_effects": ()}
+
+
+def handler_manifest() -> dict:
+    manifest = _handler_manifest()
+    return {**manifest, 'retry_policy': {'max_attempts': 5}, 'dead_letter_table': DEAD_LETTER_TABLE, 'side_effects': ()}

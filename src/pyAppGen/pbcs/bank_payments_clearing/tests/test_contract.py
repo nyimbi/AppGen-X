@@ -124,3 +124,64 @@ def test_release_repo_gates_are_present_and_passing():
     assert all(evidence["repo_gate_results"].values()) is True
     assert PACKAGE_DIR.joinpath("standalone.py").exists()
     assert smoke_test()["ok"] is True
+
+# AppGen-X canonical source-audit contract tests for bank_payments_clearing.
+def test_service_and_route_surface_are_executable():
+    import importlib
+
+    services = importlib.import_module("pyAppGen.pbcs.bank_payments_clearing.services")
+    routes = importlib.import_module("pyAppGen.pbcs.bank_payments_clearing.routes")
+    service_contracts = services.service_operation_contracts()
+    route_contracts = routes.api_route_contracts()
+    route_validation = routes.validate_api_route_contracts()
+    operation_contract = service_contracts.get("operation_contract") or service_contracts.get("contracts", ({},))[0]
+    assert service_contracts["ok"] is True
+    assert route_contracts["ok"] is True
+    assert route_validation["ok"] is True
+    assert operation_contract
+
+
+def test_configuration_permissions_and_seed_hooks_are_executable():
+    import importlib
+
+    config = importlib.import_module("pyAppGen.pbcs.bank_payments_clearing.config")
+    permissions = importlib.import_module("pyAppGen.pbcs.bank_payments_clearing.permissions")
+    seed_data = importlib.import_module("pyAppGen.pbcs.bank_payments_clearing.seed_data")
+    assert config.governance_smoke_test()["ok"] is True
+    assert permissions.smoke_test()["ok"] is True
+    assert seed_data.smoke_test()["ok"] is True
+
+
+def test_event_handlers_are_idempotent_and_retryable():
+    import importlib
+
+    events = importlib.import_module("pyAppGen.pbcs.bank_payments_clearing.events")
+    handlers = importlib.import_module("pyAppGen.pbcs.bank_payments_clearing.handlers")
+    event_contract_manifest = events.event_contract_manifest
+    validate_event_contract = events.validate_event_contract
+    assert event_contract_manifest()["ok"] is True
+    assert validate_event_contract()["ok"] is True
+    handler_smoke = handlers.smoke_test()
+    assert handler_smoke["ok"] is True
+
+
+def test_release_registration_and_package_metadata_are_executable():
+    import importlib
+
+    package = importlib.import_module("pyAppGen.pbcs.bank_payments_clearing")
+    release_evidence = importlib.import_module("pyAppGen.pbcs.bank_payments_clearing.release_evidence")
+    assert package.package_metadata_manifest()["ok"] is True
+    assert package.validate_package_metadata()["ok"] is True
+    assert package.package_discovery_plan()["ok"] is True
+    assert release_evidence.release_readiness_manifest()["ok"] is True
+    assert release_evidence.validate_release_evidence()["ok"] is True
+
+
+def test_manifest_and_event_contract():
+    import importlib
+
+    manifest = importlib.import_module("pyAppGen.pbcs.bank_payments_clearing.manifest")
+    events = importlib.import_module("pyAppGen.pbcs.bank_payments_clearing.events")
+    assert manifest.PBC_MANIFEST["pbc"] == "bank_payments_clearing"
+    assert events.event_contract_manifest()["ok"] is True
+    assert events.validate_event_contract()["ok"] is True

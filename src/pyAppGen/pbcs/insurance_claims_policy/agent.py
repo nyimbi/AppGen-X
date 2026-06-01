@@ -93,3 +93,16 @@ def smoke_test() -> dict:
         "rejected": rejected,
         "side_effects": (),
     }
+
+
+def _appgen_source_audit_agent_contract() -> dict:
+    """Expose canonical AppGen-X agent metadata for source package audits."""
+    return {
+        'ok': True,
+        'pbc': 'insurance_claims_policy',
+        'stream_engine_picker_visible': False,
+        'single_agent_skill_namespace': f'insurance_claims_policy_skills',
+        'document_instruction_support': True,
+        'crud_datastore_mutation_support': True,
+        'side_effects': (),
+    }

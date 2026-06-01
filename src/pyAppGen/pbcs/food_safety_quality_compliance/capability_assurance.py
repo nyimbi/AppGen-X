@@ -19,7 +19,7 @@ def table_stakes_capability_manifest():
     }
 
 
-def validate_table_stakes_capability_coverage():
+def _appgen_base_validate_table_stakes_capability_coverage():
     manifest = table_stakes_capability_manifest()
     invalid_tables = tuple(table for table in manifest["owned_tables"] if not table.startswith(f"{manifest['pbc']}_"))
     return {
@@ -36,3 +36,22 @@ def validate_table_stakes_capability_coverage():
 def smoke_test():
     validation = validate_table_stakes_capability_coverage()
     return {"ok": validation["ok"], "validation": validation, "side_effects": ()}
+
+
+def _invalid_backend_evidence() -> tuple:
+    coverage = validate_table_stakes_capability_coverage()
+    return tuple(coverage.get('invalid_backends', ()))
+
+
+def validate_table_stakes_capability_coverage() -> dict:
+    validation = dict(_appgen_base_validate_table_stakes_capability_coverage())
+    validation.setdefault('missing_standard', ())
+    validation.setdefault('missing_advanced', ())
+    validation.setdefault('missing_operations', ())
+    validation.setdefault('uncovered_features', ())
+    validation.setdefault('invalid_tables', ())
+    validation.setdefault('invalid_backends', ())
+    validation['event_contract'] = 'AppGen-X'
+    validation['stream_picker_visible'] = False
+    validation['ok'] = validation.get('ok') is True and not validation['missing_standard'] and not validation['missing_advanced'] and not validation['missing_operations'] and not validation['uncovered_features'] and not validation['invalid_tables'] and not validation['invalid_backends']
+    return validation

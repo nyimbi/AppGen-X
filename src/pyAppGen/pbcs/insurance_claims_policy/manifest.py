@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+PBC_KEY = 'insurance_claims_policy'
+
 from .domain_depth import DOMAIN_ADVANCED_CAPABILITIES
 from .domain_depth import DOMAIN_OPERATIONS
 from .domain_depth import DOMAIN_OWNED_TABLES

@@ -1,3 +1,4 @@
+PBC_KEY = 'food_safety_quality_compliance'
 """Package manifest for the food_safety_quality_compliance PBC."""
 
 from .slice_app import DOMAIN_OPERATIONS
