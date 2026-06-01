@@ -225,6 +225,10 @@ database-backed form bindings, and workflow handlers into one
 `source-file`, every `symbol-file`, the embedded
 `appgen.semantic-source-set.v1` format, symbol coverage, and contract counts, so
 external coding agents can operate without consuming the full JSON payload.
+The source-set audit must cover a representative enterprise workspace, not only
+CRUD files: app, table, view, flow, rule, LLM provider, agent, deployment, and
+package declarations must all be discovered across separate files and each
+symbol must point back to the file that owns it.
 
 ### Table Model
 

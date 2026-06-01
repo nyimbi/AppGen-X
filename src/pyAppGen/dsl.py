@@ -933,6 +933,16 @@ def _locate_symbol_declaration_in_source_file(
     *,
     parent: str | None = None,
 ) -> tuple[int | None, int | None]:
+    if kind == "deployment_unit" and parent and parent.startswith("deploy."):
+        deploy_name = parent.split(".", 1)[1]
+        span = _source_block_span(source, "deploy", deploy_name)
+        if not span:
+            return None, None
+        match = re.search(rf"\bunit\s+{re.escape(name)}\b", source[span[0] : span[1]])
+        if not match:
+            return None, None
+        line, column = _line_column_for_index(source, span[0] + match.start() + len("unit "))
+        return line + 1, column
     top_level_kinds = {
         "app",
         "group",
@@ -23454,11 +23464,19 @@ def _tooling_audit_semantic_source_set_cli(tmp: Path) -> dict:
     (source_dir / "data").mkdir(parents=True, exist_ok=True)
     (source_dir / "ui").mkdir(parents=True, exist_ok=True)
     (source_dir / "workflow").mkdir(parents=True, exist_ok=True)
-    app_path = source_dir / "app.appgen"
+    (source_dir / "governance").mkdir(parents=True, exist_ok=True)
+    (source_dir / "agents").mkdir(parents=True, exist_ok=True)
+    (source_dir / "deployment").mkdir(parents=True, exist_ok=True)
+    (source_dir / "packages").mkdir(parents=True, exist_ok=True)
+    app_path = source_dir / "00-app.appgen"
     customer_path = source_dir / "data" / "customer.appgen"
     invoice_path = source_dir / "data" / "invoice.appgen"
     form_path = source_dir / "ui" / "invoice-form.appgen"
     flow_path = source_dir / "workflow" / "submit-invoice.appgen"
+    rule_path = source_dir / "governance" / "invoice-policy.appgen"
+    agent_path = source_dir / "agents" / "invoice-assistant.appgen"
+    deploy_path = source_dir / "deployment" / "production.appgen"
+    package_path = source_dir / "packages" / "web-release.appgen"
     app_path.write_text("app WorkspaceFinance { targets: web, mobile, desktop }\n", encoding="utf-8")
     customer_path.write_text(
         "table Customer { id: int pk; name: string required search; email: string }\n",
@@ -23490,15 +23508,88 @@ view InvoiceForm for Invoice {
         encoding="utf-8",
     )
     flow_path.write_text("flow SubmitInvoice { draft -> reviewed; reviewed -> posted }\n", encoding="utf-8")
+    rule_path.write_text(
+        """
+rule InvoicePolicy for Invoice {
+  total >= 0 -> SubmitInvoice
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    agent_path.write_text(
+        """
+llm LocalModel {
+  provider: ollama
+  mode: local
+}
+
+agent InvoiceAssistant {
+  provider: LocalModel
+  tools: read, schema
+  Invoice: read
+  on Explain -> SubmitInvoice
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    deploy_path.write_text(
+        """
+deploy Production {
+  unit SubmitInvoice as microservice
+  scale SubmitInvoice min 1 max 3
+  health SubmitInvoice "/health"
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    package_path.write_text(
+        """
+package WebRelease {
+  target: web
+  smoke: launch
+}
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
     json_exit, payload = _tooling_cli_json_case(("semantic", str(source_dir), "--json"))
     text_exit, text_output = _tooling_cli_text_case(("semantic", str(source_dir)))
-    expected_files = tuple(str(path) for path in (app_path, customer_path, invoice_path, form_path, flow_path))
+    expected_files = tuple(
+        str(path)
+        for path in (
+            app_path,
+            agent_path,
+            customer_path,
+            invoice_path,
+            deploy_path,
+            rule_path,
+            package_path,
+            form_path,
+            flow_path,
+        )
+    )
     symbols = payload.get("symbols") or {}
     source_file_symbol_counts = payload.get("source_file_symbol_counts") or {}
     symbol_files_by_id = {
         symbol_id: symbol.get("file")
         for symbol_id, symbol in symbols.items()
-        if symbol_id in {"app.WorkspaceFinance", "table.Customer", "table.Invoice", "view.InvoiceForm", "flow.SubmitInvoice"}
+        if symbol_id
+        in {
+            "app.WorkspaceFinance",
+            "table.Customer",
+            "table.Invoice",
+            "view.InvoiceForm",
+            "flow.SubmitInvoice",
+            "rule.InvoicePolicy",
+            "llm.LocalModel",
+            "agent.InvoiceAssistant",
+            "deploy.Production",
+            "deploy.Production.SubmitInvoice",
+            "package.WebRelease",
+        }
     }
     required_symbol_files_by_id = {
         "app.WorkspaceFinance": str(app_path),
@@ -23506,6 +23597,12 @@ view InvoiceForm for Invoice {
         "table.Invoice": str(invoice_path),
         "view.InvoiceForm": str(form_path),
         "flow.SubmitInvoice": str(flow_path),
+        "rule.InvoicePolicy": str(rule_path),
+        "llm.LocalModel": str(agent_path),
+        "agent.InvoiceAssistant": str(agent_path),
+        "deploy.Production": str(deploy_path),
+        "deploy.Production.SubmitInvoice": str(deploy_path),
+        "package.WebRelease": str(package_path),
     }
     missing_symbol_file_ids = tuple(
         symbol_id
@@ -23527,9 +23624,19 @@ view InvoiceForm for Invoice {
     required_tables = ("Customer", "Invoice")
     required_views = ("InvoiceForm",)
     required_flows = ("SubmitInvoice",)
+    required_rules = ("InvoicePolicy",)
+    required_agents = ("InvoiceAssistant",)
+    required_llms = ("LocalModel",)
+    required_deployments = ("Production",)
+    required_packages = ("WebRelease",)
     missing_tables = tuple(name for name in required_tables if name not in (payload.get("tables") or {}))
     missing_views = tuple(name for name in required_views if name not in (payload.get("views") or {}))
     missing_flows = tuple(name for name in required_flows if name not in (payload.get("flows") or {}))
+    missing_rules = tuple(name for name in required_rules if name not in (payload.get("rules") or {}))
+    missing_agents = tuple(name for name in required_agents if name not in (payload.get("agents") or {}))
+    missing_llms = tuple(name for name in required_llms if name not in (payload.get("llms") or {}))
+    missing_deployments = tuple(name for name in required_deployments if name not in (payload.get("deployment") or {}))
+    missing_packages = tuple(name for name in required_packages if name not in (payload.get("packages") or {}))
     source_files = tuple(payload.get("source_files", ()))
     missing_files = tuple(file_name for file_name in expected_files if file_name not in source_files)
     files_without_symbols = tuple(file_name for file_name in expected_files if source_file_symbol_counts.get(file_name, 0) < 1)
@@ -23546,6 +23653,11 @@ view InvoiceForm for Invoice {
         and not missing_tables
         and not missing_views
         and not missing_flows
+        and not missing_rules
+        and not missing_agents
+        and not missing_llms
+        and not missing_deployments
+        and not missing_packages
         and not missing_symbol_file_ids
         and not files_without_symbols
         and not missing_text_markers
@@ -23574,6 +23686,21 @@ view InvoiceForm for Invoice {
         "required_flows": required_flows,
         "missing_flows": missing_flows,
         "missing_flow_count": len(missing_flows),
+        "required_rules": required_rules,
+        "missing_rules": missing_rules,
+        "missing_rule_count": len(missing_rules),
+        "required_agents": required_agents,
+        "missing_agents": missing_agents,
+        "missing_agent_count": len(missing_agents),
+        "required_llms": required_llms,
+        "missing_llms": missing_llms,
+        "missing_llm_count": len(missing_llms),
+        "required_deployments": required_deployments,
+        "missing_deployments": missing_deployments,
+        "missing_deployment_count": len(missing_deployments),
+        "required_packages": required_packages,
+        "missing_packages": missing_packages,
+        "missing_package_count": len(missing_packages),
         "symbol_files_by_id": symbol_files_by_id,
         "required_symbol_files_by_id": required_symbol_files_by_id,
         "missing_symbol_file_ids": missing_symbol_file_ids,
