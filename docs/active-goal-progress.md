@@ -4599,3 +4599,8 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   surface audit now read the same `TOOLING_SUBCOMMANDS` manifest, so new
   parser-level tooling commands are less likely to be stranded behind only one
   command path.
+- Current editor contract expansion makes contract schemas first-class in the
+  VS Code surface. The extension now exposes contract-schema browsing and
+  semantic contract validation commands, Reports-view actions, webview
+  renderers, and audit requirements for the same schema contracts used by the
+  CLI and LSP tooling.

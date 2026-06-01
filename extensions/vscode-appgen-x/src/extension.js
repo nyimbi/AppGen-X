@@ -1,6 +1,8 @@
 "use strict";
 
 const cp = require("child_process");
+const fs = require("fs");
+const os = require("os");
 const path = require("path");
 const vscode = require("vscode");
 
@@ -42,6 +44,8 @@ function activate(context) {
   registerCommand(context, "appgen.package", packageActiveFile);
   registerCommand(context, "appgen.doctor", doctorReport);
   registerCommand(context, "appgen.toolingAudit", toolingAudit);
+  registerCommand(context, "appgen.contractSchema", contractSchemaCatalog);
+  registerCommand(context, "appgen.validateContract", validateSemanticContract);
   registerCommand(context, "appgen.pbcCatalog", browsePbcCatalog);
   registerCommand(context, "appgen.restartLanguageServer", () => client.restart());
   registerViews(context);
@@ -280,6 +284,8 @@ function registerViews(context) {
     "appgen.reports": [
       { label: "Doctor", command: "appgen.doctor", icon: "tools" },
       { label: "Tooling Audit", command: "appgen.toolingAudit", icon: "verified" },
+      { label: "Contract Schemas", command: "appgen.contractSchema", icon: "json" },
+      { label: "Validate Contract", command: "appgen.validateContract", icon: "check-all" },
       { label: "Release Verification", command: "appgen.verifyRelease", icon: "shield" },
       { label: "Migration Plan", command: "appgen.migrationPlan", icon: "git-compare" }
     ],
@@ -639,6 +645,32 @@ function renderToolingAudit(payload) {
   return previewShell("AppGen-X Tooling Audit", body);
 }
 
+function renderContractSchema(payload) {
+  const formats = payload.available_schema_formats || payload.schemas && Object.keys(payload.schemas) || [];
+  const selected = payload.selected_format || payload.format_name || "";
+  const body = `<p>Status: ${escapeHtml(payload.ok ? "ok" : "failed")}</p>
+    <p>Schema count: ${escapeHtml(payload.available_schema_count || formats.length || 0)}</p>
+    <p>Selected: ${escapeHtml(selected || "all")}</p>
+    <h2>Contract Formats</h2>
+    <ul>${formats.slice(0, 250).map((format) => `<li>${escapeHtml(format)}</li>`).join("")}</ul>
+    <details><summary>Raw schema catalog</summary><pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre></details>`;
+  return previewShell("AppGen-X Contract Schemas", body);
+}
+
+function renderContractValidation(payload) {
+  const diagnostics = payload.diagnostics || [];
+  const groups = payload.grouped_counts || payload.counts || {};
+  const body = `<p>Status: ${escapeHtml(payload.ok ? "ok" : "failed")}</p>
+    <p>Payload format: ${escapeHtml(payload.payload_format || payload.inferred_format || "")}</p>
+    <p>Schema format: ${escapeHtml(payload.schema_format || "")}</p>
+    <h2>Counts</h2>
+    <ul>${Object.entries(groups).map(([key, value]) => `<li>${escapeHtml(key)}: ${escapeHtml(JSON.stringify(value))}</li>`).join("")}</ul>
+    <h2>Diagnostics</h2>
+    <ul>${diagnostics.map((diagnostic) => `<li>${escapeHtml(diagnostic.code || "")} ${escapeHtml(diagnostic.message || JSON.stringify(diagnostic))}</li>`).join("")}</ul>
+    <details><summary>Raw validation report</summary><pre>${escapeHtml(JSON.stringify(payload, null, 2))}</pre></details>`;
+  return previewShell("AppGen-X Contract Validation", body);
+}
+
 function renderPbcCatalog(payload) {
   const pbcs = payload.pbcs || payload.catalog || payload.items || [];
   const items = Array.isArray(pbcs) ? pbcs : Object.entries(pbcs).map(([key, value]) => ({ key, ...value }));
@@ -785,6 +817,26 @@ function doctorReport() {
 function toolingAudit() {
   return runAppGenJson(["tooling-audit", "--json"], "AppGen-X Tooling Audit").then((result) => {
     showJsonPreview("AppGen-X Tooling Audit", result.payload, renderToolingAudit);
+  });
+}
+
+function contractSchemaCatalog() {
+  return runAppGenJson(["contract-schema", "--json"], "AppGen-X Contract Schemas").then((result) => {
+    showJsonPreview("AppGen-X Contract Schemas", result.payload, renderContractSchema);
+  });
+}
+
+async function validateSemanticContract() {
+  const file = activeFile();
+  const semantic = await runAppGenJson(["semantic", file, "--json"], "AppGen-X Semantic Model");
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "appgen-contract-"));
+  const semanticPath = path.join(tempDir, "semantic-model.json");
+  fs.writeFileSync(semanticPath, JSON.stringify(semantic.payload, null, 2), "utf8");
+  return runAppGenJson(
+    ["contract-validate", semanticPath, "--format", "appgen.semantic-model.v1", "--json"],
+    "AppGen-X Contract Validation"
+  ).then((result) => {
+    showJsonPreview("AppGen-X Contract Validation", result.payload, renderContractValidation);
   });
 }
 

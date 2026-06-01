@@ -18410,6 +18410,8 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
         "appgen.package",
         "appgen.doctor",
         "appgen.toolingAudit",
+        "appgen.contractSchema",
+        "appgen.validateContract",
         "appgen.pbcCatalog",
         "appgen.restartLanguageServer",
     }
@@ -18425,6 +18427,8 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
         "appgen.reports": (
             "appgen.doctor",
             "appgen.toolingAudit",
+            "appgen.contractSchema",
+            "appgen.validateContract",
             "appgen.verifyRelease",
             "appgen.migrationPlan",
         ),
@@ -18467,6 +18471,8 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
         '["package", file, "--out", out, "--json"]',
         '["doctor", "--json"]',
         '["tooling-audit", "--json"]',
+        '["contract-schema", "--json"]',
+        '["contract-validate", semanticPath, "--format", "appgen.semantic-model.v1", "--json"]',
         '["pbc", "list", "--json"]',
     )
     webview_markers = (
@@ -18480,6 +18486,8 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
         "renderArtifactPreview",
         "renderReleaseVerifier",
         "renderToolingAudit",
+        "renderContractSchema",
+        "renderContractValidation",
         "renderPbcCatalog",
         "showJsonPreview",
     )

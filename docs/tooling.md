@@ -3874,8 +3874,8 @@ The VS Code extension should provide:
 - generated artifact preview;
 - command palette actions for lint, semantic JSON, semantic preview, format,
   validation, graph, designer sync, migration planning, natural-language
-  planning, explain, generate, release verification, package, doctor, and
-  tooling audit;
+  planning, explain, generate, release verification, package, doctor, tooling
+  audit, contract schema browsing, and semantic contract validation;
 - PBC catalog browser.
 
 The repository ships the extension scaffold at `extensions/vscode-appgen-x`.
@@ -3903,7 +3903,7 @@ collection, command activation events, command palette membership, CLI command
 configuration, activity-bar view contributions, welcome content, CLI-backed
 command argument contracts, named activity-bar tree actions, and
 semantic/validation/graph/designer/migration/NL
-plan/artifact/release/tooling/PBC webview renderers must all be present before
+plan/artifact/release/tooling/contract/PBC webview renderers must all be present before
 the extension is counted as tooling-complete. The audit also reports command,
 activation-event, view, provider-marker, CLI-contract-marker, and webview-marker
 counts so release evidence captures the editor surface breadth, not only pass/fail booleans. It
@@ -3913,7 +3913,8 @@ missing-activity-tree-command, missing-CLI-contract-marker, and
 missing-webview-marker counts, which must all be zero for the extension gate to
 pass. The activity tree action contract requires Workspace actions for
 validation, designer sync, graph preview, generation, and packaging; Reports
-actions for doctor, tooling audit, release verification, and migration planning;
+actions for doctor, tooling audit, contract schema browsing, semantic contract
+validation, release verification, and migration planning;
 and Agent Handoff actions for natural-language planning, semantic preview, and
 the PBC catalog browser.
 

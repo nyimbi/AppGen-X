@@ -5690,6 +5690,8 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     assert '["verify", file, "--target", "all", "--json"]' in source
     assert '["doctor", "--json"]' in source
     assert '["tooling-audit", "--json"]' in source
+    assert '["contract-schema", "--json"]' in source
+    assert '["contract-validate", semanticPath, "--format", "appgen.semantic-model.v1", "--json"]' in source
     assert '["pbc", "list", "--json"]' in source
     assert {"appgen.workspace", "appgen.reports", "appgen.agents"} <= {
         item["id"] for item in package["contributes"]["views"]["appgen-x"]
@@ -5705,6 +5707,8 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     assert "renderNaturalLanguagePlan" in source
     assert "renderReleaseVerifier" in source
     assert "renderToolingAudit" in source
+    assert "renderContractSchema" in source
+    assert "renderContractValidation" in source
     assert "renderArtifactPreview" in source
     assert "createWebviewPanel" in source
     audit = appgen_dsl._tooling_audit_vscode_extension(Path(__file__).resolve().parents[1])
@@ -5743,8 +5747,8 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     assert audit["missing_view_welcome_count"] == 0
     assert audit["missing_tree_command_count"] == 0
     assert audit["missing_tree_commands"] == ()
-    assert audit["required_tree_command_count"] == 12
-    assert audit["tree_command_count"] == 12
+    assert audit["required_tree_command_count"] == 14
+    assert audit["tree_command_count"] == 14
     assert audit["tree_commands_by_view"]["appgen.workspace"] == (
         "appgen.validate",
         "appgen.previewDesigner",
@@ -5755,6 +5759,8 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     assert audit["tree_commands_by_view"]["appgen.reports"] == (
         "appgen.doctor",
         "appgen.toolingAudit",
+        "appgen.contractSchema",
+        "appgen.validateContract",
         "appgen.verifyRelease",
         "appgen.migrationPlan",
     )
@@ -5778,6 +5784,10 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     assert '["semantic", file, "--json"]' in audit["command_cli_markers"]
     assert '["nl-plan", file, "--prompt", prompt.trim(), "--backend", "postgresql", "--json"]' in audit["command_cli_markers"]
     assert '["tooling-audit", "--json"]' in audit["command_cli_markers"]
+    assert '["contract-schema", "--json"]' in audit["command_cli_markers"]
+    assert '["contract-validate", semanticPath, "--format", "appgen.semantic-model.v1", "--json"]' in audit[
+        "command_cli_markers"
+    ]
 
 
 def test_release_verifier_report_covers_package_pbc_and_deployment_evidence() -> None:
