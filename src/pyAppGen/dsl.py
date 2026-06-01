@@ -35539,6 +35539,35 @@ def _workflow_graph(schema: AppSchema) -> dict:
         for step in flow.steps:
             edges.append({"from": f"{flow.name}.{step.source}", "to": f"{flow.name}.{step.target}", "label": "transition"})
         for directive in flow.directives:
+            if directive.verb == "human":
+                task = _semantic_human_task(directive)
+                if task.get("name"):
+                    task_id = f"{flow.name}.human.{task['name']}"
+                    nodes.append({"id": task_id, "kind": "human_task", "assignee": task.get("assignee")})
+                    edges.append({"from": flow.name, "to": task_id, "label": "human"})
+                    if task.get("to"):
+                        edges.append({"from": task_id, "to": f"{flow.name}.{task['to']}", "label": "completes"})
+                continue
+            if directive.verb == "timer":
+                timer = _semantic_timer(directive)
+                if timer.get("state"):
+                    timer_id = f"{flow.name}.timer.{timer['state']}"
+                    nodes.append({"id": timer_id, "kind": "timer", "duration": timer.get("duration")})
+                    edges.append({"from": f"{flow.name}.{timer['state']}", "to": timer_id, "label": "starts_timer"})
+                    if timer.get("to"):
+                        edges.append({"from": timer_id, "to": f"{flow.name}.{timer['to']}", "label": "expires"})
+                continue
+            if directive.verb == "compensate":
+                state = directive.values[0] if directive.values else None
+                name = state or directive.target
+                if name:
+                    compensation_id = f"{flow.name}.compensate.{name}"
+                    nodes.append({"id": compensation_id, "kind": "compensation", "operation": directive.target})
+                    if state:
+                        edges.append({"from": f"{flow.name}.{state}", "to": compensation_id, "label": "compensates"})
+                    if directive.target:
+                        edges.append({"from": compensation_id, "to": directive.target, "label": "runs"})
+                continue
             if directive.target:
                 edges.append({"from": flow.name, "to": f"{flow.name}.{directive.target}", "label": directive.verb})
     return {"format": "appgen.graph.workflow.v1", "nodes": tuple(nodes), "edges": tuple(edges)}

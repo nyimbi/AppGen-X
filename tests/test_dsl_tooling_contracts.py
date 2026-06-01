@@ -2110,6 +2110,13 @@ def test_semantic_model_exposes_spec_contract_for_tables_views_flows_and_pbcs() 
     assert model["flows"]["SubmitInvoice"]["human_tasks"][0]["assignee"] == "Accountant"
     assert model["flows"]["SubmitInvoice"]["timers"][0]["duration"] == "P2D"
     assert model["flows"]["SubmitInvoice"]["compensations"][0]["operation"] == "ReverseInvoice"
+    workflow_nodes = {node["id"]: node for node in model["graphs"]["workflow"]["nodes"]}
+    workflow_edges = {(edge["from"], edge["to"], edge["label"]) for edge in model["graphs"]["workflow"]["edges"]}
+    assert workflow_nodes["SubmitInvoice.human.Review"]["kind"] == "human_task"
+    assert workflow_nodes["SubmitInvoice.timer.reviewed"]["duration"] == "P2D"
+    assert workflow_nodes["SubmitInvoice.compensate.posted"]["operation"] == "ReverseInvoice"
+    assert ("SubmitInvoice.timer.reviewed", "SubmitInvoice.escalated", "expires") in workflow_edges
+    assert ("SubmitInvoice.compensate.posted", "ReverseInvoice", "runs") in workflow_edges
     assert model["composition"]["FinanceSuite"]["includes"][0]["pbc"] == "gl_core"
     assert model["pbcs"]["gl_core"]["catalog_resolved"] is True
     assert "table.Invoice.customer_id" in model["symbols"]
@@ -6308,6 +6315,8 @@ def test_designer_sync_projects_all_required_ide_surfaces_from_semantic_model() 
     assert report["projections"]["form_designer"]["views"][0]["valid_bindings"]
     assert report["projections"]["database_designer"]["er_graph"]["format"] == "appgen.graph.er.v1"
     assert report["projections"]["workflow_designer"]["workflow_graph"]["format"] == "appgen.graph.workflow.v1"
+    workflow_graph = report["projections"]["workflow_designer"]["workflow_graph"]
+    assert {node["kind"] for node in workflow_graph["nodes"]} >= {"flow", "state", "human_task", "timer", "compensation"}
 
 
 def test_designer_sync_accepts_round_trippable_visual_edit_and_rejects_invalid_binding() -> None:

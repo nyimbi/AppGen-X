@@ -2998,6 +2998,11 @@ Every individual graph command emits `appgen.graph-report.v1`, whose nested
 `appgen.graph.package.v1`. This lets IDE previews, release packages, and
 external agents validate graph payloads directly instead of trusting only the
 aggregate graph-suite envelope.
+The workflow graph models more than state-to-state transitions: human tasks,
+timers, and compensation directives become graph nodes with labeled edges for
+assignment, timer expiry, and rollback execution. Workflow designers can render
+review queues, escalation paths, and compensation operations from the same
+`appgen.graph.workflow.v1` contract used by release evidence.
 `appgen.graph-suite-cli-audit.v1` reports `rendering_formats_by_kind` and
 `missing_renderings` so CI can prove every required graph kind has JSON,
 Mermaid, and DOT renderings rather than relying on a count alone. It also

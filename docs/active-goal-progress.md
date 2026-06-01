@@ -4570,3 +4570,8 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   owned symbols under their flow, resolve back to the workflow source file in
   directory-mode semantic audits, appear in symbol coverage, and are documented
   as navigable outline entries alongside states and transitions.
+- Current workflow graph expansion makes those same directives executable graph
+  topology. Human task, timer, and compensation nodes now connect to their flow
+  states, expiry outcomes, and rollback operations, so workflow designers and
+  release evidence can render assignments, escalations, and compensations from
+  `appgen.graph.workflow.v1` instead of inferring them from raw DSL text.
