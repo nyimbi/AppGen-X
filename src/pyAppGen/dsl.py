@@ -18124,6 +18124,26 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
         "appgen.restartLanguageServer",
     }
     required_view_ids = {"appgen.workspace", "appgen.reports", "appgen.agents"}
+    required_tree_commands_by_view = {
+        "appgen.workspace": (
+            "appgen.validate",
+            "appgen.previewDesigner",
+            "appgen.previewGraph",
+            "appgen.generate",
+            "appgen.package",
+        ),
+        "appgen.reports": (
+            "appgen.doctor",
+            "appgen.toolingAudit",
+            "appgen.verifyRelease",
+            "appgen.migrationPlan",
+        ),
+        "appgen.agents": (
+            "appgen.nlPlan",
+            "appgen.previewSemantic",
+            "appgen.pbcCatalog",
+        ),
+    }
     provider_markers = (
         "registerCompletionItemProvider",
         "registerHoverProvider",
@@ -18179,6 +18199,30 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
     missing_command_palette = tuple(sorted(required_commands - command_palette))
     missing_views = tuple(sorted(required_view_ids - view_ids))
     missing_view_welcome = tuple(sorted(required_view_ids - set(views_welcome)))
+    tree_commands_by_view = {
+        view_id: tuple(re.findall(r'command:\s*"([^"]+)"', block.group("body")))
+        for view_id, block in (
+            (
+                view_id,
+                re.search(
+                    rf'"{re.escape(view_id)}"\s*:\s*\[(?P<body>.*?)\n\s*\]',
+                    source,
+                    flags=re.DOTALL,
+                ),
+            )
+            for view_id in required_tree_commands_by_view
+        )
+        if block is not None
+    }
+    missing_tree_commands_by_view = {
+        view_id: tuple(command for command in required if command not in tree_commands_by_view.get(view_id, ()))
+        for view_id, required in required_tree_commands_by_view.items()
+    }
+    missing_tree_commands = tuple(
+        f"{view_id}:{command}"
+        for view_id, commands in missing_tree_commands_by_view.items()
+        for command in commands
+    )
     missing_provider_markers = tuple(marker for marker in provider_markers if marker not in source)
     missing_command_cli_markers = tuple(marker for marker in command_cli_markers if marker not in source)
     missing_webview_markers = tuple(marker for marker in webview_markers if marker not in source)
@@ -18194,6 +18238,7 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
         "command_palette": not missing_command_palette,
         "cli_command_configuration": configuration_properties.get("appgen.command", {}).get("default") == "appgen",
         "activity_views": not missing_views and not missing_view_welcome,
+        "activity_view_actions": not missing_tree_commands,
         "providers": not missing_provider_markers,
         "diagnostics_collection": 'createDiagnosticCollection("appgen")' in source
         and "textDocument/publishDiagnostics" in source,
@@ -18225,6 +18270,13 @@ def _tooling_audit_vscode_extension(root: Path) -> dict:
         "views_welcome": views_welcome,
         "missing_view_welcome": missing_view_welcome,
         "missing_view_welcome_count": len(missing_view_welcome),
+        "required_tree_commands_by_view": required_tree_commands_by_view,
+        "tree_commands_by_view": tree_commands_by_view,
+        "tree_command_count": sum(len(commands) for commands in tree_commands_by_view.values()),
+        "required_tree_command_count": sum(len(commands) for commands in required_tree_commands_by_view.values()),
+        "missing_tree_commands_by_view": missing_tree_commands_by_view,
+        "missing_tree_commands": missing_tree_commands,
+        "missing_tree_command_count": len(missing_tree_commands),
         "language_extensions": language_extensions,
         "language_extension_count": len(language_extensions),
         "activation_events": activation_events,

@@ -5593,9 +5593,32 @@ def test_vscode_extension_contract_wires_appgen_language_server_and_commands() -
     assert audit["checks"]["cli_command_contracts"] is True
     assert audit["checks"]["webview_renderers"] is True
     assert audit["checks"]["activity_views"] is True
+    assert audit["checks"]["activity_view_actions"] is True
     assert {"appgen.workspace", "appgen.reports", "appgen.agents"} <= set(audit["views"])
     assert audit["missing_view_count"] == 0
     assert audit["missing_view_welcome_count"] == 0
+    assert audit["missing_tree_command_count"] == 0
+    assert audit["missing_tree_commands"] == ()
+    assert audit["required_tree_command_count"] == 12
+    assert audit["tree_command_count"] == 12
+    assert audit["tree_commands_by_view"]["appgen.workspace"] == (
+        "appgen.validate",
+        "appgen.previewDesigner",
+        "appgen.previewGraph",
+        "appgen.generate",
+        "appgen.package",
+    )
+    assert audit["tree_commands_by_view"]["appgen.reports"] == (
+        "appgen.doctor",
+        "appgen.toolingAudit",
+        "appgen.verifyRelease",
+        "appgen.migrationPlan",
+    )
+    assert audit["tree_commands_by_view"]["appgen.agents"] == (
+        "appgen.nlPlan",
+        "appgen.previewSemantic",
+        "appgen.pbcCatalog",
+    )
     assert audit["provider_marker_count"] == len(audit["provider_markers"])
     assert audit["provider_marker_count"] >= 10
     assert audit["missing_provider_marker_count"] == 0

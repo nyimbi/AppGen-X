@@ -3821,15 +3821,21 @@ editor-specific state.
 metadata, syntax grammar, command contributions, LSP providers, diagnostics
 collection, command activation events, command palette membership, CLI command
 configuration, activity-bar view contributions, welcome content, CLI-backed
-command argument contracts, and semantic/validation/graph/designer/migration/NL
+command argument contracts, named activity-bar tree actions, and
+semantic/validation/graph/designer/migration/NL
 plan/artifact/release/tooling/PBC webview renderers must all be present before
 the extension is counted as tooling-complete. The audit also reports command,
 activation-event, view, provider-marker, CLI-contract-marker, and webview-marker
 counts so release evidence captures the editor surface breadth, not only pass/fail booleans. It
 also reports missing-command, missing-activation-event, missing-palette-entry,
 missing-view, missing-view-welcome, missing-provider-marker,
-missing-CLI-contract-marker, and missing-webview-marker counts, which must all
-be zero for the extension gate to pass.
+missing-activity-tree-command, missing-CLI-contract-marker, and
+missing-webview-marker counts, which must all be zero for the extension gate to
+pass. The activity tree action contract requires Workspace actions for
+validation, designer sync, graph preview, generation, and packaging; Reports
+actions for doctor, tooling audit, release verification, and migration planning;
+and Agent Handoff actions for natural-language planning, semantic preview, and
+the PBC catalog browser.
 
 ### AppGen-X Studio / Monaco
 
