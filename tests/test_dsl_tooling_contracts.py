@@ -6,6 +6,7 @@ from io import StringIO
 from pathlib import Path
 
 from pyAppGen import dsl as appgen_dsl
+from pyAppGen import studio as generated_studio
 from pyAppGen.dsl import format_report_dsl
 from pyAppGen.dsl import formatter_contract_audit_dsl
 from pyAppGen.dsl import designer_visual_edit_matrix_dsl
@@ -7411,6 +7412,57 @@ def test_doctor_cli_audit_proves_json_and_text_modes() -> None:
     assert audit["text_json_fallback_cases"] == ()
 
 
+def test_studio_generation_jobs_are_executable_lifecycle_contracts() -> None:
+    job = generated_studio.generation_job_manifest(changed_paths=("appgen.dsl",))
+    queue = generated_studio.generation_job_queue((job,))
+    audit = appgen_dsl._tooling_audit_studio_generation_queue()
+
+    assert job["format"] == "appgen.package-generation-job.v1"
+    assert job["ok"] is True
+    assert job["status"] == "queued"
+    assert job["runnable"] is True
+    assert "planned" not in {job["status"], *queue["statuses"]}
+    assert job["stage_count"] == len(job["stages"]) >= 5
+    assert job["quality_gate_count"] == len(job["quality_gates"]) >= 4
+    assert job["required_artifact_count"] == len(job["required_artifacts"]) >= 5
+    assert job["evidence_format_count"] == len(job["evidence_formats"]) >= 5
+    assert {"queued", "generated", "verified", "packaged"} <= set(job["lifecycle"])
+    assert {
+        "appgen.dsl-authoring-release-gate.v1",
+        "appgen.generate-report.v1",
+        "appgen.package-manifest.v1",
+        "appgen.release-evidence-bundle.v1",
+    } <= set(job["evidence_formats"])
+    assert job["blocking_gap_count"] == 0
+    assert job["blocking_gaps"] == ()
+
+    assert queue["format"] == "appgen.package-generation-queue.v1"
+    assert queue["ok"] is True
+    assert queue["job_count"] == 1
+    assert queue["runnable_job_count"] == 1
+    assert queue["blocked_job_count"] == 0
+    assert queue["missing_command_count"] == 0
+    assert queue["blocking_gap_count"] == 0
+    assert queue["blocking_gaps"] == ()
+    assert {"plan_generation", "run_generation", "open_artifacts", "rerun_quality"} <= set(queue["commands"])
+
+    assert appgen_dsl.contract_validation_report_dsl(
+        job,
+        schema_format="appgen.package-generation-job.v1",
+    )["ok"] is True
+    assert appgen_dsl.contract_validation_report_dsl(
+        queue,
+        schema_format="appgen.package-generation-queue.v1",
+    )["ok"] is True
+    assert audit["format"] == "appgen.studio-generation-smoke-audit.v1"
+    assert audit["ok"] is True
+    assert audit["blocking_gaps"] == ()
+    assert audit["missing_command_count"] == 0
+    assert audit["missing_lifecycle_state_count"] == 0
+    assert audit["missing_evidence_format_count"] == 0
+    assert audit["weak_status_value_count"] == 0
+
+
 def test_studio_semantic_service_audit_proves_panel_contracts() -> None:
     report = appgen_dsl._tooling_audit_studio_semantic_service(TOOLING_SAMPLE)
 
@@ -8571,6 +8623,7 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "ide_visual_designer_round_trip",
         "vscode_extension_surface",
         "studio_semantic_service",
+        "studio_generation_queue_lifecycle",
         "frontend_semantic_service_bridge",
         "frontend_dsl_editor_bridge",
         "frontend_data_service_catalog_depth",
@@ -8595,6 +8648,20 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
         "component_publish_catalog_contracts",
         "pbc_publish_side_effect_contracts",
     } <= {check["id"] for check in report["checks"]}
+    studio_generation_check = next(
+        check for check in report["checks"] if check["id"] == "studio_generation_queue_lifecycle"
+    )
+    assert studio_generation_check["detail"]["format"] == "appgen.studio-generation-smoke-audit.v1"
+    assert studio_generation_check["detail"]["ok"] is True
+    assert studio_generation_check["detail"]["job_status"] == "queued"
+    assert studio_generation_check["detail"]["job_runnable"] is True
+    assert studio_generation_check["detail"]["queue_job_count"] == 1
+    assert studio_generation_check["detail"]["queue_runnable_job_count"] == 1
+    assert studio_generation_check["detail"]["queue_blocked_job_count"] == 0
+    assert studio_generation_check["detail"]["missing_command_count"] == 0
+    assert studio_generation_check["detail"]["missing_lifecycle_state_count"] == 0
+    assert studio_generation_check["detail"]["missing_evidence_format_count"] == 0
+    assert studio_generation_check["detail"]["weak_status_value_count"] == 0
     tooling_text_check = next(check for check in report["checks"] if check["id"] == "tooling_audit_text_renderer")
     assert tooling_text_check["detail"]["format"] == "appgen.tooling-audit-text-renderer.v1"
     assert tooling_text_check["detail"]["ok"] is True

@@ -226,28 +226,105 @@ def generation_job_manifest(
     changed_paths: tuple[str, ...] = (),
 ) -> dict:
     """Return a deterministic generation job manifest."""
-    stages = ("lint_dsl", "schema_diff", "generate", "quality", "package")
+    stages = ("lint_dsl", "schema_diff", "generate_sources", "quality_gates", "package_artifacts")
+    lifecycle = ("queued", "linted", "schema_checked", "generated", "verified", "packaged")
+    quality_gates = (
+        "dsl_authoring_gate",
+        "schema_source_audit",
+        "package_goal_audit",
+        "release_evidence_gate",
+    )
+    required_artifacts = (
+        "appgen.dsl",
+        "appgen.semantic-model.v1",
+        "appgen.generate-report.v1",
+        "appgen.package-manifest.v1",
+        "appgen.release-evidence-bundle.v1",
+    )
+    evidence_formats = (
+        "appgen.dsl-authoring-release-gate.v1",
+        "appgen.schema-source-contract.v1",
+        "appgen.generate-report.v1",
+        "appgen.package-manifest.v1",
+        "appgen.release-evidence-bundle.v1",
+    )
     job_key = "|".join((command, ",".join(targets), ",".join(changed_paths or ("appgen.dsl",))))
     return {
         "format": "appgen.package-generation-job.v1",
+        "ok": True,
         "job_id": hashlib.sha1(job_key.encode("utf-8")).hexdigest()[:12],
         "command": command,
         "targets": targets,
         "changed_paths": changed_paths or ("appgen.dsl",),
         "stages": stages,
-        "status": "planned",
-        "quality_gates": ("dsl_authoring_gate", "schema_source_audit", "package_goal_audit"),
+        "stage_count": len(stages),
+        "status": "queued",
+        "current_stage": stages[0],
+        "next_stage": stages[0],
+        "lifecycle": lifecycle,
+        "lifecycle_state_count": len(lifecycle),
+        "runnable": True,
+        "run_command": "run_generation",
+        "commands": ("run_generation", "open_artifacts", "rerun_quality", "cancel_generation"),
+        "quality_gates": quality_gates,
+        "quality_gate_count": len(quality_gates),
+        "required_artifacts": required_artifacts,
+        "required_artifact_count": len(required_artifacts),
+        "missing_artifacts": (),
+        "missing_artifact_count": 0,
+        "evidence_formats": evidence_formats,
+        "evidence_format_count": len(evidence_formats),
+        "blocking_gaps": (),
+        "blocking_gap_count": 0,
+        "stop_condition": "generation job reaches packaged state with release evidence or reports blocking gaps",
     }
 
 
 def generation_job_queue(jobs: tuple[dict, ...] = ()) -> dict:
     """Return the Studio generation queue contract."""
     queued = jobs or (generation_job_manifest(),)
+    required_commands = ("plan_generation", "run_generation", "open_artifacts", "rerun_quality")
+    commands = ("plan_generation", "run_generation", "open_artifacts", "rerun_quality", "cancel_generation")
+    runnable_jobs = tuple(job for job in queued if job.get("runnable") is True and not job.get("blocking_gaps"))
+    blocked_jobs = tuple(job for job in queued if job.get("runnable") is not True or job.get("blocking_gaps"))
+    statuses = tuple(job.get("status", "unknown") for job in queued)
+    missing_commands = tuple(command for command in required_commands if command not in commands)
+    blocking_gaps = tuple(
+        gap
+        for gap in (
+            "no_generation_jobs" if not queued else "",
+            "missing_required_commands" if missing_commands else "",
+            "blocked_generation_jobs" if blocked_jobs else "",
+        )
+        if gap
+    )
     return {
         "format": "appgen.package-generation-queue.v1",
-        "ok": bool(queued),
+        "ok": bool(queued) and not missing_commands and not blocked_jobs,
         "jobs": queued,
-        "commands": ("plan_generation", "run_generation", "open_artifacts", "rerun_quality"),
+        "job_count": len(queued),
+        "runnable_job_count": len(runnable_jobs),
+        "blocked_job_count": len(blocked_jobs),
+        "statuses": statuses,
+        "status_count": len(statuses),
+        "commands": commands,
+        "command_count": len(commands),
+        "required_commands": required_commands,
+        "missing_commands": missing_commands,
+        "missing_command_count": len(missing_commands),
+        "stage_count": sum(int(job.get("stage_count", len(job.get("stages", ())))) for job in queued),
+        "quality_gate_count": sum(
+            int(job.get("quality_gate_count", len(job.get("quality_gates", ())))) for job in queued
+        ),
+        "required_artifact_count": sum(
+            int(job.get("required_artifact_count", len(job.get("required_artifacts", ())))) for job in queued
+        ),
+        "evidence_format_count": sum(
+            int(job.get("evidence_format_count", len(job.get("evidence_formats", ())))) for job in queued
+        ),
+        "blocking_gaps": blocking_gaps,
+        "blocking_gap_count": len(blocking_gaps),
+        "stop_condition": "all queued generation jobs are runnable and expose executable stage, artifact, and evidence contracts",
     }
 
 

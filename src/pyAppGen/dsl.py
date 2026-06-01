@@ -9845,6 +9845,97 @@ def _generated_module_schema(title: str) -> dict:
     )
 
 
+def _package_generation_job_schema() -> dict:
+    return _contract_format_schema(
+        "appgen.package-generation-job.v1",
+        required=(
+            "format",
+            "ok",
+            "job_id",
+            "command",
+            "targets",
+            "changed_paths",
+            "stages",
+            "stage_count",
+            "status",
+            "current_stage",
+            "lifecycle",
+            "runnable",
+            "quality_gates",
+            "required_artifacts",
+            "evidence_formats",
+            "blocking_gaps",
+        ),
+        properties={
+            "job_id": {"type": "string", "minLength": 12},
+            "command": {"type": "string"},
+            "targets": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+            "changed_paths": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+            "stages": {"type": "array", "items": {"type": "string"}, "minItems": 5},
+            "stage_count": {"type": "integer", "minimum": 5},
+            "status": {
+                "type": "string",
+                "enum": ("queued", "running", "linted", "generated", "verified", "packaged", "failed"),
+            },
+            "current_stage": {"type": "string"},
+            "next_stage": {"type": "string"},
+            "lifecycle": {"type": "array", "items": {"type": "string"}, "minItems": 5},
+            "lifecycle_state_count": {"type": "integer", "minimum": 5},
+            "runnable": {"type": "boolean"},
+            "run_command": {"type": "string"},
+            "commands": {"type": "array", "items": {"type": "string"}, "minItems": 3},
+            "quality_gates": {"type": "array", "items": {"type": "string"}, "minItems": 3},
+            "quality_gate_count": {"type": "integer", "minimum": 3},
+            "required_artifacts": {"type": "array", "items": {"type": "string"}, "minItems": 4},
+            "required_artifact_count": {"type": "integer", "minimum": 4},
+            "missing_artifacts": {"type": "array", "items": {"type": "string"}},
+            "missing_artifact_count": {"type": "integer", "minimum": 0},
+            "evidence_formats": {"type": "array", "items": {"type": "string"}, "minItems": 4},
+            "evidence_format_count": {"type": "integer", "minimum": 4},
+            "blocking_gap_count": {"type": "integer", "minimum": 0},
+            "stop_condition": {"type": "string"},
+        },
+    )
+
+
+def _package_generation_queue_schema() -> dict:
+    return _contract_format_schema(
+        "appgen.package-generation-queue.v1",
+        required=(
+            "format",
+            "ok",
+            "jobs",
+            "job_count",
+            "runnable_job_count",
+            "blocked_job_count",
+            "statuses",
+            "commands",
+            "required_commands",
+            "missing_commands",
+            "blocking_gaps",
+        ),
+        properties={
+            "jobs": {"type": "array", "items": {"type": "object"}, "minItems": 1},
+            "job_count": {"type": "integer", "minimum": 1},
+            "runnable_job_count": {"type": "integer", "minimum": 0},
+            "blocked_job_count": {"type": "integer", "minimum": 0},
+            "statuses": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+            "status_count": {"type": "integer", "minimum": 1},
+            "commands": {"type": "array", "items": {"type": "string"}, "minItems": 4},
+            "command_count": {"type": "integer", "minimum": 4},
+            "required_commands": {"type": "array", "items": {"type": "string"}, "minItems": 4},
+            "missing_commands": {"type": "array", "items": {"type": "string"}},
+            "missing_command_count": {"type": "integer", "minimum": 0},
+            "stage_count": {"type": "integer", "minimum": 5},
+            "quality_gate_count": {"type": "integer", "minimum": 3},
+            "required_artifact_count": {"type": "integer", "minimum": 4},
+            "evidence_format_count": {"type": "integer", "minimum": 4},
+            "blocking_gap_count": {"type": "integer", "minimum": 0},
+            "stop_condition": {"type": "string"},
+        },
+    )
+
+
 def _graph_contract_schema(title: str) -> dict:
     return _json_object_schema(
         title,
@@ -12066,6 +12157,8 @@ def _contract_schema_catalog() -> dict[str, dict]:
             schema_format: _generated_module_schema(schema_format)
             for schema_format in PBC_RUNTIME_SCHEMA_FORMATS
         },
+        "appgen.package-generation-job.v1": _package_generation_job_schema(),
+        "appgen.package-generation-queue.v1": _package_generation_queue_schema(),
         "appgen.contract-schema-catalog.v1": _json_object_schema(
             "appgen.contract-schema-catalog.v1",
             required=("format", "ok", "schema_dialect", "required_schema_formats", "available_schema_formats", "schemas"),
@@ -12519,6 +12612,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
     pbc_cli_text = _tooling_audit_pbc_cli_text()
     vscode = _tooling_audit_vscode_extension(root)
     studio = _tooling_audit_studio_semantic_service(source)
+    studio_generation_queue = _tooling_audit_studio_generation_queue()
     lsp_rpc = _tooling_audit_lsp_json_rpc(source, broken_handler_source=broken_handler_source)
     lsp_stdio = _tooling_audit_lsp_stdio_transport(source)
     cli_help_surface = _tooling_audit_cli_help_surface(root)
@@ -14736,6 +14830,26 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             "Studio semantic service composes LSP, designer sync, graph, quick-fix, and natural-language planner evidence.",
             "docs/tooling.md#appgen-x-studio-monaco",
             studio,
+        ),
+        _tooling_audit_check(
+            "studio_generation_queue_lifecycle",
+            studio_generation_queue["ok"]
+            and studio_generation_queue.get("job_status") == "queued"
+            and studio_generation_queue.get("job_runnable") is True
+            and studio_generation_queue.get("job_stage_count", 0) >= 5
+            and studio_generation_queue.get("job_quality_gate_count", 0) >= 4
+            and studio_generation_queue.get("job_required_artifact_count", 0) >= 5
+            and studio_generation_queue.get("job_evidence_format_count", 0) >= 5
+            and studio_generation_queue.get("queue_job_count") == 1
+            and studio_generation_queue.get("queue_runnable_job_count") == 1
+            and studio_generation_queue.get("queue_blocked_job_count") == 0
+            and studio_generation_queue.get("missing_command_count") == 0
+            and studio_generation_queue.get("missing_lifecycle_state_count") == 0
+            and studio_generation_queue.get("missing_evidence_format_count") == 0
+            and studio_generation_queue.get("weak_status_value_count") == 0,
+            "Studio generation jobs are executable queue items with lifecycle states, commands, artifacts, schema validation, and release evidence.",
+            "docs/tooling.md#appgen-x-studio-monaco",
+            studio_generation_queue,
         ),
         _tooling_audit_check(
             "frontend_semantic_service_bridge",
@@ -18739,6 +18853,139 @@ def _tooling_audit_studio_semantic_service(source: str) -> dict:
         "frontend_interaction_missing_helper_count": frontend_interaction.get("missing_helper_count"),
         "blocking_gap_count": len(blocking_gaps),
         "blocking_gaps": blocking_gaps,
+    }
+
+
+def _tooling_audit_studio_generation_queue() -> dict:
+    try:
+        from .studio import generation_job_manifest
+        from .studio import generation_job_queue
+        from .studio import studio_workspace
+    except Exception as exc:  # pragma: no cover - import boundary
+        return {
+            "format": "appgen.studio-generation-smoke-audit.v1",
+            "ok": False,
+            "error": str(exc),
+        }
+    job = generation_job_manifest(changed_paths=("appgen.dsl",))
+    queue = generation_job_queue((job,))
+    workspace = studio_workspace()
+    workspace_queue = workspace.get("generation_jobs", {})
+    job_validation = contract_validation_report_dsl(
+        job,
+        schema_format="appgen.package-generation-job.v1",
+        source_name="studio-generation-job",
+    )
+    queue_validation = contract_validation_report_dsl(
+        queue,
+        schema_format="appgen.package-generation-queue.v1",
+        source_name="studio-generation-queue",
+    )
+    required_job_fields = (
+        "job_id",
+        "status",
+        "runnable",
+        "lifecycle",
+        "stages",
+        "quality_gates",
+        "required_artifacts",
+        "evidence_formats",
+        "blocking_gaps",
+        "stop_condition",
+    )
+    required_queue_fields = (
+        "job_count",
+        "runnable_job_count",
+        "blocked_job_count",
+        "statuses",
+        "commands",
+        "required_commands",
+        "missing_commands",
+        "blocking_gaps",
+        "stop_condition",
+    )
+    required_commands = ("plan_generation", "run_generation", "open_artifacts", "rerun_quality")
+    required_lifecycle_states = ("queued", "generated", "verified", "packaged")
+    required_evidence_formats = (
+        "appgen.dsl-authoring-release-gate.v1",
+        "appgen.generate-report.v1",
+        "appgen.package-manifest.v1",
+        "appgen.release-evidence-bundle.v1",
+    )
+    missing_job_fields = tuple(field for field in required_job_fields if field not in job)
+    missing_queue_fields = tuple(field for field in required_queue_fields if field not in queue)
+    missing_commands = tuple(command for command in required_commands if command not in queue.get("commands", ()))
+    missing_lifecycle_states = tuple(state for state in required_lifecycle_states if state not in job.get("lifecycle", ()))
+    missing_evidence_formats = tuple(
+        schema_format for schema_format in required_evidence_formats if schema_format not in job.get("evidence_formats", ())
+    )
+    weak_status_values = tuple(status for status in queue.get("statuses", ()) if status in {"planned", "todo", "stub"})
+    checks = {
+        "job_schema_valid": job_validation.get("ok") is True,
+        "queue_schema_valid": queue_validation.get("ok") is True,
+        "job_is_runnable": job.get("ok") is True and job.get("runnable") is True and job.get("status") == "queued",
+        "not_planned_only": "planned" not in {job.get("status"), *tuple(queue.get("statuses", ()))},
+        "stage_depth": job.get("stage_count", 0) >= 5 and queue.get("stage_count", 0) >= 5,
+        "quality_gate_depth": job.get("quality_gate_count", 0) >= 4 and queue.get("quality_gate_count", 0) >= 4,
+        "artifact_depth": job.get("required_artifact_count", 0) >= 5 and queue.get("required_artifact_count", 0) >= 5,
+        "evidence_depth": not missing_evidence_formats and queue.get("evidence_format_count", 0) >= 5,
+        "command_depth": not missing_commands and queue.get("missing_command_count") == 0,
+        "queue_counters": queue.get("job_count") == 1
+        and queue.get("runnable_job_count") == 1
+        and queue.get("blocked_job_count") == 0
+        and queue.get("blocking_gap_count") == 0,
+        "workspace_embeds_queue": workspace_queue.get("format") == "appgen.package-generation-queue.v1"
+        and workspace_queue.get("ok") is True
+        and workspace_queue.get("job_count", 0) >= 1,
+        "required_fields": not missing_job_fields and not missing_queue_fields,
+        "lifecycle_states": not missing_lifecycle_states,
+        "no_weak_status_values": not weak_status_values,
+    }
+    blocking_gaps = tuple(name for name, ok in checks.items() if not ok)
+    return {
+        "format": "appgen.studio-generation-smoke-audit.v1",
+        "ok": not blocking_gaps,
+        "checks": checks,
+        "check_count": len(checks),
+        "passing_check_count": sum(1 for ok in checks.values() if ok),
+        "failing_check_count": len(blocking_gaps),
+        "blocking_gaps": blocking_gaps,
+        "blocking_gap_count": len(blocking_gaps),
+        "job_format": job.get("format"),
+        "queue_format": queue.get("format"),
+        "job_schema_validation": job_validation,
+        "queue_schema_validation": queue_validation,
+        "job_status": job.get("status"),
+        "job_runnable": job.get("runnable"),
+        "job_stage_count": job.get("stage_count"),
+        "job_quality_gate_count": job.get("quality_gate_count"),
+        "job_required_artifact_count": job.get("required_artifact_count"),
+        "job_evidence_format_count": job.get("evidence_format_count"),
+        "queue_job_count": queue.get("job_count"),
+        "queue_runnable_job_count": queue.get("runnable_job_count"),
+        "queue_blocked_job_count": queue.get("blocked_job_count"),
+        "queue_statuses": tuple(queue.get("statuses", ())),
+        "queue_commands": tuple(queue.get("commands", ())),
+        "required_commands": required_commands,
+        "missing_commands": missing_commands,
+        "missing_command_count": len(missing_commands),
+        "required_lifecycle_states": required_lifecycle_states,
+        "missing_lifecycle_states": missing_lifecycle_states,
+        "missing_lifecycle_state_count": len(missing_lifecycle_states),
+        "required_evidence_formats": required_evidence_formats,
+        "missing_evidence_formats": missing_evidence_formats,
+        "missing_evidence_format_count": len(missing_evidence_formats),
+        "required_job_fields": required_job_fields,
+        "missing_job_fields": missing_job_fields,
+        "missing_job_field_count": len(missing_job_fields),
+        "required_queue_fields": required_queue_fields,
+        "missing_queue_fields": missing_queue_fields,
+        "missing_queue_field_count": len(missing_queue_fields),
+        "weak_status_values": weak_status_values,
+        "weak_status_value_count": len(weak_status_values),
+        "workspace_queue_format": workspace_queue.get("format"),
+        "workspace_queue_ok": workspace_queue.get("ok"),
+        "workspace_queue_job_count": workspace_queue.get("job_count"),
     }
 
 
@@ -25299,9 +25546,16 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
         )
         designer_cli = _tooling_audit_designer_sync_cli(tmp_path, source)
         studio_audit = _tooling_audit_studio_semantic_service(source)
-        from .studio import studio_browser_smoke_ci_contract, studio_semantic_service_workspace
+        from .studio import (
+            generation_job_manifest,
+            generation_job_queue,
+            studio_browser_smoke_ci_contract,
+            studio_semantic_service_workspace,
+        )
 
         studio_workspace = studio_semantic_service_workspace(source)
+        studio_generation_job = generation_job_manifest(changed_paths=("appgen.dsl",))
+        studio_generation_queue = generation_job_queue((studio_generation_job,))
         studio_browser_smoke = studio_browser_smoke_ci_contract(repo_root)
         from .agentic import (
             agent_execution_matrix,
@@ -25485,6 +25739,8 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
             "appgen.studio-graph-explain.v1": studio_workspace["graph_explain"],
             "appgen.studio-natural-language-evolution.v1": studio_workspace["natural_language_evolution"],
             "appgen.studio-browser-smoke-ci-contract.v1": studio_browser_smoke,
+            "appgen.package-generation-job.v1": studio_generation_job,
+            "appgen.package-generation-queue.v1": studio_generation_queue,
             "appgen.frontend-semantic-service-audit.v1": studio_audit.get("frontend_semantic_service_audit", {}),
             "appgen.frontend-dsl-editor-audit.v1": studio_audit.get("frontend_dsl_editor_audit", {}),
             "appgen.frontend-data-service-catalog-audit.v1": studio_audit.get("frontend_data_service_audit", {}),
@@ -25712,6 +25968,8 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
                 schema_format: _generated_module_schema_sample(schema_format)
                 for schema_format in PBC_RUNTIME_SCHEMA_FORMATS
             },
+            "appgen.package-generation-job.v1": studio_generation_job,
+            "appgen.package-generation-queue.v1": studio_generation_queue,
             "appgen.contract-schema-catalog.v1": contract_schema_catalog_dsl("appgen.semantic-model.v1"),
         }
         validation_report = contract_validation_report_dsl(
