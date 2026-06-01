@@ -10272,6 +10272,12 @@ def _contract_schema_catalog() -> dict[str, dict]:
                 "fix_count": {"type": "integer", "minimum": 0},
                 "rejected_prompt_count": {"type": "integer", "minimum": 0},
                 "zero_patch_rejection_count": {"type": "integer", "minimum": 0},
+                "required_picker_fields": {"type": "array", "items": {"type": "string"}},
+                "observed_picker_fields": {"type": "array", "items": {"type": "string"}},
+                "missing_picker_fields": {"type": "array", "items": {"type": "string"}},
+                "missing_picker_field_count": {"type": "integer", "minimum": 0},
+                "missing_picker_removal_fields": {"type": "array", "items": {"type": "string"}},
+                "missing_picker_removal_field_count": {"type": "integer", "minimum": 0},
                 "cases": {"type": "array", "items": {"type": "object"}},
                 "source_of_truth": {"type": "string"},
             },
@@ -13175,7 +13181,9 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         ),
         _tooling_audit_check(
             "non_goal_policy_guards",
-            non_goal_policy["ok"],
+            non_goal_policy["ok"]
+            and non_goal_policy.get("missing_picker_field_count") == 0
+            and non_goal_policy.get("missing_picker_removal_field_count") == 0,
             "Non-goal policy guards reject secret literals, arbitrary runtime picker fields, and direct generated-code bypass prompts.",
             "docs/tooling.md#non-goals",
             non_goal_policy,
@@ -16799,6 +16807,25 @@ def _tooling_audit_non_goal_policy() -> dict:
     )
     bypass_accepted = bypass_plan.get("accepted", False)
     runtime_messages = tuple(item.get("message", "") for item in runtime_lint.get("diagnostics", ()))
+    required_picker_fields = ("backend", "runtime", "stream")
+    observed_picker_fields = tuple(
+        sorted(
+            {
+                match.group(1)
+                for message in runtime_messages
+                for match in (re.search(r"app\.(backend|runtime|stream)\b", message),)
+                if match
+            }
+        )
+    )
+    missing_picker_fields = tuple(field for field in required_picker_fields if field not in observed_picker_fields)
+    fixed_text = runtime_fix.get("fixed", "")
+    picker_fields_removed_by_name = {
+        field: f"{field}:" not in fixed_text for field in required_picker_fields
+    }
+    missing_picker_removal_fields = tuple(
+        field for field, removed in picker_fields_removed_by_name.items() if removed is not True
+    )
     cases = (
         {
             "case": "reject_secret_literal",
@@ -16816,14 +16843,20 @@ def _tooling_audit_non_goal_policy() -> dict:
             "case": "reject_runtime_picker_fields",
             "ok": runtime_lint.get("ok") is False
             and sum(1 for item in runtime_lint.get("diagnostics", ()) if item.get("code") == "AGX0801") == 3
+            and not missing_picker_fields
             and runtime_fix.get("changed") is True
-            and all(token not in runtime_fix.get("fixed", "") for token in ("backend:", "runtime:", "stream:")),
+            and not missing_picker_removal_fields,
             "diagnostic_codes": tuple(item.get("code") for item in runtime_lint.get("diagnostics", ())),
             "messages": runtime_messages,
             "fix_ids": tuple(item.get("id") for item in runtime_lint.get("fixes", ())),
-            "picker_fields_removed": all(
-                token not in runtime_fix.get("fixed", "") for token in ("backend:", "runtime:", "stream:")
-            ),
+            "required_picker_fields": required_picker_fields,
+            "observed_picker_fields": observed_picker_fields,
+            "missing_picker_fields": missing_picker_fields,
+            "missing_picker_field_count": len(missing_picker_fields),
+            "picker_fields_removed_by_name": picker_fields_removed_by_name,
+            "missing_picker_removal_fields": missing_picker_removal_fields,
+            "missing_picker_removal_field_count": len(missing_picker_removal_fields),
+            "picker_fields_removed": not missing_picker_removal_fields,
         },
         {
             "case": "reject_generated_code_bypass_prompt",
@@ -16867,6 +16900,12 @@ def _tooling_audit_non_goal_policy() -> dict:
         "zero_patch_rejection_count": sum(
             1 for case in cases if case["case"].endswith("_prompt") and case.get("patch_bytes") == 0
         ),
+        "required_picker_fields": required_picker_fields,
+        "observed_picker_fields": observed_picker_fields,
+        "missing_picker_fields": missing_picker_fields,
+        "missing_picker_field_count": len(missing_picker_fields),
+        "missing_picker_removal_fields": missing_picker_removal_fields,
+        "missing_picker_removal_field_count": len(missing_picker_removal_fields),
         "cases": cases,
         "source_of_truth": "docs/tooling.md#non-goals",
     }

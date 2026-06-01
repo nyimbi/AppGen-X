@@ -8704,6 +8704,19 @@ def test_non_goal_policy_audit_reports_guard_counts() -> None:
     assert report["fix_count"] >= 2
     assert report["rejected_prompt_count"] == 3
     assert report["zero_patch_rejection_count"] == 3
+    assert report["required_picker_fields"] == ("backend", "runtime", "stream")
+    assert report["observed_picker_fields"] == ("backend", "runtime", "stream")
+    assert report["missing_picker_field_count"] == 0
+    assert report["missing_picker_fields"] == ()
+    assert report["missing_picker_removal_field_count"] == 0
+    assert report["missing_picker_removal_fields"] == ()
+    runtime_case = next(case for case in report["cases"] if case["case"] == "reject_runtime_picker_fields")
+    assert runtime_case["observed_picker_fields"] == ("backend", "runtime", "stream")
+    assert runtime_case["picker_fields_removed_by_name"] == {
+        "backend": True,
+        "runtime": True,
+        "stream": True,
+    }
 
 
 def test_package_verify_cli_audit_exposes_web_manifest_readiness_metadata(tmp_path: Path) -> None:
@@ -9060,10 +9073,15 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert non_goal_check["detail"]["fix_count"] >= 2
     assert non_goal_check["detail"]["rejected_prompt_count"] == 3
     assert non_goal_check["detail"]["zero_patch_rejection_count"] == 3
+    assert non_goal_check["detail"]["observed_picker_fields"] == ("backend", "runtime", "stream")
+    assert non_goal_check["detail"]["missing_picker_field_count"] == 0
+    assert non_goal_check["detail"]["missing_picker_removal_field_count"] == 0
     non_goal_cases = {case["case"]: case for case in non_goal_check["detail"]["cases"]}
     assert non_goal_cases["reject_secret_literal"]["secret_removed"] is True
     assert non_goal_cases["reject_secret_literal"]["fixed_contains_env_binding"] is True
     assert non_goal_cases["reject_runtime_picker_fields"]["picker_fields_removed"] is True
+    assert non_goal_cases["reject_runtime_picker_fields"]["missing_picker_fields"] == ()
+    assert non_goal_cases["reject_runtime_picker_fields"]["missing_picker_removal_fields"] == ()
     assert non_goal_cases["reject_generated_code_bypass_prompt"]["accepted"] is False
     assert non_goal_cases["reject_generated_code_bypass_prompt"]["patch_bytes"] == 0
     assert non_goal_cases["reject_lint_semantic_bypass_prompt"]["patch_bytes"] == 0

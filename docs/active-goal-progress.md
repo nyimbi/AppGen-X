@@ -4632,3 +4632,7 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `appgen.tooling-doc-language-audit.v1` so `docs/tooling.md` cannot drift back
   to stale runtime-backlog wording after the runtime inventory became a
   zero-actionable-backlog gate with an explicit missing-schema sentinel.
+- Current non-goal policy expansion makes backend/runtime/stream picker guards
+  field-specific. `appgen.non-goal-policy-audit.v1` now reports required,
+  observed, missing, and removed picker fields so generic `AGX0801` counts cannot
+  hide a missing picker-family rejection.

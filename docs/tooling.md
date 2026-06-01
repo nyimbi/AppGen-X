@@ -48,6 +48,10 @@ or skip linting, semantic validation, or release evidence must be rejected
 before any patch is produced. The policy audit reports case, passing-case,
 diagnostic-code, fix, rejected-prompt, and zero-patch-rejection counts so these
 non-goals remain measurable release gates rather than prose warnings.
+It also reports required, observed, and missing picker field names plus
+per-field removal evidence for `backend`, `runtime`, and `stream`; the aggregate
+gate requires both missing picker lists to be empty, so three generic diagnostics
+cannot hide a missing picker-family guard.
 `appgen non-goals` exposes the same policy report directly. Text mode lists
 each policy case and diagnostic codes; JSON mode emits
 `appgen.non-goal-policy-audit.v1`.
