@@ -13630,7 +13630,15 @@ def test_semantic_cli_audit_proves_directory_json_and_text_contracts(tmp_path: P
     assert audit["missing_deployment_count"] == 0
     assert audit["missing_package_count"] == 0
     assert audit["symbol_files_by_id"]["rule.InvoicePolicy"].endswith("governance/invoice-policy.appgen")
+    assert audit["symbol_files_by_id"]["table.Invoice.total"].endswith("data/invoice.appgen")
+    assert audit["symbol_files_by_id"]["view.InvoiceForm.Main"].endswith("ui/invoice-form.appgen")
+    assert audit["symbol_files_by_id"]["view.InvoiceForm.customer.name"].endswith("ui/invoice-form.appgen")
+    assert audit["symbol_files_by_id"]["view.InvoiceForm.Save"].endswith("ui/invoice-form.appgen")
+    assert audit["symbol_files_by_id"]["flow.SubmitInvoice.draft"].endswith("workflow/submit-invoice.appgen")
     assert audit["symbol_files_by_id"]["agent.InvoiceAssistant"].endswith("agents/invoice-assistant.appgen")
+    assert audit["symbol_files_by_id"]["agent.InvoiceAssistant.read"].endswith("agents/invoice-assistant.appgen")
+    assert audit["symbol_files_by_id"]["agent.InvoiceAssistant.Invoice:read"].endswith("agents/invoice-assistant.appgen")
+    assert audit["symbol_files_by_id"]["agent.InvoiceAssistant.Explain"].endswith("agents/invoice-assistant.appgen")
     assert audit["symbol_files_by_id"]["deploy.Production"].endswith("deployment/production.appgen")
     assert audit["symbol_files_by_id"]["deploy.Production.SubmitInvoice"].endswith("deployment/production.appgen")
     assert audit["symbol_files_by_id"]["package.WebRelease"].endswith("packages/web-release.appgen")

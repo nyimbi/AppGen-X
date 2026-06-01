@@ -933,16 +933,8 @@ def _locate_symbol_declaration_in_source_file(
     *,
     parent: str | None = None,
 ) -> tuple[int | None, int | None]:
-    if kind == "deployment_unit" and parent and parent.startswith("deploy."):
-        deploy_name = parent.split(".", 1)[1]
-        span = _source_block_span(source, "deploy", deploy_name)
-        if not span:
-            return None, None
-        match = re.search(rf"\bunit\s+{re.escape(name)}\b", source[span[0] : span[1]])
-        if not match:
-            return None, None
-        line, column = _line_column_for_index(source, span[0] + match.start() + len("unit "))
-        return line + 1, column
+    if parent:
+        return _locate_nested_symbol_declaration_in_source_file(source, kind, name, parent)
     top_level_kinds = {
         "app",
         "group",
@@ -977,6 +969,48 @@ def _locate_symbol_declaration_in_source_file(
         line, column = _line_column_for_index(source, match.start() + len(kind) + 1)
         return line + 1, column
     return _locate_symbol_declaration(source, kind, name, parent=parent)
+
+
+def _locate_nested_symbol_declaration_in_source_file(
+    source: str,
+    kind: str,
+    name: str,
+    parent: str,
+) -> tuple[int | None, int | None]:
+    if "." not in parent:
+        return None, None
+    parent_kind, parent_name = parent.split(".", 1)
+    span = _source_block_span(source, parent_kind, parent_name)
+    if not span:
+        return None, None
+    body = source[span[0] : span[1]]
+    locator = name.split(":", 1)[0] if kind == "permission" else name
+    escaped = re.escape(locator)
+    if kind == "field":
+        pattern = rf"(?m)^\s*(?P<name>{escaped})\s*:"
+    elif kind == "enum_value":
+        pattern = rf"\b(?P<name>{escaped})\b"
+    elif kind == "view_section":
+        pattern = rf"(?m)^\s*(?P<name>{escaped})\s*:"
+    elif kind == "component_binding":
+        pattern = rf"@\s*(?P<name>{escaped})(?=\s)"
+    elif kind == "handler":
+        pattern = rf"\bon\s+(?P<name>{escaped})\b"
+    elif kind == "flow_state":
+        pattern = rf"\b(?P<name>{escaped})\b"
+    elif kind == "permission":
+        pattern = rf"(?m)^\s*(?P<name>{escaped})\s*:"
+    elif kind == "agent_skill":
+        pattern = rf"\b(?P<name>{escaped})\b"
+    elif kind == "deployment_unit":
+        pattern = rf"\bunit\s+(?P<name>{escaped})\b"
+    else:
+        pattern = rf"\b(?P<name>{escaped})\b"
+    match = re.search(pattern, body)
+    if not match:
+        return None, None
+    line, column = _line_column_for_index(source, span[0] + match.start("name"))
+    return line + 1, column
 
 
 def lint_report_dsl(
@@ -23581,11 +23615,22 @@ package WebRelease {
             "app.WorkspaceFinance",
             "table.Customer",
             "table.Invoice",
+            "table.Invoice.customer_id",
+            "table.Invoice.total",
             "view.InvoiceForm",
+            "view.InvoiceForm.Main",
+            "view.InvoiceForm.customer.name",
+            "view.InvoiceForm.Save",
             "flow.SubmitInvoice",
+            "flow.SubmitInvoice.draft",
+            "flow.SubmitInvoice.reviewed",
             "rule.InvoicePolicy",
             "llm.LocalModel",
             "agent.InvoiceAssistant",
+            "agent.InvoiceAssistant.read",
+            "agent.InvoiceAssistant.schema",
+            "agent.InvoiceAssistant.Invoice:read",
+            "agent.InvoiceAssistant.Explain",
             "deploy.Production",
             "deploy.Production.SubmitInvoice",
             "package.WebRelease",
@@ -23595,11 +23640,22 @@ package WebRelease {
         "app.WorkspaceFinance": str(app_path),
         "table.Customer": str(customer_path),
         "table.Invoice": str(invoice_path),
+        "table.Invoice.customer_id": str(invoice_path),
+        "table.Invoice.total": str(invoice_path),
         "view.InvoiceForm": str(form_path),
+        "view.InvoiceForm.Main": str(form_path),
+        "view.InvoiceForm.customer.name": str(form_path),
+        "view.InvoiceForm.Save": str(form_path),
         "flow.SubmitInvoice": str(flow_path),
+        "flow.SubmitInvoice.draft": str(flow_path),
+        "flow.SubmitInvoice.reviewed": str(flow_path),
         "rule.InvoicePolicy": str(rule_path),
         "llm.LocalModel": str(agent_path),
         "agent.InvoiceAssistant": str(agent_path),
+        "agent.InvoiceAssistant.read": str(agent_path),
+        "agent.InvoiceAssistant.schema": str(agent_path),
+        "agent.InvoiceAssistant.Invoice:read": str(agent_path),
+        "agent.InvoiceAssistant.Explain": str(agent_path),
         "deploy.Production": str(deploy_path),
         "deploy.Production.SubmitInvoice": str(deploy_path),
         "package.WebRelease": str(package_path),

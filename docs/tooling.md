@@ -228,7 +228,11 @@ external coding agents can operate without consuming the full JSON payload.
 The source-set audit must cover a representative enterprise workspace, not only
 CRUD files: app, table, view, flow, rule, LLM provider, agent, deployment, and
 package declarations must all be discovered across separate files and each
-symbol must point back to the file that owns it.
+symbol must point back to the file that owns it. Nested ownership is part of
+the same contract: table fields, view sections, component bindings, handlers,
+flow states, agent skills, permissions, and deployment units must resolve inside
+their parent block and must not be claimed by another file that happens to reuse
+the same token.
 
 ### Table Model
 
