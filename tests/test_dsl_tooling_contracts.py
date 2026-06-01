@@ -1,3 +1,4 @@
+import importlib
 import json
 import subprocess
 import sys
@@ -6419,6 +6420,40 @@ def test_appgen_pbc_list_and_verify_text_outputs_are_human_readable() -> None:
     assert {case["case"] for case in audit["cases"]} == {"pbc_list_text", "pbc_verify_text"}
 
 
+def test_static_pbc_catalog_reader_keeps_tooling_out_of_pbc_runtime_modules() -> None:
+    root = Path(__file__).resolve().parents[1]
+    script = """
+import json
+import sys
+from pyAppGen import dsl
+
+catalog = dsl._pbc_catalog_by_key()
+runtime_imports = sorted(name for name in sys.modules if name.startswith("pyAppGen.pbcs."))
+print(json.dumps({
+    "count": len(catalog),
+    "gl_label": catalog.get("gl_core", {}).get("label"),
+    "gl_backend": catalog.get("gl_core", {}).get("datastore_backend"),
+    "pbc_runtime_imported": "pyAppGen.pbc" in sys.modules,
+    "runtime_imports": runtime_imports[:10],
+}))
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        check=False,
+        cwd=root,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["count"] >= 100
+    assert payload["gl_label"] == "General Ledger Core"
+    assert payload["gl_backend"] == "postgresql"
+    assert payload["pbc_runtime_imported"] is False
+    assert payload["runtime_imports"] == []
+
+
 def test_designer_sync_projects_all_required_ide_surfaces_from_semantic_model() -> None:
     report = designer_sync_report_dsl(TOOLING_SAMPLE, source_name="finance.appgen")
 
@@ -7670,8 +7705,10 @@ def test_module_boundary_audit_proves_documented_tooling_surfaces() -> None:
     assert audit["boundary_count"] == len(audit["boundaries"])
     assert audit["boundary_count"] >= 12
     assert audit["passing_boundary_count"] == audit["boundary_count"]
+    assert audit["importable_boundary_count"] == audit["boundary_count"]
     assert audit["missing_boundary_count"] == 0
     assert audit["callable_count"] == sum(len(boundary["callables"]) for boundary in audit["boundaries"])
+    assert audit["exported_callable_count"] == audit["callable_count"]
     assert audit["callable_count"] >= 20
     assert audit["missing_callable_count"] == 0
     assert audit["missing_boundaries"] == ()
@@ -7679,7 +7716,7 @@ def test_module_boundary_audit_proves_documented_tooling_surfaces() -> None:
     assert audit["core_runtime_count"] == len(audit["core_runtime"])
     assert audit["passing_core_runtime_count"] == audit["core_runtime_count"]
     assert audit["core_runtime_gap_count"] == 0
-    assert audit["layout_policy"] == "boundaries_visible_without_requiring_subpackage_layout"
+    assert audit["layout_policy"] == "importable_adapter_modules_backed_by_shared_runtime"
     assert {
         "parser",
         "ast",
@@ -7695,8 +7732,16 @@ def test_module_boundary_audit_proves_documented_tooling_surfaces() -> None:
         "release",
     } <= {boundary["boundary"] for boundary in audit["boundaries"]}
     assert all(boundary["callable_count"] == len(boundary["callables"]) for boundary in audit["boundaries"])
+    assert all(boundary["importable"] is True for boundary in audit["boundaries"])
+    assert all(boundary["exported_callable_count"] == boundary["callable_count"] for boundary in audit["boundaries"])
+    for boundary in audit["boundaries"]:
+        module = importlib.import_module(boundary["documented_module"])
+        for callable_name in boundary["callables"]:
+            assert getattr(module, callable_name) is getattr(appgen_dsl, callable_name)
     assert all(boundary["missing_callables"] == () for boundary in audit["boundaries"])
     assert all(boundary["missing_callable_count"] == 0 for boundary in audit["boundaries"])
+    assert importlib.import_module("pyAppGen.dsl.parser").schema_from_dsl is appgen_dsl.schema_from_dsl
+    assert importlib.import_module("pyAppGen.dsl.lsp").lsp_server_handle_message is appgen_dsl.lsp_server_handle_message
     assert {item["boundary"] for item in audit["core_runtime"]} == {"parser", "semantic", "diagnostics", "formatter"}
     assert all(item["ok"] for item in audit["core_runtime"])
 

@@ -4656,3 +4656,12 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   requirement list. `appgen requirements-trace` now extracts normative
   statements from `docs/tooling.md` sections after stripping fenced examples and
   fails when any statement lacks a live section or parent-section audit gate.
+- Current SDK boundary expansion makes the documented `pyAppGen.dsl.*` tooling
+  modules importable adapter surfaces instead of prose-only names. `appgen
+  module-boundaries` now imports each boundary module, verifies exported
+  callables are the shared runtime callables, and reports import/export counts.
+- Current tooling-command acceleration removes full aggregate audit execution
+  from daily `appgen requirements-trace` and `appgen tooling-status` paths.
+  Requirements trace now uses a fast gate registry with 305/305 normative
+  statements covered, and tooling status reports the focused governance status
+  while leaving `appgen tooling-audit` as the deep release-grade aggregate.

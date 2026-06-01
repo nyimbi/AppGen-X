@@ -96,12 +96,14 @@ The exact file layout can evolve, but these boundaries should remain visible.
 The parser, semantic model, diagnostics, and formatter must be usable without
 starting a web app or generator.
 `appgen.module-boundary-audit.v1` is the executable proof for this section. It
-maps each documented responsibility boundary to concrete callable surfaces and
-reports `boundary_count` and `callable_count` so release evidence captures the
-observed surface area. It also reports passing-boundary, missing-boundary,
-missing-callable, passing-core-runtime, and core-runtime-gap counts. It proves
-the parser, semantic model, diagnostic catalog, and formatter can run as core
-library services without starting Studio or a generated application.
+maps each documented responsibility boundary to importable adapter modules and
+concrete callable surfaces, then reports `boundary_count`, `callable_count`,
+`exported_callable_count`, and per-boundary `importable` status so release
+evidence captures the observed SDK surface area. It also reports
+passing-boundary, missing-boundary, missing-callable, passing-core-runtime, and
+core-runtime-gap counts. It proves the parser, semantic model, diagnostic
+catalog, and formatter can run as core library services without starting Studio
+or a generated application.
 `appgen module-boundaries` exposes the same proof directly in JSON or compact
 text form, including boundary counts, callable counts, and core runtime gaps.
 
@@ -744,13 +746,15 @@ normative statement counts, and missing normative statements; and fails when a
 normative requirement becomes prose-only or points at a gate that no longer
 exists.
 `appgen tooling-status` emits `appgen.tooling-status.v1`, a compact "what is
-left" contract distilled from the aggregate audit. It reports passing and
-failing check ids, blocking gaps, completed and incomplete implementation
-phases, missing contributor tasks, missing priorities, documentation runtime/test
-format gaps, missing tooling requirements, missing requirement gates, and ordered
-next actions. This gives maintainers and external coding agents one
-deterministic status surface for deciding whether to keep building, hand off a
-blocked area, or release without manually scanning the full audit payload.
+left" contract distilled from focused governance gates by default, while the
+deep aggregate remains available as `appgen tooling-audit`. It reports passing
+and failing check ids, blocking gaps, completed and incomplete implementation
+phases when a deep audit payload is supplied, missing contributor tasks, missing
+priorities, documentation runtime/test format gaps, missing tooling
+requirements, missing requirement gates, and ordered next actions. This gives
+maintainers and external coding agents one deterministic status surface for
+deciding whether to keep building, hand off a blocked area, or release without
+manually scanning the full audit payload.
 Test strategy and roadmap commands are first-class CLI contracts:
 `appgen test-strategy <file>` emits the same cross-tool strategy evidence used
 by the aggregate audit, `appgen contributor-tasks` prints the evidence-backed
@@ -3526,6 +3530,12 @@ contract containing the selectable key, health, label, mesh, and datastore
 backend for each registered PBC. Agents use this contract to discover
 composable capabilities before planning an application instead of scraping
 human CLI text or hard-coding a built-in PBC list.
+The tooling catalog reader resolves this metadata from the declared catalog
+surface and must not import active PBC runtime packages merely to list or audit
+available capabilities. The regression gate
+`test_static_pbc_catalog_reader_keeps_tooling_out_of_pbc_runtime_modules`
+proves `appgen pbc list`-class metadata remains available while the active PBC
+implementation tree stays outside ordinary tooling audits.
 `publish` emits `appgen.pbc-publish-report.v1`; it loads the package
 entrypoint, validates the manifest, proves the manifest is publishable, returns
 the catalog patch, attaches release-evidence verification, and records that the
