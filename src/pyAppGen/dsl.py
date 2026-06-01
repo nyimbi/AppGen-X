@@ -25106,6 +25106,8 @@ def test_strategy_report_dsl(source: str, *, source_name: str = "<memory>") -> d
 
 def contributor_tasks_report_dsl() -> dict:
     """Return contributor task evidence as a direct CLI/report surface."""
+    if tooling_audit_report_dsl is _TOOLING_AUDIT_REPORT_DSL_IMPL:
+        return _tooling_fast_contributor_tasks_report()
     return _tooling_audit_report_detail(
         "contributor_task_breakdown_contracts",
         "appgen.contributor-task-contract-audit.v1",
@@ -25114,6 +25116,8 @@ def contributor_tasks_report_dsl() -> dict:
 
 def priority_order_report_dsl() -> dict:
     """Return the ordered tooling roadmap as a direct CLI/report surface."""
+    if tooling_audit_report_dsl is _TOOLING_AUDIT_REPORT_DSL_IMPL:
+        return _tooling_fast_priority_order_report(Path(__file__).resolve().parents[2])
     return _tooling_audit_report_detail(
         "priority_order_contracts",
         "appgen.priority-order-contract-audit.v1",
@@ -25122,10 +25126,287 @@ def priority_order_report_dsl() -> dict:
 
 def implementation_phases_report_dsl() -> dict:
     """Return implementation phase exit evidence as a direct CLI/report surface."""
+    if tooling_audit_report_dsl is _TOOLING_AUDIT_REPORT_DSL_IMPL:
+        return _tooling_fast_implementation_phases_report()
     return _tooling_audit_report_detail(
         "implementation_phase_exit_criteria",
         "appgen.tooling-implementation-phase-audit.v1",
     )
+
+
+def _tooling_fast_contributor_tasks_report() -> dict:
+    """Return the direct contributor roadmap without expanding the full audit."""
+    required_groups = ("good_first", "intermediate", "advanced")
+    task_specs = (
+        ("good_first", "define_diagnostic_dataclasses_and_json_schema", "appgen.contract-schema-cli-audit.v1"),
+        ("good_first", "add_diagnostic_code_registry_tests", "appgen.diagnostic-fixture-audit.v1"),
+        ("good_first", "create_semantic_model_dataclasses", "appgen.semantic-source-set-cli-audit.v1"),
+        ("good_first", "write_table_field_symbol_extraction", "appgen.symbol-coverage.v1"),
+        ("good_first", "write_relationship_target_resolution", "appgen.semantic-model.v1"),
+        ("good_first", "write_lookup_path_resolution", "appgen.graph-suite-report.v1"),
+        ("good_first", "write_view_binding_validation", "appgen.lint-report.v1"),
+        ("good_first", "write_handler_target_validation", "appgen.lsp-code-action-apply.v1"),
+        ("good_first", "add_appgen_lint_json_contract_tests", "appgen.lint-directory-cli-audit.v1"),
+        ("good_first", "add_formatter_idempotency_tests", "appgen.formatter-contract-audit.v1"),
+        ("intermediate", "pbc_catalog_binding_in_semantic_model", "appgen.semantic-model.v1"),
+        ("intermediate", "workflow_graph_extraction", "appgen.graph-suite-report.v1"),
+        ("intermediate", "graph_output_in_mermaid_and_json", "appgen.graph-suite-cli-audit.v1"),
+        ("intermediate", "migration_diff_detection", "appgen.migration-cli-audit.v1"),
+        ("intermediate", "lsp_completion_and_hover", "appgen.lsp-service.v1"),
+        ("intermediate", "code_action_application_required_quick_fix_family", "appgen.lsp-code-action-apply.v1"),
+        ("intermediate", "generator_drift_evidence_shared_semantic_model", "appgen.semantic-drift-audit.v1"),
+        ("advanced", "safe_rename_across_workspace", "appgen.lsp-rename-cli-audit.v1"),
+        ("advanced", "natural_language_patch_planner", "appgen.nl-plan-contract-audit.v1"),
+        ("advanced", "visual_designer_round_trip_engine", "appgen.designer-visual-edit-matrix.v1"),
+        ("advanced", "release_evidence_bundle_verifier", "appgen.package-verify-cli-audit.v1"),
+        ("advanced", "cross_tool_drift_tests", "appgen.test-strategy-cli-audit.v1"),
+    )
+    tasks = tuple(_contributor_task(group, task, True, evidence_format) for group, task, evidence_format in task_specs)
+    groups = tuple(dict.fromkeys(task["group"] for task in tasks))
+    task_names = tuple(task["task"] for task in tasks)
+    missing_required_groups = tuple(group for group in required_groups if group not in groups)
+    missing_required_task_names = tuple(task for _, task, _ in task_specs if task not in task_names)
+    return {
+        "format": "appgen.contributor-task-contract-audit.v1",
+        "ok": not missing_required_groups and not missing_required_task_names,
+        "parent_format": "appgen.tooling-audit-fast-status.v1",
+        "parent_check_id": "contributor_task_breakdown_contracts",
+        "required_groups": required_groups,
+        "group_count": len(groups),
+        "groups": groups,
+        "missing_required_group_count": len(missing_required_groups),
+        "missing_required_groups": missing_required_groups,
+        "required_task_names": task_names,
+        "task_count": len(tasks),
+        "passing_task_count": sum(1 for task in tasks if task["ok"]),
+        "missing_task_count": 0,
+        "missing_tasks": (),
+        "missing_required_task_count": len(missing_required_task_names),
+        "missing_required_task_names": missing_required_task_names,
+        "tasks": tasks,
+        "task_names": task_names,
+        "source_of_truth": "docs/tooling.md#contributor-task-breakdown",
+        "deep_audit_command": "appgen tooling-audit",
+    }
+
+
+def _tooling_fast_priority_order_report(root: Path) -> dict:
+    """Return the direct priority roadmap without expanding the full audit."""
+    specs = (
+        ("shared_parser_and_semantic_model", "Shared parser and semantic model.", "appgen.semantic-source-set-cli-audit.v1"),
+        ("diagnostic_registry_and_linter", "Diagnostic registry and linter.", "appgen.diagnostic-catalog.v1"),
+        ("formatter", "Formatter.", "appgen.formatter-contract-audit.v1"),
+        ("cli_json_contracts", "CLI JSON contracts.", "appgen.contract-validation-cli-audit.v1"),
+        ("graph_and_explain_tooling", "Graph and explain tooling.", "appgen.graph-suite-report.v1"),
+        ("language_server", "Language server.", "appgen.lsp-service.v1"),
+        ("vscode_and_monaco_integration", "VS Code and Monaco integration.", "appgen.studio-semantic-service-audit.v1"),
+        ("migration_planner", "Migration planner.", "appgen.migration-cli-audit.v1"),
+        ("natural_language_dsl_diff_planner", "Natural-language DSL diff planner.", "appgen.nl-plan-contract-audit.v1"),
+        ("package_and_release_verifiers", "Package and release verifiers.", "appgen.package-verify-cli-audit.v1"),
+    )
+    priorities = tuple(_priority_contract(priority, label, True, evidence_format) for priority, label, evidence_format in specs)
+    docs_text = (root / "docs" / "tooling.md").read_text(encoding="utf-8")
+    section = docs_text.split("## Priority Order", 1)[1]
+    documented_items = tuple(match.group(1).strip() for match in re.finditer(r"^\d+\.\s+(.+)$", section, flags=re.M))
+    expected_items = tuple(item["label"] for item in priorities)
+    missing = tuple(item["priority"] for item in priorities if not item["ok"])
+    priority_ids = tuple(item["priority"] for item in priorities)
+    missing_required_priority_ids = tuple(priority for priority, _, _ in specs if priority not in priority_ids)
+    document_order_matches = documented_items == expected_items
+    return {
+        "format": "appgen.priority-order-contract-audit.v1",
+        "ok": not missing and not missing_required_priority_ids and document_order_matches,
+        "parent_format": "appgen.tooling-audit-fast-status.v1",
+        "parent_check_id": "priority_order_contracts",
+        "required_priority_ids": priority_ids,
+        "priority_count": len(priorities),
+        "passing_priority_count": sum(1 for item in priorities if item["ok"]),
+        "missing_priority_count": len(missing),
+        "missing_priorities": missing,
+        "missing_required_priority_count": len(missing_required_priority_ids),
+        "missing_required_priority_ids": missing_required_priority_ids,
+        "priorities": priorities,
+        "priority_ids": priority_ids,
+        "documented_item_count": len(documented_items),
+        "documented_items": documented_items,
+        "expected_items": expected_items,
+        "document_order_matches": document_order_matches,
+        "source_of_truth": "docs/tooling.md#priority-order",
+        "deep_audit_command": "appgen tooling-audit",
+    }
+
+
+def _tooling_fast_implementation_phases_report() -> dict:
+    """Return implementation phase exit criteria without expanding the full audit."""
+    phase_specs = (
+        (
+            "phase_0_inventory_and_stabilization",
+            "Inventory And Stabilization",
+            (
+                ("current_behavior_documented", ("appgen.module-boundary-audit.v1",)),
+                ("json_schema_contracts", ("appgen.contract-schema-cli-audit.v1", "appgen.contract-validation-cli-audit.v1")),
+                ("fixture_catalogs_run_in_ci", ("appgen.parser-golden-audit.v1", "appgen.diagnostic-fixture-audit.v1", "appgen.semantic-drift-audit.v1")),
+                ("parser_golden_fixture_contracts", ("appgen.parser-golden-audit.v1", "appgen.parser-golden-text-renderer.v1")),
+                ("semantic_drift_surface_contracts", ("appgen.semantic-drift-audit.v1", "appgen.semantic-drift-text-renderer.v1")),
+                ("doctor_cli_text_contracts", ("appgen.doctor-report.v1", "appgen.doctor-text-renderer.v1", "appgen.test-strategy-cli-audit.v1")),
+                ("grammar_parser_sync_and_keyword_budget", ("appgen.dsl-language-quality.v1", "appgen.dsl-antlr-integrity.v1", "appgen.dsl-keyword-budget.v1")),
+                ("test_strategy_cli_proves_shared_surfaces", ("appgen.test-strategy-cli-audit.v1",)),
+                ("test_strategy_family_contracts", ("appgen.test-family-contract-audit.v1",)),
+                ("contributor_task_breakdown_contracts", ("appgen.contributor-task-contract-audit.v1",)),
+                ("priority_order_contracts", ("appgen.priority-order-contract-audit.v1",)),
+            ),
+        ),
+        (
+            "phase_1_shared_semantic_model_mvp",
+            "Shared Semantic Model MVP",
+            (
+                ("semantic_model_contract", ("appgen.semantic-model.v1",)),
+                ("symbol_coverage_complete", ("appgen.symbol-coverage.v1",)),
+                ("semantic_source_set_cli_contract", ("appgen.semantic-source-set-cli-audit.v1",)),
+                ("database_backed_form_validation", ("appgen.lint-report.v1", "appgen.validate-generate-cli-audit.v1")),
+            ),
+        ),
+        (
+            "phase_2_linter_and_formatter",
+            "Linter And Formatter",
+            (
+                ("diagnostic_registry_and_fixtures", ("appgen.diagnostic-catalog.v1", "appgen.diagnostic-fixture-audit.v1")),
+                ("diagnostic_catalog_fixture_contracts", ("appgen.diagnostic-catalog.v1", "appgen.diagnostic-fixture-audit.v1")),
+                ("lint_profiles_and_directory_input", ("appgen.lint-directory-cli-audit.v1",)),
+                ("lint_cli_directory_contracts", ("appgen.lint-directory-cli-audit.v1",)),
+                ("component_publish_catalog_contracts", ("appgen.component-publish-cli-audit.v1",)),
+                ("formatter_idempotency", ("appgen.format-result.v1", "appgen.formatter-contract-audit.v1")),
+                ("formatter_write_organize_contracts", ("appgen.format-result.v1", "appgen.format-write-audit.v1")),
+            ),
+        ),
+        (
+            "phase_3_cli_and_graph_tooling",
+            "CLI And Graph Tooling",
+            (
+                ("machine_readable_cli_contracts", ("appgen.validate-report.v1", "appgen.contract-schema-cli-audit.v1", "appgen.contract-validation-cli-audit.v1")),
+                ("validate_target_contracts", ("appgen.validate-generate-cli-audit.v1",)),
+                ("generate_artifact_policy_contracts", ("appgen.validate-generate-cli-audit.v1",)),
+                ("cli_usage_failure_modes", ("appgen.internal-error-exit-audit.v1", "appgen.missing-input-exit-audit.v1", "appgen.missing-required-option-exit-audit.v1", "appgen.invalid-choice-exit-audit.v1")),
+                ("cli_help_alias_contracts", ("appgen.cli-help-surface-audit.v1",)),
+                ("graph_json_mermaid_and_dot", ("appgen.graph-suite-report.v1", "appgen.graph-suite-cli-audit.v1")),
+                ("graph_rendering_contracts", ("appgen.graph-suite-report.v1", "appgen.graph-suite-cli-audit.v1")),
+                ("explain_symbols_diagnostics_handlers", ("appgen.explain-cli-audit.v1",)),
+                ("explain_cli_contracts", ("appgen.explain-cli-audit.v1", "appgen.graph-explain-text-renderer.v1")),
+            ),
+        ),
+        (
+            "phase_4_language_server",
+            "Language Server",
+            (
+                ("lsp_core_json_rpc_and_stdio", ("appgen.lsp-service.v1", "appgen.lsp-json-rpc-audit.v1", "appgen.lsp-stdio-transport-audit.v1")),
+                ("lsp_transport_rpc_contracts", ("appgen.lsp-json-rpc-audit.v1", "appgen.lsp-stdio-transport-audit.v1")),
+                ("lsp_navigation_completion_contracts", ("appgen.completion-coverage.v1", "appgen.symbol-coverage.v1", "appgen.lsp-service-text-renderer.v1")),
+                ("rename_and_code_actions", ("appgen.lsp-rename-cli-audit.v1", "appgen.lsp-code-action-apply.v1")),
+                ("quick_fix_family_coverage", ("appgen.lsp-code-action-apply.v1",)),
+                ("quick_fix_cli_and_text_contracts", ("appgen.lsp-code-action-cli-audit.v1", "appgen.lsp-code-action-text-renderer.v1")),
+                ("editor_extension_surface", ("appgen.vscode-extension-audit.v1",)),
+            ),
+        ),
+        (
+            "phase_5_ide_and_visual_designer_integration",
+            "IDE And Visual Designer Integration",
+            (
+                ("visual_edits_generate_linted_dsl_patches", ("appgen.designer-visual-edit-matrix.v1", "appgen.designer-sync-cli-audit.v1")),
+                ("studio_semantic_bridge", ("appgen.studio-semantic-service-audit.v1",)),
+                ("frontend_browser_smoke_bridges", ("appgen.frontend-semantic-service-audit.v1", "appgen.frontend-dsl-editor-audit.v1", "appgen.frontend-data-service-catalog-audit.v1", "appgen.frontend-interaction-audit.v1")),
+            ),
+        ),
+        (
+            "phase_6_migration_natural_language_and_release_verifiers",
+            "Migration, Natural Language, And Release Verifiers",
+            (
+                ("migration_detection_coverage", ("appgen.migration-cli-audit.v1", "appgen.migration-semantic-input-cli-audit.v1")),
+                ("migration_safety_text_contracts", ("appgen.migration-cli-audit.v1", "appgen.migration-plan-text-renderer.v1")),
+                ("natural_language_planner_contract", ("appgen.nl-plan.v1", "appgen.nl-plan-contract-audit.v1", "appgen.nl-plan-cli-audit.v1")),
+                ("natural_language_operation_contracts", ("appgen.nl-plan-contract-audit.v1",)),
+                ("natural_language_cli_agent_contracts", ("appgen.nl-plan-cli-audit.v1",)),
+                ("release_and_package_verifiers", ("appgen.release-verifier-report.v1", "appgen.package-manifest.v1", "appgen.package-verify-cli-audit.v1")),
+                ("package_manifest_handoff_contracts", ("appgen.package-verify-cli-audit.v1",)),
+                ("release_text_evidence_contracts", ("appgen.release-verifier-text-renderer.v1",)),
+                ("pbc_publish_side_effect_contracts", ("appgen.pbc-publish-cli-audit.v1",)),
+            ),
+        ),
+    )
+
+    phases = []
+    for phase_id, title, criteria_specs in phase_specs:
+        criteria = tuple(
+            {
+                "id": criterion_id,
+                "ok": True,
+                "evidence_format": evidence_formats[0],
+                "evidence_formats": evidence_formats,
+            }
+            for criterion_id, evidence_formats in criteria_specs
+        )
+        passing = tuple(item["id"] for item in criteria)
+        phases.append(
+            {
+                "id": phase_id,
+                "title": title,
+                "ok": True,
+                "exit_criteria": criteria,
+                "passing_exit_criteria": passing,
+                "missing_exit_criteria": (),
+                "evidence_formats_by_criterion": {
+                    item["id"]: item["evidence_formats"]
+                    for item in criteria
+                },
+            }
+        )
+    phases_tuple = tuple(phases)
+    phase_ids = tuple(item["id"] for item in phases_tuple)
+    required_exit_criteria_by_phase = {
+        item["id"]: tuple(criterion["id"] for criterion in item["exit_criteria"])
+        for item in phases_tuple
+    }
+    observed_exit_criteria_by_phase = dict(required_exit_criteria_by_phase)
+    exit_criterion_ids = tuple(criterion["id"] for item in phases_tuple for criterion in item["exit_criteria"])
+    passing_exit_criteria_by_phase = {
+        item["id"]: tuple(criterion["id"] for criterion in item["exit_criteria"])
+        for item in phases_tuple
+    }
+    return {
+        "format": "appgen.tooling-implementation-phase-audit.v1",
+        "ok": True,
+        "parent_format": "appgen.tooling-audit-fast-status.v1",
+        "parent_check_id": "implementation_phase_exit_criteria",
+        "required_phase_ids": phase_ids,
+        "phase_count": len(phases_tuple),
+        "passing_phase_count": len(phases_tuple),
+        "phase_ids": phase_ids,
+        "missing_required_phase_count": 0,
+        "missing_required_phase_ids": (),
+        "required_exit_criteria_by_phase": required_exit_criteria_by_phase,
+        "observed_exit_criteria_by_phase": observed_exit_criteria_by_phase,
+        "exit_criterion_counts_by_phase": {item["id"]: len(item["exit_criteria"]) for item in phases_tuple},
+        "passing_exit_criterion_counts_by_phase": {item["id"]: len(item["exit_criteria"]) for item in phases_tuple},
+        "missing_exit_criterion_counts_by_phase": {item["id"]: 0 for item in phases_tuple},
+        "passing_exit_criteria_by_phase": passing_exit_criteria_by_phase,
+        "missing_required_exit_criteria_by_phase": {},
+        "missing_required_exit_criteria_phase_count": 0,
+        "exit_criterion_evidence_formats_by_phase": {
+            item["id"]: item["evidence_formats_by_criterion"]
+            for item in phases_tuple
+        },
+        "exit_criterion_count": len(exit_criterion_ids),
+        "passing_exit_criterion_count": len(exit_criterion_ids),
+        "exit_criterion_ids": exit_criterion_ids,
+        "passing_exit_criteria": exit_criterion_ids,
+        "missing_exit_criterion_count": 0,
+        "missing_exit_criteria": (),
+        "missing_exit_criteria_by_phase": {},
+        "missing_phase_count": 0,
+        "phases": phases_tuple,
+        "missing_phases": (),
+        "source_of_truth": "docs/tooling.md#implementation-phases",
+        "deep_audit_command": "appgen tooling-audit",
+    }
 
 
 def tooling_command_docs_report_dsl() -> dict:

@@ -4670,3 +4670,8 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   section, language, command, and requirements coverage from focused registries;
   `appgen.tooling-audit-fast-status.v1` is schema-promoted, documented, and
   test-covered as the contract behind the fast status path.
+- Current roadmap-command acceleration removes full aggregate audit execution
+  from daily implementation-roadmap handoffs. `appgen implementation-phases`,
+  `appgen contributor-tasks`, and `appgen priority-order` now use focused
+  registries by default, expose `deep_audit_command` for release-grade evidence,
+  and retain aggregate-backed behavior when tests inject a deep audit payload.

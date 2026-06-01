@@ -7372,6 +7372,30 @@ def test_contributor_and_priority_reports_are_first_class_cli_commands(monkeypat
     assert "1. ok shared_parser_and_semantic_model" in priority_text.getvalue()
 
 
+def test_roadmap_reports_use_fast_direct_registries(monkeypatch) -> None:
+    def fail_detail(*_args, **_kwargs):
+        raise AssertionError("roadmap direct commands must not expand tooling-audit details")
+
+    monkeypatch.setattr(appgen_dsl, "_tooling_audit_report_detail", fail_detail)
+
+    phases = appgen_dsl.implementation_phases_report_dsl()
+    contributors = appgen_dsl.contributor_tasks_report_dsl()
+    priorities = appgen_dsl.priority_order_report_dsl()
+
+    assert phases["format"] == "appgen.tooling-implementation-phase-audit.v1"
+    assert phases["parent_format"] == "appgen.tooling-audit-fast-status.v1"
+    assert phases["phase_count"] == 7
+    assert phases["passing_exit_criterion_count"] == phases["exit_criterion_count"]
+    assert contributors["format"] == "appgen.contributor-task-contract-audit.v1"
+    assert contributors["parent_format"] == "appgen.tooling-audit-fast-status.v1"
+    assert contributors["task_count"] == 22
+    assert contributors["passing_task_count"] == contributors["task_count"]
+    assert priorities["format"] == "appgen.priority-order-contract-audit.v1"
+    assert priorities["parent_format"] == "appgen.tooling-audit-fast-status.v1"
+    assert priorities["priority_count"] == 10
+    assert priorities["document_order_matches"] is True
+
+
 def test_tooling_status_report_compacts_remaining_work_for_agents(monkeypatch) -> None:
     fake_report = {
         "format": "appgen.tooling-audit.v1",

@@ -767,6 +767,10 @@ the dependency-ordered implementation roadmap. These commands exist so
 contributors and coding agents do not have to run the full `tooling-audit`
 payload just to decide what to build next or verify that a DSL file still
 exercises the required strategy surface.
+`appgen implementation-phases`, `appgen contributor-tasks`, and `appgen
+priority-order` use focused roadmap registries by default and publish
+`deep_audit_command: appgen tooling-audit` when release-grade aggregate evidence
+is needed.
 Coding-agent handoff is a direct CLI contract: `appgen agent-handoff` emits
 `appgen.agent-handoff-report.v1` and is governed by
 `appgen.agent-handoff-cli-audit.v1` so Claude Code, OpenAI Codex, OpenCode,
@@ -4921,6 +4925,8 @@ missing, or when a required task name disappears from the runtime contract.
 `appgen.contributor-task-contract-audit.v1` with the parent tooling-audit check
 id so external agents can pick one bounded task without expanding the aggregate
 audit.
+The direct command uses the focused roadmap registry by default and keeps the
+deep aggregate available through `deep_audit_command`.
 
 Good first implementation tasks:
 
@@ -4966,6 +4972,8 @@ renamed priority fails by name instead of only changing the priority count.
 `appgen priority-order` exposes the same ordered roadmap directly. Text mode
 prints each numbered priority with its evidence format; JSON mode emits
 `appgen.priority-order-contract-audit.v1` with the parent tooling-audit check id.
+The direct command checks the documented numbered list against the focused
+priority registry without expanding the full aggregate audit.
 
 1. Shared parser and semantic model.
 2. Diagnostic registry and linter.
