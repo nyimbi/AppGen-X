@@ -730,12 +730,14 @@ contributors and coding agents do not have to run the full `tooling-audit`
 payload just to decide what to build next or verify that a DSL file still
 exercises the required strategy surface.
 Coding-agent handoff is a direct CLI contract: `appgen agent-handoff` emits
-`appgen.agent-handoff-report.v1` so Claude Code, OpenAI Codex, OpenCode,
+`appgen.agent-handoff-report.v1` and is governed by
+`appgen.agent-handoff-cli-audit.v1` so Claude Code, OpenAI Codex, OpenCode,
 Ollama, vLLM, and API-key backed runners can receive launcher names, allowed
 backends, required outputs, compact model briefs, token-budget notes, guardrails,
 and the canonical AppGen-X command sequence without first creating an
 `appgen.nl-plan.v1` patch. This makes external agents first-class development
-vectors even when the user already knows the desired operation.
+vectors even when the user already knows the desired operation, and the audit
+gate verifies both JSON and text handoffs for vector/backend filtering.
 DSL language-quality commands are first-class CLI contracts: `appgen
 dsl-quality`, `appgen dsl-antlr`, `appgen dsl-authoring-gate <file>`, and
 `appgen dsl-language-service <file>` expose the same grammar, parser, keyword,
@@ -882,7 +884,8 @@ plus the first-class agentic development-vector contracts:
 `appgen.coding-agent-backend-matrix.v1`,
 `appgen.coding-agent-development-workflow.v1`,
 `appgen.coding-agent-release-gate.v1`,
-`appgen.agent-handoff-report.v1`, and
+`appgen.agent-handoff-report.v1`,
+`appgen.agent-handoff-cli-audit.v1`, and
 `appgen.agentic-generation-smoke-audit.v1`,
 plus the Application Composition Platform and compact generation contracts:
 `appgen.acp-stream-processing-policy.v1`,
@@ -4416,6 +4419,15 @@ Text mode prints `agent-handoff ...`, one `agent-handoff <vector> ...` line per
 runner, `compact-model ...` lines, command lines, and `token-budget-note ...`
 guidance. This lets CI, local shells, and small local models route work without
 parsing the full JSON payload.
+
+The aggregate tooling audit includes the `agent_handoff_cli_contracts` gate and
+the standalone `appgen.agent-handoff-cli-audit.v1` contract. That audit runs the
+command in all-vector JSON mode, filtered OpenAI Codex plus Ollama JSON mode,
+and filtered text mode. It requires the three supported development vectors,
+the `api-key`/`ollama`/`vllm` backend set, semantic-model provenance for file
+inputs, compact generation briefs, token-budget notes, canonical follow-up
+commands, non-JSON text output, and zero missing case, exit-code, payload, or
+marker gaps.
 
 The test-strategy CLI audit reports case, passing-case, failing-case, case-id,
 required-surface, observed-surface, missing-surface, payload-format, and

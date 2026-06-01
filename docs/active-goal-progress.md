@@ -4618,3 +4618,8 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   entrypoint parity matrix. Both `python -m pyAppGen` and repo-local `./apg`
   must now emit `appgen.agent-handoff-report.v1`, so the short alias cannot
   silently miss the coding-agent development vector.
+- Current handoff governance expansion makes `appgen agent-handoff` a dedicated
+  tooling-audit gate. `appgen.agent-handoff-cli-audit.v1` now proves all-vector
+  JSON output, filtered OpenAI Codex plus Ollama JSON output, filtered text
+  output, compact model briefs, token-budget notes, canonical commands, and
+  section-coverage enforcement for `docs/tooling.md#appgen-agent-handoff`.

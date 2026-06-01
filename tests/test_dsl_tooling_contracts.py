@@ -3314,6 +3314,38 @@ def test_appgen_agent_handoff_subcommand_emits_first_class_agent_vectors(tmp_pat
     assert "token-budget-note " in text_result.stdout
 
 
+def test_agent_handoff_cli_audit_proves_json_text_and_filtered_vectors(tmp_path: Path) -> None:
+    audit = appgen_dsl._tooling_audit_agent_handoff_cli(tmp_path, TOOLING_SAMPLE)
+
+    assert audit["format"] == "appgen.agent-handoff-cli-audit.v1"
+    assert audit["ok"] is True
+    assert audit["case_count"] == 3
+    assert audit["passing_case_count"] == audit["case_count"]
+    assert audit["missing_case_count"] == 0
+    assert audit["missing_exit_code_case_count"] == 0
+    assert audit["missing_payload_format_case_count"] == 0
+    assert audit["missing_ok_case_count"] == 0
+    assert audit["missing_required_vector_count"] == 0
+    assert audit["missing_required_backend_count"] == 0
+    assert audit["missing_semantic_model_case_count"] == 0
+    assert audit["missing_prompt_digest_case_count"] == 0
+    assert audit["missing_compact_model_case_count"] == 0
+    assert audit["missing_token_budget_case_count"] == 0
+    assert audit["missing_command_case_count"] == 0
+    assert audit["missing_text_marker_count"] == 0
+    assert audit["text_json_fallback"] is False
+    assert {"claude_code", "openai_codex", "opencode"} <= set(audit["observed_vectors"])
+    assert {"api-key", "ollama", "vllm"} <= set(audit["observed_backends"])
+    assert "appgen contract-validate semantic.json --format appgen.semantic-model.v1 --json" in audit[
+        "required_commands"
+    ]
+    cases = {case["case"]: case for case in audit["cases"]}
+    assert cases["openai_ollama_json"]["vectors"] == ("openai_codex",)
+    assert cases["openai_ollama_json"]["backends"] == ("ollama",)
+    assert cases["openai_ollama_text"]["vectors"] == ("openai_codex",)
+    assert cases["openai_ollama_text"]["backends"] == ("ollama",)
+
+
 def test_nl_plan_contract_audit_covers_supported_edit_operations_and_rejections() -> None:
     audit = nl_plan_contract_audit_dsl(TOOLING_SAMPLE, source_name="finance.appgen")
     case_ids = {case["id"] for case in audit["cases"]}
@@ -9039,6 +9071,16 @@ def test_tooling_audit_proves_docs_tooling_surface_and_cli_contract() -> None:
     assert report["doc_anchor_integrity"]["minimum_runtime_format_reference_count"] >= 1
     assert report["doc_anchor_integrity"]["minimum_test_format_reference_count"] >= 1
     assert "appgen.studio-semantic-service.v1" in report["doc_anchor_integrity"]["documented_contract_formats"]
+    assert "appgen.agent-handoff-cli-audit.v1" in report["doc_anchor_integrity"]["documented_contract_formats"]
+    assert report["doc_anchor_integrity"]["format_reference_matrix"]["appgen.agent-handoff-cli-audit.v1"][
+        "docs"
+    ] >= 1
+    assert report["doc_anchor_integrity"]["format_reference_matrix"]["appgen.agent-handoff-cli-audit.v1"][
+        "runtime"
+    ] >= 1
+    assert report["doc_anchor_integrity"]["format_reference_matrix"]["appgen.agent-handoff-cli-audit.v1"][
+        "tests"
+    ] >= 1
     assert report["doc_anchor_integrity"]["format_reference_matrix"]["appgen.studio-semantic-service.v1"][
         "docs"
     ] >= 1
@@ -13616,11 +13658,13 @@ def test_tooling_doc_anchor_audit_proves_documented_contract_formats() -> None:
         "appgen.tooling-audit.v1",
         "appgen.tooling-doc-anchor-audit.v1",
         "appgen.studio-semantic-service.v1",
+        "appgen.agent-handoff-cli-audit.v1",
     } <= set(report["documented_contract_formats"])
     for format_name in (
         "appgen.tooling-audit.v1",
         "appgen.tooling-doc-anchor-audit.v1",
         "appgen.studio-semantic-service.v1",
+        "appgen.agent-handoff-cli-audit.v1",
     ):
         assert report["format_reference_matrix"][format_name]["docs"] >= 1
         assert report["format_reference_matrix"][format_name]["runtime"] >= 1

@@ -6908,6 +6908,7 @@ AGENTIC_DEVELOPMENT_SCHEMA_FORMATS = (
     "appgen.coding-agent-development-workflow.v1",
     "appgen.coding-agent-release-gate.v1",
     "appgen.agent-handoff-report.v1",
+    "appgen.agent-handoff-cli-audit.v1",
     "appgen.agentic-generation-smoke-audit.v1",
 )
 
@@ -9180,6 +9181,7 @@ def _agentic_development_schema(title: str) -> dict:
         "appgen.coding-agent-development-workflow.v1": ("format", "ok", "vector", "backend", "stages"),
         "appgen.coding-agent-release-gate.v1": ("format", "ok", "decision", "gates", "blocking_gaps"),
         "appgen.agent-handoff-report.v1": ("format", "ok", "agent_handoffs", "compact_model_briefs"),
+        "appgen.agent-handoff-cli-audit.v1": ("format", "ok", "cases", "required_vectors", "required_backends"),
         "appgen.agentic-generation-smoke-audit.v1": ("format", "ok", "decision", "checks", "blocking_gaps"),
     }
     return _contract_format_schema(
@@ -9218,6 +9220,9 @@ def _agentic_development_schema(title: str) -> dict:
             "token_budget_notes": {"type": "array", "items": {"type": "string"}},
             "prompt_digest": {"type": "object"},
             "commands": {"type": "array", "items": {"type": "string"}},
+            "cases": {"type": "array", "items": {"type": "object"}},
+            "required_backends": {"type": "array", "items": {"type": "string"}},
+            "required_vectors": {"type": "array", "items": {"type": "string"}},
             "stop_condition": {"type": "string"},
         },
     )
@@ -12672,6 +12677,7 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
         migration_cli = _tooling_audit_migration_cli(Path(tmp))
         migration_semantic_input_cli = _tooling_audit_migration_semantic_input_cli(Path(tmp))
         nl_plan_cli = _tooling_audit_nl_plan_cli(Path(tmp), source)
+        agent_handoff_cli = _tooling_audit_agent_handoff_cli(Path(tmp), source)
         dsl_language_cli = _tooling_audit_dsl_language_cli(Path(tmp), source)
         contract_schema_cli = _tooling_audit_contract_schema_cli()
         contract_validation_cli = _tooling_audit_contract_validation_cli(Path(tmp))
@@ -15506,6 +15512,28 @@ view InvoiceForm for Invoice { Main: id; on Save -> SubmitInvoice }
             },
         ),
         _tooling_audit_check(
+            "agent_handoff_cli_contracts",
+            agent_handoff_cli["ok"]
+            and agent_handoff_cli.get("case_count") == 3
+            and agent_handoff_cli.get("passing_case_count") == agent_handoff_cli.get("case_count")
+            and agent_handoff_cli.get("missing_case_count") == 0
+            and agent_handoff_cli.get("missing_exit_code_case_count") == 0
+            and agent_handoff_cli.get("missing_payload_format_case_count") == 0
+            and agent_handoff_cli.get("missing_ok_case_count") == 0
+            and agent_handoff_cli.get("missing_required_vector_count") == 0
+            and agent_handoff_cli.get("missing_required_backend_count") == 0
+            and agent_handoff_cli.get("missing_semantic_model_case_count") == 0
+            and agent_handoff_cli.get("missing_prompt_digest_case_count") == 0
+            and agent_handoff_cli.get("missing_compact_model_case_count") == 0
+            and agent_handoff_cli.get("missing_token_budget_case_count") == 0
+            and agent_handoff_cli.get("missing_command_case_count") == 0
+            and agent_handoff_cli.get("missing_text_marker_count") == 0
+            and agent_handoff_cli.get("text_json_fallback") is False,
+            "Direct appgen agent-handoff CLI proves JSON/text coding-agent contracts for all vectors, backend filters, compact models, token notes, and follow-up commands.",
+            "docs/tooling.md#appgen-agent-handoff",
+            agent_handoff_cli,
+        ),
+        _tooling_audit_check(
             "package_and_release_verifiers",
             release["ok"]
             and package["ok"]
@@ -16982,6 +17010,7 @@ def _tooling_audit_section_coverage(root: Path, checks: Iterable[dict]) -> dict:
         "appgen-component-publish": ("component_publish_catalog_contracts",),
         "appgen-pbc": ("pbc_manifest_catalog_commands", "pbc_publish_side_effect_contracts"),
         "appgen-nl-plan": ("natural_language_cli_agent_contracts",),
+        "appgen-agent-handoff": ("agent_handoff_cli_contracts",),
         "capabilities": ("language_server_core_features", "lsp_navigation_completion_contracts"),
         "completion-sources": ("lsp_navigation_completion_contracts",),
         "code-actions": (
@@ -26259,6 +26288,7 @@ def _tooling_contract_schema_sample_validation_cases() -> tuple[dict, ...]:
                 operation="add_flow_transition",
                 source_name="contract-schema.appgen",
             ),
+            "appgen.agent-handoff-cli-audit.v1": _tooling_audit_agent_handoff_cli(tmp_path, source),
             "appgen.agentic-generation-smoke-audit.v1": agentic_generation_smoke_audit(),
             "appgen.acp-stream-processing-policy.v1": acp_stream_processing_policy(),
             "appgen.acp-event-processing-developer-guidance.v1": acp_event_processing_developer_guidance(),
@@ -28153,6 +28183,282 @@ def _tooling_audit_nl_plan_cli(tmp: Path, source: str) -> dict:
         "rejected_patch_empty_cases": rejected_patch_empty_cases,
         "missing_rejected_patch_empty_case_count": len(missing_rejected_patch_empty_cases),
         "missing_rejected_patch_empty_cases": missing_rejected_patch_empty_cases,
+    }
+
+
+def _tooling_audit_agent_handoff_cli(tmp: Path, source: str) -> dict:
+    source_path = tmp / "agent-handoff-cli.appgen"
+    source_path.write_text(source, encoding="utf-8")
+
+    def run_json(argv: tuple[str, ...]) -> tuple[int, dict]:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            exit_code = dsl_tooling_cli(argv)
+        try:
+            payload = json.loads(output.getvalue())
+        except json.JSONDecodeError:
+            payload = {}
+        return exit_code, payload
+
+    def run_text(argv: tuple[str, ...]) -> tuple[int, str]:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            exit_code = dsl_tooling_cli(argv)
+        return exit_code, output.getvalue()
+
+    prompt = "Add invoice approval workflow"
+    operation = "add_flow_transition"
+    all_exit, all_payload = run_json(
+        (
+            "agent-handoff",
+            str(source_path),
+            "--prompt",
+            prompt,
+            "--operation",
+            operation,
+            "--json",
+        )
+    )
+    filtered_exit, filtered_payload = run_json(
+        (
+            "agent-handoff",
+            str(source_path),
+            "--prompt",
+            prompt,
+            "--operation",
+            operation,
+            "--vector",
+            "openai_codex",
+            "--backend",
+            "ollama",
+            "--json",
+        )
+    )
+    text_exit, text = run_text(
+        (
+            "agent-handoff",
+            str(source_path),
+            "--prompt",
+            prompt,
+            "--operation",
+            operation,
+            "--vector",
+            "openai_codex",
+            "--backend",
+            "ollama",
+        )
+    )
+    text_lines = tuple(line for line in text.splitlines() if line.strip())
+    required_vectors = ("claude_code", "openai_codex", "opencode")
+    required_backends = ("api-key", "ollama", "vllm")
+    required_commands = (
+        "appgen lint app.appgen --json",
+        "appgen semantic app.appgen --json",
+        "appgen contract-validate semantic.json --format appgen.semantic-model.v1 --json",
+        "appgen nl-plan app.appgen --prompt '<change>' --json",
+        "appgen generate app.appgen --out generated/app --json",
+        "appgen verify app.appgen --target all --json",
+    )
+    observed_vectors = tuple(all_payload.get("observed_vectors", ()))
+    observed_backends = tuple(all_payload.get("observed_backends", ()))
+    missing_required_vectors = tuple(vector for vector in required_vectors if vector not in observed_vectors)
+    missing_required_backends = tuple(backend for backend in required_backends if backend not in observed_backends)
+    required_case_ids = ("all_vectors_json", "openai_ollama_json", "openai_ollama_text")
+    cases = (
+        {
+            "case": "all_vectors_json",
+            "exit_code": all_exit,
+            "format": all_payload.get("format"),
+            "ok": all_payload.get("ok"),
+            "semantic_model_format": all_payload.get("semantic_model_format"),
+            "vectors": tuple(all_payload.get("observed_vectors", ())),
+            "backends": tuple(all_payload.get("observed_backends", ())),
+            "agent_handoff_count": all_payload.get("agent_handoff_count", 0),
+            "compact_model_count": all_payload.get("compact_model_count", 0),
+            "token_budget_note_count": all_payload.get("token_budget_note_count", 0),
+            "command_count": len(all_payload.get("commands", ())),
+            "prompt_digest_format": all_payload.get("prompt_digest", {}).get("format"),
+            "passed": all_exit == 0
+            and all_payload.get("format") == "appgen.agent-handoff-report.v1"
+            and all_payload.get("ok") is True
+            and all_payload.get("semantic_model_format") == "appgen.semantic-model.v1"
+            and not missing_required_vectors
+            and not missing_required_backends
+            and all_payload.get("prompt_digest", {}).get("format") == "appgen.compact-generation-brief.v1"
+            and all_payload.get("compact_model_count", 0) >= 3
+            and all_payload.get("token_budget_note_count", 0) >= 1
+            and set(required_commands) <= set(all_payload.get("commands", ())),
+        },
+        {
+            "case": "openai_ollama_json",
+            "exit_code": filtered_exit,
+            "format": filtered_payload.get("format"),
+            "ok": filtered_payload.get("ok"),
+            "semantic_model_format": filtered_payload.get("semantic_model_format"),
+            "vectors": tuple(filtered_payload.get("observed_vectors", ())),
+            "backends": tuple(filtered_payload.get("observed_backends", ())),
+            "agent_handoff_count": filtered_payload.get("agent_handoff_count", 0),
+            "compact_model_count": filtered_payload.get("compact_model_count", 0),
+            "token_budget_note_count": filtered_payload.get("token_budget_note_count", 0),
+            "command_count": len(filtered_payload.get("commands", ())),
+            "prompt_digest_format": filtered_payload.get("prompt_digest", {}).get("format"),
+            "passed": filtered_exit == 0
+            and filtered_payload.get("format") == "appgen.agent-handoff-report.v1"
+            and filtered_payload.get("ok") is True
+            and filtered_payload.get("semantic_model_format") == "appgen.semantic-model.v1"
+            and tuple(filtered_payload.get("observed_vectors", ())) == ("openai_codex",)
+            and tuple(filtered_payload.get("observed_backends", ())) == ("ollama",)
+            and filtered_payload.get("prompt_digest", {}).get("format") == "appgen.compact-generation-brief.v1"
+            and filtered_payload.get("compact_model_count", 0) >= 3
+            and filtered_payload.get("token_budget_note_count", 0) >= 1
+            and set(required_commands) <= set(filtered_payload.get("commands", ())),
+        },
+        {
+            "case": "openai_ollama_text",
+            "exit_code": text_exit,
+            "format": "appgen.agent-handoff-report.v1" if "format=appgen.agent-handoff-report.v1" in text else None,
+            "ok": text.startswith("agent-handoff ok: format=appgen.agent-handoff-report.v1"),
+            "semantic_model_format": None,
+            "vectors": ("openai_codex",) if "agent-handoff openai_codex launcher=codex backends=ollama" in text else (),
+            "backends": ("ollama",) if "backends=ollama" in text else (),
+            "agent_handoff_count": len(tuple(line for line in text_lines if line.startswith("agent-handoff openai_codex "))),
+            "compact_model_count": len(tuple(line for line in text_lines if line.startswith("compact-model "))),
+            "token_budget_note_count": len(tuple(line for line in text_lines if line.startswith("token-budget-note "))),
+            "command_count": len(tuple(line for line in text_lines if line.startswith("command "))),
+            "prompt_digest_format": None,
+            "passed": text_exit == 0
+            and text.startswith("agent-handoff ok: format=appgen.agent-handoff-report.v1")
+            and "agent-handoff openai_codex launcher=codex backends=ollama" in text
+            and "compact-model qwen3.5-2b backend=ollama" in text
+            and "token-budget-note " in text
+            and all(f"command {command}" in text for command in required_commands),
+        },
+    )
+    observed_case_ids = tuple(case["case"] for case in cases)
+    missing_case_ids = tuple(case_id for case_id in required_case_ids if case_id not in observed_case_ids)
+    expected_exit_codes_by_case = {case_id: 0 for case_id in required_case_ids}
+    exit_codes_by_case = {case["case"]: case["exit_code"] for case in cases}
+    missing_exit_code_cases = tuple(
+        case_id for case_id, expected in expected_exit_codes_by_case.items() if exit_codes_by_case.get(case_id) != expected
+    )
+    expected_payload_formats_by_case = {case_id: "appgen.agent-handoff-report.v1" for case_id in required_case_ids}
+    payload_formats_by_case = {case["case"]: case["format"] for case in cases}
+    missing_payload_format_cases = tuple(
+        case_id
+        for case_id, expected in expected_payload_formats_by_case.items()
+        if payload_formats_by_case.get(case_id) != expected
+    )
+    ok_cases = tuple(case["case"] for case in cases if case["ok"] is True)
+    missing_ok_cases = tuple(case_id for case_id in required_case_ids if case_id not in ok_cases)
+    semantic_model_cases = tuple(
+        case["case"] for case in cases if case["semantic_model_format"] == "appgen.semantic-model.v1"
+    )
+    missing_semantic_model_cases = tuple(
+        case_id
+        for case_id in ("all_vectors_json", "openai_ollama_json")
+        if case_id not in semantic_model_cases
+    )
+    prompt_digest_cases = tuple(
+        case["case"] for case in cases if case["prompt_digest_format"] == "appgen.compact-generation-brief.v1"
+    )
+    missing_prompt_digest_cases = tuple(
+        case_id
+        for case_id in ("all_vectors_json", "openai_ollama_json")
+        if case_id not in prompt_digest_cases
+    )
+    compact_model_cases = tuple(case["case"] for case in cases if case["compact_model_count"] >= 3)
+    missing_compact_model_cases = tuple(case_id for case_id in required_case_ids if case_id not in compact_model_cases)
+    token_budget_cases = tuple(case["case"] for case in cases if case["token_budget_note_count"] >= 1)
+    missing_token_budget_cases = tuple(case_id for case_id in required_case_ids if case_id not in token_budget_cases)
+    command_cases = tuple(case["case"] for case in cases if case["command_count"] >= len(required_commands))
+    missing_command_cases = tuple(case_id for case_id in required_case_ids if case_id not in command_cases)
+    required_text_markers = (
+        "report_format",
+        "filtered_vector",
+        "filtered_backend",
+        "compact_model",
+        "command",
+        "token_budget_note",
+    )
+    text_markers = {
+        "report_format": "format=appgen.agent-handoff-report.v1" in text,
+        "filtered_vector": "agent-handoff openai_codex launcher=codex" in text,
+        "filtered_backend": "backends=ollama" in text,
+        "compact_model": "compact-model qwen3.5-2b backend=ollama" in text,
+        "command": all(f"command {command}" in text for command in required_commands),
+        "token_budget_note": "token-budget-note " in text,
+    }
+    missing_text_markers = tuple(marker for marker in required_text_markers if not text_markers.get(marker))
+    text_json_fallback = text.lstrip().startswith("{")
+    failing_cases = tuple(case["case"] for case in cases if not case["passed"])
+    return {
+        "format": "appgen.agent-handoff-cli-audit.v1",
+        "ok": not failing_cases
+        and not missing_case_ids
+        and not missing_exit_code_cases
+        and not missing_payload_format_cases
+        and not missing_ok_cases
+        and not missing_required_vectors
+        and not missing_required_backends
+        and not missing_semantic_model_cases
+        and not missing_prompt_digest_cases
+        and not missing_compact_model_cases
+        and not missing_token_budget_cases
+        and not missing_command_cases
+        and not missing_text_markers
+        and not text_json_fallback,
+        "case_count": len(cases),
+        "passing_case_count": sum(1 for case in cases if case["passed"]),
+        "failing_case_count": len(failing_cases),
+        "failing_cases": failing_cases,
+        "case_ids": observed_case_ids,
+        "required_case_ids": required_case_ids,
+        "observed_case_ids": observed_case_ids,
+        "missing_case_count": len(missing_case_ids),
+        "missing_case_ids": missing_case_ids,
+        "expected_exit_codes_by_case": expected_exit_codes_by_case,
+        "exit_codes_by_case": exit_codes_by_case,
+        "missing_exit_code_case_count": len(missing_exit_code_cases),
+        "missing_exit_code_cases": missing_exit_code_cases,
+        "expected_payload_formats_by_case": expected_payload_formats_by_case,
+        "payload_formats_by_case": payload_formats_by_case,
+        "missing_payload_format_case_count": len(missing_payload_format_cases),
+        "missing_payload_format_cases": missing_payload_format_cases,
+        "ok_cases": ok_cases,
+        "missing_ok_case_count": len(missing_ok_cases),
+        "missing_ok_cases": missing_ok_cases,
+        "required_vectors": required_vectors,
+        "observed_vectors": observed_vectors,
+        "missing_required_vector_count": len(missing_required_vectors),
+        "missing_required_vectors": missing_required_vectors,
+        "required_backends": required_backends,
+        "observed_backends": observed_backends,
+        "missing_required_backend_count": len(missing_required_backends),
+        "missing_required_backends": missing_required_backends,
+        "semantic_model_cases": semantic_model_cases,
+        "missing_semantic_model_case_count": len(missing_semantic_model_cases),
+        "missing_semantic_model_cases": missing_semantic_model_cases,
+        "prompt_digest_cases": prompt_digest_cases,
+        "missing_prompt_digest_case_count": len(missing_prompt_digest_cases),
+        "missing_prompt_digest_cases": missing_prompt_digest_cases,
+        "compact_model_cases": compact_model_cases,
+        "missing_compact_model_case_count": len(missing_compact_model_cases),
+        "missing_compact_model_cases": missing_compact_model_cases,
+        "token_budget_cases": token_budget_cases,
+        "missing_token_budget_case_count": len(missing_token_budget_cases),
+        "missing_token_budget_cases": missing_token_budget_cases,
+        "required_commands": required_commands,
+        "command_cases": command_cases,
+        "missing_command_case_count": len(missing_command_cases),
+        "missing_command_cases": missing_command_cases,
+        "required_text_markers": required_text_markers,
+        "text_markers": text_markers,
+        "missing_text_marker_count": len(missing_text_markers),
+        "missing_text_markers": missing_text_markers,
+        "text_json_fallback": text_json_fallback,
+        "text_line_count": len(text_lines),
+        "text_prefix": text_lines[0] if text_lines else "",
+        "cases": cases,
     }
 
 
