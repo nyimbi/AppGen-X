@@ -7,6 +7,8 @@ import json
 import math
 import re
 
+from .dam_control import DAM_CONTROL_CAPABILITIES, improve1_dam_control_contract
+
 
 DAM_CORE_REQUIRED_EVENT_TOPIC = "appgen.dam.events"
 DAM_CORE_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
@@ -254,6 +256,7 @@ def dam_core_runtime_capabilities() -> dict:
         "implementation_directory": "src/pyAppGen/pbcs/dam_core",
         "owned_tables": DAM_CORE_OWNED_TABLES,
         "capabilities": DAM_CORE_RUNTIME_CAPABILITY_KEYS,
+        "improve1_dam_control_capabilities": tuple(capability.slug for capability in DAM_CONTROL_CAPABILITIES),
         "standard_features": DAM_CORE_STANDARD_FEATURE_KEYS,
         "operations": (
             "configure_runtime",
@@ -288,6 +291,7 @@ def dam_core_runtime_capabilities() -> dict:
             "permissions_contract",
             "build_workbench_view",
             "verify_owned_table_boundary",
+            "improve1_dam_control_contract",
         ),
         "smoke": smoke,
     }
@@ -636,6 +640,7 @@ def dam_core_runtime_smoke() -> dict:
     release = dam_core_build_release_evidence()
     policy = dam_core_screen_dynamic_policy(state, "asset_100", market="US", mime_type="image/jpeg")
     workbench = dam_core_build_workbench_view(state, tenant="tenant_alpha")
+    dam_control = improve1_dam_control_contract()
 
     checks = (
         {"id": "event_sourced_asset_lifecycle", "ok": len(state["events"]) >= 18 and state["events"][-1]["hash"]},
@@ -672,9 +677,10 @@ def dam_core_runtime_smoke() -> dict:
         {"id": "rule_engine", "ok": state["rules"]["rule_dam_default"]["compiled_hash"]},
         {"id": "seed_data", "ok": "rendition_profiles" in state["seed_data"]},
         {"id": "workbench_ui", "ok": workbench["asset_count"] >= 2 and workbench["rendition_count"] == 1 and release["ok"]},
+        {"id": "improve1_dam_control_contract", "ok": dam_control["ok"]},
     )
     blocking_gaps = tuple(check for check in checks if not check["ok"])
-    return {"format": "appgen.dam-core-runtime-smoke.v1", "ok": not blocking_gaps, "checks": checks, "blocking_gaps": blocking_gaps}
+    return {"format": "appgen.dam-core-runtime-smoke.v1", "ok": not blocking_gaps, "checks": checks, "blocking_gaps": blocking_gaps, "checks_by_id": {check["id"]: check["ok"] for check in checks}, "dam_control": dam_control}
 
 
 def dam_core_empty_state() -> dict:
@@ -1649,6 +1655,7 @@ def dam_core_build_release_evidence() -> dict:
     service = dam_core_build_service_contract()
     api = dam_core_build_api_contract()
     permissions = dam_core_permissions_contract()
+    dam_control = improve1_dam_control_contract()
     checks = (
         {"id": "owned_schema_depth", "ok": len(schema["owned_tables"]) >= 45},
         {"id": "migration_per_owned_table", "ok": len(schema["migrations"]) == len(schema["owned_tables"])},
@@ -1659,6 +1666,7 @@ def dam_core_build_release_evidence() -> dict:
         {"id": "permissions_cover_release_queries", "ok": {"build_schema_contract", "build_service_contract", "build_release_evidence"} <= set(permissions)},
         {"id": "runtime_event_tables_owned", "ok": set(DAM_CORE_RUNTIME_TABLES) <= set(schema["owned_tables"])},
         {"id": "no_shared_table_access", "ok": not schema["shared_table_access"] and not service["shared_table_access"] and not api["shared_table_access"]},
+        {"id": "dam_improve1_controls", "ok": dam_control["ok"]},
     )
     blocking = tuple(check for check in checks if not check["ok"])
     return {
@@ -1671,6 +1679,7 @@ def dam_core_build_release_evidence() -> dict:
         "service": service,
         "api": api,
         "permissions": permissions,
+        "dam_improve1_controls": dam_control,
     }
 
 

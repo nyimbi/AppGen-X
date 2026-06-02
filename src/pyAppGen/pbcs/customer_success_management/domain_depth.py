@@ -4,10 +4,11 @@ import hashlib
 
 PBC_KEY = 'customer_success_management'
 DOMAIN_ENTITY = 'customer account'
-DOMAIN_PURPOSE = 'Owns customer success accounts, onboarding, adoption, health, playbooks, tasks, escalations, renewals, expansions, executive reviews, and churn-risk intelligence.'
+DOMAIN_PURPOSE = 'Owns customer success accounts, onboarding, touchpoints, adoption, health, playbooks, tasks, escalations, renewals, expansions, executive reviews, and churn-risk intelligence.'
 DOMAIN_OWNED_TABLES = ('customer_success_management_customer_success_account',
  'customer_success_management_success_plan',
  'customer_success_management_onboarding_milestone',
+ 'customer_success_management_customer_touchpoint',
  'customer_success_management_adoption_signal',
  'customer_success_management_health_score',
  'customer_success_management_health_score_component',
@@ -29,6 +30,7 @@ DOMAIN_OWNED_TABLES = ('customer_success_management_customer_success_account',
 DOMAIN_OPERATIONS = ('create_success_account',
  'create_success_plan',
  'track_onboarding_milestone',
+ 'record_touchpoint',
  'ingest_adoption_signal',
  'calculate_health_score',
  'explain_health_component',
@@ -57,6 +59,7 @@ DOMAIN_PARAMETERS = ('churn_risk_threshold',
  'playbook_task_sla_hours',
  'workbench_limit')
 DOMAIN_EVENTS = ('SuccessAccountCreated',
+ 'CustomerTouchpointLogged',
  'HealthScoreChanged',
  'PlaybookLaunched',
  'CustomerEscalationOpened',
@@ -70,6 +73,7 @@ DOMAIN_ADVANCED_CAPABILITIES = ('causal health scoring',
  'value realization forecasting',
  'customer journey graph intelligence')
 DOMAIN_WORKBENCH_VIEWS = ('customer success workbench',
+ 'touchpoint timeline',
  'health cockpit',
  'onboarding tracker',
  'playbook board',

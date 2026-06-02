@@ -1134,3 +1134,29 @@ def _class_name(table: str) -> str:
 
 def _digest(value: object) -> str:
     return hashlib.sha3_256(json.dumps(value, sort_keys=True, default=str).encode("utf-8")).hexdigest()
+
+# Improve1 MRP engine control extension.
+from .mrp_engine_control import improve1_mrp_engine_control_contract, evaluate_mrp_engine_control
+
+_MRP_ENGINE_BASE_RUNTIME_CAPABILITIES = mrp_engine_runtime_capabilities
+_MRP_ENGINE_BASE_BUILD_RELEASE_EVIDENCE = mrp_engine_build_release_evidence
+
+
+def mrp_engine_runtime_capabilities():
+    runtime = dict(_MRP_ENGINE_BASE_RUNTIME_CAPABILITIES())
+    control = improve1_mrp_engine_control_contract()
+    runtime["ok"] = bool(runtime.get("ok")) and control["ok"]
+    runtime["mrp_engine_control"] = control
+    runtime["operations"] = tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + ("evaluate_mrp_engine_control", "improve1_mrp_engine_control_contract")))
+    runtime["improve1_control_owned_tables"] = control["owned_tables"]
+    return runtime
+
+
+def mrp_engine_build_release_evidence():
+    evidence = dict(_MRP_ENGINE_BASE_BUILD_RELEASE_EVIDENCE())
+    control = improve1_mrp_engine_control_contract()
+    artifacts = dict(evidence.get("generated_artifacts", {}))
+    artifacts["mrp_engine_control"] = {"contract": control["format"], "capability_count": control["capability_count"], "owned_tables": control["owned_tables"], "service_apis": tuple(item["evidence"]["service_api"] for item in control["capabilities"]), "ui_surfaces": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]), "test": "tests/test_domain_behavior.py"}
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_mrp_engine_control", "ok": control["ok"]},)
+    evidence.update({"ok": bool(evidence.get("ok")) and control["ok"], "checks": checks, "generated_artifacts": artifacts, "mrp_engine_control": control, "blocking_gaps": tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ()))})
+    return evidence

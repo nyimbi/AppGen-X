@@ -143,3 +143,45 @@ def smoke_test():
         'dispatch': dispatched,
         'side_effects': (),
     }
+
+
+
+STANDALONE_ROUTES = (
+    {'method':'POST','path':'/app/returns-reverse-logistics/demo-workspace','handler':'seed_demo_workspace','permission':'returns_reverse_logistics.configure'},
+    {'method':'GET','path':'/app/returns-reverse-logistics/workbench','handler':'build_workbench','permission':'returns_reverse_logistics.audit'},
+    {'method':'POST','path':'/app/returns-reverse-logistics/returns','handler':'authorize_return','permission':'returns_reverse_logistics.authorize'},
+    {'method':'POST','path':'/app/returns-reverse-logistics/labels','handler':'create_return_label','permission':'returns_reverse_logistics.label'},
+    {'method':'POST','path':'/app/returns-reverse-logistics/receipts','handler':'record_return_receipt','permission':'returns_reverse_logistics.inspect'},
+    {'method':'POST','path':'/app/returns-reverse-logistics/inspections','handler':'record_inspection_grade','permission':'returns_reverse_logistics.inspect'},
+    {'method':'POST','path':'/app/returns-reverse-logistics/credits','handler':'issue_credit_adjustment','permission':'returns_reverse_logistics.adjust'},
+    {'method':'POST','path':'/app/returns-reverse-logistics/proofs','handler':'generate_return_proof','permission':'returns_reverse_logistics.audit'},
+    {'method':'POST','path':'/app/returns-reverse-logistics/assistant/sessions','handler':'run_agent_skill','permission':'returns_reverse_logistics.audit'},
+)
+
+def standalone_route_contracts():
+    from .services import standalone_service_operation_contracts
+    indexed={i['operation']:i for i in standalone_service_operation_contracts()['contracts']}
+    contracts=tuple({**r,'operation':r['handler'],'service_operation':indexed[r['handler']],'owned_tables':indexed[r['handler']]['owned_tables'],'read_tables':indexed[r['handler']]['read_tables'],'emitted_event':indexed[r['handler']]['emitted_event'],'event_contract':'AppGen-X','stream_engine_picker_visible':False,'shared_table_access':False,'route_id':f"{r['method']} {r['path']}"} for r in STANDALONE_ROUTES)
+    return {'format':'appgen.returns-reverse-logistics-standalone-routes.v1','ok':bool(contracts) and all(i['event_contract']=='AppGen-X' for i in contracts) and all(i['shared_table_access'] is False for i in contracts),'pbc':'returns_reverse_logistics','routes':tuple(i['route_id'] for i in contracts),'contracts':contracts,'side_effects':()}
+
+def dispatch_standalone_route(method,path,payload=None,*,service=None):
+    from .services import ReturnsReverseLogisticsStandaloneService
+    route=next((i for i in STANDALONE_ROUTES if i['method']==method and i['path']==path),None)
+    if route is None: return {'ok':False,'handled':False,'reason':'route_not_found','side_effects':()}
+    owned=service is None
+    if service is None: service=ReturnsReverseLogisticsStandaloneService()
+    p=dict(payload or {})
+    try:
+        h=route['handler']
+        if h=='seed_demo_workspace': result=service.seed_demo_workspace(tenant=p.get('tenant','tenant_demo'))
+        elif h=='build_workbench': result=service.build_workbench(tenant=p.get('tenant','tenant_demo'))
+        elif h=='authorize_return': result=service.authorize_return(p,tenant=p.get('tenant','tenant_demo'))
+        elif h=='create_return_label': result=service.create_return_label(p,tenant=p.get('tenant','tenant_demo'))
+        elif h=='record_return_receipt': result=service.record_return_receipt(p,tenant=p.get('tenant','tenant_demo'))
+        elif h=='record_inspection_grade': result=service.record_inspection_grade(p,tenant=p.get('tenant','tenant_demo'))
+        elif h=='issue_credit_adjustment': result=service.issue_credit_adjustment(p,tenant=p.get('tenant','tenant_demo'))
+        elif h=='generate_return_proof': result=service.generate_return_proof(p['return_id'],p.get('disclosure',('return_id','order_id','status')),tenant=p.get('tenant','tenant_demo'))
+        else: result=service.run_agent_skill(p,tenant=p.get('tenant','tenant_demo'))
+        return {'ok':result.get('ok') is True,'handled':True,'route':route,'result':result,'side_effects':()}
+    finally:
+        if owned: service.close()

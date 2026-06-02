@@ -340,3 +340,17 @@ def smoke_test():
         "cards": cards,
         "side_effects": (),
     }
+
+
+
+def payment_orchestration_standalone_workbench_blueprint():
+    from .forms import payment_orchestration_form_catalog
+    from .wizards import payment_orchestration_wizard_catalog
+    from .controls import payment_orchestration_control_catalog
+    contract=payment_orchestration_ui_contract(); forms=payment_orchestration_form_catalog(); wizards=payment_orchestration_wizard_catalog(); controls=payment_orchestration_control_catalog()
+    return {'format':'appgen.payment-orchestration-standalone-workbench.v1','ok':contract['ok'] and forms['ok'] and wizards['ok'] and controls['ok'],'pbc':'payment_orchestration','route':'/app/payment-orchestration/workbench','navigation':('intents','gateways','tokens','fraud','capture_settlement','payouts','refunds_disputes','assistant','controls'),'forms':forms['forms'],'wizards':wizards['wizards'],'controls':controls['controls'],'source_ui_contract':contract,'side_effects':()}
+
+def payment_orchestration_render_standalone_workbench(workbench):
+    blueprint=payment_orchestration_standalone_workbench_blueprint()
+    cards=({'key':'intents','value':int(workbench.get('intent_count',0)),'fragment':'PaymentIntentConsole'},{'key':'captured','value':int(workbench.get('captured_count',0)),'fragment':'CaptureRefundConsole'},{'key':'settlements','value':int(workbench.get('settlement_count',0)),'fragment':'SettlementEvidencePanel'},{'key':'payouts','value':int(workbench.get('payout_count',0)),'fragment':'PayoutSchedulingPanel'},{'key':'refunds','value':int(workbench.get('refund_count',0)),'fragment':'CaptureRefundConsole'},{'key':'disputes','value':int(workbench.get('dispute_count',0)),'fragment':'DisputeResolutionDesk'})
+    return {'format':'appgen.payment-orchestration-standalone-render.v1','ok':blueprint['ok'] and any(card['value'] for card in cards),'pbc':'payment_orchestration','tenant':workbench.get('tenant'),'route':blueprint['route'],'cards':cards,'activity_counts':dict(workbench.get('activity_counts',{})),'forms_visible':tuple(f['form_id'] for f in blueprint['forms']),'wizards_visible':tuple(w['wizard_id'] for w in blueprint['wizards']),'controls_visible':tuple(c['control_id'] for c in blueprint['controls']),'agent_entrypoint':'/app/payment-orchestration/assistant/sessions','side_effects':()}

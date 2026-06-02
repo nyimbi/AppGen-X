@@ -107,3 +107,27 @@ def smoke_test():
         'evidence': evidence,
         'side_effects': (),
     }
+
+
+
+def _standalone_documentation_evidence():
+    base = Path(__file__).resolve().parent
+    required = ("README.md", "SPECIFICATION.md", "RELEASE_EVIDENCE.md", "repository.py", "standalone.py")
+    docs = tuple({"path": name, "exists": (base / name).exists()} for name in required)
+    return {"ok": all(item["exists"] for item in docs), "docs": docs, "side_effects": ()}
+
+
+_original_global_inventory_visibility_build_release_evidence = build_release_evidence
+
+
+def build_release_evidence():
+    """Return release evidence including standalone one-PBC execution proof."""
+    evidence = dict(_original_global_inventory_visibility_build_release_evidence())
+    from . import standalone
+    from .repository import standalone_repository_smoke_test
+
+    evidence["documentation"] = _standalone_documentation_evidence()
+    evidence["standalone_app"] = standalone.global_inventory_visibility_standalone_app_smoke()
+    evidence["standalone_repository"] = standalone_repository_smoke_test()
+    evidence["ok"] = evidence.get("ok") is True and evidence["documentation"]["ok"] and evidence["standalone_app"]["ok"] and evidence["standalone_repository"]["ok"]
+    return evidence

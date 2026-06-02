@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 from .runtime import predictive_demand_build_api_contract
+from .app_surface import predictive_demand_controls_contract
+from .app_surface import predictive_demand_forms_contract
+from .app_surface import predictive_demand_wizards_contract
+from .app_surface import single_pbc_predictive_demand_app_contract
 from .services import PredictiveDemandService
 from .services import service_operation_contracts
 
@@ -51,6 +55,32 @@ ROUTES = tuple(_route_to_route(route) for route in predictive_demand_build_api_c
 API_ROUTE_CONTRACTS = tuple(
     _route_to_contract(route) for route in predictive_demand_build_api_contract()["routes"]
 )
+
+STANDALONE_APP_ROUTES = (
+    {"method": "GET", "path": "/api/pbc/predictive_demand/app-shell", "handler": "single_pbc_predictive_demand_app_contract", "permission": "predictive_demand.audit", "read_tables": single_pbc_predictive_demand_app_contract()["owned_tables"]},
+    {"method": "GET", "path": "/api/pbc/predictive_demand/forms", "handler": "predictive_demand_forms_contract", "permission": "predictive_demand.audit", "read_tables": tuple(form["writes_table"] for form in predictive_demand_forms_contract()["forms"])},
+    {"method": "GET", "path": "/api/pbc/predictive_demand/wizards", "handler": "predictive_demand_wizards_contract", "permission": "predictive_demand.audit", "read_tables": ()},
+    {"method": "GET", "path": "/api/pbc/predictive_demand/controls", "handler": "predictive_demand_controls_contract", "permission": "predictive_demand.audit", "read_tables": tuple(table for control in predictive_demand_controls_contract()["controls"] for table in control["table_scope"])},
+)
+
+
+def standalone_app_route_contracts() -> dict:
+    """Return route contracts for the standalone one-PBC predictive demand app shell."""
+    contracts = tuple(
+        {
+            **route,
+            "route_id": f"{route['method']} {route['path']}",
+            "operation_kind": "query",
+            "event_contract": "AppGen-X",
+            "transaction_boundary": "owned_datastore_read_only",
+            "stream_engine_picker_visible": False,
+            "shared_table_access": False,
+            "side_effects": (),
+        }
+        for route in STANDALONE_APP_ROUTES
+    )
+    invalid_tables = tuple(table for route in contracts for table in route["read_tables"] if not table.startswith(f"{PBC_KEY}_"))
+    return {"ok": bool(contracts) and not invalid_tables, "pbc": PBC_KEY, "contracts": contracts, "routes": tuple(item["route_id"] for item in contracts), "invalid_tables": invalid_tables, "side_effects": ()}
 
 
 def register_routes(app=None):
@@ -145,13 +175,15 @@ def dispatch_route(method: str, path: str, payload: dict | None = None) -> dict:
 def smoke_test() -> dict:
     """Execute the first route and validate the API contract surface."""
     validation = validate_api_route_contracts()
+    app_routes = standalone_app_route_contracts()
     if not ROUTES:
         return {"ok": False, "reason": "no_routes"}
     first = ROUTES[0]
     dispatched = dispatch_route(first["method"], first["path"], {"smoke": True})
     return {
-        "ok": validation["ok"] and dispatched["ok"],
+        "ok": validation["ok"] and dispatched["ok"] and app_routes["ok"],
         "validation": validation,
         "dispatch": dispatched,
+        "standalone_app_routes": app_routes,
         "side_effects": (),
     }

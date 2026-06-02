@@ -27,6 +27,7 @@ from .runtime import treasury_cash_ingest_bank_statement
 from .runtime import treasury_cash_optimize_liquidity
 from .runtime import treasury_cash_permissions_contract
 from .runtime import treasury_cash_receive_event
+from .runtime import treasury_cash_run_control_tests
 from .runtime import treasury_cash_reconcile_statement
 from .runtime import treasury_cash_register_bank_account
 from .runtime import treasury_cash_register_rule

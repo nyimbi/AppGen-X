@@ -1,5 +1,7 @@
 """Agent and chatbot assistance for the field_service_management PBC."""
 PBC_KEY = 'field_service_management'
+from .app_surface import document_instruction_field_service_management_plan, single_pbc_field_service_management_app_contract
+
 OWNED_TABLES = ('field_service_management_field_work_order', 'field_service_management_dispatch_assignment', 'field_service_management_technician_profile', 'field_service_management_mobile_task', 'field_service_management_parts_usage', 'field_service_management_service_sla', 'field_service_management_service_history', 'field_service_management_customer_service_update', 'field_service_management_appgen_outbox_event', 'field_service_management_appgen_inbox_event', 'field_service_management_appgen_dead_letter_event')
 
 
@@ -13,7 +15,8 @@ def chatbot_interface_contract():
 
 
 def document_instruction_plan(document, instruction):
-    return {'ok': True, 'pbc': PBC_KEY, 'document_digest': str(abs(hash(document))), 'instruction': instruction, 'candidate_tables': OWNED_TABLES[:3], 'requires_human_confirmation': True, 'crud_preview': {'operation': 'create', 'event_contract': 'AppGen-X'}, 'side_effects': ()}
+    app_plan = document_instruction_field_service_management_plan(str(document or ''), str(instruction or ''))
+    return {'ok': True, 'pbc': PBC_KEY, 'document_digest': str(abs(hash(document))), 'instruction': instruction, 'candidate_tables': OWNED_TABLES[:3], 'proposed_operation': app_plan['proposed_operation'], 'target_table': app_plan['target_table'], 'field_service_plan': app_plan, 'requires_human_confirmation': True, 'crud_preview': {'operation': 'create', 'event_contract': 'AppGen-X'}, 'side_effects': ()}
 
 
 def datastore_crud_plan(action, table=None, payload=None):
@@ -78,4 +81,11 @@ def composed_agent_contribution():
     return {
         **base,
         'dsl_tools': tuple(dict.fromkeys(tuple(base['dsl_tools']) + tuple(f'{namespace}.{operation}' for operation in FIELD_WORKFORCE_OPERATIONS))),
+        'standalone_app': single_pbc_field_service_management_app_contract(),
     }
+
+
+def standalone_agent_smoke_test():
+    document = document_instruction_plan('where are technicians', 'optimize route')
+    contribution = composed_agent_contribution()
+    return {'ok': document['target_table'].startswith(f'{PBC_KEY}_') and contribution['ok'] and contribution['standalone_app']['ok'], 'document': document, 'contribution': contribution, 'side_effects': ()}

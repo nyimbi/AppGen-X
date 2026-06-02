@@ -11,6 +11,7 @@ from .runtime import case_knowledge_management_build_release_evidence as runtime
 from .schema_contract import validate_schema_contract
 from .service_contract import validate_service_contract
 from .ui import smoke_test as ui_smoke_test
+from .app_surface import app_surface_smoke_test, single_pbc_case_knowledge_management_app_contract
 
 
 PBC_KEY = "case_knowledge_management"
@@ -27,6 +28,8 @@ def build_release_evidence() -> dict:
         {"id": "governance_smoke", "ok": governance_smoke_test()["ok"]},
         {"id": "agent_smoke", "ok": agent_smoke_test()["ok"]},
         {"id": "ui_smoke", "ok": ui_smoke_test()["ok"]},
+        {"id": "standalone_app_surface", "ok": app_surface_smoke_test()["ok"]},
+        {"id": "standalone_forms_wizards_controls", "ok": single_pbc_case_knowledge_management_app_contract()["forms"]["ok"] and single_pbc_case_knowledge_management_app_contract()["wizards"]["ok"] and single_pbc_case_knowledge_management_app_contract()["controls"]["ok"]},
     )
     failed = tuple(check for check in checks if not check["ok"])
     return {
@@ -37,6 +40,8 @@ def build_release_evidence() -> dict:
         "blocking_gaps": failed,
         "boundary_gaps": (),
         "runtime": runtime,
+        "standalone_app": single_pbc_case_knowledge_management_app_contract(),
+        "standalone_app_smoke": app_surface_smoke_test(),
         "side_effects": (),
     }
 

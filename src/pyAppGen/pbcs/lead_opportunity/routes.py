@@ -1,6 +1,10 @@
 """API route contracts for the lead_opportunity PBC."""
 
 from .services import LeadOpportunityService, service_operation_contracts
+from .app_surface import lead_opportunity_controls_contract
+from .app_surface import lead_opportunity_forms_contract
+from .app_surface import lead_opportunity_wizards_contract
+from .app_surface import single_pbc_lead_opportunity_app_contract
 
 
 ROUTES = (
@@ -115,9 +119,58 @@ def smoke_test():
         return {'ok': False, 'reason': 'no_routes'}
     first = ROUTES[0]
     dispatched = dispatch_route(first['method'], first['path'], {'smoke': True})
+    app_routes = standalone_app_route_contracts()
     return {
-        'ok': validation['ok'] and dispatched['ok'],
+        'ok': validation['ok'] and dispatched['ok'] and app_routes['ok'],
         'validation': validation,
         'dispatch': dispatched,
+        'standalone_app_routes': app_routes,
+        'side_effects': (),
+    }
+
+
+STANDALONE_APP_ROUTES = (
+    {
+        'method': 'GET',
+        'path': '/api/pbc/lead_opportunity/app-shell',
+        'handler': 'single_pbc_lead_opportunity_app_contract',
+        'permission': 'lead_opportunity.audit',
+        'read_tables': single_pbc_lead_opportunity_app_contract()['owned_tables'],
+    },
+    {
+        'method': 'GET',
+        'path': '/api/pbc/lead_opportunity/forms',
+        'handler': 'lead_opportunity_forms_contract',
+        'permission': 'lead_opportunity.audit',
+        'read_tables': tuple(form['writes_table'] for form in lead_opportunity_forms_contract()['forms']),
+    },
+    {
+        'method': 'GET',
+        'path': '/api/pbc/lead_opportunity/wizards',
+        'handler': 'lead_opportunity_wizards_contract',
+        'permission': 'lead_opportunity.audit',
+        'read_tables': (),
+    },
+    {
+        'method': 'GET',
+        'path': '/api/pbc/lead_opportunity/controls',
+        'handler': 'lead_opportunity_controls_contract',
+        'permission': 'lead_opportunity.audit',
+        'read_tables': tuple(dict.fromkeys(table for control in lead_opportunity_controls_contract()['controls'] for table in control['table_scope'])),
+    },
+)
+
+
+def standalone_app_route_contracts():
+    """Return side-effect-free app-shell route metadata for generated apps."""
+    return {
+        'ok': all(
+            all(table.startswith('lead_opportunity_') for table in route['read_tables'])
+            for route in STANDALONE_APP_ROUTES
+        ),
+        'pbc': 'lead_opportunity',
+        'routes': STANDALONE_APP_ROUTES,
+        'event_contract': 'AppGen-X',
+        'stream_engine_picker_visible': False,
         'side_effects': (),
     }

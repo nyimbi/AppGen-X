@@ -109,3 +109,50 @@ def smoke_test():
         'dispatch': dispatched,
         'side_effects': (),
     }
+
+
+
+STANDALONE_ROUTES = (
+    {'method': 'POST', 'path': '/app/quality-assurance/demo-workspace', 'handler': 'seed_demo_workspace'},
+    {'method': 'GET', 'path': '/app/quality-assurance/workbench', 'handler': 'build_workbench'},
+    {'method': 'POST', 'path': '/app/quality-assurance/plans', 'handler': 'create_inspection_plan'},
+    {'method': 'POST', 'path': '/app/quality-assurance/results', 'handler': 'record_inspection_result'},
+    {'method': 'GET', 'path': '/app/quality-assurance/controls', 'handler': 'run_control_tests'},
+    {'method': 'POST', 'path': '/app/quality-assurance/proofs', 'handler': 'generate_quality_proof'},
+)
+
+
+def standalone_route_contracts():
+    from .services import standalone_service_operation_contracts
+    operations = {item['operation']: item for item in standalone_service_operation_contracts()['contracts']}
+    contracts = tuple({**route, 'operation': route['handler'], 'service_operation': operations.get(route['handler'])} for route in STANDALONE_ROUTES)
+    return {'format': 'appgen.quality-assurance-standalone-routes.v1', 'ok': all(item['service_operation'] for item in contracts), 'pbc': 'quality_assurance', 'routes': tuple(f"{item['method']} {item['path']}" for item in contracts), 'contracts': contracts, 'side_effects': ()}
+
+
+def dispatch_standalone_route(method, path, payload=None, *, service=None):
+    from .services import QualityAssuranceStandaloneService
+    route = next((item for item in STANDALONE_ROUTES if item['method'] == method and item['path'] == path), None)
+    if route is None:
+        return {'ok': False, 'handled': False, 'reason': 'route_not_found', 'side_effects': ()}
+    own_service = service is None
+    service = service or QualityAssuranceStandaloneService()
+    data = dict(payload or {})
+    try:
+        if route['handler'] == 'seed_demo_workspace':
+            result = service.seed_demo_workspace(tenant=data.get('tenant', 'tenant_demo'))
+        elif route['handler'] == 'build_workbench':
+            result = service.build_workbench(tenant=data.get('tenant', 'tenant_demo'))
+        elif route['handler'] == 'create_inspection_plan':
+            result = service.create_inspection_plan(data.get('tenant', 'tenant_demo'), data)
+        elif route['handler'] == 'record_inspection_result':
+            result = service.record_inspection_result(data.get('tenant', 'tenant_demo'), data)
+        elif route['handler'] == 'run_control_tests':
+            result = service.run_control_tests(tenant=data.get('tenant', 'tenant_demo'))
+        elif route['handler'] == 'generate_quality_proof':
+            result = service.generate_quality_proof(data.get('tenant', 'tenant_demo'), data['result_id'], tuple(data.get('disclosure', ('result_id', 'lot_id', 'decision'))))
+        else:
+            result = {'ok': False, 'reason': 'handler_not_implemented'}
+        return {'ok': result.get('ok') is True, 'handled': True, 'route': route, 'result': {'ok': result.get('ok') is True, 'result': result}, 'side_effects': ()}
+    finally:
+        if own_service:
+            service.close()

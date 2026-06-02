@@ -1,5 +1,7 @@
 """Package manifest for the telecom_subscription_lifecycle PBC."""
 
+PBC_LITERAL = 'telecom_subscription_lifecycle'
+
 PBC_MANIFEST = {'advanced_capabilities': ('telecom_subscription_lifecycle_event_sourced_operational_history',
                            'telecom_subscription_lifecycle_multi_tenant_policy_isolation',
                            'telecom_subscription_lifecycle_schema_evolution_resilience',
@@ -58,7 +60,11 @@ PBC_MANIFEST = {'advanced_capabilities': ('telecom_subscription_lifecycle_event_
  'datastore_backend': 'postgresql',
  'description': 'Plans, activations, SIM and eSIM lifecycle, usage, roaming, plan changes, churn '
                 'controls, and service entitlements',
- 'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md'),
+ 'docs': ('SPECIFICATION.md',
+          'RELEASE_EVIDENCE.md',
+          'README.md',
+          'implementation-plan.md',
+          'implementation-status.md'),
  'emits': ('TelecomSubscriptionLifecycleCreated',
            'TelecomSubscriptionLifecycleUpdated',
            'TelecomSubscriptionLifecycleApproved',
@@ -104,10 +110,16 @@ PBC_MANIFEST = {'advanced_capabilities': ('telecom_subscription_lifecycle_event_
             'telecom_subscription_lifecycle_control_assertion',
             'telecom_subscription_lifecycle_governed_model'),
  'template': 'sales',
- 'tests': ('tests/test_contract.py',),
+ 'tests': ('tests/test_contract.py', 'tests/test_standalone.py'),
  'ui_fragments': ('TelecomSubscriptionLifecycleWorkbench',
                   'TelecomSubscriptionLifecycleDetail',
-                  'TelecomSubscriptionLifecycleAssistantPanel'),
+                  'TelecomSubscriptionLifecycleAssistantPanel',
+                  'SubscriptionAggregateForm',
+                  'NewActivationWizard',
+                  'EsimInstallWizard',
+                  'PortabilityCaseWizard',
+                  'RoamingShockProtectionWizard',
+                  'RetentionSaveWizard'),
  'version': '1.0.0',
  'workflows': ('telecom_subscription_lifecycle_create_subscriber_account_workflow',
                'telecom_subscription_lifecycle_record_service_plan_workflow')}

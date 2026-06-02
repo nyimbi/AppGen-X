@@ -1,4 +1,7 @@
-from .runtime import public_safety_dispatch_build_schema_contract
+from __future__ import annotations
+
+from .standalone import build_schema_contract
+
 
 def model_contracts():
-    return public_safety_dispatch_build_schema_contract()['models']
+    return build_schema_contract()["models"]

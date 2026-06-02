@@ -51,8 +51,14 @@ from .runtime import order_routing_optimization_model_stochastic_exposure
 from .runtime import order_routing_optimization_upsert_route_candidate
 from .runtime import order_routing_optimization_verify_owned_table_boundary
 from .ui import ORDER_ROUTING_OPTIMIZATION_UI_FRAGMENT_KEYS
+from .ui import order_routing_optimization_controls_contract
+from .ui import order_routing_optimization_forms_contract
 from .ui import order_routing_optimization_render_workbench
 from .ui import order_routing_optimization_ui_contract
+from .ui import order_routing_optimization_wizards_contract
+from .app_surface import app_surface_smoke_test
+from .app_surface import document_instruction_routing_plan
+from .app_surface import single_pbc_routing_app_contract
 
 PBC_KEY = "order_routing_optimization"
 
@@ -75,6 +81,8 @@ def implementation_contract() -> dict:
         "emits": ORDER_ROUTING_OPTIMIZATION_EMITTED_EVENT_TYPES,
         "advanced_runtime": runtime,
         "ui_contract": order_routing_optimization_ui_contract(),
+        "single_pbc_app": single_pbc_routing_app_contract(),
+        "app_surface_smoke": app_surface_smoke_test(),
     }
 
 

@@ -107,3 +107,23 @@ def smoke_test():
         'evidence': evidence,
         'side_effects': (),
     }
+
+
+
+_BASE_BUILD_RELEASE_EVIDENCE = build_release_evidence
+
+def _standalone_documentation_evidence():
+    package_dir=Path(__file__).parent
+    artifacts={name: package_dir.joinpath(name).exists() for name in ('SPECIFICATION.md','RELEASE_EVIDENCE.md','repository.py','standalone.py','forms.py','wizards.py','controls.py')}
+    return {'ok':all(artifacts.values()),'pbc':'returns_reverse_logistics','artifacts':artifacts,'side_effects':()}
+
+def build_release_evidence():
+    evidence=_BASE_BUILD_RELEASE_EVIDENCE()
+    from . import forms, wizards, controls, standalone
+    from .repository import standalone_repository_contract
+    from .services import standalone_service_operation_contracts
+    from .routes import standalone_route_contracts
+    standalone_app=standalone.returns_reverse_logistics_standalone_app_contract(); docs=_standalone_documentation_evidence()
+    return {**evidence,'ok':evidence.get('ok') is True and standalone_app['ok'] and docs['ok'],'forms':forms.returns_reverse_logistics_form_catalog(),'wizards':wizards.returns_reverse_logistics_wizard_catalog(),'controls':controls.returns_reverse_logistics_control_catalog(),'standalone_app':standalone_app,'standalone_repository':standalone_repository_contract(),'standalone_services':standalone_service_operation_contracts(),'standalone_routes':standalone_route_contracts(),'documentation':docs,'docs_present':docs['artifacts']}
+
+RELEASE_EVIDENCE = build_release_evidence()

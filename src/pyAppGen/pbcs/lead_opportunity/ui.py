@@ -6,6 +6,7 @@ from .runtime import LEAD_OPPORTUNITY_ALLOWED_DATABASE_BACKENDS
 from .runtime import LEAD_OPPORTUNITY_REQUIRED_EVENT_TOPIC
 from .runtime import LEAD_OPPORTUNITY_OWNED_TABLES
 from .runtime import LEAD_OPPORTUNITY_RUNTIME_TABLES
+from .app_surface import single_pbc_lead_opportunity_app_contract
 
 
 LEAD_OPPORTUNITY_UI_FRAGMENT_KEYS = (
@@ -32,6 +33,27 @@ LEAD_OPPORTUNITY_UI_FRAGMENT_KEYS = (
 )
 
 
+def lead_opportunity_forms_contract() -> dict:
+    """Return standalone database-backed form metadata for generated apps."""
+    from .app_surface import lead_opportunity_forms_contract as _forms
+
+    return _forms()
+
+
+def lead_opportunity_wizards_contract() -> dict:
+    """Return standalone guided workflow metadata for generated apps."""
+    from .app_surface import lead_opportunity_wizards_contract as _wizards
+
+    return _wizards()
+
+
+def lead_opportunity_controls_contract() -> dict:
+    """Return standalone control metadata for generated apps."""
+    from .app_surface import lead_opportunity_controls_contract as _controls
+
+    return _controls()
+
+
 def lead_opportunity_ui_contract() -> dict:
     return {
         "format": "appgen.lead-opportunity-ui-contract.v1",
@@ -39,6 +61,10 @@ def lead_opportunity_ui_contract() -> dict:
         "pbc": "lead_opportunity",
         "implementation_directory": "src/pyAppGen/pbcs/lead_opportunity",
         "fragments": LEAD_OPPORTUNITY_UI_FRAGMENT_KEYS,
+        "forms": lead_opportunity_forms_contract()["forms"],
+        "wizards": lead_opportunity_wizards_contract()["wizards"],
+        "controls": lead_opportunity_controls_contract()["controls"],
+        "single_pbc_app": single_pbc_lead_opportunity_app_contract(),
         "routes": (
             "/workbench/pbcs/lead_opportunity",
             "/workbench/pbcs/lead_opportunity/leads",
@@ -134,6 +160,10 @@ def lead_opportunity_render_workbench(state: dict, *, tenant: str, principal_per
         "route": "/workbench/pbcs/lead_opportunity",
         "fragments": contract["fragments"],
         "cards": cards,
+        "forms": contract["forms"],
+        "wizards": contract["wizards"],
+        "controls": contract["controls"],
+        "single_pbc_app": contract["single_pbc_app"],
         "visible_actions": visible_actions,
         "locked_actions": tuple(action for action in action_permissions if action not in visible_actions),
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
@@ -232,6 +262,10 @@ def smoke_test():
         and bool(contract.get("fragments"))
         and bool(contract.get("routes"))
         and bool(cards)
+        and bool(contract.get("forms"))
+        and bool(contract.get("wizards"))
+        and bool(contract.get("controls"))
+        and contract.get("single_pbc_app", {}).get("ok") is True
         and bool(contract.get("action_permissions"))
         and bool(configuration_editor)
         and configuration_editor.get("stream_engine_picker_visible", configuration_editor.get("user_facing_stream_engine_picker", False)) is False
@@ -248,3 +282,38 @@ def smoke_test():
         "cards": cards,
         "side_effects": (),
     }
+
+
+# Improve1 lead control UI extension.
+from .lead_control import improve1_lead_control_contract as _improve1_lead_control_contract
+
+_LEAD_OPPORTUNITY_BASE_UI_CONTRACT = lead_opportunity_ui_contract
+_LEAD_OPPORTUNITY_BASE_RENDER_WORKBENCH = lead_opportunity_render_workbench
+
+
+def lead_opportunity_ui_contract() -> dict:
+    ui = dict(_LEAD_OPPORTUNITY_BASE_UI_CONTRACT())
+    lead_control = _improve1_lead_control_contract()
+    panels = tuple(item["evidence"]["ui_surface"] for item in lead_control["capabilities"])
+    service_actions = tuple(item["evidence"]["service_api"] for item in lead_control["capabilities"])
+    ui.update({
+        "ok": ui.get("ok") is True and lead_control["ok"],
+        "lead_control_contract": lead_control,
+        "lead_control_panels": panels,
+        "lead_control_service_actions": service_actions,
+        "stream_engine_picker_visible": False,
+    })
+    ui["binding_evidence"] = dict(ui.get("binding_evidence", {}), lead_control_tables=lead_control["owned_tables"], shared_table_access=False)
+    return ui
+
+
+def lead_opportunity_render_workbench(state: dict, *, tenant: str, principal_permissions: tuple[str, ...]) -> dict:
+    workbench = dict(_LEAD_OPPORTUNITY_BASE_RENDER_WORKBENCH(state, tenant=tenant, principal_permissions=principal_permissions))
+    lead_control = _improve1_lead_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and lead_control["ok"],
+        "lead_control_panels": tuple(item["evidence"]["ui_surface"] for item in lead_control["capabilities"]),
+        "lead_control_service_actions": tuple(item["evidence"]["service_api"] for item in lead_control["capabilities"]),
+        "lead_control_agent_tools": tuple(f"lead_opportunity.skills.{item['slug']}" for item in lead_control["capabilities"]),
+    })
+    return workbench

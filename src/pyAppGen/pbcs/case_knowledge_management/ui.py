@@ -7,6 +7,7 @@ from .domain_depth import WORKBENCH_CONTROLS
 from .domain_depth import WORKBENCH_FORMS
 from .domain_depth import WORKBENCH_WIZARDS
 from .domain_depth import ui_capability_surface_contract
+from .support_control import CASE_KNOWLEDGE_CAPABILITIES, improve1_support_control_contract
 
 
 PBC_KEY = "case_knowledge_management"
@@ -40,7 +41,9 @@ def case_knowledge_management_ui_contract() -> dict:
         "operation_actions": full["operation_actions"],
         "rule_editors": full["rule_editors"],
         "parameter_editors": full["parameter_editors"],
-        "advanced_panels": full["advanced_panels"],
+        "advanced_panels": full["advanced_panels"] + CASE_KNOWLEDGE_CAPABILITIES,
+        "support_control_panels": tuple(f"support_control_{capability}" for capability in CASE_KNOWLEDGE_CAPABILITIES),
+        "support_control_contract": improve1_support_control_contract(),
         "table_browsers": full["table_browsers"],
         "navigation_sections": full["navigation_sections"],
         "side_effects": (),
@@ -63,7 +66,9 @@ def case_knowledge_management_render_workbench(state: dict | None = None) -> dic
         "records": overview["records"],
         "metrics": overview["metrics"],
         "operation_actions": full["operation_actions"],
-        "advanced_panels": full["advanced_panels"],
+        "advanced_panels": full["advanced_panels"] + CASE_KNOWLEDGE_CAPABILITIES,
+        "support_control_panels": tuple(f"support_control_{capability}" for capability in CASE_KNOWLEDGE_CAPABILITIES),
+        "support_control_contract": improve1_support_control_contract(),
         "table_browsers": full["table_browsers"],
         "side_effects": (),
     }
@@ -74,3 +79,33 @@ def smoke_test() -> dict:
         "ok": case_knowledge_management_ui_contract()["ok"] and case_knowledge_management_render_workbench()["ok"],
         "side_effects": (),
     }
+
+
+from .app_surface import (
+    case_knowledge_management_controls_contract,
+    case_knowledge_management_forms_contract,
+    case_knowledge_management_wizards_contract,
+    single_pbc_case_knowledge_management_app_contract,
+)
+
+_BASE_CASE_KNOWLEDGE_MANAGEMENT_UI_CONTRACT = case_knowledge_management_ui_contract
+_BASE_CASE_KNOWLEDGE_MANAGEMENT_RENDER_WORKBENCH = case_knowledge_management_render_workbench
+
+def case_knowledge_management_ui_contract() -> dict:
+    base = dict(_BASE_CASE_KNOWLEDGE_MANAGEMENT_UI_CONTRACT())
+    return {
+        **base,
+        'forms_contract': case_knowledge_management_forms_contract(),
+        'wizards_contract': case_knowledge_management_wizards_contract(),
+        'controls_contract': case_knowledge_management_controls_contract(),
+        'single_pbc_app': single_pbc_case_knowledge_management_app_contract(),
+    }
+
+def case_knowledge_management_render_workbench(state: dict | None = None) -> dict:
+    base = dict(_BASE_CASE_KNOWLEDGE_MANAGEMENT_RENDER_WORKBENCH(state=state))
+    return {**base, 'single_pbc_app': single_pbc_case_knowledge_management_app_contract(state=state)}
+
+def smoke_test() -> dict:
+    contract = case_knowledge_management_ui_contract()
+    workbench = case_knowledge_management_render_workbench()
+    return {'ok': contract['ok'] and workbench['ok'] and contract['single_pbc_app']['ok'], 'contract': contract, 'workbench': workbench, 'side_effects': ()}

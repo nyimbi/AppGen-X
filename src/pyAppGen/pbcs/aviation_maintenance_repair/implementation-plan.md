@@ -2,37 +2,44 @@
 
 ## Selected Slice
 
-Implement executable maintenance release governance for
-`aviation_maintenance_repair`, using the backlog areas around work-card
-signoff, component life/traceability, tooling and consumables, deferred
-defects, technician authorization, and release-to-service packs.
+Implement a standalone `aviation_maintenance_repair` release-planning slice that
+stays fully package-local and makes one end-to-end maintenance release workflow
+executable inside the PBC.
 
-## Code Plan
+The slice covers:
 
-- Add a pure `maintenance_release.py` module that evaluates:
-  - component installation eligibility from remaining life, release documents,
-    quarantine state, and effectivity;
-  - work-card closeout from required signatures, duplicate inspection,
-    technician authorizations, tooling calibration, consumable shelf life, and
-    open non-routine links;
-  - release-to-service pack readiness from closed work cards, deferred defect
-    expiry, airworthiness directive compliance, component eligibility, and
-    human certifier evidence.
-- Wire the release pack into `runtime.py` with package-local state,
-  `aviation_maintenance_repair_assess_release_to_service`, workbench
-  projections, service contract exposure, runtime smoke, and release evidence.
-- Expose the release pack in `services.py`, `ui.py`, and `agent.py` without
-  introducing shared-table access or stream-engine selection.
-- Add focused tests proving accepted and blocked release packs, component
-  lockout, work-card signoff governance, UI/service/agent exposure, and release
-  evidence.
+- aircraft, component, work-card, deferred-defect, and AD record intake;
+- release-to-service assessment with human certifier guardrails;
+- package-local workflow contracts, forms, wizards, and controls;
+- governed document-instruction planning for CRUD previews;
+- AppGen-X event/handler, permissions, and release-evidence coverage.
 
-## Review Criteria
+## File-Level Plan
 
-- All new functions are deterministic and side-effect-free except runtime state
-  returned by command functions.
-- All records remain inside `aviation_maintenance_repair_*` owned tables.
-- Release events use the declared AppGen-X event contract only.
-- AI assistance can preview and explain evidence but cannot certify release
-  without human certifier input.
+1. Replace generic model/schema placeholders with domain-specific model
+   contracts for aircraft, components, work cards, deferred defects,
+   airworthiness directives, compliance releases, and package governance
+   records.
+2. Implement package-local workflow contracts for `release_to_service` and
+   `document_instruction_planning`, then wire them through runtime, services,
+   routes, UI, and assistant contracts.
+3. Harden release evaluation so work-card closeout, duplicate inspection,
+   authorization, tooling, consumables, deferred defects, component
+   airworthiness, and human certifier checks all produce deterministic blocker
+   evidence.
+4. Expose focused standalone route and workbench metadata without touching
+   shared generator, DSL, or cross-PBC ledgers.
+5. Add focused package tests plus compile/smoke verification and refresh the
+   package docs with concrete evidence.
 
+## Acceptance Targets
+
+- `aviation_maintenance_repair_runtime_smoke()` produces a release-ready pack
+  for a valid local scenario.
+- Blocked scenarios return explicit blocker codes and emit
+  `AviationMaintenanceRepairExceptionOpened`.
+- UI contracts expose forms, wizards, and controls for the standalone slice.
+- Assistant planning previews CRUD mutations, stays inside owned tables, and
+  never claims certifier authority.
+- Release evidence reports schema, services, routes, workflows, UI, assistant,
+  permissions, handlers, and governance readiness from inside the package.

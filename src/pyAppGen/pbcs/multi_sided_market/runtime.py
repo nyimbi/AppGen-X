@@ -633,3 +633,29 @@ def multi_sided_market_runtime_smoke():
     table_stakes_ok = all(state[name] for name in ('listing_assets', 'availability_windows', 'exchange_proposals', 'escrow_release_policies', 'settlements', 'reputation', 'disputes', 'market_clearing_projections'))
     advanced_ok = counterfactual['ok'] and parsed['requires_document_review'] and anomaly['ok'] and proof['ok'] and carbon['selected_option']['option'] == 'pickup'
     return {'ok': all(check['ok'] for check in checks) and duplicate['duplicate'] is True and bool(state['outbox']) and table_stakes_ok and advanced_ok, 'state': state, 'checks': checks, 'blocking_gaps': tuple(check for check in checks if not check['ok']), 'advanced_evidence': {'counterfactual': counterfactual, 'parsed': parsed, 'anomaly': anomaly, 'proof': proof, 'carbon': carbon}, 'side_effects': ()}
+
+# Improve1 multi-sided market control extension.
+from .market_control import improve1_market_control_contract, evaluate_market_control
+
+_MULTI_SIDED_MARKET_BASE_RUNTIME_CAPABILITIES = multi_sided_market_runtime_capabilities
+_MULTI_SIDED_MARKET_BASE_BUILD_RELEASE_EVIDENCE = multi_sided_market_build_release_evidence
+
+
+def multi_sided_market_runtime_capabilities():
+    runtime = dict(_MULTI_SIDED_MARKET_BASE_RUNTIME_CAPABILITIES())
+    control = improve1_market_control_contract()
+    runtime["ok"] = bool(runtime.get("ok")) and control["ok"]
+    runtime["market_control"] = control
+    runtime["operations"] = tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + ("evaluate_market_control", "improve1_market_control_contract")))
+    runtime["improve1_control_owned_tables"] = control["owned_tables"]
+    return runtime
+
+
+def multi_sided_market_build_release_evidence():
+    evidence = dict(_MULTI_SIDED_MARKET_BASE_BUILD_RELEASE_EVIDENCE())
+    control = improve1_market_control_contract()
+    artifacts = dict(evidence.get("generated_artifacts", {}))
+    artifacts["market_control"] = {"contract": control["format"], "capability_count": control["capability_count"], "owned_tables": control["owned_tables"], "service_apis": tuple(item["evidence"]["service_api"] for item in control["capabilities"]), "ui_surfaces": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]), "test": "tests/test_domain_behavior.py"}
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_market_control", "ok": control["ok"]},)
+    evidence.update({"ok": bool(evidence.get("ok")) and control["ok"], "checks": checks, "generated_artifacts": artifacts, "market_control": control, "blocking_gaps": tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ()))})
+    return evidence

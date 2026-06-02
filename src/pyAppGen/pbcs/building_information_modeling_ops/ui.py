@@ -1,6 +1,7 @@
 """Single-PBC app UI surfaces for the BIM operations slice."""
 from __future__ import annotations
 
+from .bim_control import BIM_CONTROL_CAPABILITIES, improve1_bim_control_contract
 from .federation_governance import DISCIPLINES, ISSUE_PURPOSES
 
 PBC_KEY = "building_information_modeling_ops"
@@ -183,6 +184,8 @@ def building_information_modeling_ops_ui_contract() -> dict:
         "wizards": wizards["wizards"],
         "controls": controls["controls"],
         "workbench_views": workbench_views,
+        "bim_control_panels": tuple(f"bim_control_{capability}" for capability in BIM_CONTROL_CAPABILITIES),
+        "bim_control_contract": improve1_bim_control_contract(),
         "configuration_editor": True,
         "stream_engine_picker_visible": False,
         "shared_table_access": False,

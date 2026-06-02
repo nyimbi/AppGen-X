@@ -2,11 +2,12 @@
 
 Package directory: `pbcs/electronic_health_records_core`.
 
-This PBC includes owned schema, migration DDL, models, services, routes, events, handlers, UI workbench surfaces, agent skills, permissions, configuration, seed data, package metadata, side-effect-free registration, and focused package tests.
+This PBC now includes an executable one-PBC EHR core with owned schema, migration DDL, model contracts, services, routes, AppGen-X events, idempotent handlers, queue-oriented UI surfaces, governed agent skills, permissions, configuration, seed data, package metadata, side-effect-free registration, and focused package tests.
 
 ## Evidence
 
-- Release Evidence: schema, service, route, event, handler, UI, agent, and governance contracts are materialized.
-- Owned datastore boundary: every owned table starts with `electronic_health_records_core_` and cross-PBC collaboration uses AppGen-X events or declared APIs.
-- Event contract: AppGen-X outbox/inbox with retry and dead-letter evidence.
-- Package tests: `tests/test_contract.py` validates schema/service/release, event contracts, side-effect-free registration, routes, governance, and idempotent handlers.
+- Owned datastore boundary: all owned tables start with `electronic_health_records_core_` and cross-PBC collaboration stays on declared APIs or AppGen-X events.
+- One-PBC application: forms, wizards, controls, workbench queues, and assistant panel are materialized through `single_pbc_app_contract()`.
+- Clinical safety controls: duplicate-chart review, encounter completeness, order transition guards, critical-result acknowledgement, note attestation, and summary redaction are executable and tested.
+- Event contract: AppGen-X outbox/inbox with retry and dead-letter evidence remains package-local.
+- Package tests cover contract integrity, executable chart/order/observation/note flows, route dispatch, UI surface, agent document planning, and runtime smoke behavior.

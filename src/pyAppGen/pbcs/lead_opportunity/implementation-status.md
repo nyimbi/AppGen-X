@@ -1,0 +1,7 @@
+# Lead Opportunity Implementation Status
+
+## Improve1 lead opportunity control implementation
+
+Implemented executable improve1 coverage for all 50 lead opportunity capabilities in `lead_control.py`. The contract adds owned per-feature control tables, AppGen-X eventing constraints, PostgreSQL/MySQL/MariaDB datastore allowlists, declared projection/API/event dependencies, per-feature UI panels and service routes, and negative-path domain findings for account readiness, hierarchy integrity, lead intake, lifecycle transitions, enrichment, dedupe, scoring, assignment, qualification, open opportunity limits, opportunity creation and lifecycle, stage history, forecasting, slippage, probability calibration, quote/proposal handoff, win/loss outcomes, sales activities, sentiment, next-best-action, coaching, customer/territory/billing projections, revenue policies, parameters, schema extensions, inbox/outbox reliability, cross-PBC boundaries, audit/proof controls, anomaly/exposure/model governance, counterfactual simulation, semantic instructions, agent-safe plans, UI workbenches, continuous controls, resilience drills, customer update governance, readiness scoring, and end-to-end revenue proof.
+
+Runtime, UI, release evidence, and traceability surfaces now expose the lead control contract, and `tests/test_domain_behavior.py` executes all 50 controls plus representative negative-path checks for revenue pipeline gates and PBC boundary rules.

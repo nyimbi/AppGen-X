@@ -1,6 +1,7 @@
 from pyAppGen.pbcs.banking_core_accounts.runtime import (
     banking_core_accounts_build_app_surface,
     banking_core_accounts_build_workbench_view,
+    banking_core_accounts_build_workflow_surface,
     banking_core_accounts_empty_state,
     banking_core_accounts_open_deposit_account,
     banking_core_accounts_query_account_detail,
@@ -145,6 +146,7 @@ def test_single_pbc_app_surface_exposes_forms_wizards_controls_and_service_flow(
     )
     app_surface = banking_core_accounts_build_app_surface(service.state, tenant="tenant-c")
     workbench = banking_core_accounts_build_workbench_view(service.state, tenant="tenant-c")
+    workflows = banking_core_accounts_build_workflow_surface(service.state, tenant="tenant-c")
 
     assert opened["ok"] is True
     assert app_surface["ok"] is True
@@ -152,4 +154,7 @@ def test_single_pbc_app_surface_exposes_forms_wizards_controls_and_service_flow(
     assert len(app_surface["forms"]) >= 2
     assert len(app_surface["wizards"]) >= 2
     assert len(app_surface["controls"]) >= 3
+    assert len(app_surface["workflows"]) == 3
+    assert workflows["ok"] is True
+    assert workflows["workflow_state_coverage"][0]["visible_account_count"] == 1
     assert workbench["summary"]["total_accounts"] == 1

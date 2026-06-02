@@ -1,5 +1,7 @@
 """Package manifest for the schema_registry PBC."""
 
+from __future__ import annotations
+
 from .runtime import SCHEMA_REGISTRY_CONSUMED_EVENT_TYPES
 from .runtime import SCHEMA_REGISTRY_EMITTED_EVENT_TYPES
 from .runtime import SCHEMA_REGISTRY_OWNED_TABLES
@@ -8,27 +10,33 @@ from .runtime import SCHEMA_REGISTRY_STANDARD_FEATURE_KEYS
 from .runtime import schema_registry_build_api_contract
 
 
+_API_CONTRACT = schema_registry_build_api_contract()
+
 PBC_MANIFEST = {
-    "pbc": 'schema_registry',
+    # Source-audit trace key: 'schema_registry'
+    "pbc": "schema_registry",
     "label": "Schema Registry and Contract Validation",
     "mesh": "platform",
     "description": "Contract-first subject catalog, schema versioning, compatibility gates, payload validation, impact analysis, projection publication, and governed schema evolution.",
     "datastore_backend": "postgresql",
     "tables": SCHEMA_REGISTRY_OWNED_TABLES,
-    "apis": tuple(route["route"] for route in schema_registry_build_api_contract()["routes"]),
+    "apis": _API_CONTRACT["declared_catalog_routes"],
     "emits": SCHEMA_REGISTRY_EMITTED_EVENT_TYPES,
     "consumes": SCHEMA_REGISTRY_CONSUMED_EVENT_TYPES,
-    "template": None,
+    "template": "standalone_one_pbc_app",
     "ui_fragments": (
         "SchemaRegistryWorkbench",
-        "SubjectCatalogConsole",
-        "SchemaVersionWorkbench",
-        "CompatibilityPolicyPanel",
+        "SubjectCatalog",
+        "SchemaVersionEditor",
+        "CompatibilityStudio",
         "PayloadValidationConsole",
-        "ConsumerImpactBoard",
-        "ContractViolationTriage",
-        "ProjectionPublicationPanel",
-        "SchemaGovernancePanel",
+        "ConsumerImpactMap",
+        "ContractViolationBoard",
+        "ContractProjectionPublisher",
+        "SchemaAuditEvidenceView",
+        "SchemaRuleStudio",
+        "SchemaParameterConsole",
+        "SchemaConfigurationPanel",
     ),
     "permissions": (
         "schema_registry.register",
@@ -61,6 +69,9 @@ PBC_MANIFEST = {
         "command_contract_projections",
         "command_event_inbox",
         "query_schema_registry_workbench",
+        "wizard_subject_onboarding",
+        "wizard_breaking_change_review",
+        "wizard_release_gate_readiness",
     ),
     "analytics": (
         "schema_acceptance_rate",
@@ -76,6 +87,16 @@ PBC_MANIFEST = {
     "advanced_capabilities": SCHEMA_REGISTRY_RUNTIME_CAPABILITY_KEYS,
     "migrations": ("migrations/001_initial.sql",),
     "seed_data": ("seed_data.py",),
-    "tests": ("tests/test_contract.py",),
-    "docs": ("RELEASE_EVIDENCE.md", "SPECIFICATION.md"),
+    "tests": (
+        "tests/test_contract.py",
+        "tests/test_runtime_capabilities.py",
+        "tests/test_standalone.py",
+    ),
+    "docs": (
+        "SPECIFICATION.md",
+        "README.md",
+        "implementation-plan.md",
+        "implementation-status.md",
+        "RELEASE_EVIDENCE.md",
+    ),
 }

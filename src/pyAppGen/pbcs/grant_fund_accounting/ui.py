@@ -52,3 +52,62 @@ def grant_fund_accounting_render_workbench(state=None):
         'table_browsers': full['table_browsers'],
         'agent_tools': full['agent_tools'],
     }
+
+from .forms import form_catalog
+from .wizards import wizard_catalog
+from .controls import control_catalog
+
+def grant_fund_accounting_standalone_ui_contract():
+    ui = grant_fund_accounting_ui_contract()
+    return {'ok': ui['ok'] and len(form_catalog()['forms']) >= 10 and len(wizard_catalog()['wizards']) >= 6 and len(control_catalog()['controls']) >= 11, 'pbc': PBC_KEY, 'fragments': ui['fragments'], 'forms': form_catalog()['forms'], 'wizards': wizard_catalog()['wizards'], 'controls': control_catalog()['controls'], 'navigation_sections': tuple(dict.fromkeys(tuple(ui.get('navigation_sections', ())) + ('award_intake','cost_allowability','drawdowns','match','reports','closeout'))), 'side_effects': ()}
+
+_BASE_GRANT_FUND_ACCOUNTING_SMOKE_TEST = smoke_test
+def smoke_test():
+    base = _BASE_GRANT_FUND_ACCOUNTING_SMOKE_TEST()
+    standalone = grant_fund_accounting_standalone_ui_contract()
+    return {'ok': base['ok'] and standalone['ok'], 'base': base, 'standalone': standalone, 'side_effects': ()}
+
+
+# Improve1 grant accounting UI control extension.
+from .grant_control import improve1_grant_control_contract as grant_fund_accounting_improve1_grant_control_contract
+
+_GRANT_FUND_ACCOUNTING_STANDALONE_UI_CONTRACT = grant_fund_accounting_ui_contract
+_GRANT_FUND_ACCOUNTING_STANDALONE_RENDER_WORKBENCH = grant_fund_accounting_render_workbench
+
+
+def grant_fund_accounting_ui_contract():
+    base = dict(_GRANT_FUND_ACCOUNTING_STANDALONE_UI_CONTRACT())
+    grant_control = grant_fund_accounting_improve1_grant_control_contract()
+    control_panels = tuple(item['evidence']['ui_surface'] for item in grant_control['capabilities'])
+    service_actions = tuple(item['evidence']['service_api'] for item in grant_control['capabilities'])
+    full_surface = dict(base.get('full_capability_surface', {}))
+    full_surface.update({
+        'grant_control_panels': control_panels,
+        'grant_control_service_actions': service_actions,
+        'grant_control_tables': grant_control['owned_tables'],
+        'grant_control_agent_tools': tuple(f"grant_fund_accounting.agent.{item['slug']}" for item in grant_control['capabilities']),
+    })
+    return {
+        **base,
+        'ok': base.get('ok') is True and grant_control['ok'],
+        'full_capability_surface': full_surface,
+        'grant_control_contract': grant_control,
+        'grant_control_panels': control_panels,
+        'grant_control_service_actions': service_actions,
+        'side_effects': (),
+    }
+
+
+def grant_fund_accounting_render_workbench(state=None):
+    base = dict(_GRANT_FUND_ACCOUNTING_STANDALONE_RENDER_WORKBENCH(state=state))
+    grant_control = grant_fund_accounting_improve1_grant_control_contract()
+    panels = tuple(item['evidence']['ui_surface'] for item in grant_control['capabilities'])
+    return {
+        **base,
+        'ok': base.get('ok') is True and grant_control['ok'],
+        'panels': tuple(dict.fromkeys(tuple(base.get('panels', ())) + panels)),
+        'grant_control_panels': panels,
+        'grant_control_service_actions': tuple(item['evidence']['service_api'] for item in grant_control['capabilities']),
+        'agent_tools': tuple(dict.fromkeys(tuple(base.get('agent_tools', ())) + tuple(f"grant_fund_accounting.agent.{item['slug']}" for item in grant_control['capabilities']))),
+        'side_effects': (),
+    }

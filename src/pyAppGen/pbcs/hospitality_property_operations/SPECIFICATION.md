@@ -2,107 +2,118 @@
 
 ## Purpose
 
-The `hospitality_property_operations` PBC is a packaged business capability for Rooms, reservations, housekeeping, guest service, occupancy, revenue controls, and property operations. It owns schema, migrations, models, services, API contracts, AppGen-X event contracts, handlers, UI fragments, AI agent skills, configuration, rules, parameters, seed data, package metadata, tests, and release evidence. It composes with other AppGen-X PBCs only through declared APIs, AppGen-X events, or package-local projections.
+`hospitality_property_operations` is the package-local operating core for hotel room readiness, reservations, guest stays, housekeeping dispatch, guest request recovery, occupancy projection, and rate-plan readiness. The source package remains side-effect-free for discovery and registration, while the standalone slice inside this directory provides executable command and query flows for local validation. The design is intentionally strict about the owned datastore boundary: the PBC owns hotel operating tables and AppGen-X event tables, and it collaborates with adjacent PBCs only through declared API routes, AppGen-X events, and package-local projections. No shared or foreign table mutation is allowed.
 
 ## Stable Identity
 
-- PBC key: `hospitality_property_operations`.
-- Mesh: `cx`.
-- Package directory: `src/pyAppGen/pbcs/hospitality_property_operations`.
-- Runtime entrypoint: `hospitality_property_operations_runtime_capabilities()`.
-- UI entrypoint: `hospitality_property_operations_ui_contract()`.
-- Source registration entrypoint: `implementation_contract()`.
-- Allowed database backends: PostgreSQL, MySQL, and MariaDB.
-- Eventing standard: fixed AppGen-X outbox/inbox event contract.
-- User-facing stream-engine selector: forbidden and hidden.
+- PBC key: `hospitality_property_operations`
+- Package directory: `src/pyAppGen/pbcs/hospitality_property_operations`
+- Runtime entrypoint: `hospitality_property_operations_runtime_capabilities()`
+- Standalone entrypoint: `hospitality_property_operations_standalone_app_contract()`
+- Source registration entrypoints: `register_pbc()`, `registration_plan()`, `package_metadata_manifest()`, `package_discovery_plan()`
+- Database backends for the owned contract: PostgreSQL, MySQL, MariaDB
+- Local execution harness: sqlite only and package-local
+- Eventing standard: AppGen-X outbox, inbox, dead-letter, idempotent handler, and retry contract
+- User-visible stream engine picker: forbidden and hidden
 
-## Owned Datastore Boundary
+## Owned Boundary and Schema Materialization
 
-- `hospitality_property_operations_room_inventory`: owns room inventory lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `hospitality_property_operations_reservation`: owns reservation lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `hospitality_property_operations_guest_stay`: owns guest stay lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `hospitality_property_operations_housekeeping_task`: owns housekeeping task lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `hospitality_property_operations_guest_request`: owns guest request lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `hospitality_property_operations_occupancy_snapshot`: owns occupancy snapshot lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `hospitality_property_operations_rate_plan`: owns rate plan lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `hospitality_property_operations_hospitality_property_operations_policy_rule`: owns hospitality property operations policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `hospitality_property_operations_hospitality_property_operations_runtime_parameter`: owns hospitality property operations runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `hospitality_property_operations_hospitality_property_operations_schema_extension`: owns hospitality property operations schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `hospitality_property_operations_hospitality_property_operations_control_assertion`: owns hospitality property operations control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `hospitality_property_operations_hospitality_property_operations_governed_model`: owns hospitality property operations governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+The owned schema, model metadata, and migration are aligned in `models.py`, `runtime.py`, and `migrations/001_initial.sql`. The package owns the following business tables and no others:
 
-Runtime AppGen-X event tables are `hospitality_property_operations_appgen_outbox_event`, `hospitality_property_operations_appgen_inbox_event`, and `hospitality_property_operations_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'CustomerUpdated', 'SupplierQualified') and API contracts ('POST /room-inventorys', 'POST /reservations', 'POST /guest-stays', 'POST /housekeeping-tasks', 'POST /guest-requests', 'GET /hospitality-property-operations-workbench').
+- `hospitality_property_operations_room_inventory`
+- `hospitality_property_operations_reservation`
+- `hospitality_property_operations_guest_stay`
+- `hospitality_property_operations_housekeeping_task`
+- `hospitality_property_operations_guest_request`
+- `hospitality_property_operations_occupancy_snapshot`
+- `hospitality_property_operations_rate_plan`
+- `hospitality_property_operations_hospitality_property_operations_policy_rule`
+- `hospitality_property_operations_hospitality_property_operations_runtime_parameter`
+- `hospitality_property_operations_hospitality_property_operations_schema_extension`
+- `hospitality_property_operations_hospitality_property_operations_control_assertion`
+- `hospitality_property_operations_hospitality_property_operations_governed_model`
 
-## Executable Domain Operations
+The package also owns the AppGen-X runtime event tables `hospitality_property_operations_appgen_outbox_event`, `hospitality_property_operations_appgen_inbox_event`, and `hospitality_property_operations_appgen_dead_letter_event`. Migration DDL is materialized, model metadata is materialized, and the source package exposes a schema contract that remains side-effect-free for discovery and register flows.
 
-- `create_room_inventory`: validates policy, writes owned `hospitality_property_operations_room_inventory` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_reservation`: validates policy, writes owned `hospitality_property_operations_reservation` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_guest_stay`: validates policy, writes owned `hospitality_property_operations_guest_stay` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_housekeeping_task`: validates policy, writes owned `hospitality_property_operations_housekeeping_task` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_guest_request`: validates policy, writes owned `hospitality_property_operations_guest_request` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_occupancy_snapshot`: validates policy, writes owned `hospitality_property_operations_occupancy_snapshot` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_rate_plan`: validates policy, writes owned `hospitality_property_operations_rate_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_hospitality_property_operations_policy_rule`: validates policy, writes owned `hospitality_property_operations_hospitality_property_operations_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_hospitality_property_operations_runtime_parameter`: validates policy, writes owned `hospitality_property_operations_hospitality_property_operations_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_hospitality_property_operations_schema_extension`: validates policy, writes owned `hospitality_property_operations_hospitality_property_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_hospitality_property_operations_control_assertion`: validates policy, writes owned `hospitality_property_operations_hospitality_property_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_hospitality_property_operations_governed_model`: validates policy, writes owned `hospitality_property_operations_hospitality_property_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_hospitality_property_operations_13`: validates policy, writes owned `hospitality_property_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_hospitality_property_operations_14`: validates policy, writes owned `hospitality_property_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_hospitality_property_operations_15`: validates policy, writes owned `hospitality_property_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_hospitality_property_operations_16`: validates policy, writes owned `hospitality_property_operations_room_inventory` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_hospitality_property_operations_17`: validates policy, writes owned `hospitality_property_operations_reservation` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_hospitality_property_operations_18`: validates policy, writes owned `hospitality_property_operations_guest_stay` records, emits AppGen-X events, and returns side-effect-free evidence.
+## Service, API, Command, and Query Surface
 
-Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
+The source-package service layer exposes command and query contracts. Commands cover runtime configuration, room-inventory command intake, reservation intake, guest-stay intake, housekeeping-task intake, and guest-request intake. Queries expose the workbench summary surface. The standalone slice adds executable command routes and query routes for room detail, shift handover, occupancy capture, and rate-plan updates.
 
-## Standard Table-Stakes Capabilities
+Source APIs:
 
-The package covers lifecycle intake, identity and classification, validation, approvals, exception handling, audit evidence, role-aware workbenches, assistant-guided task execution, configuration, rule compilation, bounded parameters, seed data, RBAC, route dispatch, typed events, idempotent handlers, retry, and dead-letter triage. It includes PostgreSQL, MySQL, and MariaDB backend allowlists and never exposes stream-engine pickers.
+- `POST /room-inventorys`
+- `POST /reservations`
+- `POST /guest-stays`
+- `POST /housekeeping-tasks`
+- `POST /guest-requests`
+- `GET /hospitality-property-operations-workbench`
 
-## Advanced Capabilities
+Standalone local routes:
 
-- Event-sourced operational history for Hospitality Property Operations domain records.
-- Multi-tenant policy isolation with owned table boundaries.
-- Schema evolution resilience through package-local schema extensions.
-- Autonomous anomaly detection and specialist exception triage.
-- Semantic document and instruction understanding for professional intake.
-- Predictive risk scoring and confidence-ranked recommendations.
-- Counterfactual scenario simulation for policy and operational choices.
-- Cryptographic audit proofs for high-value records and decisions.
-- Continuous control testing over domain lifecycle events.
-- Carbon and sustainability awareness where operational decisions affect footprint.
-- Cross-PBC event federation through AppGen-X only.
-- Governed AI agent execution with human confirmation for mutations.
+- `POST /app/hospitality-property-operations/rooms`
+- `POST /app/hospitality-property-operations/reservations`
+- `POST /app/hospitality-property-operations/stays/check-in`
+- `POST /app/hospitality-property-operations/stays/check-out`
+- `POST /app/hospitality-property-operations/stays/move`
+- `POST /app/hospitality-property-operations/housekeeping-tasks`
+- `POST /app/hospitality-property-operations/housekeeping-tasks/complete`
+- `POST /app/hospitality-property-operations/guest-requests`
+- `POST /app/hospitality-property-operations/guest-requests/resolve`
+- `POST /app/hospitality-property-operations/occupancy-snapshots`
+- `POST /app/hospitality-property-operations/rate-plans`
+- `GET /app/hospitality-property-operations/workbench`
+- `GET /app/hospitality-property-operations/rooms/detail`
+- `GET /app/hospitality-property-operations/shift-handover`
 
-## Rules, Parameters, and Configuration
+## Events, Inbox, Outbox, Idempotent Handlers, and Retry
 
-Rules are first-class artifacts: ('room_inventory_policy', 'reservation_policy', 'guest_stay_policy', 'housekeeping_task_policy', 'guest_request_policy', 'occupancy_snapshot_policy'). Parameters are bounded artifacts: ('quality_score_floor', 'materiality_threshold', 'approval_sla_hours', 'risk_threshold', 'forecast_horizon_days', 'workbench_limit'). Configuration includes database backend, event topic, retry limit, default policy, workbench limits, confirmation requirements for agent writes, and tenant isolation options.
+The package uses AppGen-X eventing only. Emitted standalone domain events are `RoomInventoryAdjusted`, `ReservationBooked`, `GuestCheckedIn`, `HousekeepingTaskCompleted`, `GuestRequestRecovered`, `OccupancySnapshotCaptured`, `RatePlanAdjusted`, and `ShiftHandoverPrepared`. Consumed events are `PolicyChanged`, `CustomerUpdated`, and `SupplierQualified`. The handler surface is idempotent, the inbox stores idempotency keys, retries are configured, and unsupported events route to the dead-letter table for recovery evidence.
 
-## Public APIs and Services
+Compatibility traceability also preserves the source-package legacy emitted lifecycle markers used by broader AppGen cataloging: `HospitalityPropertyOperationsCreated`, `HospitalityPropertyOperationsUpdated`, `HospitalityPropertyOperationsApproved`, and `HospitalityPropertyOperationsExceptionOpened`.
 
-APIs are ('POST /room-inventorys', 'POST /reservations', 'POST /guest-stays', 'POST /housekeeping-tasks', 'POST /guest-requests', 'GET /hospitality-property-operations-workbench'). Services preserve idempotency keys, permission names, owned table scopes, route metadata, and event mappings. Services write only to `hospitality_property_operations_` tables and package-local event tables.
+## UI, Workbench, Permissions, and RBAC
 
-## Events and Handlers
+The UI contract exposes the exact fragments `HospitalityPropertyOperationsWorkbench`, `HospitalityPropertyOperationsDetail`, and `HospitalityPropertyOperationsAssistantPanel`. The workbench renders arrival, in-house, departure, room-ready, exception, and service-recovery lanes. Room detail renders sellable-state evidence, housekeeping history, guest requests, active stay state, and the event timeline.
 
-Emitted events: ('HospitalityPropertyOperationsCreated', 'HospitalityPropertyOperationsUpdated', 'HospitalityPropertyOperationsApproved', 'HospitalityPropertyOperationsExceptionOpened'). Consumed events: ('PolicyChanged', 'CustomerUpdated', 'SupplierQualified'). Handlers require event IDs, ignore duplicates, record AppGen-X inbox entries, and write dead-letter evidence for unknown or exhausted events.
+RBAC and permission coverage are explicit. The package includes `hospitality_property_operations.read`, `hospitality_property_operations.create`, `hospitality_property_operations.update`, `hospitality_property_operations.approve`, and `hospitality_property_operations.admin`. The standalone surface maps forms and controls to role-aware permissions for front office, housekeeping supervisor, revenue manager, approver, and auditor roles.
 
-## UI, Workbench, and Agent Skills
+## Rules, Parameters, Configuration, and Governance
 
-Workbench views include ('room inventory board', 'reservation board', 'guest stay board', 'housekeeping task board', 'guest request board', 'occupancy snapshot board', 'rate plan board'). The UI exposes operational queues, detail panels, rule editors, parameter editors, assistant panels, exception triage, analytics, and release evidence. The agent contributes `hospitality_property_operations_skills`, parses documents and instructions, produces governed CRUD previews, validates owned table boundaries, requires human confirmation for writes, and participates in the composed single application assistant.
+Rules are first-class and executable. The package defines `room_sellable_state`, `accessible_assignment_guard`, `reservation_guarantee_cutoff`, `overbooking_limit`, `late_checkout_approval`, and `guest_request_sla`. Parameters are bounded and executable: `turn_time_minutes`, `inspection_delay_minutes`, `arrival_rush_threshold`, `same_day_turn_limit`, `oversell_threshold`, `late_night_escalation_minutes`, and `workbench_limit`.
 
-## Release Evidence and Tests
+Configuration is explicit and validated. The source package recognizes `HOSPITALITY_PROPERTY_OPERATIONS_DATABASE_URL`, `HOSPITALITY_PROPERTY_OPERATIONS_EVENT_TOPIC`, `HOSPITALITY_PROPERTY_OPERATIONS_RETRY_LIMIT`, and `HOSPITALITY_PROPERTY_OPERATIONS_DEFAULT_POLICY`. The standalone governance surface also validates a workbench limit and keeps configuration side-effect-free until execution time.
 
-Release readiness proves schema, migrations, models, service contracts, route contracts, AppGen-X eventing, idempotent handlers, retry/dead-letter evidence, UI surfaces, RBAC, configuration, rules, parameters, seed data, package metadata, side-effect-free registration, domain-depth operations, agent integration, and generation smoke readiness. Focused package tests cover schema/service/release evidence, event contracts, package metadata, route contracts, governance hooks, and idempotent handlers.
+## Agent, Assistant, Chatbot, Skills, and Document Intake
+
+The assistant and chatbot surface is package-local and route-aware. The package contributes skills for arrival pickup triage, service recovery, revenue control, and shift handover. The agent surface supports document and instruction parsing, governed datastore CRUD planning, mutation previews, workflow recommendation, and handover summaries. Every mutation-oriented plan requires human confirmation. CRUD and datastore plans are limited to owned tables only.
+
+## Workflows and Domain Depth
+
+The PBC exposes four core workflows:
+
+1. `arrival_turnaround` for booking, housekeeping, release, and check-in.
+2. `service_recovery` for guest-request handling, room moves, and confirmation.
+3. `revenue_control` for occupancy, rate fences, and operational exception review.
+4. `shift_handover` for unresolved arrivals, blocked rooms, and service recovery packets.
+
+These workflows are modeled as explicit command sequences and executable query-backed views. The source package remains side-effect-free for discovery, while the standalone slice executes real local flows for tests and release evidence.
+
+## Standard and Advanced Capabilities
+
+Standard capabilities include room_inventory_management, hospitality_property_operations_workflow, hospitality_property_operations_analytics, configuration_schema, rule_engine, parameter_engine, owned_schema_migrations_models, appgen_x_outbox_inbox_eventing, idempotent_handlers, retry_dead_letter_evidence, permissions, seed_data, workbench, agentic_document_instruction_intake, governed_datastore_crud, ai_agent_task_assistance, configuration_workbench, and continuous_release_assurance.
+
+Advanced capabilities include hospitality_property_operations_event_sourced_operational_history, hospitality_property_operations_multi_tenant_policy_isolation, hospitality_property_operations_schema_evolution_resilience, hospitality_property_operations_autonomous_anomaly_detection, hospitality_property_operations_semantic_document_instruction_understanding, hospitality_property_operations_predictive_risk_scoring, hospitality_property_operations_counterfactual_scenario_simulation, hospitality_property_operations_cryptographic_audit_proofs, hospitality_property_operations_continuous_control_testing, hospitality_property_operations_carbon_and_sustainability_awareness, hospitality_property_operations_cross_pbc_event_federation, and hospitality_property_operations_governed_ai_agent_execution.
+
+## Release, Tests, Seed Data, and Side-Effect-Free Discovery
+
+Release evidence is package-local and executable. It checks schema, service, API, event, handler, UI, agent, governance, documentation, and standalone-app execution. Seed data is materialized for core room, rate, and parameter rows. Tests cover source-package contracts and standalone flows. Package discovery, registration, and metadata generation are explicitly side-effect-free and exist to support self-registration without mutating the broader repo state.
 
 ## Manifest Traceability Appendix
 
 - tables: room_inventory, reservation, guest_stay, housekeeping_task, guest_request, occupancy_snapshot, rate_plan, hospitality_property_operations_policy_rule, hospitality_property_operations_runtime_parameter, hospitality_property_operations_schema_extension, hospitality_property_operations_control_assertion, hospitality_property_operations_governed_model
-- operations: create_room_inventory, record_reservation, review_guest_stay, approve_housekeeping_task, simulate_guest_request, create_occupancy_snapshot, record_rate_plan, review_hospitality_property_operations_policy_rule, approve_hospitality_property_operations_runtime_parameter, simulate_hospitality_property_operations_schema_extension, create_hospitality_property_operations_control_assertion, record_hospitality_property_operations_governed_model, operate_hospitality_property_operations_13, operate_hospitality_property_operations_14, operate_hospitality_property_operations_15, operate_hospitality_property_operations_16, operate_hospitality_property_operations_17, operate_hospitality_property_operations_18
+- apis: POST /room-inventorys, POST /reservations, POST /guest-stays, POST /housekeeping-tasks, POST /guest-requests, GET /hospitality-property-operations-workbench
 - emits: HospitalityPropertyOperationsCreated, HospitalityPropertyOperationsUpdated, HospitalityPropertyOperationsApproved, HospitalityPropertyOperationsExceptionOpened
 - consumes: PolicyChanged, CustomerUpdated, SupplierQualified
-- rules: room_inventory_policy, reservation_policy, guest_stay_policy, housekeeping_task_policy, guest_request_policy, occupancy_snapshot_policy
-- parameters: quality_score_floor, materiality_threshold, approval_sla_hours, risk_threshold, forecast_horizon_days, workbench_limit
 - ui_fragments: HospitalityPropertyOperationsWorkbench, HospitalityPropertyOperationsDetail, HospitalityPropertyOperationsAssistantPanel
 - permissions: hospitality_property_operations.read, hospitality_property_operations.create, hospitality_property_operations.update, hospitality_property_operations.approve, hospitality_property_operations.admin
 - configuration: HOSPITALITY_PROPERTY_OPERATIONS_DATABASE_URL, HOSPITALITY_PROPERTY_OPERATIONS_EVENT_TOPIC, HOSPITALITY_PROPERTY_OPERATIONS_RETRY_LIMIT, HOSPITALITY_PROPERTY_OPERATIONS_DEFAULT_POLICY

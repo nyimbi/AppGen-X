@@ -2,11 +2,25 @@
 
 Package directory: `pbcs/hotel_revenue_management`.
 
-This PBC includes owned schema, migration DDL, models, services, routes, events, handlers, UI workbench surfaces, agent skills, permissions, configuration, seed data, package metadata, side-effect-free registration, and focused package tests.
+This standalone slice includes owned schema, aligned migration DDL, model and
+service contracts, route dispatch, AppGen-X event contracts, idempotent
+handlers, workbench UI metadata, assistant skills, package-local bootstrap
+workflows, dynamic release evidence, and focused tests.
 
-## Evidence
+## Evidence Highlights
 
-- Release Evidence: schema, service, route, event, handler, UI, agent, and governance contracts are materialized.
-- Owned datastore boundary: every owned table starts with `hotel_revenue_management_` and cross-PBC collaboration uses AppGen-X events or declared APIs.
-- Event contract: AppGen-X outbox/inbox with retry and dead-letter evidence.
-- Package tests: `tests/test_contract.py` validates schema/service/release, event contracts, side-effect-free registration, routes, governance, and idempotent handlers.
+- Owned datastore boundary stays inside `hotel_revenue_management_` tables and
+  package-local AppGen-X runtime tables.
+- Sellable inventory, BAR/inheritance pricing, channel parity, segmented demand,
+  overbooking limits, yield explanations, and revenue snapshots are executable
+  in package-local runtime smoke.
+- Release readiness reads local docs, tests, UI, agent, route, handler, and
+  domain-depth contracts via `release_evidence.py`.
+- Standalone app composition exposes the package as a one-PBC workbench and
+  assistant surface without touching shared generator or language assets.
+
+## Expected Validation
+
+- Compile package Python sources.
+- Run focused contract and standalone tests.
+- Confirm runtime and standalone smoke functions remain green.

@@ -254,3 +254,46 @@ def expense_management_runtime_capabilities():
         'domain_advanced_capabilities': tuple(domain['advanced_capabilities']),
         'side_effects': (),
     }
+
+
+# Expense improve1 control extension with per-feature executable evidence.
+from .expense_control import improve1_expense_control_contract as expense_management_improve1_expense_control_contract
+
+_EXPENSE_MANAGEMENT_DOMAIN_BUILD_RELEASE_EVIDENCE = expense_management_build_release_evidence
+_EXPENSE_MANAGEMENT_DOMAIN_RUNTIME_CAPABILITIES = expense_management_runtime_capabilities
+
+
+def expense_management_build_release_evidence():
+    evidence = dict(_EXPENSE_MANAGEMENT_DOMAIN_BUILD_RELEASE_EVIDENCE())
+    expense_control = expense_management_improve1_expense_control_contract()
+    checks = tuple(evidence.get('checks', ())) + (
+        {'id': 'improve1_expense_control_contract', 'ok': expense_control['ok']},
+        {'id': 'improve1_expense_control_capability_count', 'ok': expense_control['capability_count'] == 50},
+        {'id': 'improve1_expense_control_boundary', 'ok': not expense_control['blocking_gaps'] and expense_control['stream_engine_picker_visible'] is False},
+    )
+    return {
+        **evidence,
+        'ok': evidence.get('ok') is True and all(check['ok'] for check in checks),
+        'checks': checks,
+        'expense_control': expense_control,
+        'blocking_gaps': tuple(check for check in checks if not check['ok']),
+        'side_effects': (),
+    }
+
+
+def expense_management_runtime_capabilities():
+    runtime = dict(_EXPENSE_MANAGEMENT_DOMAIN_RUNTIME_CAPABILITIES())
+    expense_control = expense_management_improve1_expense_control_contract()
+    return {
+        **runtime,
+        'ok': runtime.get('ok') is True and expense_control['ok'],
+        'expense_control': expense_control,
+        'operations': tuple(runtime.get('operations', ())) + ('improve1_expense_control_contract',),
+        'improve1_expense_control_capabilities': tuple(item['slug'] for item in expense_control['capabilities']),
+        'owned_tables': tuple(dict.fromkeys(tuple(runtime.get('owned_tables', ())) + tuple(expense_control['owned_tables']))),
+        'allowed_database_backends': expense_control['allowed_database_backends'],
+        'event_contract': expense_control['event_contract'],
+        'required_event_topic': expense_control['required_event_topic'],
+        'stream_engine_picker_visible': False,
+        'side_effects': (),
+    }

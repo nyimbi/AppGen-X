@@ -1,4 +1,5 @@
 from .services import service_operation_manifest, service_operation_contracts
+from .standalone import standalone_route_contracts
 PBC_KEY = 'airport_operations_management'
 ROUTES = ('POST /gate-assignments',
  'POST /stand-allocations',
@@ -9,7 +10,7 @@ ROUTES = ('POST /gate-assignments',
 
 def api_route_contracts():
     contracts = tuple({'route': route, 'method': route.split()[0], 'path': route.split()[1], 'pbc': PBC_KEY, 'idempotency_key': f'{PBC_KEY}:{route}', 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False, 'required_permission': f'{PBC_KEY}.operate'} for route in ROUTES)
-    return {'ok': True, 'pbc': PBC_KEY, 'contracts': contracts, 'routes': ROUTES, 'side_effects': ()}
+    standalone = standalone_route_contracts(); return {'ok': True and standalone['ok'], 'pbc': PBC_KEY, 'contracts': contracts, 'routes': ROUTES + standalone['routes'], 'standalone_routes': standalone, 'side_effects': ()}
 
 def validate_api_route_contracts():
     contracts = api_route_contracts()['contracts']
@@ -19,4 +20,4 @@ def dispatch_route(route, payload=None):
     return {'ok': route in ROUTES, 'route': route, 'payload': dict(payload or {}), 'operation_contract': service_operation_contracts()['operation_contract'], 'side_effects': ()}
 
 def smoke_test():
-    return {'ok': api_route_contracts()['ok'] and validate_api_route_contracts()['ok'] and dispatch_route(ROUTES[0])['ok'], 'side_effects': ()}
+    routes = api_route_contracts(); return {'ok': routes['ok'] and validate_api_route_contracts()['ok'] and dispatch_route(ROUTES[0])['ok'] and 'GET /airport-operations-management/app' in routes['routes'], 'side_effects': ()}

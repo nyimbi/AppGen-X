@@ -127,3 +127,45 @@ def smoke_test():
         'dispatch': dispatched,
         'side_effects': (),
     }
+
+
+
+STANDALONE_ROUTES = (
+    {'method':'POST','path':'/app/payment-orchestration/demo-workspace','handler':'seed_demo_workspace','permission':'payment_orchestration.configure'},
+    {'method':'GET','path':'/app/payment-orchestration/workbench','handler':'build_workbench','permission':'payment_orchestration.audit'},
+    {'method':'POST','path':'/app/payment-orchestration/intents','handler':'create_payment_intent','permission':'payment_orchestration.intent'},
+    {'method':'POST','path':'/app/payment-orchestration/captures','handler':'capture_payment','permission':'payment_orchestration.capture'},
+    {'method':'POST','path':'/app/payment-orchestration/settlements','handler':'settle_payment','permission':'payment_orchestration.settlement'},
+    {'method':'POST','path':'/app/payment-orchestration/refunds','handler':'refund_payment','permission':'payment_orchestration.refund'},
+    {'method':'POST','path':'/app/payment-orchestration/disputes','handler':'open_dispute','permission':'payment_orchestration.dispute'},
+    {'method':'POST','path':'/app/payment-orchestration/proofs','handler':'generate_payment_proof','permission':'payment_orchestration.audit'},
+    {'method':'POST','path':'/app/payment-orchestration/assistant/sessions','handler':'run_agent_skill','permission':'payment_orchestration.audit'},
+)
+
+def standalone_route_contracts():
+    from .services import standalone_service_operation_contracts
+    indexed={i['operation']:i for i in standalone_service_operation_contracts()['contracts']}
+    contracts=tuple({**r,'operation':r['handler'],'service_operation':indexed[r['handler']],'owned_tables':indexed[r['handler']]['owned_tables'],'read_tables':indexed[r['handler']]['read_tables'],'emitted_event':indexed[r['handler']]['emitted_event'],'event_contract':'AppGen-X','stream_engine_picker_visible':False,'shared_table_access':False,'route_id':f"{r['method']} {r['path']}"} for r in STANDALONE_ROUTES)
+    return {'format':'appgen.payment-orchestration-standalone-routes.v1','ok':bool(contracts) and all(i['event_contract']=='AppGen-X' for i in contracts) and all(i['shared_table_access'] is False for i in contracts),'pbc':'payment_orchestration','routes':tuple(i['route_id'] for i in contracts),'contracts':contracts,'side_effects':()}
+
+def dispatch_standalone_route(method,path,payload=None,*,service=None):
+    from .services import PaymentOrchestrationStandaloneService
+    route=next((i for i in STANDALONE_ROUTES if i['method']==method and i['path']==path),None)
+    if route is None: return {'ok':False,'handled':False,'reason':'route_not_found','side_effects':()}
+    owned=service is None
+    if service is None: service=PaymentOrchestrationStandaloneService()
+    p=dict(payload or {})
+    try:
+        h=route['handler']
+        if h=='seed_demo_workspace': result=service.seed_demo_workspace(tenant=p.get('tenant','tenant_demo'))
+        elif h=='build_workbench': result=service.build_workbench(tenant=p.get('tenant','tenant_demo'))
+        elif h=='create_payment_intent': result=service.create_payment_intent(p,tenant=p.get('tenant','tenant_demo'))
+        elif h=='capture_payment': result=service.capture_payment(p['intent_id'],p['amount'],tenant=p.get('tenant','tenant_demo'))
+        elif h=='settle_payment': result=service.settle_payment(p['intent_id'],p['settlement_reference'],tenant=p.get('tenant','tenant_demo'))
+        elif h=='refund_payment': result=service.refund_payment(p['intent_id'],p['amount'],p['reason'],tenant=p.get('tenant','tenant_demo'))
+        elif h=='open_dispute': result=service.open_dispute(p['intent_id'],p['amount'],p['reason'],p.get('evidence',()),tenant=p.get('tenant','tenant_demo'))
+        elif h=='generate_payment_proof': result=service.generate_payment_proof(p['intent_id'],p.get('disclosure',('intent_id','amount','currency','status')),tenant=p.get('tenant','tenant_demo'))
+        else: result=service.run_agent_skill(p,tenant=p.get('tenant','tenant_demo'))
+        return {'ok':result.get('ok') is True,'handled':True,'route':route,'result':result,'side_effects':()}
+    finally:
+        if owned: service.close()

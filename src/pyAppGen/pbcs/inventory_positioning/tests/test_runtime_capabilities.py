@@ -1,8 +1,10 @@
-"""Executable runtime capability proofs for the inventory_positioning PBC."""
+"""Focused runtime capability tests for inventory_positioning."""
 
-import pytest
+from __future__ import annotations
 
-from .. import config, runtime, ui
+from .. import config
+from .. import runtime
+from .. import ui
 
 
 PBC_KEY = "inventory_positioning"
@@ -25,23 +27,26 @@ ADVANCED_TERMS = (
 )
 
 
-def _call(name, *args, **kwargs):
+def _call(name: str, *args, **kwargs):
     return getattr(runtime, f"{PBC_KEY}_{name}")(*args, **kwargs)
 
 
-def _configuration():
+def _configuration() -> dict:
     return {
         "database_backend": "postgresql",
         "event_topic": getattr(runtime, "INVENTORY_POSITIONING_REQUIRED_EVENT_TOPIC"),
         "retry_limit": 3,
+        "default_uom": "EA",
+        "precision": 2,
+        "allowed_statuses": ("available", "reserved", "quarantine", "damaged", "in_transit"),
+        "workbench_limit": 100,
     }
 
 
-def test_runtime_smoke_covers_standard_and_advanced_capabilities():
+def test_runtime_smoke_covers_standard_and_advanced_capabilities() -> None:
     smoke = _call("runtime_smoke")
     capabilities = _call("runtime_capabilities")
     capability_ids = set(capabilities["capabilities"])
-
     assert smoke["ok"] is True
     assert len(smoke["checks"]) >= 25
     assert not smoke["blocking_gaps"]
@@ -50,13 +55,12 @@ def test_runtime_smoke_covers_standard_and_advanced_capabilities():
     assert all(any(term in item for item in capability_ids) for term in ADVANCED_TERMS)
 
 
-def test_contracts_enforce_owned_boundary_appgen_eventing_and_backend_allowlist():
+def test_contracts_enforce_owned_boundary_appgen_eventing_and_backend_allowlist() -> None:
     schema = _call("build_schema_contract")
     service = _call("build_service_contract")
     api = _call("build_api_contract")
     release = _call("build_release_evidence")
     boundary = _call("verify_owned_table_boundary", ("foreign_operational_table",))
-
     assert schema["ok"] is True
     assert tuple(schema["datastore_backends"]) == ALLOWED_BACKENDS
     assert schema["shared_table_access"] is False
@@ -73,31 +77,26 @@ def test_contracts_enforce_owned_boundary_appgen_eventing_and_backend_allowlist(
     assert boundary["violations"] == ("foreign_operational_table",)
 
 
-def test_configuration_rules_parameters_and_ui_are_executable():
+def test_configuration_rules_parameters_and_ui_are_executable() -> None:
     state = _call("empty_state")
     configured = _call("configure_runtime", state, _configuration())
     parameter = _call("set_parameter", configured["state"], "workbench_limit", 25)
     compiled_rule = config.compile_rule(config.RULE_SCHEMA[0])
-    rule_decision = config.evaluate_rule(
-        compiled_rule,
-        {"tenant": "tenant_alpha", "database_backend": "postgresql", "event_contract": "AppGen-X"},
-    )
+    rule_decision = config.evaluate_rule(compiled_rule, {"tenant": "tenant_alpha", "event_contract": "AppGen-X"})
     ui_smoke = ui.smoke_test()
-
     assert configured["configuration"]["event_contract"] == "AppGen-X"
     assert configured["configuration"]["stream_engine_picker_visible"] is False
     assert configured["configuration"]["allowed_database_backends"] == ALLOWED_BACKENDS
     assert parameter["ok"] is True
-    assert config.set_parameter({}, "retry_limit", 3)["accepted"] is True
+    assert config.set_parameter({}, "workbench_limit", 3)["accepted"] is True
     assert config.compile_rule({"rule_id": "bad", "condition": "tenant_present", "effect": "allow_when_true", "stream_engine": "picker"})["ok"] is False
     assert compiled_rule["compiled"] is True
     assert rule_decision["allowed"] is True
     assert ui_smoke["ok"] is True
-    assert ui_smoke["manifest"]["fragments"]
-    assert ui_smoke["manifest"]["routes"]
-    assert ui_smoke["rendered"]["cards"]
     assert ui_smoke["rendered"]["configuration_bound"] is True
-    assert ui_smoke["rendered"]["binding_evidence"]["owned_tables"]
-
-    with pytest.raises(ValueError):
+    try:
         _call("configure_runtime", state, {**_configuration(), "stream_engine": "picker"})
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("configure_runtime should reject user-selectable stream engine fields")

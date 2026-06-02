@@ -23,3 +23,10 @@ Implemented as a package-local executable checkout slice with runtime orchestrat
 
 - The slice is still contract-first rather than framework-mounted; route and service layers remain side-effect-free facades.
 - `SPECIFICATION.md` was not fully rewritten, so some narrative details may lag the newer package-local app-surface terminology even though executable code and release evidence are updated.
+
+## 2026-05-30 Domain Behavior Traceability Slice
+
+- Added `tests/test_domain_behavior.py` executable Checkout Processing behavior evidence.
+- Covered standalone repository persistence, full checkout completion, forms/workflows/controls, workbench rendering, AppGen-X route contracts, service facades, assistant document/CRUD planning, idempotent inbox handling, retry/dead-letter evidence, advanced conversion/risk/forecasting/routing/proof/federation/optimization functions, owned-boundary rejection, and release evidence.
+- Bound all 50 improve1 rows to `tests/test_domain_behavior.py` and added this status file to release evidence references.
+- Validation: `/Volumes/Media/src/pjs/appgen/.venv/bin/pytest src/pyAppGen/pbcs/checkout_processing/tests`.

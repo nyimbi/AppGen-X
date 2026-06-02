@@ -263,3 +263,59 @@ def smoke_test() -> dict:
         "rendered": rendered,
         "side_effects": (),
     }
+
+
+
+def checkout_processing_standalone_workbench_blueprint() -> dict:
+    """Return the concrete workbench blueprint used by a checkout-only app."""
+    contract = checkout_processing_ui_contract()
+    return {
+        "format": "appgen.checkout-processing-standalone-workbench.v1",
+        "ok": contract["ok"] and bool(contract["forms"]) and bool(contract["wizards"]) and bool(contract["controls"]),
+        "pbc": "checkout_processing",
+        "route": "/app/checkout-processing/workbench",
+        "navigation": (
+            "carts",
+            "checkout_sessions",
+            "pricing_tax",
+            "inventory",
+            "payments",
+            "risk_and_fraud",
+            "rules_parameters_config",
+            "assistant",
+            "controls",
+        ),
+        "forms": contract["forms"],
+        "wizards": contract["wizards"],
+        "controls": contract["controls"],
+        "source_ui_contract": contract,
+        "side_effects": (),
+    }
+
+
+def checkout_processing_render_standalone_workbench(workbench: dict) -> dict:
+    """Render repository read-model data into stable cards and action groups."""
+    blueprint = checkout_processing_standalone_workbench_blueprint()
+    cards = (
+        {"key": "carts", "value": int(workbench.get("cart_count", 0)), "fragment": "CartConsole"},
+        {"key": "cart_lines", "value": int(workbench.get("cart_line_count", 0)), "fragment": "CartLineConsole"},
+        {"key": "completed_checkouts", "value": int(workbench.get("completed_checkout_count", 0)), "fragment": "CheckoutSessionConsole"},
+        {"key": "confirmed_inventory", "value": int(workbench.get("confirmed_inventory_count", 0)), "fragment": "InventoryReservationPanel"},
+        {"key": "captured_payments", "value": int(workbench.get("captured_payment_count", 0)), "fragment": "PaymentIntentPanel"},
+        {"key": "promotion_redemptions", "value": int(workbench.get("promotion_redemption_count", 0)), "fragment": "PromotionRedemptionStudio"},
+    )
+    activity = dict(workbench.get("activity_counts", {}))
+    return {
+        "format": "appgen.checkout-processing-standalone-render.v1",
+        "ok": blueprint["ok"] and bool(cards) and any(card["value"] for card in cards),
+        "pbc": "checkout_processing",
+        "tenant": workbench.get("tenant"),
+        "route": blueprint["route"],
+        "cards": cards,
+        "activity_counts": activity,
+        "forms_visible": tuple(form.get("form_id") for form in blueprint["forms"]),
+        "wizards_visible": tuple(wizard.get("wizard_id") for wizard in blueprint["wizards"]),
+        "controls_visible": tuple(control.get("control_id") for control in blueprint["controls"]),
+        "agent_entrypoint": "/app/checkout-processing/assistant/sessions",
+        "side_effects": (),
+    }

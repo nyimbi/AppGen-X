@@ -2,12 +2,14 @@
 
 ## Selected Slice
 
-Implement the canonical deposit-account lifecycle slice from `improve1.md` with executable package-local code:
+Implement the canonical deposit-account lifecycle slice from `improve1.md` as a standalone one-PBC app surface with executable package-local code:
 
 - formal lifecycle states for `deposit_account`
 - guarded state transitions with maker-checker enforcement for sensitive actions
 - AppGen-X outbox evidence for lifecycle commands
 - account detail and workbench queries that expose current state and next allowed actions
+- explicit workflow surfaces for opening, lifecycle servicing, and assistant-driven document intake
+- package-local permission mapping and governed CRUD planning for assistant/document instructions
 
 This is intentionally narrower than the full backlog. It strengthens the package where the current code is weakest without widening scope into statements, shared projections, or foreign-table integrations.
 
@@ -37,13 +39,18 @@ This is intentionally narrower than the full backlog. It strengthens the package
    - `transition_deposit_account`
    - `query_account_detail`
    - lifecycle-aware workbench query metadata
-4. Update package docs to reflect the implemented slice and record validation evidence.
+4. Add package-local workflow and permission modules that:
+   - declare executable workflows for opening, lifecycle servicing, and document instruction intake
+   - map operations to permissions and role expectations
+   - feed the standalone app surface, assistant planning, and release evidence
+5. Update package docs to reflect the implemented slice and record validation evidence.
 
 ## Validation Plan
 
 - Run package-local pytest for existing and new tests
 - Run Python compile validation on the package directory
 - Run a targeted runtime smoke command that exercises open, approve, activate, close, reopen, and detail query flows
+- Run package-local contract/audit smoke functions for capability assurance, workflow surface, and release evidence
 - Review the changed files for contract drift, nondeterministic evidence, and boundary violations before finalizing docs
 
 ## Out of Scope

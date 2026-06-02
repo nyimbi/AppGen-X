@@ -254,3 +254,43 @@ def master_data_governance_runtime_capabilities():
         'domain_advanced_capabilities': tuple(domain['advanced_capabilities']),
         'side_effects': (),
     }
+
+
+# Improve1 master data control extension.
+from .master_data_control import improve1_master_data_control_contract, evaluate_master_data_control
+
+_MASTER_DATA_GOVERNANCE_BASE_RUNTIME_CAPABILITIES_WITH_CONTROL = master_data_governance_runtime_capabilities
+_MASTER_DATA_GOVERNANCE_BASE_BUILD_RELEASE_EVIDENCE_WITH_CONTROL = master_data_governance_build_release_evidence
+
+
+def master_data_governance_runtime_capabilities():
+    runtime = dict(_MASTER_DATA_GOVERNANCE_BASE_RUNTIME_CAPABILITIES_WITH_CONTROL())
+    control = improve1_master_data_control_contract()
+    runtime["ok"] = bool(runtime.get("ok")) and control["ok"]
+    runtime["master_data_control"] = control
+    runtime["operations"] = tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + ("evaluate_master_data_control", "improve1_master_data_control_contract")))
+    runtime["owned_tables"] = tuple(dict.fromkeys(tuple(runtime.get("owned_tables", ())) + tuple(control["owned_tables"])))
+    return runtime
+
+
+def master_data_governance_build_release_evidence():
+    evidence = dict(_MASTER_DATA_GOVERNANCE_BASE_BUILD_RELEASE_EVIDENCE_WITH_CONTROL())
+    control = improve1_master_data_control_contract()
+    artifacts = dict(evidence.get("generated_artifacts", {}))
+    artifacts["master_data_control"] = {
+        "contract": control["format"],
+        "capability_count": control["capability_count"],
+        "owned_tables": control["owned_tables"],
+        "service_apis": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "ui_surfaces": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "test": "tests/test_domain_behavior.py",
+    }
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_master_data_control", "ok": control["ok"]},)
+    evidence.update({
+        "ok": bool(evidence.get("ok")) and control["ok"],
+        "checks": checks,
+        "generated_artifacts": artifacts,
+        "master_data_control": control,
+        "blocking_gaps": tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ())),
+    })
+    return evidence

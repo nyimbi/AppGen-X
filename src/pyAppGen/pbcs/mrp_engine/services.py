@@ -151,3 +151,45 @@ def smoke_test() -> dict:
     operation = manifest["operations"][0] if manifest["operations"] else None
     result = service.execute_operation(operation, {"smoke": True}) if operation else {"ok": False}
     return {"ok": manifest["ok"] and result.get("ok") is True, "manifest": manifest, "result": result, "side_effects": ()}
+
+
+
+def standalone_service_operation_contracts():
+    contracts = (
+        {'operation': 'seed_demo_workspace', 'operation_kind': 'command', 'method': 'POST', 'path': '/app/mrp-engine/demo-workspace', 'table': 'mrp_engine_mrp_configuration', 'wizard': 'PlanningDocumentIntakeWizard', 'permission': 'mrp_engine.configure'},
+        {'operation': 'build_workbench', 'operation_kind': 'query', 'method': 'GET', 'path': '/app/mrp-engine/workbench', 'table': 'mrp_engine_planned_order', 'wizard': None, 'permission': 'mrp_engine.read'},
+        {'operation': 'register_bom', 'operation_kind': 'command', 'method': 'POST', 'path': '/app/mrp-engine/boms', 'table': 'mrp_engine_bill_of_material', 'wizard': 'PlanningDocumentIntakeWizard', 'permission': 'mrp_engine.master'},
+        {'operation': 'create_mrp_run', 'operation_kind': 'command', 'method': 'POST', 'path': '/app/mrp-engine/runs', 'table': 'mrp_engine_mrp_run', 'wizard': 'MrpRunWizard', 'permission': 'mrp_engine.plan'},
+        {'operation': 'calculate_material_plan', 'operation_kind': 'command', 'method': 'POST', 'path': '/app/mrp-engine/runs/net', 'table': 'mrp_engine_planned_order', 'wizard': 'NettingAndPeggingWizard', 'permission': 'mrp_engine.plan'},
+        {'operation': 'generate_supply_proof', 'operation_kind': 'command', 'method': 'POST', 'path': '/app/mrp-engine/proofs', 'table': 'mrp_engine_supply_availability_proof', 'wizard': 'PlannedOrderReleaseWizard', 'permission': 'mrp_engine.audit'},
+    )
+    return {'format': 'appgen.mrp-engine-standalone-service.v1', 'ok': all(item['table'].startswith('mrp_engine_') for item in contracts), 'pbc': 'mrp_engine', 'contracts': contracts, 'operations': tuple(item['operation'] for item in contracts), 'command_operations': tuple(item['operation'] for item in contracts if item['operation_kind'] == 'command'), 'query_operations': tuple(item['operation'] for item in contracts if item['operation_kind'] == 'query'), 'side_effects': ()}
+
+
+class MrpEngineStandaloneService:
+    def __init__(self, repository=None, database_path=':memory:'):
+        if repository is None:
+            from .repository import MrpEngineStandaloneRepository
+            repository = MrpEngineStandaloneRepository(database_path=database_path)
+        self.repository = repository
+
+    def close(self):
+        self.repository.close()
+
+    def seed_demo_workspace(self, tenant='tenant_demo'):
+        return self.repository.seed_demo_workspace(tenant=tenant)
+
+    def build_workbench(self, tenant='tenant_demo'):
+        return self.repository.build_workbench(tenant)
+
+    def register_bom(self, tenant, bom):
+        return self.repository.register_bom(tenant, bom)
+
+    def create_mrp_run(self, tenant, mrp_run):
+        return self.repository.create_mrp_run(tenant, mrp_run)
+
+    def calculate_material_plan(self, tenant, run_id):
+        return self.repository.calculate_material_plan(tenant, run_id)
+
+    def generate_supply_proof(self, tenant, planned_order_id, disclosure=('planned_order_id', 'item', 'quantity')):
+        return self.repository.generate_supply_proof(tenant, planned_order_id, tuple(disclosure))

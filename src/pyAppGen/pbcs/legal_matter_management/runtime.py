@@ -254,3 +254,29 @@ def legal_matter_management_runtime_capabilities():
         'domain_advanced_capabilities': tuple(domain['advanced_capabilities']),
         'side_effects': (),
     }
+
+
+# Improve1 legal control extension.
+from .legal_control import (
+    LEGAL_CONTROL_ALLOWED_DATABASE_BACKENDS, LEGAL_CONTROL_OWNED_TABLES, LEGAL_CONTROL_REQUIRED_EVENT_TOPIC,
+    improve1_legal_control_contract as legal_matter_management_improve1_legal_control_contract,
+)
+
+_LEGAL_MATTER_MANAGEMENT_DEPTH_RUNTIME_CAPABILITIES = legal_matter_management_runtime_capabilities
+_LEGAL_MATTER_MANAGEMENT_DEPTH_RELEASE_EVIDENCE = legal_matter_management_build_release_evidence
+
+
+def legal_matter_management_build_release_evidence():
+    evidence = dict(_LEGAL_MATTER_MANAGEMENT_DEPTH_RELEASE_EVIDENCE())
+    legal_control = legal_matter_management_improve1_legal_control_contract()
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_legal_control", "ok": legal_control["ok"]}, {"id": "legal_matter_management_release_pack", "ok": legal_control["capability_count"] == 50})
+    evidence.update({"legal_control": legal_control, "checks": checks, "blocking_gaps": tuple(check for check in checks if check.get("ok") is not True)})
+    evidence["ok"] = not evidence["blocking_gaps"]
+    return evidence
+
+
+def legal_matter_management_runtime_capabilities():
+    runtime = dict(_LEGAL_MATTER_MANAGEMENT_DEPTH_RUNTIME_CAPABILITIES())
+    legal_control = legal_matter_management_improve1_legal_control_contract()
+    runtime.update({"ok": runtime.get("ok") is True and legal_control["ok"], "legal_control": legal_control, "improve1_capabilities": legal_control["capabilities"], "operations": tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + ("improve1_legal_control_contract", "evaluate_legal_control"))), "owned_tables": LEGAL_CONTROL_OWNED_TABLES, "allowed_database_backends": LEGAL_CONTROL_ALLOWED_DATABASE_BACKENDS, "database_backends": LEGAL_CONTROL_ALLOWED_DATABASE_BACKENDS, "required_event_topic": LEGAL_CONTROL_REQUIRED_EVENT_TOPIC, "event_contract": "AppGen-X", "stream_engine_picker_visible": False})
+    return runtime

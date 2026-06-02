@@ -119,3 +119,32 @@ def smoke_test() -> dict:
     first = ROUTES[0]
     dispatched = dispatch_route(first["method"], first["path"], {"smoke": True})
     return {"ok": validation["ok"] and dispatched["ok"], "validation": validation, "dispatch": dispatched, "side_effects": ()}
+
+
+STANDALONE_ROUTES=(
+    {'method':'POST','path':'/app/production-control/demo-workspace','handler':'seed_demo_workspace'},
+    {'method':'GET','path':'/app/production-control/workbench','handler':'build_workbench'},
+    {'method':'POST','path':'/app/production-control/orders','handler':'create_production_order'},
+    {'method':'POST','path':'/app/production-control/operations/confirm','handler':'confirm_operation'},
+    {'method':'POST','path':'/app/production-control/proofs','handler':'generate_completion_proof'},)
+
+def standalone_route_contracts():
+    from .services import standalone_service_operation_contracts
+    ops={i['operation']:i for i in standalone_service_operation_contracts()['contracts']}; contracts=tuple({**r,'operation':r['handler'],'service_operation':ops.get(r['handler'])} for r in STANDALONE_ROUTES)
+    return {'format':'appgen.production-control-standalone-routes.v1','ok':all(i['service_operation'] for i in contracts),'pbc':'production_control','routes':tuple(f"{i['method']} {i['path']}" for i in contracts),'contracts':contracts,'side_effects':()}
+
+def dispatch_standalone_route(method,path,payload=None,*,service=None):
+    from .services import ProductionControlStandaloneService
+    route=next((i for i in STANDALONE_ROUTES if i['method']==method and i['path']==path),None)
+    if route is None: return {'ok':False,'handled':False,'reason':'route_not_found','side_effects':()}
+    own=service is None; service=service or ProductionControlStandaloneService(); data=dict(payload or {})
+    try:
+        if route['handler']=='seed_demo_workspace': result=service.seed_demo_workspace(tenant=data.get('tenant','tenant_demo'))
+        elif route['handler']=='build_workbench': result=service.build_workbench(tenant=data.get('tenant','tenant_demo'))
+        elif route['handler']=='create_production_order': result=service.create_production_order(data.get('tenant','tenant_demo'),data)
+        elif route['handler']=='confirm_operation': result=service.confirm_operation(data.get('tenant','tenant_demo'),data['step_id'],good_qty=data['good_qty'],scrap_qty=data['scrap_qty'],labor_hours=data['labor_hours'],machine_hours=data['machine_hours'],confirmed_by=data['confirmed_by'])
+        elif route['handler']=='generate_completion_proof': result=service.generate_completion_proof(data.get('tenant','tenant_demo'),data['order_id'],tuple(data.get('disclosure',('order_id','item','completed_qty'))))
+        else: result={'ok':False,'reason':'handler_not_implemented'}
+        return {'ok':result.get('ok') is True,'handled':True,'route':route,'result':{'ok':result.get('ok') is True,'result':result},'side_effects':()}
+    finally:
+        if own: service.close()

@@ -43,8 +43,14 @@ from .runtime import service_ticketing_set_parameter
 from .runtime import service_ticketing_ui_binding_contract
 from .runtime import service_ticketing_verify_owned_table_boundary
 from .ui import SERVICE_TICKETING_UI_FRAGMENT_KEYS
+from .ui import service_ticketing_controls_contract
+from .ui import service_ticketing_forms_contract
 from .ui import service_ticketing_render_workbench
 from .ui import service_ticketing_ui_contract
+from .ui import service_ticketing_wizards_contract
+from .app_surface import app_surface_smoke_test
+from .app_surface import document_instruction_service_ticketing_plan
+from .app_surface import single_pbc_service_ticketing_app_contract
 
 PBC_KEY = "service_ticketing"
 
@@ -57,6 +63,8 @@ def implementation_contract() -> dict:
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
         "ui_contract": service_ticketing_ui_contract(),
+        "single_pbc_app": single_pbc_service_ticketing_app_contract(),
+        "app_surface_smoke": app_surface_smoke_test(),
         "owned_tables": SERVICE_TICKETING_OWNED_TABLES,
         "runtime_tables": SERVICE_TICKETING_RUNTIME_TABLES,
         "allowed_database_backends": SERVICE_TICKETING_ALLOWED_DATABASE_BACKENDS,

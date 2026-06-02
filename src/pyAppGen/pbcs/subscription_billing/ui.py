@@ -282,3 +282,17 @@ def smoke_test():
         "cards": cards,
         "side_effects": (),
     }
+
+
+
+def subscription_billing_standalone_workbench_blueprint():
+    from .forms import subscription_billing_form_catalog
+    from .wizards import subscription_billing_wizard_catalog
+    from .controls import subscription_billing_control_catalog
+    contract=subscription_billing_ui_contract(); forms=subscription_billing_form_catalog(); wizards=subscription_billing_wizard_catalog(); controls=subscription_billing_control_catalog()
+    return {'format':'appgen.subscription-billing-standalone-workbench.v1','ok':contract['ok'] and forms['ok'] and wizards['ok'] and controls['ok'],'pbc':'subscription_billing','route':'/app/subscription-billing/workbench','navigation':('subscriptions','plans','usage','invoices','credits','payments','entitlements','revenue','dunning','exceptions','assistant','controls'),'forms':forms['forms'],'wizards':wizards['wizards'],'controls':controls['controls'],'source_ui_contract':contract,'side_effects':()}
+
+def subscription_billing_render_standalone_workbench(workbench):
+    blueprint=subscription_billing_standalone_workbench_blueprint()
+    cards=({'key':'subscriptions','value':int(workbench.get('subscription_count',0)),'fragment':'SubscriptionRegistry'},{'key':'invoices','value':int(workbench.get('invoice_count',0)),'fragment':'InvoiceApprovalWorkbench'},{'key':'paid_invoices','value':int(workbench.get('paid_invoice_count',0)),'fragment':'InvoiceApprovalWorkbench'},{'key':'usage','value':int(workbench.get('usage_count',0)),'fragment':'UsageMeterConsole'},{'key':'credits','value':int(workbench.get('credit_memo_count',0)),'fragment':'CreditMemoWorkbench'},{'key':'payments','value':int(workbench.get('payment_application_count',0)),'fragment':'PaymentApplicationPanel'},{'key':'entitlements','value':int(workbench.get('entitlement_count',0)),'fragment':'EntitlementHandoffPanel'},{'key':'revenue','value':int(workbench.get('revenue_schedule_count',0)),'fragment':'RevenueRecognitionPanel'},{'key':'exceptions','value':int(workbench.get('exception_count',0)),'fragment':'BillingExceptionQueue'})
+    return {'format':'appgen.subscription-billing-standalone-render.v1','ok':blueprint['ok'] and any(card['value'] for card in cards),'pbc':'subscription_billing','tenant':workbench.get('tenant'),'route':blueprint['route'],'cards':cards,'activity_counts':dict(workbench.get('activity_counts',{})),'forms_visible':tuple(f['form_id'] for f in blueprint['forms']),'wizards_visible':tuple(w['wizard_id'] for w in blueprint['wizards']),'controls_visible':tuple(c['control_id'] for c in blueprint['controls']),'agent_entrypoint':'/app/subscription-billing/assistant/sessions','side_effects':()}

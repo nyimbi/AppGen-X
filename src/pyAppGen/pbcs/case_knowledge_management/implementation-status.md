@@ -33,3 +33,14 @@ The current slice is intentionally centered on one executable domain path:
 - Persistence is in-memory; the migration/schema are provided, but the runtime does not connect to a live database.
 - The workbench is a structured contract/view model, not a rendered frontend.
 - Agent document parsing is heuristic and grounded to owned tables, not ML-backed.
+
+## improve1 Full Traceability Evidence
+
+- Added `support_control.py` with 50 side-effect-free support and knowledge controls covering omnichannel intake, contacts and authority, classification, severity, queue capacity, skill assignment, workload fairness, SLA semantics, breach prediction, interaction timelines, communication governance, escalation playbooks, major incidents, duplicate graphs, resolution taxonomy, reopens, root cause, article lifecycle, versioning, freshness, quality, feedback, knowledge gaps, deflection, next-best resolution, agent guardrails, localization, sentiment, customer and product projections, queue simulation, stuck cases, engineering handoff, security/privacy, attachment evidence, search quality, recommendation experiments, playbooks, collaboration, service recovery, closure readiness, QA sampling, training, metrics, policy simulation, cross-PBC projections, agent CRUD, evidence packets, dead-letter operations, and complete workbench coverage.
+- Bound the support control contract into `runtime.py` release evidence and `ui.py` support-control panels so generated applications surface the full case/knowledge management domain control set.
+- Updated `IMPROVE1_TRACEABILITY.md` and `improve1_capabilities.py` so every feature 1-50 maps to `support_control.py`, package UI, service/API surface, `tests/test_domain_behavior.py`, and release evidence.
+
+Validation:
+- `/Volumes/Media/src/pjs/appgen/.venv/bin/pytest src/pyAppGen/pbcs/case_knowledge_management/tests` -> 24 passed.
+- Improve1 repository sweep -> 877 passed, 197 warnings limited to existing deprecation warnings outside this PBC slice.
+- `git diff --check -- src/pyAppGen/pbcs` -> passed with no output.

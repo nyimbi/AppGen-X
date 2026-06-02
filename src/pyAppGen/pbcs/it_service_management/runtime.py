@@ -265,3 +265,37 @@ def it_service_management_runtime_smoke():
     }
 
 it_service_management_execute_domain_operation = execute_domain_operation
+
+# Improve1 ITSM control extension.
+from .itsm_control import improve1_itsm_control_contract as it_service_management_improve1_itsm_control_contract
+
+_IT_SERVICE_MANAGEMENT_BASE_RUNTIME_CAPABILITIES = it_service_management_runtime_capabilities
+_IT_SERVICE_MANAGEMENT_BASE_RELEASE_EVIDENCE = it_service_management_build_release_evidence
+
+
+def it_service_management_build_release_evidence():
+    evidence = dict(_IT_SERVICE_MANAGEMENT_BASE_RELEASE_EVIDENCE())
+    itsm_control = it_service_management_improve1_itsm_control_contract()
+    checks = tuple(evidence.get("checks", ())) + (
+        {"id": "improve1_itsm_control", "ok": itsm_control["ok"]},
+        {"id": "itsm_release_pack", "ok": itsm_control["capability_count"] == 50 and itsm_control["event_contract"] == "AppGen-X"},
+    )
+    return {**evidence, "ok": evidence.get("ok") is True and all(check["ok"] for check in checks), "checks": checks, "itsm_control": itsm_control, "blocking_gaps": tuple(check for check in checks if not check["ok"])}
+
+
+def it_service_management_runtime_capabilities():
+    runtime = dict(_IT_SERVICE_MANAGEMENT_BASE_RUNTIME_CAPABILITIES())
+    itsm_control = it_service_management_improve1_itsm_control_contract()
+    return {
+        **runtime,
+        "ok": runtime.get("ok") is True and itsm_control["ok"],
+        "itsm_control": itsm_control,
+        "improve1_capabilities": itsm_control["capabilities"],
+        "operations": tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + ("improve1_itsm_control_contract", "evaluate_itsm_control"))),
+        "owned_tables": tuple(dict.fromkeys(tuple(runtime.get("owned_tables", ())) + tuple(itsm_control["owned_tables"]))),
+        "allowed_database_backends": itsm_control["allowed_database_backends"],
+        "event_contract": itsm_control["event_contract"],
+        "required_event_topic": itsm_control["required_event_topic"],
+        "stream_engine_picker_visible": False,
+        "side_effects": (),
+    }

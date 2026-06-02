@@ -1,6 +1,7 @@
 """API route contracts for the Enterprise Asset Management PBC."""
 
 from .services import EamService
+from .app_surface import standalone_route_contracts
 from .services import service_operation_contracts
 
 
@@ -61,6 +62,7 @@ def api_route_contracts():
         "pbc": "eam",
         "contracts": contracts,
         "routes": tuple(item["route_id"] for item in contracts),
+        "standalone_routes": standalone_route_contracts(),
         "side_effects": (),
     }
 
@@ -113,4 +115,4 @@ def smoke_test():
         return {"ok": False, "reason": "no_routes"}
     first = ROUTES[0]
     dispatched = dispatch_route(first["method"], first["path"], {"smoke": True})
-    return {"ok": validation["ok"] and dispatched["ok"], "validation": validation, "dispatch": dispatched, "side_effects": ()}
+    return {"ok": validation["ok"] and dispatched["ok"] and any(route["path"] == "/eam/app" for route in standalone_route_contracts()), "validation": validation, "dispatch": dispatched, "side_effects": ()}

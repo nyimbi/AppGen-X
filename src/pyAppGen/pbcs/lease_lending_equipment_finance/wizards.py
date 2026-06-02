@@ -1,0 +1,16 @@
+"""Guided workflows for the lease_lending_equipment_finance PBC."""
+from __future__ import annotations
+PBC_KEY = "lease_lending_equipment_finance"
+WIZARD_CATALOG = (
+    {"key": "application_to_booking_wizard", "title": "Application to funded booking", "steps": ("capture_application","validate_parties","load_equipment_quote","track_credit_conditions","prepare_docs","fund_and_book"), "owned_tables": ("lease_lending_equipment_finance_equipment_lease","lease_lending_equipment_finance_leased_asset"), "emits": ("LeaseLendingEquipmentFinanceCreated",)},
+    {"key": "structure_and_pricing_wizard", "title": "Structure, price, and classify a deal", "steps": ("select_product_family","score_collateral","model_cash_flows","validate_tax_accounting","approve_pricing_exception","lock_structure"), "owned_tables": ("lease_lending_equipment_finance_equipment_lease","lease_lending_equipment_finance_payment_schedule"), "emits": ("LeaseLendingEquipmentFinanceApproved",)},
+    {"key": "funding_package_wizard", "title": "Invoice to disbursement package", "steps": ("reconcile_invoice","verify_acceptance","split_disbursement","apply_holdback","collect_signoff","release_funds"), "owned_tables": ("lease_lending_equipment_finance_lease_servicing_event","lease_lending_equipment_finance_leased_asset"), "emits": ("LeaseLendingEquipmentFinanceUpdated",)},
+    {"key": "usage_and_reserve_wizard", "title": "Usage billing and reserve administration", "steps": ("ingest_meter","lock_billing_snapshot","calculate_overage","collect_reserve","approve_draw","true_up_dispute"), "owned_tables": ("lease_lending_equipment_finance_payment_schedule","lease_lending_equipment_finance_lease_servicing_event"), "emits": ("LeaseLendingEquipmentFinanceUpdated",)},
+    {"key": "end_of_term_wizard", "title": "End-of-term purchase, return, renewal, or extension", "steps": ("identify_maturity","validate_notice_deadline","inspect_asset","generate_buyout_or_return_path","approve_concession","close_or_extend"), "owned_tables": ("lease_lending_equipment_finance_equipment_lease","lease_lending_equipment_finance_buyout_quote","lease_lending_equipment_finance_leased_asset"), "emits": ("LeaseLendingEquipmentFinanceApproved",)},
+    {"key": "collections_repo_disposition_wizard", "title": "Delinquency through recovery and disposition", "steps": ("segment_delinquency","track_promise_to_pay","send_required_notices","assign_repo_vendor","grade_condition","allocate_loss_or_surplus"), "owned_tables": ("lease_lending_equipment_finance_repo_case","lease_lending_equipment_finance_lease_servicing_event"), "emits": ("LeaseLendingEquipmentFinanceExceptionOpened",)},
+    {"key": "investor_remittance_wizard", "title": "Syndication and investor remittance", "steps": ("allocate_positions","collect_servicing_cash","apply_waterfall","handle_shortfall","produce_statement","record_remittance"), "owned_tables": ("lease_lending_equipment_finance_equipment_lease","lease_lending_equipment_finance_lease_servicing_event"), "emits": ("LeaseLendingEquipmentFinanceUpdated",)},
+)
+def wizard_catalog() -> dict:
+    return {"ok": True, "pbc": PBC_KEY, "wizards": WIZARD_CATALOG, "side_effects": ()}
+def smoke_test() -> dict:
+    return {"ok": len(WIZARD_CATALOG) >= 7 and all(wizard["owned_tables"] for wizard in WIZARD_CATALOG), "side_effects": ()}

@@ -9,7 +9,7 @@ CREATE TABLE composition_engine_composition_workspace (
   target VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
   status VARCHAR(255) NOT NULL,
-  selected_pbcs VARCHAR(255) NOT NULL,
+  selected_pbcs TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
 );
@@ -20,8 +20,8 @@ CREATE TABLE composition_engine_component_registry (
   component_id VARCHAR(255) NOT NULL,
   pbc VARCHAR(255) NOT NULL,
   fragment VARCHAR(255) NOT NULL,
-  permissions VARCHAR(255) NOT NULL,
-  schemas VARCHAR(255) NOT NULL,
+  permissions TEXT NOT NULL,
+  schemas TEXT NOT NULL,
   status VARCHAR(255) NOT NULL,
   compatibility VARCHAR(255) NOT NULL,
   created_at TIMESTAMP NOT NULL,
@@ -34,8 +34,8 @@ CREATE TABLE composition_engine_ui_fragment (
   fragment_id VARCHAR(255) NOT NULL,
   component_id VARCHAR(255) NOT NULL,
   route VARCHAR(255) NOT NULL,
-  slots VARCHAR(255) NOT NULL,
-  events VARCHAR(255) NOT NULL,
+  slots TEXT NOT NULL,
+  events TEXT NOT NULL,
   status VARCHAR(255) NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
@@ -72,9 +72,9 @@ CREATE TABLE composition_engine_composition_plan (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   workspace_id VARCHAR(255) NOT NULL,
-  selected_pbcs VARCHAR(255) NOT NULL,
+  selected_pbcs TEXT NOT NULL,
   route_count INTEGER NOT NULL,
-  bindings VARCHAR(255) NOT NULL,
+  bindings TEXT NOT NULL,
   status VARCHAR(255) NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
@@ -86,8 +86,8 @@ CREATE TABLE composition_engine_composition_validation_run (
   validation_id VARCHAR(255) NOT NULL,
   workspace_id VARCHAR(255) NOT NULL,
   decision VARCHAR(255) NOT NULL,
-  blockers VARCHAR(255) NOT NULL,
-  missing_fragments VARCHAR(255) NOT NULL,
+  blockers TEXT NOT NULL,
+  missing_fragments TEXT NOT NULL,
   route_count INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
@@ -101,7 +101,7 @@ CREATE TABLE composition_engine_package_registration_plan (
   requested_by VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   side_effect_free VARCHAR(255) NOT NULL,
-  writes_performed VARCHAR(255) NOT NULL,
+  writes_performed TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
 );
@@ -110,7 +110,7 @@ CREATE TABLE composition_engine_package_index_entry (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   workspace_id VARCHAR(255) NOT NULL,
-  selected_pbcs VARCHAR(255) NOT NULL,
+  selected_pbcs TEXT NOT NULL,
   status VARCHAR(255) NOT NULL,
   entry_source VARCHAR(255) NOT NULL,
   indexed_at TIMESTAMP NOT NULL,
@@ -126,7 +126,7 @@ CREATE TABLE composition_engine_release_evidence (
   route_count INTEGER NOT NULL,
   release_risk VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
-  package_registration_plan VARCHAR(255) NOT NULL,
+  package_registration_plan TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
 );
@@ -136,8 +136,8 @@ CREATE TABLE composition_engine_composition_rule (
   tenant VARCHAR(255) NOT NULL,
   rule_id VARCHAR(255) NOT NULL,
   scope VARCHAR(255) NOT NULL,
-  required_fragments VARCHAR(255) NOT NULL,
-  allowed_meshes VARCHAR(255) NOT NULL,
+  required_fragments TEXT NOT NULL,
+  allowed_meshes TEXT NOT NULL,
   route_policy VARCHAR(255) NOT NULL,
   requires_approval VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
@@ -150,7 +150,7 @@ CREATE TABLE composition_engine_composition_parameter (
   tenant VARCHAR(255) NOT NULL,
   parameter_id VARCHAR(255) NOT NULL,
   key VARCHAR(255) NOT NULL,
-  value VARCHAR(255) NOT NULL,
+  value TEXT NOT NULL,
   effective_at TIMESTAMP NOT NULL,
   status VARCHAR(255) NOT NULL,
   created_at TIMESTAMP NOT NULL,
@@ -166,6 +166,42 @@ CREATE TABLE composition_engine_composition_configuration (
   retry_limit VARCHAR(255) NOT NULL,
   default_timezone VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE composition_engine_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE composition_engine_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE composition_engine_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  attempts INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
 );

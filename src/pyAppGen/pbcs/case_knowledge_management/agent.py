@@ -51,29 +51,8 @@ def chatbot_interface_contract() -> dict:
 
 
 def document_instruction_plan(document: str, instruction: str) -> dict:
-    app = create_app()
-    parsed = {
-        "create": f"{PBC_KEY}_support_case",
-        "update article": f"{PBC_KEY}_knowledge_article",
-        "feedback": f"{PBC_KEY}_article_feedback",
-    }
-    lowered = f"{document} {instruction}".lower()
-    target = next((table for key, table in parsed.items() if key in lowered), f"{PBC_KEY}_support_case")
-    return {
-        "ok": True,
-        "pbc": PBC_KEY,
-        "instruction": instruction,
-        "document_preview": document[:200],
-        "candidate_tables": (target,),
-        "requires_human_confirmation": True,
-        "crud_preview": {
-            "operation": "create",
-            "table": target,
-            "event_contract": "AppGen-X",
-        },
-        "workbench_snapshot": app.query_workbench()["metrics"],
-        "side_effects": (),
-    }
+    from .app_surface import document_instruction_case_knowledge_management_plan
+    return document_instruction_case_knowledge_management_plan(document, instruction)
 
 
 def datastore_crud_plan(action: str, table: str | None = None, payload: dict | None = None) -> dict:
@@ -95,12 +74,14 @@ def datastore_crud_plan(action: str, table: str | None = None, payload: dict | N
 
 
 def composed_agent_contribution() -> dict:
+    from .app_surface import single_pbc_case_knowledge_management_app_contract
     namespace = f"{PBC_KEY}_skills"
     return {
         "ok": True,
         "pbc": PBC_KEY,
         "single_agent_skill_namespace": namespace,
         "dsl_tools": (namespace, f"{PBC_KEY}_crud", f"{PBC_KEY}_documents"),
+        "standalone_app": single_pbc_case_knowledge_management_app_contract(),
         "side_effects": (),
     }
 

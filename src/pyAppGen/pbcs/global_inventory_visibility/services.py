@@ -138,3 +138,70 @@ def smoke_test():
         'result': result,
         'side_effects': (),
     }
+
+
+
+def standalone_service_operation_contracts():
+    """Return repository-backed standalone service operations for one-PBC apps."""
+    contracts = (
+        {"operation": "seed_demo_workspace", "operation_kind": "command", "method": "POST", "path": "/app/global-inventory-visibility/demo-workspace", "table": "global_inventory_visibility_inventory_configuration", "wizard": "AvailabilityProjectionWizard", "permission": "global_inventory_visibility.configure"},
+        {"operation": "build_workbench", "operation_kind": "query", "method": "GET", "path": "/app/global-inventory-visibility/workbench", "table": "global_inventory_visibility_inventory_projection", "wizard": None, "permission": "global_inventory_visibility.read"},
+        {"operation": "build_pool_read_model", "operation_kind": "query", "method": "GET", "path": "/app/global-inventory-visibility/pools/detail", "table": "global_inventory_visibility_inventory_pool", "wizard": None, "permission": "global_inventory_visibility.read"},
+        {"operation": "register_inventory_pool", "operation_kind": "command", "method": "POST", "path": "/app/global-inventory-visibility/pools", "table": "global_inventory_visibility_inventory_pool", "wizard": "AvailabilityProjectionWizard", "permission": "global_inventory_visibility.configure"},
+        {"operation": "generate_pool_proof", "operation_kind": "command", "method": "POST", "path": "/app/global-inventory-visibility/proofs", "table": "global_inventory_visibility_inventory_control_assertion", "wizard": "ReservationControlWizard", "permission": "global_inventory_visibility.audit"},
+        {"operation": "build_release_read_model", "operation_kind": "query", "method": "GET", "path": "/app/global-inventory-visibility/release-evidence", "table": "global_inventory_visibility_inventory_control_assertion", "wizard": None, "permission": "global_inventory_visibility.audit"},
+    )
+    return {
+        "format": "appgen.global-inventory-visibility-standalone-service.v1",
+        "ok": all(item["table"].startswith("global_inventory_visibility_") for item in contracts),
+        "pbc": "global_inventory_visibility",
+        "contracts": contracts,
+        "operations": tuple(item["operation"] for item in contracts),
+        "command_operations": tuple(item["operation"] for item in contracts if item["operation_kind"] == "command"),
+        "query_operations": tuple(item["operation"] for item in contracts if item["operation_kind"] == "query"),
+        "side_effects": (),
+    }
+
+
+class GlobalInventoryVisibilityStandaloneService:
+    """Repository-backed command/query surface for standalone package apps."""
+
+    def __init__(self, repository=None, database_path=":memory:"):
+        if repository is None:
+            from .repository import GlobalInventoryVisibilityRepository
+
+            repository = GlobalInventoryVisibilityRepository(database_path=database_path)
+        self.repository = repository
+
+    def close(self):
+        self.repository.close()
+
+    def seed_demo_workspace(self, tenant="tenant_demo"):
+        return self.repository.seed_demo_workspace(tenant=tenant)
+
+    def build_workbench(self, tenant="tenant_demo"):
+        return self.repository.build_workbench(tenant)
+
+    def build_pool_read_model(self, pool_id, tenant=None):
+        return self.repository.build_pool_read_model(pool_id=pool_id, tenant=tenant)
+
+    def register_inventory_pool(self, pool):
+        return self.repository.register_inventory_pool(pool)
+
+    def generate_pool_proof(self, pool_id, disclosure=("available_to_promise", "capable_to_promise", "freshness_score")):
+        return self.repository.generate_pool_proof(pool_id=pool_id, disclosure=tuple(disclosure))
+
+    def build_release_read_model(self, tenant="tenant_demo"):
+        return self.repository.build_release_read_model(tenant)
+
+    def run_document_instruction(self, document, instructions, tenant="tenant_demo"):
+        from . import agent
+
+        plan = agent.document_instruction_plan(document, instructions)
+        return {
+            "ok": plan["ok"],
+            "tenant": tenant,
+            "plan": plan,
+            "requires_confirmation": True,
+            "side_effects": (),
+        }

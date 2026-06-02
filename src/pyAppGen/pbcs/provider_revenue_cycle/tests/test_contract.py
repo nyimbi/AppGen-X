@@ -1,57 +1,81 @@
-from pyAppGen.pbcs.provider_revenue_cycle import implementation_contract, package_discovery_plan, package_metadata_manifest, validate_package_metadata
+from pyAppGen.pbcs.provider_revenue_cycle import implementation_contract
+from pyAppGen.pbcs.provider_revenue_cycle import package_discovery_plan
+from pyAppGen.pbcs.provider_revenue_cycle import package_metadata_manifest
+from pyAppGen.pbcs.provider_revenue_cycle import validate_package_metadata
+from pyAppGen.pbcs.provider_revenue_cycle.agent import agent_skill_manifest
+from pyAppGen.pbcs.provider_revenue_cycle.agent import chatbot_interface_contract
+from pyAppGen.pbcs.provider_revenue_cycle.agent import datastore_crud_plan
+from pyAppGen.pbcs.provider_revenue_cycle.agent import document_instruction_plan
+from pyAppGen.pbcs.provider_revenue_cycle.audit import run_provider_revenue_cycle_pbc_audit
+from pyAppGen.pbcs.provider_revenue_cycle.config import governance_smoke_test
+from pyAppGen.pbcs.provider_revenue_cycle.controls import provider_revenue_cycle_control_catalog
+from pyAppGen.pbcs.provider_revenue_cycle.events import event_contract_manifest
+from pyAppGen.pbcs.provider_revenue_cycle.events import validate_event_contract
+from pyAppGen.pbcs.provider_revenue_cycle.forms import provider_revenue_cycle_form_catalog
+from pyAppGen.pbcs.provider_revenue_cycle.handlers import dispatch_event
+from pyAppGen.pbcs.provider_revenue_cycle.handlers import handler_manifest
+from pyAppGen.pbcs.provider_revenue_cycle.release_evidence import build_release_evidence
+from pyAppGen.pbcs.provider_revenue_cycle.release_evidence import release_readiness_manifest
+from pyAppGen.pbcs.provider_revenue_cycle.release_evidence import validate_release_evidence
+from pyAppGen.pbcs.provider_revenue_cycle.routes import api_route_contracts
+from pyAppGen.pbcs.provider_revenue_cycle.routes import validate_api_route_contracts
 from pyAppGen.pbcs.provider_revenue_cycle.schema_contract import build_schema_contract
 from pyAppGen.pbcs.provider_revenue_cycle.service_contract import build_service_contract
-from pyAppGen.pbcs.provider_revenue_cycle.release_evidence import build_release_evidence, release_readiness_manifest, validate_release_evidence
-from pyAppGen.pbcs.provider_revenue_cycle.events import event_contract_manifest, validate_event_contract
-from pyAppGen.pbcs.provider_revenue_cycle.handlers import dispatch_event, handler_manifest
 from pyAppGen.pbcs.provider_revenue_cycle.services import service_operation_contracts
-from pyAppGen.pbcs.provider_revenue_cycle.routes import api_route_contracts, validate_api_route_contracts
-from pyAppGen.pbcs.provider_revenue_cycle.config import governance_smoke_test
-from pyAppGen.pbcs.provider_revenue_cycle.agent import agent_skill_manifest, chatbot_interface_contract, document_instruction_plan, datastore_crud_plan
+from pyAppGen.pbcs.provider_revenue_cycle.wizards import provider_revenue_cycle_wizard_catalog
 
 
 def test_generated_schema_service_and_release_evidence():
-    assert build_schema_contract()['ok'] is True
-    assert build_service_contract()['ok'] is True
-    assert build_release_evidence()['ok'] is True
-    assert release_readiness_manifest()['ok'] is True
-    assert validate_release_evidence()['ok'] is True
+    assert build_schema_contract()["ok"] is True
+    assert build_service_contract()["ok"] is True
+    assert build_release_evidence()["ok"] is True
+    assert release_readiness_manifest()["ok"] is True
+    assert validate_release_evidence()["ok"] is True
 
 
 def test_manifest_and_event_contract():
-    assert implementation_contract()['pbc'] == 'provider_revenue_cycle'
-    assert event_contract_manifest()['ok'] is True
-    assert validate_event_contract()['ok'] is True
+    contract = implementation_contract()
+    assert contract["pbc"] == "provider_revenue_cycle"
+    assert contract["standalone_contract"]["ok"] is True
+    assert event_contract_manifest()["ok"] is True
+    assert validate_event_contract()["ok"] is True
 
 
-def test_agent_chatbot_skills_are_executable():
-    assert agent_skill_manifest()['ok'] is True
-    assert chatbot_interface_contract()['ok'] is True
-    assert document_instruction_plan('doc', 'create')['ok'] is True
-    assert datastore_crud_plan('create')['ok'] is True
-    assert datastore_crud_plan('update', table='foreign_table')['ok'] is False
+def test_forms_wizards_controls_and_agent_are_executable():
+    operation_contract = service_operation_contracts()["contracts"][0]
+
+    assert provider_revenue_cycle_form_catalog()["ok"] is True
+    assert provider_revenue_cycle_wizard_catalog()["ok"] is True
+    assert provider_revenue_cycle_control_catalog()["ok"] is True
+    assert agent_skill_manifest()["ok"] is True
+    assert chatbot_interface_contract()["ok"] is True
+    assert document_instruction_plan("ERA shows underpayment", "update the denial appeal draft")["ok"] is True
+    assert datastore_crud_plan("update", table="provider_revenue_cycle_denial_case")["ok"] is True
+    assert datastore_crud_plan("update", table="foreign_table")["ok"] is False
 
 
 def test_registration_plan_is_side_effect_free():
-    assert package_metadata_manifest()['pbc'] == 'provider_revenue_cycle'
-    assert validate_package_metadata()['ok'] is True
-    assert package_discovery_plan()['ok'] is True
-    assert package_discovery_plan()['side_effects'] == ()
+    assert package_metadata_manifest()["pbc"] == "provider_revenue_cycle"
+    assert validate_package_metadata()["ok"] is True
+    assert package_discovery_plan()["ok"] is True
+    assert package_discovery_plan()["side_effects"] == ()
 
 
 def test_service_and_route_surface_are_executable():
-    assert service_operation_contracts()['ok'] is True
-    assert api_route_contracts()['ok'] is True
-    assert validate_api_route_contracts()['ok'] is True
-    assert service_operation_contracts()['operation_contract']
+    assert service_operation_contracts()["ok"] is True
+    assert api_route_contracts()["ok"] is True
+    assert validate_api_route_contracts()["ok"] is True
+    assert governance_smoke_test()["ok"] is True
+    assert run_provider_revenue_cycle_pbc_audit()["ok"] is True
 
 
 def test_configuration_permissions_and_seed_hooks_are_executable():
-    assert governance_smoke_test()['ok'] is True
+    assert governance_smoke_test()["ok"] is True
+
 
 
 def test_event_handlers_are_idempotent_and_retryable():
     manifest = handler_manifest()
-    assert manifest['ok'] is True
-    assert dispatch_event({'event_type': ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged')[0], 'idempotency_key': 'idem-provider_revenue_cycle'})['ok'] is True
-    assert dispatch_event({'event_type': 'Unexpected', 'idempotency_key': 'bad-provider_revenue_cycle'})['dead_letter_table'].endswith('dead_letter_event')
+    assert manifest["ok"] is True
+    assert dispatch_event({"event_type": ("PolicyChanged", "AuditEventSealed", "OperationalKpiChanged")[0], "idempotency_key": "idem-provider_revenue_cycle"})["ok"] is True
+    assert dispatch_event({"event_type": "Unexpected", "idempotency_key": "bad-provider_revenue_cycle"})["dead_letter_table"].endswith("dead_letter_event")

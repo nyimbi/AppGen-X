@@ -1,5 +1,7 @@
 """Package manifest for the utilities_metering_billing PBC."""
 
+PBC_LITERAL = 'utilities_metering_billing'
+
 PBC_MANIFEST = {'advanced_capabilities': ('utilities_metering_billing_event_sourced_operational_history',
                            'utilities_metering_billing_multi_tenant_policy_isolation',
                            'utilities_metering_billing_schema_evolution_resilience',
@@ -58,7 +60,7 @@ PBC_MANIFEST = {'advanced_capabilities': ('utilities_metering_billing_event_sour
  'datastore_backend': 'postgresql',
  'description': 'Meter reads, usage validation, tariffs, service orders, bills, adjustments, '
                 'collections, and customer utility billing',
- 'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md'),
+ 'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md', 'README.md', 'implementation-plan.md', 'implementation-status.md'),
  'emits': ('UtilitiesMeteringBillingCreated',
            'UtilitiesMeteringBillingUpdated',
            'UtilitiesMeteringBillingApproved',
@@ -104,10 +106,16 @@ PBC_MANIFEST = {'advanced_capabilities': ('utilities_metering_billing_event_sour
             'utilities_metering_billing_control_assertion',
             'utilities_metering_billing_governed_model'),
  'template': 'reporting',
- 'tests': ('tests/test_contract.py',),
+ 'tests': ('tests/test_contract.py', 'tests/test_standalone.py'),
  'ui_fragments': ('UtilitiesMeteringBillingWorkbench',
                   'UtilitiesMeteringBillingDetail',
-                  'UtilitiesMeteringBillingAssistantPanel'),
+                  'UtilitiesMeteringBillingAssistantPanel',
+                  'service-point-intake',
+                  'meter-read-capture',
+                  'billing-cycle-run',
+                  'meter-exchange-wizard',
+                  'bill-run-wizard',
+                  'dispute-case-form'),
  'version': '1.0.0',
  'workflows': ('utilities_metering_billing_create_meter_read_workflow',
                'utilities_metering_billing_record_usage_interval_workflow')}

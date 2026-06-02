@@ -1,49 +1,53 @@
 # Capital Projects Delivery Implementation Plan
 
+## Objective
+
+Upgrade `src/pyAppGen/pbcs/capital_projects_delivery` from a focused lifecycle slice into a coherent standalone one-PBC AppGen-X package without editing shared generators, DSL, or progress-ledger files.
+
 ## Selected Improvement Slice
 
-Implement backlog item 1 from `improve1.md`: a governed stage-gate lifecycle for
-`capital_project` with executable transition rules, gate approvals, blocked exit
-criteria, and lifecycle-aware workbench/detail outputs.
+Anchor the work in backlog item 1 from `improve1.md` (governed stage-gate lifecycle), then close the standalone-package gaps required to run that slice as a one-PBC functional app surface.
 
-## Why This Slice
+## Package-Local Workstreams
 
-- It introduces real domain behavior instead of expanding static contracts.
-- It fits the current package boundary without shared-table access.
-- It uses existing AppGen-X event types, especially
-  `CapitalProjectsDeliveryApproved`, while keeping stream-engine selection hidden.
-- It is small enough to complete, verify, and document inside this package.
+1. Runtime and contract convergence
+   - Keep the executable lifecycle runtime as the behavioral source of truth.
+   - Add package-local workflow, route, permission, release, and standalone-app contract evidence around the lifecycle slice.
+   - Preserve AppGen-X-only eventing, hidden stream-engine selection, and owned-table-only mutation boundaries.
 
-## Planned Code Changes
+2. Standalone app surface
+   - Add `standalone.py` to bootstrap configuration, parameters, rules, demo records, route dispatch, workbench rendering, and release snapshots entirely inside this package.
+   - Ensure the package can render a real one-PBC workbench shell rather than only exposing metadata.
 
-- Add pure lifecycle helpers for canonical capital project phases, gate criteria,
-  approver-role validation, and transition decisions.
-- Extend the runtime state and command/query functions to:
-  - create lifecycle-aware capital projects,
-  - record gate checklist evidence,
-  - approve valid phase transitions,
-  - reject invalid or blocked transitions,
-  - emit lifecycle-rich AppGen-X approval events,
-  - expose lifecycle summaries in workbench/detail outputs.
-- Update service/runtime contracts to advertise the new executable slice.
-- Add package-local tests for:
-  - default lifecycle creation,
-  - blocked transition rejection,
-  - successful gate approval with event context,
-  - backward transition rebaseline enforcement,
-  - workbench/detail lifecycle evidence.
+3. UI, forms, wizards, controls, and workflows
+   - Extend `ui.py` with standalone shell metadata, navigation, permission-aware workbench rendering, and workflow visibility tied to the lifecycle slice.
+   - Keep forms, wizards, and controls package-local and deterministic.
+
+4. Agent/document planning and governed CRUD
+   - Strengthen `agent.py` so document instruction intake and CRUD planning resolve to owned tables, candidate operations, routes, permissions, idempotency keys, and AppGen-X event previews.
+   - Keep mutation planning side-effect-free and human-confirmed.
+
+5. Release evidence, docs, and tests
+   - Refresh `README.md`, `implementation-status.md`, and `RELEASE_EVIDENCE.md` to describe the actual standalone scope and validation evidence.
+   - Add focused standalone tests plus contract coverage for workflows, route/service alignment, agent planning, and app-shell rendering.
+
+## Expected Deliverables
+
+- Real executable package-local improvements in runtime, services, routes, UI, permissions, agent planning, release evidence, and standalone bootstrapping.
+- `standalone.py` and focused standalone tests.
+- Updated `README.md`, `implementation-plan.md`, and `implementation-status.md`.
 
 ## Constraints
 
 - Work only inside `src/pyAppGen/pbcs/capital_projects_delivery`.
+- Do not edit shared generator, DSL, or progress-ledger files.
 - Keep eventing AppGen-X only.
 - Keep `stream_engine_picker_visible` false.
 - Keep `shared_table_access` false.
-- Do not stage, commit, or push.
 
 ## Validation Plan
 
-- Run focused package tests under `capital_projects_delivery/tests`.
-- Run a package-local compile pass to catch syntax/import regressions.
-- Review the diff for contract consistency and remove any review findings before
-  writing `README.md` and `implementation-status.md`.
+- Compile the package with `python3 -m compileall`.
+- Execute package-local tests by importing and running `test_` functions in `tests/test_contract.py`, `tests/test_lifecycle_app_slice.py`, and `tests/test_standalone.py`.
+- Run focused PBC audits for source artifacts, implementation release evidence, and generation smoke.
+- Check the scoped diff with `git diff --check -- src/pyAppGen/pbcs/capital_projects_delivery`.

@@ -52,3 +52,52 @@ def legal_matter_management_render_workbench(state=None):
         'table_browsers': full['table_browsers'],
         'agent_tools': full['agent_tools'],
     }
+
+from .controls import control_catalog
+from .forms import form_catalog
+from .wizards import wizard_catalog
+
+_BASE_LEGAL_MATTER_MANAGEMENT_UI_CONTRACT_WITH_DEPTH = legal_matter_management_ui_contract
+
+def legal_matter_management_ui_contract():
+    base = dict(_BASE_LEGAL_MATTER_MANAGEMENT_UI_CONTRACT_WITH_DEPTH())
+    full = dict(base.get('full_capability_surface', {}))
+    full['forms'] = form_catalog()['forms']
+    full['wizards'] = wizard_catalog()['wizards']
+    full['controls'] = control_catalog()['controls']
+    full['navigation_sections'] = tuple(dict.fromkeys(tuple(full.get('navigation_sections', ())) + ('intake','conflicts','holds','deadlines','filings','privilege','spend','settlement')))
+    return {**base, 'ok': base.get('ok') is True and len(full['forms']) >= 8 and len(full['wizards']) >= 7 and len(full['controls']) >= 7, 'full_capability_surface': full, 'navigation_sections': full['navigation_sections']}
+
+def legal_matter_management_standalone_ui_contract():
+    ui = legal_matter_management_ui_contract()
+    full = ui['full_capability_surface']
+    return {'ok': ui['ok'] and len(full['forms']) >= 8 and len(full['wizards']) >= 7 and len(full['controls']) >= 7, 'pbc': PBC_KEY, 'single_pbc_app_route': f'/apps/{PBC_KEY}', 'forms': full['forms'], 'wizards': full['wizards'], 'controls': full['controls'], 'assistant_panel': 'LegalMatterManagementAssistantPanel', 'side_effects': ()}
+
+_BASE_LEGAL_MATTER_MANAGEMENT_SMOKE_WITH_DEPTH = smoke_test
+def smoke_test():
+    return {'ok': _BASE_LEGAL_MATTER_MANAGEMENT_SMOKE_WITH_DEPTH()['ok'] and legal_matter_management_standalone_ui_contract()['ok'], 'side_effects': ()}
+
+
+# Improve1 legal control UI extension.
+from .legal_control import improve1_legal_control_contract as _improve1_legal_control_contract
+
+_LEGAL_MATTER_MANAGEMENT_BASE_UI_CONTRACT = legal_matter_management_ui_contract
+_LEGAL_MATTER_MANAGEMENT_BASE_RENDER_WORKBENCH = legal_matter_management_render_workbench
+
+
+def legal_matter_management_ui_contract():
+    ui = dict(_LEGAL_MATTER_MANAGEMENT_BASE_UI_CONTRACT())
+    legal_control = _improve1_legal_control_contract()
+    panels = tuple(item["evidence"]["ui_surface"] for item in legal_control["capabilities"])
+    service_actions = tuple(item["evidence"]["service_api"] for item in legal_control["capabilities"])
+    ui.update({"ok": ui.get("ok") is True and legal_control["ok"], "legal_control_contract": legal_control, "legal_control_panels": panels, "legal_control_service_actions": service_actions, "stream_engine_picker_visible": False})
+    ui.setdefault("full_capability_surface", {})
+    ui["full_capability_surface"] = dict(ui["full_capability_surface"], legal_control_panels=panels, legal_control_service_actions=service_actions)
+    return ui
+
+
+def legal_matter_management_render_workbench(state=None):
+    workbench = dict(_LEGAL_MATTER_MANAGEMENT_BASE_RENDER_WORKBENCH(state=state))
+    legal_control = _improve1_legal_control_contract()
+    workbench.update({"ok": workbench.get("ok") is True and legal_control["ok"], "legal_control_panels": tuple(item["evidence"]["ui_surface"] for item in legal_control["capabilities"]), "legal_control_service_actions": tuple(item["evidence"]["service_api"] for item in legal_control["capabilities"]), "legal_control_agent_tools": tuple(f"legal_matter_management.skills.{item['slug']}" for item in legal_control["capabilities"])})
+    return workbench

@@ -1,5 +1,9 @@
 """API route contracts for the Fraud Anomaly Detection PBC."""
 
+from .app_surface import fraud_anomaly_detection_controls_contract
+from .app_surface import fraud_anomaly_detection_forms_contract
+from .app_surface import fraud_anomaly_detection_wizards_contract
+from .app_surface import single_pbc_fraud_anomaly_detection_app_contract
 from .services import FraudAnomalyDetectionService
 from .services import service_operation_contracts
 
@@ -14,6 +18,13 @@ ROUTES = tuple(
     for contract in service_operation_contracts()['contracts']
 )
 
+STANDALONE_APP_ROUTES = (
+    {"method": "GET", "path": "/api/pbc/fraud_anomaly_detection/app-shell", "handler": "single_pbc_fraud_anomaly_detection_app_contract", "permission": "fraud_anomaly_detection.audit", "read_tables": single_pbc_fraud_anomaly_detection_app_contract()["owned_tables"]},
+    {"method": "GET", "path": "/api/pbc/fraud_anomaly_detection/forms", "handler": "fraud_anomaly_detection_forms_contract", "permission": "fraud_anomaly_detection.audit", "read_tables": tuple(form["writes_table"] for form in fraud_anomaly_detection_forms_contract()["forms"])},
+    {"method": "GET", "path": "/api/pbc/fraud_anomaly_detection/wizards", "handler": "fraud_anomaly_detection_wizards_contract", "permission": "fraud_anomaly_detection.audit", "read_tables": ()},
+    {"method": "GET", "path": "/api/pbc/fraud_anomaly_detection/controls", "handler": "fraud_anomaly_detection_controls_contract", "permission": "fraud_anomaly_detection.audit", "read_tables": tuple(table for control in fraud_anomaly_detection_controls_contract()["controls"] for table in control["table_scope"])},
+)
+
 API_ROUTE_CONTRACTS = tuple(
     {
         **contract,
@@ -25,6 +36,13 @@ API_ROUTE_CONTRACTS = tuple(
     }
     for contract in service_operation_contracts()['contracts']
 )
+
+
+def standalone_app_route_contracts():
+    """Return route contracts for the standalone one-PBC fraud app shell."""
+    contracts = tuple({**route, 'route_id': f"{route['method']} {route['path']}", 'operation_kind': 'query', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_read_only', 'stream_engine_picker_visible': False, 'shared_table_access': False, 'side_effects': ()} for route in STANDALONE_APP_ROUTES)
+    invalid_tables = tuple(table for route in contracts for table in route['read_tables'] if not table.startswith('fraud_anomaly_detection_'))
+    return {'ok': bool(contracts) and not invalid_tables, 'pbc': 'fraud_anomaly_detection', 'contracts': contracts, 'routes': tuple(item['route_id'] for item in contracts), 'invalid_tables': invalid_tables, 'side_effects': ()}
 
 
 def register_routes(app=None):
@@ -103,8 +121,9 @@ def dispatch_route(method, path, payload=None):
 def smoke_test():
     """Execute the first route and validate the API contract surface."""
     validation = validate_api_route_contracts()
+    app_routes = standalone_app_route_contracts()
     if not ROUTES:
         return {'ok': False, 'reason': 'no_routes'}
     first = ROUTES[0]
     dispatched = dispatch_route(first['method'], first['path'], {'smoke': True})
-    return {'ok': validation['ok'] and dispatched['ok'], 'validation': validation, 'dispatch': dispatched, 'side_effects': ()}
+    return {'ok': validation['ok'] and dispatched['ok'] and app_routes['ok'], 'validation': validation, 'dispatch': dispatched, 'standalone_app_routes': app_routes, 'side_effects': ()}

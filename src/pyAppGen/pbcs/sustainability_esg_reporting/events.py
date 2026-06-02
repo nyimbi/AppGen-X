@@ -1,29 +1,27 @@
 """AppGen-X event contracts for the sustainability_esg_reporting PBC."""
-PBC_KEY = 'sustainability_esg_reporting'
-EMITTED = ('CarbonLedgerPosted', 'EsgMetricPublished', 'SustainabilityReportFiled', 'SupplierDisclosureReceived')
-CONSUMED = ('SupplierQualified', 'TravelBooked', 'AssetPlacedInService')
-EVENT_TABLES = {'outbox_table': f'{PBC_KEY}_appgen_outbox_event', 'inbox_table': f'{PBC_KEY}_appgen_inbox_event', 'dead_letter_table': f'{PBC_KEY}_appgen_dead_letter_event'}
+from __future__ import annotations
+
+from .blueprint import CONSUMED_EVENTS, EMITTED_EVENTS, PBC_KEY
+from .slice_app import build_event_contract
+
+EVENT_TABLES = {
+    'outbox_table': f'{PBC_KEY}_appgen_outbox_event',
+    'inbox_table': f'{PBC_KEY}_appgen_inbox_event',
+    'dead_letter_table': f'{PBC_KEY}_appgen_dead_letter_event',
+}
 
 
-def event_contract_manifest():
-    return {'ok': True, 'pbc': PBC_KEY, 'contract': 'AppGen-X', 'emitted': EMITTED, 'consumed': CONSUMED, **EVENT_TABLES, 'idempotency': 'required', 'stream_engine_picker_visible': False, 'side_effects': ()}
+def event_contract_manifest() -> dict:
+    return build_event_contract()
 
 
-def validate_event_contract():
+def validate_event_contract() -> dict:
     manifest = event_contract_manifest()
-    invalid_tables = tuple(
-        table for table in (manifest['outbox_table'], manifest['inbox_table'], manifest['dead_letter_table'])
-        if not table.startswith(f'{PBC_KEY}_')
-    )
-    invalid_emitted = tuple(event for event in EMITTED if not event)
-    invalid_consumed = tuple(event for event in CONSUMED if not event)
+    invalid_tables = tuple(table for table in (manifest['outbox_table'], manifest['inbox_table'], manifest['dead_letter_table']) if not table.startswith(f'{PBC_KEY}_'))
+    invalid_emitted = tuple(event for event in EMITTED_EVENTS if not event)
+    invalid_consumed = tuple(event for event in CONSUMED_EVENTS if not event)
     return {
-        'ok': manifest['contract'] == 'AppGen-X'
-        and manifest['stream_engine_picker_visible'] is False
-        and bool(manifest['dead_letter_table'])
-        and not invalid_tables
-        and not invalid_emitted
-        and not invalid_consumed,
+        'ok': manifest['contract'] == 'AppGen-X' and manifest['stream_engine_picker_visible'] is False and not invalid_tables and not invalid_emitted and not invalid_consumed,
         'manifest': manifest,
         'invalid_tables': invalid_tables,
         'invalid_emitted': invalid_emitted,
@@ -32,32 +30,23 @@ def validate_event_contract():
     }
 
 
-def build_event_envelope(event_type, payload=None):
-    return {'ok': event_type in EMITTED + CONSUMED, 'event_type': event_type, 'payload': dict(payload or {}), 'idempotency_key': f'{PBC_KEY}:{event_type}', 'event_contract': 'AppGen-X', 'side_effects': ()}
+def build_event_envelope(event_type: str, payload: dict | None = None) -> dict:
+    payload = dict(payload or {})
+    return {
+        'ok': event_type in EMITTED_EVENTS + CONSUMED_EVENTS,
+        'event_type': event_type,
+        'payload': payload,
+        'idempotency_key': f"{PBC_KEY}:{event_type}:{payload.get('event_id', 'generated')}",
+        'event_contract': 'AppGen-X',
+        'side_effects': (),
+    }
 
 
-def event_dispatch_plan(event_type, payload=None):
+def event_dispatch_plan(event_type: str, payload: dict | None = None) -> dict:
     envelope = build_event_envelope(event_type, payload)
     return {'ok': envelope['ok'], 'envelope': envelope, 'outbox_table': EVENT_TABLES['outbox_table'], 'side_effects': ()}
 
 
-def smoke_test():
+def smoke_test() -> dict:
     validation = validate_event_contract()
-    emitted = {
-        'event_type': EMITTED[0],
-        'table': EVENT_TABLES['outbox_table'],
-        'retry_policy': {'max_attempts': 5, 'backoff': 'exponential'},
-        'dead_letter_table': EVENT_TABLES['dead_letter_table'],
-    }
-    consumed = {
-        'event_type': CONSUMED[0],
-        'table': EVENT_TABLES['inbox_table'],
-        'retry_policy': {'max_attempts': 5, 'backoff': 'exponential'},
-        'dead_letter_table': EVENT_TABLES['dead_letter_table'],
-    }
-    return {
-        'ok': validation['ok'] and event_dispatch_plan(EMITTED[0])['ok'],
-        'emitted': emitted,
-        'consumed': consumed,
-        'side_effects': (),
-    }
+    return {'ok': validation['ok'] and event_dispatch_plan(EMITTED_EVENTS[0])['ok'], 'validation': validation, 'side_effects': ()}

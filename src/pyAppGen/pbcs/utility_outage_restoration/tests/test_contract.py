@@ -8,6 +8,7 @@ from pyAppGen.pbcs.utility_outage_restoration.services import service_operation_
 from pyAppGen.pbcs.utility_outage_restoration.routes import api_route_contracts, validate_api_route_contracts
 from pyAppGen.pbcs.utility_outage_restoration.config import governance_smoke_test
 from pyAppGen.pbcs.utility_outage_restoration.agent import agent_skill_manifest, chatbot_interface_contract, document_instruction_plan, datastore_crud_plan
+from pyAppGen.pbcs.utility_outage_restoration.standalone import utility_outage_restoration_standalone_app_contract, utility_outage_restoration_standalone_app_smoke
 
 
 def test_generated_schema_service_and_release_evidence():
@@ -55,3 +56,13 @@ def test_event_handlers_are_idempotent_and_retryable():
     assert manifest['ok'] is True
     assert dispatch_event({'event_type': ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged')[0], 'idempotency_key': 'idem-utility_outage_restoration'})['ok'] is True
     assert dispatch_event({'event_type': 'Unexpected', 'idempotency_key': 'bad-utility_outage_restoration'})['dead_letter_table'].endswith('dead_letter_event')
+
+
+
+def test_standalone_slice_and_release_docs_are_executable():
+    evidence = build_release_evidence()
+    assert utility_outage_restoration_standalone_app_contract()['ok'] is True
+    assert utility_outage_restoration_standalone_app_smoke()['ok'] is True
+    assert evidence['documentation']['ok'] is True
+    assert evidence['standalone_app']['ok'] is True
+    assert evidence['standalone_smoke']['ok'] is True

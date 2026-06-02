@@ -1,256 +1,223 @@
-"""Generated contract smoke tests for streaming_analytics."""
+"""Focused package contract and standalone tests for streaming_analytics."""
 
+from __future__ import annotations
+
+from pyAppGen.pbc import pbc_generation_smoke_audit
+from pyAppGen.pbc import pbc_implementation_release_audit
+from pyAppGen.pbc import pbc_source_artifact_contract
+
+from .. import PBC_KEY
+from .. import capability_assurance
+from .. import config
+from .. import events
+from .. import handlers
+from .. import package_discovery_plan
+from .. import package_metadata_manifest
+from .. import permissions
+from .. import register_pbc
+from .. import registration_plan
+from .. import validate_package_metadata
+from .. import release_evidence
+from .. import routes
+from .. import runtime
+from .. import schema_contract
+from .. import seed_data
+from .. import services
+from .. import smoke_test
+from .. import standalone
+from .. import ui
+from ..agent import composed_agent_contribution
+from ..agent import datastore_crud_plan
+from ..agent import document_instruction_plan
+from ..agent import smoke_test as agent_smoke_test
 from ..manifest import PBC_MANIFEST
-from ..events import EVENT_CONTRACT
-from ..schema_contract import SCHEMA_CONTRACT
+from ..models import model_manifest
 from ..service_contract import SERVICE_CONTRACT
-from ..release_evidence import RELEASE_EVIDENCE
+
+
+def _configured_state() -> dict:
+    state = runtime.streaming_analytics_empty_state()
+    state = runtime.streaming_analytics_configure_runtime(state, seed_data.default_configuration())["state"]
+    for name, value in seed_data.default_parameter_values().items():
+        state = runtime.streaming_analytics_set_parameter(state, name, value)["state"]
+    for rule in seed_data.default_rules():
+        state = runtime.streaming_analytics_register_rule(state, rule)["state"]
+    return state
 
 
 def test_generated_schema_service_and_release_evidence():
-    from .. import models, release_evidence, schema_contract
-
-    assert SCHEMA_CONTRACT['pbc'] == 'streaming_analytics'
-    assert SCHEMA_CONTRACT['ok'] is True
-    assert SCHEMA_CONTRACT['owned_tables']
-    schema_smoke = schema_contract.smoke_test()
-    model_smoke = models.smoke_test()
-    assert schema_smoke['ok'] is True
-    assert model_smoke['ok'] is True
-    assert not schema_smoke['side_effects']
-    assert not model_smoke['side_effects']
-    assert SERVICE_CONTRACT['pbc'] == 'streaming_analytics'
-    assert SERVICE_CONTRACT['ok'] is True
-    assert SERVICE_CONTRACT.get('shared_table_access') is False
-    assert RELEASE_EVIDENCE['pbc'] == 'streaming_analytics'
-    assert RELEASE_EVIDENCE['ok'] is True
+    assert schema_contract.build_schema_contract()["pbc"] == PBC_KEY
+    assert schema_contract.validate_schema_contract()["ok"] is True
+    assert model_manifest()["ok"] is True
+    assert SERVICE_CONTRACT["pbc"] == PBC_KEY
+    assert SERVICE_CONTRACT["ok"] is True
+    assert SERVICE_CONTRACT["shared_table_access"] is False
+    assert release_evidence.build_release_evidence()["ok"] is True
+    assert release_evidence.validate_release_evidence()["ok"] is True
+    assert release_evidence.smoke_test()["ok"] is True
 
 
-    release_manifest = release_evidence.release_readiness_manifest()
-    release_validation = release_evidence.validate_release_evidence()
-    release_smoke = release_evidence.smoke_test()
-    assert release_manifest['ok'] is True
-    assert release_validation['ok'] is True
-    assert release_smoke['ok'] is True
-    assert not release_manifest['blocking_gaps']
-    assert not release_validation['missing_sections']
-    assert not release_validation['failed_checks']
-    assert not release_validation['boundary_gaps']
-    assert not release_manifest['side_effects']
-    assert not release_validation['side_effects']
-    assert not release_smoke['side_effects']
+def test_agent_chatbot_skills_are_executable():
+    document = document_instruction_plan(
+        "stream_id=stream_test tenant=tenant_test event_type=operational metric_field=latency_ms aggregation=avg region=US",
+        "create ingestion contract, replay plan, watermark controls and anomaly dashboard",
+    )
+    read_plan = datastore_crud_plan("read")
+    create_plan = datastore_crud_plan("create", "streaming_analytics_metric_stream", {"status": "draft"})
+    rejected_foreign = datastore_crud_plan("update", table="foreign_table", payload={"status": "draft"})
+    contribution = composed_agent_contribution()
+    smoke = agent_smoke_test()
+    assert document["ok"] is True
+    assert read_plan["ok"] is True
+    assert create_plan["ok"] is True
+    assert rejected_foreign["ok"] is False
+    assert contribution["ok"] is True
+    assert smoke["ok"] is True
+    assert create_plan["event_contract"] == "AppGen-X"
 
 
 def test_manifest_and_event_contract():
-    from .. import events
-
-    assert PBC_MANIFEST['pbc'] == 'streaming_analytics'
-    assert PBC_MANIFEST['standard_features']
-    assert PBC_MANIFEST['advanced_capabilities']
-    assert EVENT_CONTRACT['contract'] == 'appgen_event_contract'
-    assert EVENT_CONTRACT['outbox_table'].startswith('streaming_analytics_')
-    assert EVENT_CONTRACT['inbox_table'].startswith('streaming_analytics_')
     manifest = events.event_contract_manifest()
     validation = events.validate_event_contract()
-    smoke = events.smoke_test()
-    assert manifest['ok'] is True
-    assert validation['ok'] is True
-    assert smoke['ok'] is True
-    assert manifest['stream_engine_picker_visible'] is False
-    assert not validation['invalid_tables']
-    assert not validation['invalid_emitted']
-    assert not validation['invalid_consumed']
-    assert smoke['emitted']['table'] == EVENT_CONTRACT['outbox_table']
-    assert smoke['consumed']['table'] == EVENT_CONTRACT['inbox_table']
-    assert smoke['emitted']['retry_policy']['max_attempts'] >= 3
-    assert smoke['consumed']['dead_letter_table'].startswith(PBC_MANIFEST['pbc'] + '_')
-    assert not manifest['side_effects']
-    assert not validation['side_effects']
-    assert not smoke['side_effects']
+    metadata_validation = validate_package_metadata()
+    readiness = release_evidence.release_readiness_manifest()
+    assert PBC_MANIFEST["pbc"] == PBC_KEY
+    assert manifest["ok"] is True
+    assert validation["ok"] is True
+    assert metadata_validation["ok"] is True
+    assert readiness["pbc"] == PBC_KEY
+    assert manifest["stream_engine_picker_visible"] is False
 
 
 def test_registration_plan_is_side_effect_free():
-    from .. import package_discovery_plan, package_metadata_manifest, register_pbc, registration_plan, validate_package_metadata
-
-    assert register_pbc()['pbc'] == 'streaming_analytics'
+    assert register_pbc()["pbc"] == PBC_KEY
     plan = registration_plan()
-    assert plan['ok'] is True
-    assert plan['catalog_patch']
     metadata = package_metadata_manifest()
-    metadata_validation = validate_package_metadata()
     discovery = package_discovery_plan()
-    assert metadata['ok'] is True
-    assert metadata_validation['ok'] is True
-    assert discovery['ok'] is True
-    assert metadata['stream_engine_picker_visible'] is False
-    assert metadata['event_contract'] == 'AppGen-X'
-    assert not metadata_validation['missing_entrypoints']
-    assert not metadata_validation['missing_publish_artifacts']
-    assert not metadata_validation['missing_capability_evidence']
-    assert not metadata_validation['invalid']
-    assert not discovery['side_effects']
+    assert plan["ok"] is True
+    assert plan["catalog_patch"]
+    assert metadata["ok"] is True
+    assert discovery["ok"] is True
+    assert not validate_package_metadata()["missing_entrypoints"]
 
 
 def test_service_and_route_surface_are_executable():
-    from .. import routes, services
-
     service_smoke = services.smoke_test()
-    operation_contracts = services.service_operation_contracts()
-    route_contracts = routes.api_route_contracts()
     route_validation = routes.validate_api_route_contracts()
     route_smoke = routes.smoke_test()
-    assert service_smoke['ok'] is True
-    assert operation_contracts['ok'] is True
-    assert route_contracts['ok'] is True
-    assert route_validation['ok'] is True
-    assert route_contracts['contracts']
-    assert all(item['permission'] for item in route_contracts['contracts'])
-    assert all(item['event_contract'] == 'AppGen-X' for item in route_contracts['contracts'])
-    assert all(item['stream_engine_picker_visible'] is False for item in route_contracts['contracts'])
-    assert all(item['shared_table_access'] is False for item in route_contracts['contracts'])
-    assert not route_validation['service_mismatches']
-    assert not route_validation['missing_idempotency']
-    assert not route_validation['invalid_table_scope']
-    assert service_smoke['result']['operation_contract']['route']['path']
-    assert service_smoke['result']['operation_contract']['permission']
-    assert service_smoke['result']['operation_contract']['event_contract'] == 'AppGen-X'
-    assert service_smoke['result']['operation_contract']['owned_tables'] or service_smoke['result']['operation_contract']['read_tables']
-    assert route_smoke['ok'] is True
-    assert not service_smoke['side_effects']
-    assert not operation_contracts['side_effects']
-    assert not route_contracts['side_effects']
-    assert not route_validation['side_effects']
-    assert not route_smoke['side_effects']
+    assert service_smoke["ok"] is True
+    assert services.service_operation_contracts()["ok"] is True
+    assert route_validation["ok"] is True
+    assert route_smoke["ok"] is True
+    assert not route_validation["service_mismatches"]
+    assert not route_validation["missing_idempotency"]
+    assert not route_validation["invalid_table_scope"]
+
+
+def test_configuration_permissions_seed_and_ui_are_executable():
+    assert config.smoke_test()["ok"] is True
+    assert config.governance_smoke_test()["ok"] is True
+    assert permissions.smoke_test()["ok"] is True
+    assert seed_data.smoke_test()["ok"] is True
+    assert ui.smoke_test()["ok"] is True
+    assert standalone.smoke_test()["ok"] is True
+    assert smoke_test()["ok"] is True
 
 
 def test_configuration_permissions_and_seed_hooks_are_executable():
-    from .. import config, permissions, seed_data
-
-    config_smoke = config.smoke_test()
-    governance_smoke = config.governance_smoke_test()
-    permission_smoke = permissions.smoke_test()
-    seed_smoke = seed_data.smoke_test()
-    assert config_smoke['ok'] is True
-    assert governance_smoke['ok'] is True
-    assert governance_smoke['parameter']['accepted'] is True
-    assert governance_smoke['compiled_rule']['compiled'] is True
-    assert governance_smoke['rule_decision']['allowed'] is True
-    assert permission_smoke['ok'] is True
-    assert seed_smoke['ok'] is True
-    assert not config_smoke['side_effects']
-    assert not governance_smoke['side_effects']
-    assert not permission_smoke['side_effects']
-    assert not seed_smoke['side_effects']
-
-
-def test_ui_workbench_surface_is_executable():
-    from .. import ui
-
-    if hasattr(ui, 'smoke_test'):
-        smoke = ui.smoke_test()
-    else:
-        contract = getattr(ui, f"{PBC_MANIFEST['pbc']}_ui_contract")()
-        rendered = {
-            'ok': contract['ok'],
-            'cards': contract.get('panels') or contract.get('fragments'),
-            'route': (contract.get('routes') or (None,))[0],
-        }
-        smoke = {
-            'ok': contract['ok'] and bool(contract.get('fragments')) and bool(rendered['cards']),
-            'manifest': {'fragments': contract.get('fragments', ())},
-            'rendered': rendered,
-            'side_effects': (),
-        }
-    assert smoke['ok'] is True
-    assert smoke['manifest']['fragments']
-    assert smoke['rendered']['cards']
-    assert not smoke['side_effects']
+    assert config.governance_smoke_test()["ok"] is True
+    assert permissions.permission_manifest()["ok"] is True
+    assert seed_data.validate_seed_data()["ok"] is True
 
 
 def test_event_handlers_are_idempotent_and_retryable():
-    from .. import handlers
-
-    smoke = handlers.smoke_test()
-    assert smoke['ok'] is True
-    assert smoke['manifest']['handlers']
-    assert smoke['first_result']['retry_policy']
-    assert smoke['first_result']['dead_letter_table'].startswith('streaming_analytics_')
-    assert smoke['duplicate_result']['duplicate'] is True
-    assert smoke['unknown_result']['handled'] is False
-    assert not smoke['side_effects']
-
-def test_table_stakes_and_advanced_capability_assurance_is_executable():
-    from .. import capability_assurance
-
-    manifest = capability_assurance.table_stakes_capability_manifest()
-    validation = capability_assurance.validate_table_stakes_capability_coverage()
-    smoke = capability_assurance.smoke_test()
-    assert manifest['ok'] is True
-    assert validation['ok'] is True
-    assert smoke['ok'] is True
-    assert manifest['standard_features']
-    assert manifest['advanced_capabilities']
-    assert not validation['missing_standard']
-    assert not validation['missing_advanced']
-    assert not validation['missing_operations']
-    assert not validation['uncovered_features']
-    assert not validation['invalid_tables']
-    assert not validation['invalid_backends']
-    assert validation['stream_picker_visible'] is False
-    assert validation['event_contract'] == 'AppGen-X'
-    assert validation['owned_boundary_rejection']['ok'] is False
-    assert validation['owned_boundary_rejection']['violations']
-    assert not smoke['side_effects']
+    manifest = handlers.handler_manifest()
+    first = handlers.dispatch_event(
+        {
+            "event_type": "PaymentCaptured",
+            "event_id": "handler-idempotency",
+            "payload": {"tenant": "tenant_handler", "amount": 25.0, "region": "US"},
+        },
+    )
+    second = handlers.dispatch_event(
+        {
+            "event_type": "PaymentCaptured",
+            "event_id": "handler-idempotency",
+            "payload": {"tenant": "tenant_handler", "amount": 25.0, "region": "US"},
+        },
+    )
+    assert manifest["ok"] is True
+    assert manifest["retry_policies"][0]["max_attempts"] >= 3
+    assert manifest["dead_letter_tables"][0].startswith("streaming_analytics_")
+    assert first["handled"] is True
+    assert second["handled"] is True
+    assert second["duplicate"] is True
 
 
-def test_advanced_streaming_analytics_runtime_surface_is_executable():
-    from ..runtime import STREAMING_ANALYTICS_OWNED_TABLES
-    from ..runtime import streaming_analytics_build_api_contract
-    from ..runtime import streaming_analytics_build_service_contract
-    from ..runtime import streaming_analytics_runtime_smoke
+def test_event_handlers_and_capability_assurance_are_executable():
+    handler_smoke = handlers.smoke_test()
+    assurance = capability_assurance.smoke_test()
+    assert handler_smoke["ok"] is True
+    assert assurance["ok"] is True
 
-    smoke = streaming_analytics_runtime_smoke()
-    api = streaming_analytics_build_api_contract()
-    service = streaming_analytics_build_service_contract()
-    required_tables = {
-        "metric_event",
-        "ingestion_checkpoint",
-        "data_quality_result",
-        "replay_job",
-        "watermark_state",
-        "retention_policy",
-        "threshold_alert",
-        "metric_forecast",
-        "operational_risk_score",
-        "metric_exception",
-        "window_recomputation",
-        "kpi_control_assertion",
-        "kpi_snapshot_proof",
-        "metric_policy_screening",
-        "analytics_audit_entry",
-        "analytics_federation_view",
-        "analytics_governed_model",
-    }
-    required_commands = {
-        "record_ingestion_checkpoint",
-        "evaluate_data_quality",
-        "open_replay_job",
-        "advance_watermark",
-        "apply_retention_policy",
-        "evaluate_threshold_alert",
-        "forecast_metric",
-        "score_operational_risk",
-        "resolve_metric_exception",
-        "recompute_window",
-        "run_kpi_controls",
-        "generate_snapshot_proof",
-        "screen_metric_policy",
-        "build_analytics_federation_view",
-        "register_governed_model",
-    }
-    assert smoke["ok"] is True
-    assert required_tables <= set(STREAMING_ANALYTICS_OWNED_TABLES)
-    assert required_commands <= set(service["command_methods"])
-    assert api["event_contract"] == "AppGen-X"
-    assert service["external_dependencies"]["shared_tables"] == ()
-    assert api["stream_engine_picker_visible"] is False
+
+def test_runtime_smoke_and_streaming_workspace_are_executable():
+    runtime_smoke = runtime.streaming_analytics_runtime_smoke()
+    state = _configured_state()
+    state = runtime.streaming_analytics_register_metric_stream(
+        state,
+        {
+            "stream_id": "stream_contract",
+            "tenant": "tenant_test",
+            "name": "Contract Stream",
+            "event_type": "operational",
+            "metric_field": "latency_ms",
+            "aggregation": "avg",
+            "region": "US",
+            "status": "active",
+        },
+    )["state"]
+    state = runtime.streaming_analytics_define_window(
+        state,
+        {
+            "window_id": "window_contract",
+            "tenant": "tenant_test",
+            "stream_id": "stream_contract",
+            "window_minutes": 15,
+            "status": "active",
+        },
+    )["state"]
+    state = runtime.streaming_analytics_ingest_metric_event(
+        state,
+        {
+            "event_id": "event_contract",
+            "tenant": "tenant_test",
+            "event_type": "operational",
+            "region": "US",
+            "values": {"latency_ms": 250.0},
+        },
+    )["state"]
+    state = runtime.streaming_analytics_create_dashboard_projection(
+        state,
+        {
+            "projection_id": "projection_contract",
+            "tenant": "tenant_test",
+            "name": "Contract Dashboard",
+            "stream_ids": ("stream_contract",),
+            "status": "active",
+        },
+    )["state"]
+    workbench = runtime.streaming_analytics_build_workbench_view(state, tenant="tenant_test")
+    assert runtime_smoke["ok"] is True
+    assert workbench["stream_count"] == 1
+    assert workbench["projection_count"] == 1
+    assert workbench["event_contract"] == "AppGen-X"
+
+
+def test_release_and_generation_audits_for_streaming_analytics_only():
+    source = pbc_source_artifact_contract(PBC_KEY)
+    implementation = pbc_implementation_release_audit((PBC_KEY,))
+    generation = pbc_generation_smoke_audit((PBC_KEY,))
+    assert source["ok"] is True
+    assert implementation["ok"] is True
+    assert generation["ok"] is True

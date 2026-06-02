@@ -140,3 +140,43 @@ def smoke_test() -> dict:
     first = ROUTES[0]
     dispatched = dispatch_route(first["method"], first["path"], {"smoke": True})
     return {"ok": validation["ok"] and dispatched["ok"], "validation": validation, "dispatch": dispatched, "side_effects": ()}
+
+
+
+STANDALONE_ROUTES = (
+    {'method': 'POST', 'path': '/app/mrp-engine/demo-workspace', 'handler': 'seed_demo_workspace'},
+    {'method': 'GET', 'path': '/app/mrp-engine/workbench', 'handler': 'build_workbench'},
+    {'method': 'POST', 'path': '/app/mrp-engine/boms', 'handler': 'register_bom'},
+    {'method': 'POST', 'path': '/app/mrp-engine/runs', 'handler': 'create_mrp_run'},
+    {'method': 'POST', 'path': '/app/mrp-engine/runs/net', 'handler': 'calculate_material_plan'},
+    {'method': 'POST', 'path': '/app/mrp-engine/proofs', 'handler': 'generate_supply_proof'},
+)
+
+
+def standalone_route_contracts():
+    from .services import standalone_service_operation_contracts
+    operations = {item['operation']: item for item in standalone_service_operation_contracts()['contracts']}
+    contracts = tuple({**route, 'operation': route['handler'], 'service_operation': operations.get(route['handler'])} for route in STANDALONE_ROUTES)
+    return {'format': 'appgen.mrp-engine-standalone-routes.v1', 'ok': all(item['service_operation'] for item in contracts), 'pbc': 'mrp_engine', 'routes': tuple(f"{item['method']} {item['path']}" for item in contracts), 'contracts': contracts, 'side_effects': ()}
+
+
+def dispatch_standalone_route(method, path, payload=None, *, service=None):
+    from .services import MrpEngineStandaloneService
+    route = next((item for item in STANDALONE_ROUTES if item['method'] == method and item['path'] == path), None)
+    if route is None:
+        return {'ok': False, 'handled': False, 'reason': 'route_not_found', 'side_effects': ()}
+    own_service = service is None
+    service = service or MrpEngineStandaloneService()
+    data = dict(payload or {})
+    try:
+        if route['handler'] == 'seed_demo_workspace': result = service.seed_demo_workspace(tenant=data.get('tenant', 'tenant_demo'))
+        elif route['handler'] == 'build_workbench': result = service.build_workbench(tenant=data.get('tenant', 'tenant_demo'))
+        elif route['handler'] == 'register_bom': result = service.register_bom(data.get('tenant', 'tenant_demo'), data)
+        elif route['handler'] == 'create_mrp_run': result = service.create_mrp_run(data.get('tenant', 'tenant_demo'), data)
+        elif route['handler'] == 'calculate_material_plan': result = service.calculate_material_plan(data.get('tenant', 'tenant_demo'), data['run_id'])
+        elif route['handler'] == 'generate_supply_proof': result = service.generate_supply_proof(data.get('tenant', 'tenant_demo'), data['planned_order_id'], tuple(data.get('disclosure', ('planned_order_id', 'item', 'quantity'))))
+        else: result = {'ok': False, 'reason': 'handler_not_implemented'}
+        return {'ok': result.get('ok') is True, 'handled': True, 'route': route, 'result': {'ok': result.get('ok') is True, 'result': result}, 'side_effects': ()}
+    finally:
+        if own_service:
+            service.close()

@@ -6,6 +6,7 @@ from typing import Any
 
 from .services import ClaimsAdjudicationHealthcareService
 from .services import service_operation_contracts
+from .standalone import standalone_route_contracts
 
 PBC_KEY = "claims_adjudication_healthcare"
 
@@ -39,11 +40,13 @@ def api_route_contracts() -> dict[str, Any]:
         }
         for route, operation in ROUTE_TO_OPERATION.items()
     )
+    standalone = standalone_route_contracts()
     return {
-        "ok": True,
+        "ok": True and standalone["ok"],
         "pbc": PBC_KEY,
         "contracts": contracts,
-        "routes": ROUTES,
+        "routes": ROUTES + standalone["routes"],
+        "standalone_routes": standalone,
         "side_effects": (),
     }
 
@@ -110,6 +113,6 @@ def smoke_test() -> dict[str, Any]:
     )
     query = dispatch_route("GET /claims-adjudication-healthcare-workbench", {"tenant": "default"}, service=service)
     return {
-        "ok": api_route_contracts()["ok"] and validate_api_route_contracts()["ok"] and create["ok"] and query["ok"],
+        "ok": api_route_contracts()["ok"] and validate_api_route_contracts()["ok"] and create["ok"] and query["ok"] and "GET /claims-adjudication-healthcare/app" in api_route_contracts()["routes"],
         "side_effects": (),
     }

@@ -6,6 +6,8 @@ from ..source_contract import source_pbc_package_contract
 from ..source_contract import source_package_metadata
 from ..source_contract import validate_source_package_metadata
 from ..source_contract import source_registration_plan
+from .release_evidence import build_release_evidence as package_build_release_evidence
+from .release_evidence import build_release_evidence as streaming_analytics_build_release_evidence
 from .runtime import STREAMING_ANALYTICS_ALLOWED_DATABASE_BACKENDS
 from .runtime import STREAMING_ANALYTICS_CONSUMED_EVENT_TYPES
 from .runtime import STREAMING_ANALYTICS_EMITTED_EVENT_TYPES
@@ -14,9 +16,10 @@ from .runtime import STREAMING_ANALYTICS_REQUIRED_EVENT_TOPIC
 from .runtime import STREAMING_ANALYTICS_RUNTIME_CAPABILITY_KEYS
 from .runtime import STREAMING_ANALYTICS_RUNTIME_TABLES
 from .runtime import STREAMING_ANALYTICS_STANDARD_FEATURE_KEYS
-from .runtime import streaming_analytics_build_api_contract
+from .runtime import streaming_analytics_advance_watermark
+from .runtime import streaming_analytics_apply_retention_policy
 from .runtime import streaming_analytics_build_analytics_federation_view
-from .runtime import streaming_analytics_build_release_evidence
+from .runtime import streaming_analytics_build_api_contract
 from .runtime import streaming_analytics_build_schema_contract
 from .runtime import streaming_analytics_build_service_contract
 from .runtime import streaming_analytics_build_workbench_view
@@ -24,8 +27,6 @@ from .runtime import streaming_analytics_configure_runtime
 from .runtime import streaming_analytics_create_dashboard_projection
 from .runtime import streaming_analytics_define_window
 from .runtime import streaming_analytics_empty_state
-from .runtime import streaming_analytics_advance_watermark
-from .runtime import streaming_analytics_apply_retention_policy
 from .runtime import streaming_analytics_evaluate_data_quality
 from .runtime import streaming_analytics_evaluate_threshold_alert
 from .runtime import streaming_analytics_forecast_metric
@@ -36,8 +37,8 @@ from .runtime import streaming_analytics_permissions_contract
 from .runtime import streaming_analytics_receive_event
 from .runtime import streaming_analytics_recompute_window
 from .runtime import streaming_analytics_record_ingestion_checkpoint
-from .runtime import streaming_analytics_register_metric_stream
 from .runtime import streaming_analytics_register_governed_model
+from .runtime import streaming_analytics_register_metric_stream
 from .runtime import streaming_analytics_register_rule
 from .runtime import streaming_analytics_register_schema_extension
 from .runtime import streaming_analytics_resolve_metric_exception
@@ -48,8 +49,12 @@ from .runtime import streaming_analytics_score_operational_risk
 from .runtime import streaming_analytics_screen_metric_policy
 from .runtime import streaming_analytics_set_parameter
 from .runtime import streaming_analytics_verify_owned_table_boundary
+from .standalone import StreamingAnalyticsStandaloneApp
+from .standalone import standalone_app_manifest
 from .ui import STREAMING_ANALYTICS_UI_FRAGMENT_KEYS
+from .ui import streaming_analytics_render_standalone_app
 from .ui import streaming_analytics_render_workbench
+from .ui import streaming_analytics_standalone_app_contract
 from .ui import streaming_analytics_ui_contract
 
 PBC_KEY = "streaming_analytics"
@@ -66,7 +71,7 @@ def implementation_contract() -> dict:
         "api_contract": streaming_analytics_build_api_contract(),
         "schema_contract": streaming_analytics_build_schema_contract(),
         "service_contract": streaming_analytics_build_service_contract(),
-        "release_evidence_contract": streaming_analytics_build_release_evidence(),
+        "release_evidence_contract": package_build_release_evidence(),
         "permissions_contract": streaming_analytics_permissions_contract(),
         "owned_tables": STREAMING_ANALYTICS_OWNED_TABLES,
         "runtime_tables": STREAMING_ANALYTICS_RUNTIME_TABLES,
@@ -75,6 +80,8 @@ def implementation_contract() -> dict:
         "consumes": STREAMING_ANALYTICS_CONSUMED_EVENT_TYPES,
         "emits": STREAMING_ANALYTICS_EMITTED_EVENT_TYPES,
         "boundary_contract": streaming_analytics_verify_owned_table_boundary(STREAMING_ANALYTICS_OWNED_TABLES),
+        "standalone_app_contract": streaming_analytics_standalone_app_contract(),
+        "standalone_app_manifest": standalone_app_manifest(),
     }
 
 

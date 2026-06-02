@@ -34,11 +34,10 @@ ROUTES = _route_rows()
 
 
 def _route_contracts() -> tuple[dict, ...]:
-    operation_index = {item["operation"]: item for item in service_operation_contracts()["contracts"]}
+    operation_index = {item["operation"]: item for item in service_operation_contracts()["route_contracts"]}
     contracts = []
     for route in ROUTES:
         service_operation = operation_index[route["handler"]]
-        idempotency_required = service_operation["operation_kind"] == "command"
         contracts.append(
             {
                 **route,
@@ -50,8 +49,8 @@ def _route_contracts() -> tuple[dict, ...]:
                 "consumed_event": service_operation["consumed_event"],
                 "event_contract": "AppGen-X",
                 "transaction_boundary": "owned_datastore_plus_outbox",
-                "idempotency_required": idempotency_required,
-                "idempotency_key": f"loyalty_rewards:{route['handler']}:idempotency_key" if idempotency_required else None,
+                "idempotency_required": service_operation["operation_kind"] == "command",
+                "idempotency_key": service_operation.get("idempotency_key"),
                 "shared_table_access": False,
                 "stream_engine_picker_visible": False,
             }
@@ -69,7 +68,7 @@ def register_routes(app=None):
 
 def api_route_contracts() -> dict:
     """Return executable API route contracts with policy and boundary evidence."""
-    service_contracts = service_operation_contracts()["contracts"]
+    service_contracts = service_operation_contracts()["route_contracts"]
     operation_index = {item["operation"]: item for item in service_contracts}
     contracts = tuple(
         {
@@ -100,14 +99,14 @@ def validate_api_route_contracts() -> dict:
         item["route_id"]
         for item in contracts
         if not item["service_operation"]
-        or item["service_operation"]["method"] != item["method"]
-        or item["service_operation"]["path"] != item["path"]
-        or item["service_operation"]["permission"] != item["permission"]
+        or item["service_operation"].get("method") != item["method"]
+        or item["service_operation"].get("path") != item["path"]
+        or item["service_operation"].get("permission") != item["permission"]
     )
     missing_idempotency = tuple(
         item["route_id"]
         for item in contracts
-        if item["idempotency_required"] and not item["idempotency_key"]
+        if item["idempotency_required"] and not item.get("idempotency_key")
     )
     invalid_table_scope = tuple(
         item["route_id"]
@@ -126,29 +125,27 @@ def validate_api_route_contracts() -> dict:
     }
 
 
-def dispatch_route(method: str, path: str, payload: dict | None = None) -> dict:
-    """Dispatch a route contract to its service command without side effects."""
+def dispatch_route(method: str, path: str, payload: dict | None = None, *, service: LoyaltyRewardsService | None = None) -> dict:
+    """Dispatch a route contract to its package-local service facade."""
     route = next((item for item in ROUTES if item["method"] == method and item["path"] == path), None)
     if route is None:
-        return {"ok": False, "handled": False, "reason": "route_not_found"}
-    service = LoyaltyRewardsService()
-    result = service.execute_operation(route["handler"], payload or {})
+        return {"ok": False, "handled": False, "reason": "route_not_found", "side_effects": ()}
+    runtime_service = service or LoyaltyRewardsService()
+    result = runtime_service.execute_operation(route["handler"], payload or {})
     return {
         "ok": result.get("ok") is True,
         "handled": True,
         "route": route,
         "result": result,
+        "state": getattr(runtime_service, "state", None),
         "side_effects": (),
     }
 
 
 def smoke_test() -> dict:
-    """Execute the first route and validate the API contract surface."""
+    """Validate the API contract surface and dispatch a query route."""
     validation = validate_api_route_contracts()
-    if not ROUTES:
-        return {"ok": False, "reason": "no_routes"}
-    first = ROUTES[0]
-    dispatched = dispatch_route(first["method"], first["path"], {"smoke": True})
+    dispatched = dispatch_route("GET", "/loyalty-rewards/service-contract", {})
     return {
         "ok": validation["ok"] and dispatched["ok"],
         "validation": validation,

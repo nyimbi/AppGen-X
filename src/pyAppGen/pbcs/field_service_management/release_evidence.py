@@ -23,6 +23,7 @@ def smoke_test():
     return {'ok': validation['ok'], 'validation': validation, 'side_effects': ()}
 
 from .domain_depth import domain_depth_contract, domain_depth_smoke_test
+from .app_surface import app_surface_smoke_test, single_pbc_field_service_management_app_contract
 
 _BASE_RELEASE_EVIDENCE = build_release_evidence
 
@@ -35,8 +36,29 @@ def build_release_evidence():
         {'id': 'domain_depth_smoke', 'ok': smoke['ok']},
         {'id': 'owned_domain_table_depth', 'ok': len(domain['owned_tables']) >= domain['minimum_owned_domain_tables']},
         {'id': 'domain_operation_depth', 'ok': domain['operation_count'] >= domain['minimum_domain_operations']},
+        {'id': 'standalone_forms_wizards_controls', 'ok': app_surface_smoke_test()['ok']},
     )
-    return {**base, 'ok': base.get('ok') is True and all(check['ok'] for check in checks), 'checks': checks, 'world_class_domain_depth': domain, 'domain_depth_smoke': smoke, 'blocking_gaps': tuple(check for check in checks if not check['ok'])}
+    return {**base, 'ok': base.get('ok') is True and all(check['ok'] for check in checks), 'checks': checks, 'standalone_app': single_pbc_field_service_management_app_contract(), 'standalone_app_smoke': app_surface_smoke_test(), 'world_class_domain_depth': domain, 'domain_depth_smoke': smoke, 'blocking_gaps': tuple(check for check in checks if not check['ok'])}
+
+
+def field_service_management_build_release_evidence():
+    return build_release_evidence()
+
+
+from .field_control import improve1_field_control_contract
+
+_FIELD_SERVICE_MANAGEMENT_DOMAIN_RELEASE_EVIDENCE = build_release_evidence
+
+
+def build_release_evidence():
+    base = dict(_FIELD_SERVICE_MANAGEMENT_DOMAIN_RELEASE_EVIDENCE())
+    field_control = improve1_field_control_contract()
+    checks = tuple(base.get('checks', ())) + (
+        {'id': 'improve1_field_control_contract', 'ok': field_control['ok']},
+        {'id': 'improve1_field_control_capability_count', 'ok': field_control['capability_count'] == 50},
+        {'id': 'improve1_field_control_release_boundary', 'ok': not field_control['blocking_gaps']},
+    )
+    return {**base, 'ok': base.get('ok') is True and all(check['ok'] for check in checks), 'checks': checks, 'field_control': field_control, 'blocking_gaps': tuple(check for check in checks if not check['ok']), 'sections': tuple(dict.fromkeys(tuple(base.get('sections', ())) + ('field_control',))), 'side_effects': ()}
 
 
 def field_service_management_build_release_evidence():

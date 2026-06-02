@@ -52,3 +52,38 @@ def facilities_space_management_render_workbench(state=None):
         'table_browsers': full['table_browsers'],
         'agent_tools': full['agent_tools'],
     }
+
+
+# Improve1 facilities control coverage is part of the visible workbench contract.
+from .facilities_control import improve1_facilities_control_contract
+
+_FACILITIES_SPACE_MANAGEMENT_FULL_UI_CONTRACT = facilities_space_management_ui_contract
+_FACILITIES_SPACE_MANAGEMENT_FULL_RENDER_WORKBENCH = facilities_space_management_render_workbench
+
+
+def facilities_space_management_ui_contract():
+    base = dict(_FACILITIES_SPACE_MANAGEMENT_FULL_UI_CONTRACT())
+    facilities_control = improve1_facilities_control_contract()
+    full_surface = dict(base.get('full_capability_surface', {}))
+    full_surface['facilities_control_panels'] = tuple(item['evidence']['ui_surface'] for item in facilities_control['capabilities'])
+    full_surface['facilities_control_service_actions'] = tuple(item['evidence']['service_api'] for item in facilities_control['capabilities'])
+    return {
+        **base,
+        'ok': base.get('ok') is True and facilities_control['ok'],
+        'full_capability_surface': full_surface,
+        'facilities_control_contract': facilities_control,
+        'stream_engine_picker_visible': False,
+    }
+
+
+def facilities_space_management_render_workbench(state=None):
+    base = dict(_FACILITIES_SPACE_MANAGEMENT_FULL_RENDER_WORKBENCH(state=state))
+    facilities_control = improve1_facilities_control_contract()
+    return {
+        **base,
+        'ok': base.get('ok') is True and facilities_control['ok'],
+        'panels': tuple(dict.fromkeys(tuple(base.get('panels', ())) + tuple(item['evidence']['ui_surface'] for item in facilities_control['capabilities']))),
+        'facilities_control_actions': tuple(item['evidence']['service_api'] for item in facilities_control['capabilities']),
+        'facilities_control_contract': facilities_control,
+        'stream_engine_picker_visible': False,
+    }

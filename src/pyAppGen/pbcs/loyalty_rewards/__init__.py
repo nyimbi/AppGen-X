@@ -1,11 +1,14 @@
 """Loyalty Rewards PBC implementation package."""
 
+from . import release_evidence as release_evidence
+from . import standalone as standalone
 from .manifest import PBC_MANIFEST
+from .release_evidence import build_release_evidence
 
 from ..source_contract import source_pbc_package_contract
 from ..source_contract import source_package_metadata
-from ..source_contract import validate_source_package_metadata
 from ..source_contract import source_registration_plan
+from ..source_contract import validate_source_package_metadata
 from .runtime import LOYALTY_REWARDS_ALLOWED_DATABASE_BACKENDS
 from .runtime import LOYALTY_REWARDS_CONSUMED_EVENT_TYPES
 from .runtime import LOYALTY_REWARDS_EMITTED_EVENT_TYPES
@@ -24,8 +27,8 @@ from .runtime import loyalty_rewards_configure_runtime
 from .runtime import loyalty_rewards_create_redemption
 from .runtime import loyalty_rewards_empty_state
 from .runtime import loyalty_rewards_enroll_member
-from .runtime import loyalty_rewards_expire_points
 from .runtime import loyalty_rewards_evaluate_offer_eligibility
+from .runtime import loyalty_rewards_expire_points
 from .runtime import loyalty_rewards_federate_rewards_view
 from .runtime import loyalty_rewards_forecast_breakage
 from .runtime import loyalty_rewards_generate_balance_proof
@@ -52,8 +55,15 @@ from .runtime import loyalty_rewards_set_parameter
 from .runtime import loyalty_rewards_simulate_offer
 from .runtime import loyalty_rewards_snapshot_liability
 from .runtime import loyalty_rewards_verify_owned_table_boundary
+from .standalone import LoyaltyRewardsStandaloneApp
+from .standalone import bootstrap_standalone_state
+from .standalone import standalone_application_manifest
+from .standalone import standalone_workflow_catalog
+from .standalone import validate_standalone_application
 from .ui import LOYALTY_REWARDS_UI_FRAGMENT_KEYS
+from .ui import loyalty_rewards_render_standalone_app
 from .ui import loyalty_rewards_render_workbench
+from .ui import loyalty_rewards_standalone_app_contract
 from .ui import loyalty_rewards_ui_contract
 
 PBC_KEY = "loyalty_rewards"
@@ -70,7 +80,7 @@ def implementation_contract() -> dict:
         "api_contract": loyalty_rewards_build_api_contract(),
         "schema_contract": loyalty_rewards_build_schema_contract(),
         "service_contract": loyalty_rewards_build_service_contract(),
-        "release_evidence_contract": loyalty_rewards_build_release_evidence(),
+        "release_evidence": build_release_evidence(),
         "permissions_contract": loyalty_rewards_permissions_contract(),
         "owned_tables": LOYALTY_REWARDS_OWNED_TABLES,
         "runtime_tables": LOYALTY_REWARDS_RUNTIME_TABLES,
@@ -78,6 +88,9 @@ def implementation_contract() -> dict:
         "required_event_topic": LOYALTY_REWARDS_REQUIRED_EVENT_TOPIC,
         "consumes": LOYALTY_REWARDS_CONSUMED_EVENT_TYPES,
         "emits": LOYALTY_REWARDS_EMITTED_EVENT_TYPES,
+        "standalone_application": standalone_application_manifest(),
+        "standalone_workflows": standalone_workflow_catalog(),
+        "standalone_app_contract": loyalty_rewards_standalone_app_contract(),
     }
 
 

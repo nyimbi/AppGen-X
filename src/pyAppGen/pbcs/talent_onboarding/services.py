@@ -174,3 +174,21 @@ def smoke_test():
         'result': result,
         'side_effects': (),
     }
+
+
+
+def standalone_service_operation_contracts():
+    contracts=({'operation':'seed_demo_workspace','operation_kind':'command','method':'POST','path':'/app/talent-onboarding/demo-workspace','table':'talent_onboarding_talent_configuration','wizard':'CandidatePacketIntakeWizard','permission':'talent_onboarding.configure'},{'operation':'build_workbench','operation_kind':'query','method':'GET','path':'/app/talent-onboarding/workbench','table':'talent_onboarding_candidate','wizard':None,'permission':'talent_onboarding.read'},{'operation':'create_candidate','operation_kind':'command','method':'POST','path':'/app/talent-onboarding/candidates','table':'talent_onboarding_candidate','wizard':'CandidatePacketIntakeWizard','permission':'talent_onboarding.candidate'},{'operation':'provision_employee','operation_kind':'command','method':'POST','path':'/app/talent-onboarding/provision','table':'talent_onboarding_candidate','wizard':'EmployeeProvisioningWizard','permission':'talent_onboarding.onboard'},{'operation':'generate_candidate_proof','operation_kind':'command','method':'POST','path':'/app/talent-onboarding/proofs','table':'talent_onboarding_talent_candidate_proof','wizard':'EmployeeProvisioningWizard','permission':'talent_onboarding.audit'})
+    return {'format':'appgen.talent-onboarding-standalone-service.v1','ok':all(i['table'].startswith('talent_onboarding_') for i in contracts),'pbc':'talent_onboarding','contracts':contracts,'operations':tuple(i['operation'] for i in contracts),'command_operations':tuple(i['operation'] for i in contracts if i['operation_kind']=='command'),'query_operations':tuple(i['operation'] for i in contracts if i['operation_kind']=='query'),'side_effects':()}
+class TalentOnboardingStandaloneService:
+    def __init__(self,repository=None,database_path=':memory:'):
+        if repository is None:
+            from .repository import TalentOnboardingStandaloneRepository
+            repository=TalentOnboardingStandaloneRepository(database_path=database_path)
+        self.repository=repository
+    def close(self): self.repository.close()
+    def seed_demo_workspace(self,tenant='tenant_demo'): return self.repository.seed_demo_workspace(tenant=tenant)
+    def build_workbench(self,tenant='tenant_demo'): return self.repository.build_workbench(tenant)
+    def create_candidate(self,tenant,candidate): return self.repository.create_candidate(tenant,candidate)
+    def provision_employee(self,tenant,candidate_id,provisioned_by): return self.repository.provision_employee(tenant,candidate_id,provisioned_by)
+    def generate_candidate_proof(self,tenant,candidate_id,disclosure=('candidate_id','requisition_id','stage')): return self.repository.generate_candidate_proof(tenant,candidate_id,tuple(disclosure))

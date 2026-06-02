@@ -167,3 +167,24 @@ def smoke_test():
         'contribution': contribution,
         'side_effects': (),
     }
+
+
+
+def _standalone_operations(): return services.standalone_service_operation_contracts().get('contracts',())
+def standalone_agent_workspace_contract():
+    from . import ui, routes
+    forms=ui.price_promotion_engine_form_contracts(); wizards=ui.price_promotion_engine_wizard_contracts(); controls=ui.price_promotion_engine_control_catalog(); route_manifest=routes.standalone_route_contracts()
+    return {'format':'appgen.price-promotion-engine-standalone-agent-workspace.v1','ok':forms['ok'] and wizards['ok'] and controls['ok'] and route_manifest['ok'],'pbc':PBC_KEY,'agent':AGENT_NAME,'forms':tuple(i['key'] for i in forms['contracts']),'wizards':tuple(i['key'] for i in wizards['contracts']),'controls':tuple(i['key'] for i in controls['contracts']),'routes':route_manifest['routes'],'side_effects':()}
+_original_price_promotion_engine_document_instruction_plan=document_instruction_plan
+def document_instruction_plan(document=None,instructions=None):
+    base_plan=_original_price_promotion_engine_document_instruction_plan(document,instructions); combined=f"{document or ''} {instructions or ''}".lower(); from . import ui
+    wizard_candidates=tuple(i['key'] for i in ui.price_promotion_engine_wizard_contracts()['contracts'] if any(k in combined for k in i.get('keywords',()))) or ('PriceSetupWizard',)
+    route_candidates=tuple(f"{i['method']} {i['path']}" for i in _standalone_operations() if i.get('wizard') in wizard_candidates or i['operation'].replace('_',' ') in combined)
+    return {**base_plan,'wizard_candidates':wizard_candidates,'standalone_routes':route_candidates,'workspace':standalone_agent_workspace_contract()}
+_original_price_promotion_engine_datastore_crud_plan=datastore_crud_plan
+def datastore_crud_plan(action='read',table=None,payload=None):
+    plan=_original_price_promotion_engine_datastore_crud_plan(action,table,payload); selected=plan.get('table'); action=plan.get('action')
+    routes=tuple(f"{i['method']} {i['path']}" for i in _standalone_operations() if i['table']==selected and ((action=='read' and i['operation_kind']=='query') or (action!='read' and i['operation_kind']=='command')))
+    if action=='read' and not routes:
+        routes=tuple(f"{i['method']} {i['path']}" for i in _standalone_operations() if i['operation_kind']=='query')
+    return {**plan,'route_candidates':routes,'workspace':standalone_agent_workspace_contract()}

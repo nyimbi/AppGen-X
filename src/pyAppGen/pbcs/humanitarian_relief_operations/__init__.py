@@ -39,3 +39,8 @@ def smoke_test() -> dict:
     discovery = package_discovery_plan()
     runtime = humanitarian_relief_operations_runtime_smoke()
     return {'ok': discovery['ok'] and runtime['ok'], 'discovery': discovery, 'runtime': runtime, 'side_effects': ()}
+
+from .standalone import HumanitarianReliefOperationsStandaloneApp, single_pbc_app_contract, standalone_smoke_test
+from .forms import form_catalog
+from .wizards import wizard_catalog
+from .controls import control_catalog

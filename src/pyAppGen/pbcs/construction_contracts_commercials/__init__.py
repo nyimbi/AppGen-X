@@ -2,7 +2,17 @@
 from .manifest import PBC_MANIFEST
 from ..source_contract import source_pbc_package_contract, source_package_metadata, validate_source_package_metadata, source_registration_plan
 from .runtime import *
-from .ui import construction_contracts_commercials_ui_contract, construction_contracts_commercials_render_workbench
+from .standalone import (
+    construction_contracts_commercials_bootstrap_standalone_app,
+    construction_contracts_commercials_standalone_app_contract,
+    construction_contracts_commercials_standalone_app_smoke,
+)
+from .ui import (
+    construction_contracts_commercials_render_standalone_workbench,
+    construction_contracts_commercials_render_workbench,
+    construction_contracts_commercials_standalone_workbench_blueprint,
+    construction_contracts_commercials_ui_contract,
+)
 
 PBC_KEY = 'construction_contracts_commercials'
 
@@ -10,7 +20,25 @@ PBC_KEY = 'construction_contracts_commercials'
 def implementation_contract() -> dict:
     runtime = construction_contracts_commercials_runtime_capabilities()
     contract = source_pbc_package_contract(PBC_KEY, tuple(runtime['capabilities']))
-    return {**contract, 'standard_features': runtime['standard_features'], 'advanced_runtime': runtime, 'ui_contract': construction_contracts_commercials_ui_contract(), 'api_contract': construction_contracts_commercials_build_api_contract(), 'schema_contract': construction_contracts_commercials_build_schema_contract(), 'service_contract': construction_contracts_commercials_build_service_contract(), 'release_evidence_contract': construction_contracts_commercials_build_release_evidence(), 'permissions_contract': construction_contracts_commercials_permissions_contract(), 'owned_tables': CONSTRUCTION_CONTRACTS_COMMERCIALS_OWNED_TABLES, 'runtime_tables': CONSTRUCTION_CONTRACTS_COMMERCIALS_RUNTIME_TABLES, 'allowed_database_backends': CONSTRUCTION_CONTRACTS_COMMERCIALS_ALLOWED_DATABASE_BACKENDS, 'required_event_topic': CONSTRUCTION_CONTRACTS_COMMERCIALS_REQUIRED_EVENT_TOPIC, 'emits': CONSTRUCTION_CONTRACTS_COMMERCIALS_EMITTED_EVENT_TYPES, 'consumes': CONSTRUCTION_CONTRACTS_COMMERCIALS_CONSUMED_EVENT_TYPES, 'boundary_contract': construction_contracts_commercials_verify_owned_table_boundary(CONSTRUCTION_CONTRACTS_COMMERCIALS_OWNED_TABLES + ('api_dependency',))}
+    return {
+        **contract,
+        'standard_features': runtime['standard_features'],
+        'advanced_runtime': runtime,
+        'ui_contract': construction_contracts_commercials_ui_contract(),
+        'api_contract': construction_contracts_commercials_build_api_contract(),
+        'schema_contract': construction_contracts_commercials_build_schema_contract(),
+        'service_contract': construction_contracts_commercials_build_service_contract(),
+        'release_evidence_contract': construction_contracts_commercials_build_release_evidence(),
+        'permissions_contract': construction_contracts_commercials_permissions_contract(),
+        'standalone_app_contract': construction_contracts_commercials_standalone_app_contract(),
+        'owned_tables': CONSTRUCTION_CONTRACTS_COMMERCIALS_OWNED_TABLES,
+        'runtime_tables': CONSTRUCTION_CONTRACTS_COMMERCIALS_RUNTIME_TABLES,
+        'allowed_database_backends': CONSTRUCTION_CONTRACTS_COMMERCIALS_ALLOWED_DATABASE_BACKENDS,
+        'required_event_topic': CONSTRUCTION_CONTRACTS_COMMERCIALS_REQUIRED_EVENT_TOPIC,
+        'emits': CONSTRUCTION_CONTRACTS_COMMERCIALS_EMITTED_EVENT_TYPES,
+        'consumes': CONSTRUCTION_CONTRACTS_COMMERCIALS_CONSUMED_EVENT_TYPES,
+        'boundary_contract': construction_contracts_commercials_verify_owned_table_boundary(CONSTRUCTION_CONTRACTS_COMMERCIALS_OWNED_TABLES + ('api_dependency',)),
+    }
 
 
 def register_pbc() -> dict:
@@ -38,4 +66,5 @@ def package_discovery_plan(existing_catalog: dict | None = None) -> dict:
 def smoke_test() -> dict:
     discovery = package_discovery_plan()
     runtime = construction_contracts_commercials_runtime_smoke()
-    return {'ok': discovery['ok'] and runtime['ok'], 'discovery': discovery, 'runtime': runtime, 'side_effects': ()}
+    standalone = construction_contracts_commercials_standalone_app_smoke()
+    return {'ok': discovery['ok'] and runtime['ok'] and standalone['ok'], 'discovery': discovery, 'runtime': runtime, 'standalone': standalone, 'side_effects': ()}

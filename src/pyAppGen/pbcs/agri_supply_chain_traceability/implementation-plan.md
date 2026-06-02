@@ -2,58 +2,50 @@
 
 ### Scope
 
-Implement a real executable slice for backlog item 49: a pre-shipment release gate that evaluates whether an agricultural shipment candidate can be released using package-local traceability evidence.
+Deliver a standalone one-PBC executable surface for
+`agri_supply_chain_traceability` strictly inside this package.
+
+### Slice Selected
+
+Use the existing package-local release gate as the operational center of the
+slice, then wrap it with the missing standalone app composition required to make
+this PBC independently executable and auditable.
 
 ### Why This Slice
 
-- It is directly listed in `improve1.md`.
-- It fits the current owned record set: `farm_lot`, `certification`, `storage_event`, `transport_leg`, `recall_link`, and `provenance_proof`.
-- It can be expressed through the existing AppGen-X runtime/service/UI/agent surfaces without widening into new infrastructure or foreign-table coupling.
+- `improve1.md` explicitly calls for release-readiness, recall readiness,
+  document-led intake, operator tooling, and richer API and event boundaries.
+- The package already owns the core evidence tables needed to implement a real
+  release decision without crossing into shared infrastructure.
+- A package-local standalone surface closes the gap between metadata contracts
+  and a functional one-PBC app entrypoint.
 
-### Current Gaps
+### Work Items
 
-- Domain execution is mostly placeholder metadata.
-- There is no executable release decision that combines lineage, certificate coverage, storage or transport exceptions, recall state, and explainable blockers.
-- The workbench and assistant surfaces do not advertise a concrete release-readiness workflow.
-
-### Planned Slice
-
-1. Add package-local release-gate logic that:
-   - requires an active farm lot
-   - requires provenance evidence linking the release candidate back to the source lot
-   - validates certification validity and scope on a shipment date
-   - blocks on unresolved storage exceptions
-   - blocks on unresolved transport exceptions or broken seal evidence
-   - blocks on active recall links
-   - blocks on pending hazards, lab results, or corrective actions declared on the candidate
-   - returns an explainable verdict with passed checks and blockers
-2. Wire the slice into runtime/service contracts as a supported command/query surface.
-3. Extend UI and agent contracts so the release gate is visible as a supported operational capability.
-4. Add focused tests for:
-   - a release-ready scenario
-   - blocked release due to certificate and cold-chain/custody issues
-   - service and UI exposure for the new slice
-
-### Files To Change
-
-- `src/pyAppGen/pbcs/agri_supply_chain_traceability/runtime.py`
-- `src/pyAppGen/pbcs/agri_supply_chain_traceability/services.py`
-- `src/pyAppGen/pbcs/agri_supply_chain_traceability/ui.py`
-- `src/pyAppGen/pbcs/agri_supply_chain_traceability/agent.py`
-- `tests/test_pbc_agri_supply_chain_traceability_implementation.py`
-- `src/pyAppGen/pbcs/agri_supply_chain_traceability/implementation-status.md`
-- `src/pyAppGen/pbcs/agri_supply_chain_traceability/README.md`
+1. Keep the existing package-local runtime and extend it only where the slice
+   needs missing executable coverage.
+2. Add a stateful service layer that executes runtime commands against owned
+   package state instead of returning metadata only.
+3. Replace placeholder routes with a real route catalog and dispatcher for the
+   standalone app surface while preserving legacy compatibility aliases.
+4. Expand UI metadata to include a standalone shell, navigation, forms,
+   wizards, controls, and a rendered workbench view over package-local state.
+5. Strengthen agent planning and model contracts so document intake and CRUD
+   previews point to real package-local operations and owned tables.
+6. Add standalone release evidence and focused tests for repo-gate style source,
+   implementation, and generation audits.
+7. Refresh package docs to match the implemented standalone slice.
 
 ### Constraints
 
-- Keep AppGen-X terminology.
-- Stay inside package-local logic and the assigned test file.
-- Do not add new dependencies.
-- Keep datastore assumptions to PostgreSQL, MySQL, or MariaDB only.
-- Preserve owned-table boundaries and avoid foreign-table mutation.
+- Stay inside `src/pyAppGen/pbcs/agri_supply_chain_traceability`.
+- Do not edit shared generator, DSL, or progress-ledger files.
+- Do not add dependencies.
+- Keep all writes within owned package tables and AppGen-X event surfaces.
 
 ### Verification Plan
 
-- Run targeted pytest for the assigned implementation test file.
-- Run the existing agri supply chain runtime test to ensure the slice does not regress current contracts.
-- Review modified code for accidental scope expansion or debug leftovers.
+- Compile all modified package modules with `python3 -m py_compile`.
+- Run focused pytest for package-local tests.
+- Run available package-local release evidence and smoke audits.
+- Check git diff to confirm the change stayed inside this PBC directory.

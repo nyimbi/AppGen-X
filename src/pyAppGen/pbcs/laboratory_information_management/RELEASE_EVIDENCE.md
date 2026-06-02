@@ -2,11 +2,17 @@
 
 Package directory: `pbcs/laboratory_information_management`.
 
-This PBC includes owned schema, migration DDL, models, services, routes, events, handlers, UI workbench surfaces, agent skills, permissions, configuration, seed data, package metadata, side-effect-free registration, and focused package tests.
+## Evidence Surface
 
-## Evidence
+- Generated runtime/schema/service/event/handler contracts remain package-local and side-effect free.
+- Standalone executable surface exists in `standalone.py` and is checked by `standalone.standalone_smoke_test()`.
+- Package-local workbench forms, wizards, and controls exist in `forms.py`, `wizards.py`, and `controls.py`.
+- Dynamic release validation exists in `release_evidence.py` and includes standalone and documentation checks.
+- Focused tests exist in `tests/test_contract.py` and `tests/test_standalone.py`.
 
-- Release Evidence: schema, service, route, event, handler, UI, agent, and governance contracts are materialized.
-- Owned datastore boundary: every owned table starts with `laboratory_information_management_` and cross-PBC collaboration uses AppGen-X events or declared APIs.
-- Event contract: AppGen-X outbox/inbox with retry and dead-letter evidence.
-- Package tests: `tests/test_contract.py` validates schema/service/release, event contracts, side-effect-free registration, routes, governance, and idempotent handlers.
+## Release Gates
+
+- Owned datastore boundary remains `laboratory_information_management_*` only.
+- AppGen-X event contract remains fixed and stream-engine picker exposure stays hidden.
+- Result release requires reviewed batch evidence, passed QC, intact custody, and e-signature capture.
+- Assistant CRUD paths remain preview-only until confirmation and citation-backed evidence is present.

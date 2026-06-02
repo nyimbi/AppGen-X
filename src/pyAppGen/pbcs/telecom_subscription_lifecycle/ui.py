@@ -17,3 +17,35 @@ def telecom_subscription_lifecycle_render_workbench():
 
 def smoke_test():
     return {'ok': telecom_subscription_lifecycle_ui_contract()['ok'] and telecom_subscription_lifecycle_render_workbench()['ok'], 'side_effects': ()}
+
+
+# Improve1 telecom subscription lifecycle control UI extension.
+from .telecom_subscription_lifecycle_control import improve1_telecom_subscription_lifecycle_control_contract as _improve1_telecom_subscription_lifecycle_control_contract
+
+_SUBSCRIPTION_CONTROL_BASE_UI_CONTRACT = telecom_subscription_lifecycle_ui_contract
+_SUBSCRIPTION_CONTROL_BASE_RENDER_WORKBENCH = telecom_subscription_lifecycle_render_workbench
+
+
+def telecom_subscription_lifecycle_ui_contract() -> dict:
+    ui = dict(_SUBSCRIPTION_CONTROL_BASE_UI_CONTRACT())
+    control = _improve1_telecom_subscription_lifecycle_control_contract()
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "telecom_subscription_lifecycle_control_contract": control,
+        "telecom_subscription_lifecycle_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "telecom_subscription_lifecycle_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def telecom_subscription_lifecycle_render_workbench(*args, **kwargs) -> dict:
+    workbench = dict(_SUBSCRIPTION_CONTROL_BASE_RENDER_WORKBENCH(*args, **kwargs))
+    control = _improve1_telecom_subscription_lifecycle_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "telecom_subscription_lifecycle_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "telecom_subscription_lifecycle_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "telecom_subscription_lifecycle_control_agent_tools": tuple(f"telecom_subscription_lifecycle.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench

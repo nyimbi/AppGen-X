@@ -1,3 +1,4 @@
+from .account_control import ACCOUNT_CONTROL_CAPABILITIES, improve1_account_control_contract
 from .runtime import (
     BANKING_CORE_ACCOUNTS_CONTROLS,
     BANKING_CORE_ACCOUNTS_FORMS,
@@ -5,6 +6,7 @@ from .runtime import (
     banking_core_accounts_build_app_surface,
     banking_core_accounts_build_control_surface,
     banking_core_accounts_build_workbench_view,
+    banking_core_accounts_build_workflow_surface,
 )
 
 PBC_KEY = "banking_core_accounts"
@@ -13,6 +15,7 @@ PBC_KEY = "banking_core_accounts"
 def banking_core_accounts_ui_contract():
     app_surface = banking_core_accounts_build_app_surface()
     control_surface = banking_core_accounts_build_control_surface()
+    workflow_surface = banking_core_accounts_build_workflow_surface()
     return {
         "ok": True,
         "pbc": PBC_KEY,
@@ -37,14 +40,18 @@ def banking_core_accounts_ui_contract():
             "operation_actions": ("open_deposit_account", "transition_deposit_account"),
             "rule_editors": ("deposit_account_policy",),
             "parameter_editors": ("workbench_limit", "approval_sla_hours"),
-            "advanced_panels": ("lifecycle_state_machine", "control_assertions"),
+            "advanced_panels": ("lifecycle_state_machine", "control_assertions") + ACCOUNT_CONTROL_CAPABILITIES,
+            "account_control_panels": tuple(f"account_control_{capability}" for capability in ACCOUNT_CONTROL_CAPABILITIES),
+            "account_control_contract": improve1_account_control_contract(),
             "table_browsers": app_surface["tables"],
+            "workflow_ids": tuple(item["workflow_id"] for item in workflow_surface["workflows"]),
             "edge_case_queues": ("maker_checker_failures", "invalid_transition_attempts"),
             "navigation_sections": (
                 "overview",
                 "forms",
                 "wizards",
                 "controls",
+                "workflows",
                 "workbench",
                 "release_evidence",
             ),
@@ -56,6 +63,7 @@ def banking_core_accounts_ui_contract():
             },
         },
         "control_surface": control_surface,
+        "workflow_surface": workflow_surface,
         "side_effects": (),
     }
 

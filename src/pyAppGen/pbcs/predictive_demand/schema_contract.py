@@ -515,22 +515,22 @@ SCHEMA_CONTRACT = {'format': 'appgen.predictive-demand-owned-schema-contract.v1'
  'database_backends': ('postgresql', 'mysql', 'mariadb'),
  'shared_table_access': False,
  'pbc': 'predictive_demand',
- 'owned_tables': ('predictive_demand_forecast_model',
-                  'predictive_demand_forecast_run',
-                  'predictive_demand_demand_signal',
-                  'predictive_demand_forecast_result',
-                  'predictive_demand_planning_horizon',
-                  'predictive_demand_forecast_driver',
-                  'predictive_demand_consensus_adjustment',
-                  'predictive_demand_scenario_version',
-                  'predictive_demand_shortage_risk',
-                  'predictive_demand_replenishment_recommendation',
-                  'predictive_demand_forecast_exception',
-                  'predictive_demand_model_drift_signal',
-                  'predictive_demand_planning_rule',
-                  'predictive_demand_planning_parameter',
-                  'predictive_demand_governed_model_evidence',
-                  'predictive_demand_forecast_audit_proof')}
+ 'owned_tables': ('forecast_model',
+                  'forecast_run',
+                  'demand_signal',
+                  'forecast_result',
+                  'planning_horizon',
+                  'forecast_driver',
+                  'consensus_adjustment',
+                  'scenario_version',
+                  'shortage_risk',
+                  'replenishment_recommendation',
+                  'forecast_exception',
+                  'model_drift_signal',
+                  'planning_rule',
+                  'planning_parameter',
+                  'governed_model_evidence',
+                  'forecast_audit_proof')}
 
 
 def build_schema_contract():
@@ -543,6 +543,10 @@ def validate_schema_contract():
     contract = build_schema_contract()
     pbc = contract['pbc']
     owned_tables = tuple(contract.get('owned_tables', ()))
+    physical_owned_tables = tuple(
+        table if table.startswith(f'{pbc}_') else f'{pbc}_{table}'
+        for table in owned_tables
+    )
     raw_model_tables = tuple(
         model.get('table')
         for model in contract.get('models', ())
@@ -554,8 +558,8 @@ def validate_schema_contract():
     )
     migration_paths = tuple(contract.get('migrations', ()))
     allowed_backends = {'postgresql', 'mysql', 'mariadb'}
-    invalid_tables = tuple(table for table in owned_tables if not table.startswith(f'{pbc}_'))
-    missing_models = tuple(table for table in owned_tables if model_tables and table not in model_tables)
+    invalid_tables = tuple(table for table in physical_owned_tables if not table.startswith(f'{pbc}_'))
+    missing_models = tuple(table for table in physical_owned_tables if model_tables and table not in model_tables)
     invalid_backends = tuple(
         backend for backend in contract.get('database_backends', ()) if backend not in allowed_backends
     )
@@ -569,6 +573,7 @@ def validate_schema_contract():
         and contract.get('shared_table_access') is False,
         'pbc': pbc,
         'owned_tables': owned_tables,
+        'physical_owned_tables': physical_owned_tables,
         'raw_model_tables': raw_model_tables,
         'model_tables': model_tables,
         'migration_paths': migration_paths,

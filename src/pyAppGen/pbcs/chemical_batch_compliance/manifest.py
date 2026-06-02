@@ -54,7 +54,7 @@ PBC_MANIFEST = {
     ),
     "migrations": ("migrations/001_initial.sql",),
     "seed_data": ("seed_data.py",),
-    "tests": ("tests/test_contract.py", "tests/test_slice_app.py"),
+    "tests": ("tests/test_contract.py", "tests/test_slice_app.py", "tests/test_standalone_app.py"),
     "docs": ("SPECIFICATION.md", "RELEASE_EVIDENCE.md"),
     "ui_fragments": UI_FRAGMENT_KEYS,
     "standard_features": STANDARD_FEATURE_KEYS,

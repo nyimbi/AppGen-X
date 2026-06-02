@@ -1,16 +1,45 @@
 """Insurance Claims and Policy PBC implementation package."""
-from .manifest import PBC_MANIFEST
-from ..source_contract import source_pbc_package_contract, source_package_metadata, validate_source_package_metadata, source_registration_plan
-from .runtime import *
-from .ui import insurance_claims_policy_ui_contract, insurance_claims_policy_render_workbench
 
-PBC_KEY = 'insurance_claims_policy'
+from __future__ import annotations
+
+from ..source_contract import source_package_metadata
+from ..source_contract import source_pbc_package_contract
+from ..source_contract import source_registration_plan
+from ..source_contract import validate_source_package_metadata
+from .manifest import PBC_MANIFEST
+from .runtime import *
+from .standalone import InsuranceClaimsPolicyStandaloneApp
+from .standalone import smoke_test as standalone_smoke_test
+from .standalone import standalone_manifest
+from .ui import insurance_claims_policy_render_workbench
+from .ui import insurance_claims_policy_standalone_app_contract
+from .ui import insurance_claims_policy_ui_contract
+
+PBC_KEY = "insurance_claims_policy"
 
 
 def implementation_contract() -> dict:
     runtime = insurance_claims_policy_runtime_capabilities()
-    contract = source_pbc_package_contract(PBC_KEY, tuple(runtime['capabilities']))
-    return {**contract, 'standard_features': runtime['standard_features'], 'advanced_runtime': runtime, 'ui_contract': insurance_claims_policy_ui_contract(), 'api_contract': insurance_claims_policy_build_api_contract(), 'schema_contract': insurance_claims_policy_build_schema_contract(), 'service_contract': insurance_claims_policy_build_service_contract(), 'release_evidence_contract': insurance_claims_policy_build_release_evidence(), 'permissions_contract': insurance_claims_policy_permissions_contract(), 'owned_tables': INSURANCE_CLAIMS_POLICY_OWNED_TABLES, 'runtime_tables': INSURANCE_CLAIMS_POLICY_RUNTIME_TABLES, 'allowed_database_backends': INSURANCE_CLAIMS_POLICY_ALLOWED_DATABASE_BACKENDS, 'required_event_topic': INSURANCE_CLAIMS_POLICY_REQUIRED_EVENT_TOPIC, 'emits': INSURANCE_CLAIMS_POLICY_EMITTED_EVENT_TYPES, 'consumes': INSURANCE_CLAIMS_POLICY_CONSUMED_EVENT_TYPES, 'boundary_contract': insurance_claims_policy_verify_owned_table_boundary(INSURANCE_CLAIMS_POLICY_OWNED_TABLES + ('api_dependency',))}
+    contract = source_pbc_package_contract(PBC_KEY, tuple(runtime["capabilities"]))
+    return {
+        **contract,
+        "standard_features": runtime["standard_features"],
+        "advanced_runtime": runtime,
+        "ui_contract": insurance_claims_policy_ui_contract(),
+        "api_contract": insurance_claims_policy_build_api_contract(),
+        "schema_contract": insurance_claims_policy_build_schema_contract(),
+        "service_contract": insurance_claims_policy_build_service_contract(),
+        "release_evidence_contract": insurance_claims_policy_build_release_evidence(),
+        "permissions_contract": insurance_claims_policy_permissions_contract(),
+        "owned_tables": INSURANCE_CLAIMS_POLICY_OWNED_TABLES,
+        "runtime_tables": INSURANCE_CLAIMS_POLICY_RUNTIME_TABLES,
+        "allowed_database_backends": INSURANCE_CLAIMS_POLICY_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": INSURANCE_CLAIMS_POLICY_REQUIRED_EVENT_TOPIC,
+        "emits": INSURANCE_CLAIMS_POLICY_EMITTED_EVENT_TYPES,
+        "consumes": INSURANCE_CLAIMS_POLICY_CONSUMED_EVENT_TYPES,
+        "boundary_contract": insurance_claims_policy_verify_owned_table_boundary(INSURANCE_CLAIMS_POLICY_OWNED_TABLES + ("api_dependency",)),
+        "standalone_manifest": standalone_manifest(),
+    }
 
 
 def register_pbc() -> dict:
@@ -32,10 +61,18 @@ def validate_package_metadata() -> dict:
 def package_discovery_plan(existing_catalog: dict | None = None) -> dict:
     metadata_validation = validate_package_metadata()
     registration = registration_plan(existing_catalog=existing_catalog)
-    return {'format': 'appgen.pbc-source-package-discovery-plan.v1', 'ok': metadata_validation['ok'] and registration['ok'], 'pbc': PBC_KEY, 'metadata_validation': metadata_validation, 'registration': registration, 'side_effects': ()}
+    return {
+        "format": "appgen.pbc-source-package-discovery-plan.v1",
+        "ok": metadata_validation["ok"] and registration["ok"],
+        "pbc": PBC_KEY,
+        "metadata_validation": metadata_validation,
+        "registration": registration,
+        "side_effects": (),
+    }
 
 
 def smoke_test() -> dict:
     discovery = package_discovery_plan()
     runtime = insurance_claims_policy_runtime_smoke()
-    return {'ok': discovery['ok'] and runtime['ok'], 'discovery': discovery, 'runtime': runtime, 'side_effects': ()}
+    standalone = standalone_smoke_test()
+    return {"ok": discovery["ok"] and runtime["ok"] and standalone["ok"], "discovery": discovery, "runtime": runtime, "standalone": standalone, "side_effects": ()}

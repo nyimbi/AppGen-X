@@ -1981,3 +1981,61 @@ def _digest(payload: dict) -> str:
     return hashlib.sha256(
         json.dumps(payload, sort_keys=True, default=default, separators=(",", ":")).encode()
     ).hexdigest()
+
+
+from .fraud_control import improve1_fraud_control_contract as fraud_anomaly_detection_improve1_fraud_control_contract
+
+_fraud_anomaly_detection_base_build_release_evidence = fraud_anomaly_detection_build_release_evidence
+_fraud_anomaly_detection_base_runtime_capabilities = fraud_anomaly_detection_runtime_capabilities
+
+def fraud_anomaly_detection_build_release_evidence() -> dict:
+    evidence = _fraud_anomaly_detection_base_build_release_evidence()
+    control = fraud_anomaly_detection_improve1_fraud_control_contract()
+    checks = tuple(evidence.get('checks', ())) + ({'id': 'improve1_fraud_control', 'ok': control['ok']},)
+    return {**evidence, 'ok': evidence.get('ok') is True and control['ok'], 'checks': checks, 'fraud_control': control, 'blocking_gaps': tuple(evidence.get('blocking_gaps', ())) + tuple(control.get('blocking_gaps', ())), 'side_effects': ()}
+
+def fraud_anomaly_detection_runtime_capabilities() -> dict:
+    runtime = _fraud_anomaly_detection_base_runtime_capabilities()
+    control = fraud_anomaly_detection_improve1_fraud_control_contract()
+    operations = tuple(runtime.get('operations', ())) + ('improve1_fraud_control_contract',)
+    return {**runtime, 'ok': runtime.get('ok') is True and control['ok'], 'operations': operations, 'fraud_control': control, 'improve1_capabilities': tuple(item['slug'] for item in control['capabilities']), 'owned_tables': tuple(dict.fromkeys(tuple(runtime.get('owned_tables', ())) + tuple(control['owned_tables']))), 'allowed_database_backends': control['allowed_database_backends'], 'event_contract': control['event_contract'], 'stream_engine_picker_visible': False, 'side_effects': ()}
+
+
+from .fraud_control import FRAUD_CONTROL_OWNED_TABLES as _FRAUD_CONTROL_OWNED_TABLES
+
+_fraud_anomaly_detection_base_verify_owned_table_boundary = fraud_anomaly_detection_verify_owned_table_boundary
+
+def fraud_anomaly_detection_verify_owned_table_boundary(references: tuple[str, ...] = ()) -> dict:
+    allowed = {
+        *_FRAUD_CONTROL_OWNED_TABLES,
+        *FRAUD_ANOMALY_DETECTION_CONSUMED_EVENT_TYPES,
+        *FRAUD_ANOMALY_DETECTION_EMITTED_EVENT_TYPES,
+        "POST /risk-events",
+        "POST /fraud-checks",
+        "GET /risk-cases",
+        "GET /risk-workbench",
+        "POST /fraud-rules",
+        "POST /risk-signals/{id}/score",
+        "POST /risk-cases",
+        "POST /fraud-configuration",
+        "POST /fraud-parameters",
+    }
+    violations = tuple(reference for reference in references if reference not in allowed)
+    return {
+        "format": "appgen.fraud-anomaly-detection-boundary.v2",
+        "ok": not violations,
+        "owned_tables": _FRAUD_CONTROL_OWNED_TABLES,
+        "runtime_tables": FRAUD_ANOMALY_DETECTION_RUNTIME_TABLES,
+        "declared_dependencies": {
+            "apis": (
+                "POST /risk-events", "POST /fraud-checks", "GET /risk-cases", "GET /risk-workbench",
+                "POST /fraud-rules", "POST /risk-signals/{id}/score", "POST /risk-cases",
+                "POST /fraud-configuration", "POST /fraud-parameters",
+            ),
+            "events": tuple(dict.fromkeys(FRAUD_ANOMALY_DETECTION_CONSUMED_EVENT_TYPES + FRAUD_ANOMALY_DETECTION_EMITTED_EVENT_TYPES)),
+            "shared_tables": (),
+        },
+        "references": tuple(references),
+        "violations": violations,
+        "side_effects": (),
+    }

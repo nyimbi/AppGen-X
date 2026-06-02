@@ -127,3 +127,34 @@ def smoke_test():
         'dispatch': dispatched,
         'side_effects': (),
     }
+
+
+STANDALONE_ROUTES=(
+    {'method':'POST','path':'/app/price-promotion-engine/demo-workspace','handler':'seed_demo_workspace'},
+    {'method':'GET','path':'/app/price-promotion-engine/workbench','handler':'build_workbench'},
+    {'method':'POST','path':'/app/price-promotion-engine/price-rules','handler':'register_price_rule'},
+    {'method':'POST','path':'/app/price-promotion-engine/quotes','handler':'quote_price'},
+    {'method':'POST','path':'/app/price-promotion-engine/coupon-redemptions','handler':'redeem_coupon'},
+    {'method':'POST','path':'/app/price-promotion-engine/promotion-settlements','handler':'settle_promotion'},)
+
+def standalone_route_contracts():
+    from .services import standalone_service_operation_contracts
+    ops={i['operation']:i for i in standalone_service_operation_contracts()['contracts']}; contracts=tuple({**r,'operation':r['handler'],'service_operation':ops.get(r['handler'])} for r in STANDALONE_ROUTES)
+    return {'format':'appgen.price-promotion-engine-standalone-routes.v1','ok':all(i['service_operation'] for i in contracts),'pbc':'price_promotion_engine','routes':tuple(f"{i['method']} {i['path']}" for i in contracts),'contracts':contracts,'side_effects':()}
+
+def dispatch_standalone_route(method,path,payload=None,*,service=None):
+    from .services import PricePromotionEngineStandaloneService
+    route=next((i for i in STANDALONE_ROUTES if i['method']==method and i['path']==path),None)
+    if route is None: return {'ok':False,'handled':False,'reason':'route_not_found','side_effects':()}
+    own=service is None; service=service or PricePromotionEngineStandaloneService(); data=dict(payload or {})
+    try:
+        if route['handler']=='seed_demo_workspace': result=service.seed_demo_workspace(tenant=data.get('tenant','tenant_demo'))
+        elif route['handler']=='build_workbench': result=service.build_workbench(tenant=data.get('tenant','tenant_demo'))
+        elif route['handler']=='register_price_rule': result=service.register_price_rule(data.get('tenant','tenant_demo'),data)
+        elif route['handler']=='quote_price': result=service.quote_price(data.get('tenant','tenant_demo'),data)
+        elif route['handler']=='redeem_coupon': result=service.redeem_coupon(data.get('tenant','tenant_demo'),data['decision_id'],data['coupon_code'])
+        elif route['handler']=='settle_promotion': result=service.settle_promotion(data.get('tenant','tenant_demo'),data['accrual_id'],data['settled_amount'],data.get('settled_by','trade_finance'))
+        else: result={'ok':False,'reason':'handler_not_implemented'}
+        return {'ok':result.get('ok') is True,'handled':True,'route':route,'result':{'ok':result.get('ok') is True,'result':result},'side_effects':()}
+    finally:
+        if own: service.close()

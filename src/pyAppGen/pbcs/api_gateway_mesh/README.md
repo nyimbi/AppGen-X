@@ -28,3 +28,14 @@
 - `ui.py` — workbench, safety-case, and incident-triage UI contract
 - `agent.py` — readiness preview and incident-triage assistant surface
 - `release_evidence.py` — release readiness aggregation
+
+## Standalone Workbench Depth
+
+The PBC now exposes concrete form, wizard, and control surfaces in addition to its runtime and route contracts:
+
+- Forms: service registration, route publication, rate-limit policy, mTLS identity binding, synthetic probe capture, and gateway configuration changes.
+- Wizards: service onboarding to publication, route incident triage, and configuration blast-radius review.
+- Controls: route publication safety, route collision guard, tenant policy/quota guard, identity rotation guard, and release evidence gate.
+- Database backing: `ApiGatewayMeshRepository` applies owned migrations and persists runtime state into PBC-owned service, route, rate-limit, identity, health, traffic, inbox, outbox, dead-letter, retry-evidence, and snapshot tables.
+
+All mutation previews stay inside `api_gateway_mesh_*` tables, require AppGen-X eventing, and hide stream-engine picker choices from users.

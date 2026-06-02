@@ -37,6 +37,14 @@ def _command_operations():
     return services.service_operation_manifest().get('command_operations', ())
 
 
+def _route_candidates():
+    return routes.standalone_route_contracts().get('routes', ()) or routes.api_route_contracts().get('routes', ())
+
+
+def _wizard_candidates():
+    return ('regulator_export_packet', 'access_decision_review', 'signature_chain_recovery')
+
+
 def agent_skill_manifest():
     """Return the skills this PBC contributes to the composed application assistant."""
     return {
@@ -104,6 +112,8 @@ def document_instruction_plan(document=None, instructions=None):
         'document_actions': _DOCUMENT_ACTIONS,
         'candidate_tables': _owned_tables(),
         'candidate_operations': _command_operations() + _query_operations(),
+        'route_candidates': _route_candidates(),
+        'wizard_candidates': _wizard_candidates(),
         'requires_human_confirmation': True,
         'side_effects': (),
     }
@@ -124,6 +134,7 @@ def datastore_crud_plan(action='read', table=None, payload=None):
         'payload_keys': tuple(sorted(dict(payload or {}))),
         'owned_tables': owned_tables,
         'candidate_operations': operation_pool,
+        'route_candidates': _route_candidates(),
         'requires_confirmation': normalized_action != 'read',
         'event_contract': 'AppGen-X',
         'stream_engine_picker_visible': False,

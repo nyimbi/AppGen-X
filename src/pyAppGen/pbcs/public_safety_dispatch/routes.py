@@ -1,22 +1,41 @@
-from .services import service_operation_manifest, service_operation_contracts
-PBC_KEY = 'public_safety_dispatch'
-ROUTES = ('POST /emergency-calls',
- 'POST /response-units',
- 'POST /incidents',
- 'POST /dispatch-assignments',
- 'POST /mutual-aids',
- 'GET /public-safety-dispatch-workbench')
+from __future__ import annotations
 
-def api_route_contracts():
-    contracts = tuple({'route': route, 'method': route.split()[0], 'path': route.split()[1], 'pbc': PBC_KEY, 'idempotency_key': f'{PBC_KEY}:{route}', 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False, 'required_permission': f'{PBC_KEY}.operate'} for route in ROUTES)
-    return {'ok': True, 'pbc': PBC_KEY, 'contracts': contracts, 'routes': ROUTES, 'side_effects': ()}
+from .standalone import PBC_KEY, PUBLIC_ROUTES, build_api_contract, build_standalone_app
 
-def validate_api_route_contracts():
-    contracts = api_route_contracts()['contracts']
-    return {'ok': True, 'pbc': PBC_KEY, 'service_mismatches': (), 'missing_idempotency': tuple(c for c in contracts if not c['idempotency_key']), 'invalid_table_scope': (), 'side_effects': ()}
+ROUTES = tuple(f"{item['method']} {item['path']}" for item in PUBLIC_ROUTES)
 
-def dispatch_route(route, payload=None):
-    return {'ok': route in ROUTES, 'route': route, 'payload': dict(payload or {}), 'operation_contract': service_operation_contracts()['operation_contract'], 'side_effects': ()}
 
-def smoke_test():
-    return {'ok': api_route_contracts()['ok'] and validate_api_route_contracts()['ok'] and dispatch_route(ROUTES[0])['ok'], 'side_effects': ()}
+def api_route_contracts() -> dict:
+    contract = build_api_contract()
+    return {
+        "ok": contract["ok"],
+        "pbc": PBC_KEY,
+        "contracts": contract["routes"],
+        "routes": ROUTES,
+        "stream_engine_picker_visible": False,
+        "side_effects": (),
+    }
+
+
+def validate_api_route_contracts() -> dict:
+    contracts = api_route_contracts()["contracts"]
+    missing_idempotency = tuple(item for item in contracts if not item.get("idempotency_key"))
+    return {
+        "ok": not missing_idempotency,
+        "pbc": PBC_KEY,
+        "service_mismatches": (),
+        "missing_idempotency": missing_idempotency,
+        "invalid_table_scope": (),
+        "stream_engine_picker_visible": False,
+        "side_effects": (),
+    }
+
+
+def dispatch_route(route: str, payload: dict | None = None) -> dict:
+    method, path = route.split(" ", 1)
+    return build_standalone_app().dispatch_route(method, path, payload)
+
+
+def smoke_test() -> dict:
+    result = dispatch_route("GET /public-safety-dispatch-workbench", {"tenant": "tenant_smoke"})
+    return {"ok": api_route_contracts()["ok"] and validate_api_route_contracts()["ok"] and result["ok"], "route_result": result, "side_effects": ()}

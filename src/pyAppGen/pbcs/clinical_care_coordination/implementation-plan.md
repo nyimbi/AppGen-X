@@ -2,50 +2,45 @@
 
 ## Intent
 
-Turn `clinical_care_coordination` from a generic generated package into a usable one-PBC application for care coordination teams. The app must operate without shared tables: it owns care plans, care teams, referrals, encounters, care gaps, transitions, outcome measures, coordination tasks, source evidence, AppGen-X outbox/inbox/dead-letter contracts, UI surfaces, agent skills, rules, parameters, and release evidence.
+Deliver `clinical_care_coordination` as a usable standalone AppGen-X PBC slice that can run as a one-PBC command-center app without shared tables. The package must remain self-contained inside `src/pyAppGen/pbcs/clinical_care_coordination` while covering the executable surfaces called out in `improve1.md`.
 
-## Domain Slice
+## Scope Chosen
 
-This pass implements the care coordination command center slice described in `improve1.md`:
+This pass implements the operational care coordination slice with package-local behavior for:
 
-- Longitudinal care-plan state management with child goals and closure guards.
-- Consent-aware interdisciplinary care-team roster.
-- Closed-loop referral lifecycle with duplicate detection and result reconciliation tasks.
-- Encounter-derived coordination tasks with source note span traceability.
-- Typed care gap taxonomy with closure evidence requirements.
-- Transition-of-care packet completeness and handoff controls.
-- Outcome measure baseline, target, current value, trend, confidence, and care-plan attribution.
-- Workbench queues for high-risk patients, unscheduled referrals, unreconciled results, active transitions, blocked care gaps, outreach due today, care-team coverage gaps, and control failures.
-- Agent document/instruction mutation planning for care plans, referrals, transitions, and care gaps.
+- Longitudinal care-plan lifecycle, child-goal closure guards, and active-plan workbench visibility.
+- Consent-aware interdisciplinary care-team rostering.
+- Closed-loop referral creation and result reconciliation.
+- Encounter-derived coordination tasks with source-note traceability.
+- Typed care-gap creation and evidence-based closure.
+- Transition-of-care packet validation and handoff completion.
+- Outcome measure capture with baseline, target, current value, and trend.
+- Queue-oriented workbench rendering for high-risk patients, referrals, transitions, gaps, outreach, coverage gaps, and control failures.
+- Governed AI assistant document-instruction CRUD planning.
+- Standalone one-PBC app bootstrapping, route dispatch, rendering, and release snapshot evidence.
 
-## Executable Design
+## Package-Local Design
 
-`care_coordination_app.py` is the package-local runtime for the slice. It uses an in-memory state object shaped after the owned datastore tables so tests can prove behavior without external services. All command functions return new state, AppGen-X outbox evidence, and `side_effects: ()`. This keeps registration and discovery side-effect-free while making the PBC usable in a generated one-PBC app.
+The main executable domain logic remains in `care_coordination_app.py`. This pass layers a thin package-local application shell around it:
 
-The existing package surfaces are extended rather than replaced:
+- `services.py` dispatches real commands and queries against a stateful in-memory owned-data boundary.
+- `routes.py` maps the local HTTP contract to executable service operations and local UI metadata endpoints.
+- `ui.py` exposes the standalone shell contract and renders the workbench from package-owned state.
+- `standalone.py` provides a one-PBC app bootstrap path and demo workspace loader.
+- `config.py` uses deterministic rule compilation hashes.
+- `release_evidence.py` includes standalone app readiness alongside the core package evidence.
 
-- `runtime.py` exposes forms, wizards, controls, and a single-PBC app contract.
-- `services.py` dispatches real care coordination commands through `ClinicalCareCoordinationService`.
-- `routes.py` maps domain routes to service operations.
-- `ui.py` exposes queue-oriented forms, wizards, controls, and workbench metadata.
-- `agent.py` produces stable document digests and domain-specific CRUD mutation plans.
-- `release_evidence.py` includes single-PBC app, forms, wizards, and controls in readiness evidence.
+## Validation Plan
 
-## Controls
+Validation for this slice is intentionally focused and package-local:
 
-The first implemented controls are consent-scope disclosure guard, active-goal closure guard, duplicate referral guard, transition packet completeness guard, care-gap closure evidence guard, and owned-table boundary guard. These controls are surfaced in UI contracts and validated in package tests.
-
-## Review And Validation Plan
-
-Focused tests must prove invalid care-plan closure, consent-limited disclosure refusal, duplicate referral blocking, referral result reconciliation, encounter task extraction, care-gap evidence enforcement, transition packet blocking, outcome trend calculation, service dispatch, route mapping, UI app contract, agent document-instruction planning, and release smoke behavior.
-
-The validation gate for this slice is:
-
-- `python3 -m py_compile` for touched package modules.
-- `./.venv/bin/pytest -q src/pyAppGen/pbcs/clinical_care_coordination/tests`
+- `python3 -m py_compile` on touched package modules and standalone tests.
+- Focused package tests for contract, app slice, and standalone app behavior.
 - `pbc_implementation_release_audit(("clinical_care_coordination",))`
 - `pbc_generation_smoke_audit(("clinical_care_coordination",))`
 
-## Remaining Expansion
+## Constraints
 
-Future passes should deepen guideline versioning, social-needs resource performance, medication reconciliation checkpoints, education comprehension evidence, caregiver collaboration revocation history, referral network analytics, readmission watchlists, and patient timeline replay. The current slice establishes the executable app foundation and proves the package can stand alone.
+- No edits outside `src/pyAppGen/pbcs/clinical_care_coordination`.
+- No shared generator, DSL, or ledger changes.
+- Reuse existing package-local patterns and state contracts rather than introducing new shared abstractions.

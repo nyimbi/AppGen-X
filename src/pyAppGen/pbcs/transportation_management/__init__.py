@@ -111,3 +111,11 @@ def smoke_test() -> dict:
         "side_effects": (),
     }
 
+
+
+from .repository import TransportationManagementRepository
+from .repository import transportation_management_repository_contract
+from .standalone import TransportationManagementStandaloneApp
+from .standalone import standalone_app_manifest
+from .ui import transportation_management_render_standalone_app
+from .ui import transportation_management_standalone_app_contract

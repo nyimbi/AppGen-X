@@ -48,6 +48,12 @@ from .runtime import predictive_demand_verify_owned_table_boundary
 from .ui import PREDICTIVE_DEMAND_UI_FRAGMENT_KEYS
 from .ui import predictive_demand_render_workbench
 from .ui import predictive_demand_ui_contract
+from .ui import predictive_demand_forms_contract
+from .ui import predictive_demand_wizards_contract
+from .ui import predictive_demand_controls_contract
+from .app_surface import app_surface_smoke_test
+from .app_surface import document_instruction_predictive_demand_plan
+from .app_surface import single_pbc_predictive_demand_app_contract
 
 PBC_KEY = "predictive_demand"
 
@@ -60,6 +66,8 @@ def implementation_contract() -> dict:
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
         "ui_contract": predictive_demand_ui_contract(),
+        "single_pbc_app": single_pbc_predictive_demand_app_contract(),
+        "app_surface_smoke": app_surface_smoke_test(),
         "api_contract": predictive_demand_build_api_contract(),
         "schema_contract": predictive_demand_build_schema_contract(),
         "service_contract": predictive_demand_build_service_contract(),

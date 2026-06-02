@@ -8,11 +8,12 @@ from .domain_depth import (
 )
 from .runtime import (
     PBC_KEY,
+    BANKING_CORE_ACCOUNTS_CONTROLS,
     BANKING_CORE_ACCOUNTS_FORMS,
     BANKING_CORE_ACCOUNTS_WIZARDS,
-    BANKING_CORE_ACCOUNTS_CONTROLS,
     banking_core_accounts_build_app_surface,
     banking_core_accounts_build_service_contract,
+    banking_core_accounts_build_workflow_surface,
     banking_core_accounts_command_deposit_account,
     banking_core_accounts_empty_state,
     banking_core_accounts_open_deposit_account,
@@ -40,7 +41,12 @@ COMMAND_OPERATIONS = tuple(
         + tuple(DOMAIN_DEPTH_COMMAND_OPERATIONS)
     )
 )
-QUERY_OPERATIONS = ("query_workbench", "query_account_detail", "build_workbench_view")
+QUERY_OPERATIONS = (
+    "query_workbench",
+    "query_account_detail",
+    "build_workbench_view",
+    "build_workflow_surface",
+)
 OWNED_TABLES = DOMAIN_DEPTH_OWNED_TABLES
 
 
@@ -165,6 +171,10 @@ class BankingCoreAccountsService:
             result = banking_core_accounts_build_app_surface(
                 state=self.state, tenant=payload.get("tenant", "default")
             )["workbench"]
+        elif name == "build_workflow_surface":
+            result = banking_core_accounts_build_workflow_surface(
+                state=self.state, tenant=payload.get("tenant", "default")
+            )
         else:
             result = {"ok": False, "reason": "unknown_query"}
         contract = _operation_contract(name, "query")
@@ -251,15 +261,18 @@ def smoke_test():
     )
     detail = service.query_account_detail({"account_id": "SERVICE-001"})
     workbench = service.query_workbench({"tenant": "tenant-smoke"})
+    workflows = service.build_workflow_surface({"tenant": "tenant-smoke"})
     return {
         "ok": opened["ok"]
         and approved["ok"]
         and detail["ok"]
         and workbench["ok"]
+        and workflows["ok"]
         and service_operation_contracts()["ok"],
         "opened": opened,
         "approved": approved,
         "detail": detail,
         "workbench": workbench,
+        "workflows": workflows,
         "side_effects": (),
     }

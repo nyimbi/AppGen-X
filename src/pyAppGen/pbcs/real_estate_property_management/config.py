@@ -1,41 +1,46 @@
-PBC_KEY = 'real_estate_property_management'
-PARAMETERS = ('quality_score_floor',
- 'materiality_threshold',
- 'approval_sla_hours',
- 'risk_threshold',
- 'forecast_horizon_days',
- 'workbench_limit')
-RULES = ('property_policy',
- 'tenant_policy',
- 'lease_policy',
- 'rent_charge_policy',
- 'maintenance_request_policy',
- 'inspection_policy')
+"""Configuration, rule, and parameter governance for real estate property management."""
+from .standalone import PARAMETERS, RULES
+from .standalone import configuration_manifest as _configuration_manifest
+from .standalone import validate_configuration as _validate_configuration
+from .standalone import parameter_manifest as _parameter_manifest
+from .standalone import set_parameter as _set_parameter
+from .standalone import rule_manifest as _rule_manifest
+from .standalone import compile_rule as _compile_rule
+from .standalone import evaluate_rule as _evaluate_rule
+from .standalone import governance_smoke_test as _governance_smoke_test
+
 
 def configuration_manifest():
-    return {'ok': True, 'pbc': PBC_KEY, 'database_backends': ('postgresql','mysql','mariadb'), 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False}
+    return _configuration_manifest()
+
 
 def validate_configuration(config=None):
-    config = dict(config or {'database_backend': 'postgresql'})
-    return {'ok': config.get('database_backend', 'postgresql') in ('postgresql','mysql','mariadb'), 'configuration': config, 'side_effects': ()}
+    return _validate_configuration(config)
+
 
 def parameter_manifest():
-    return {'ok': True, 'parameters': tuple({'name': p, 'bounded': True} for p in PARAMETERS), 'side_effects': ()}
+    return _parameter_manifest()
+
 
 def set_parameter(name, value):
-    return {'ok': name in PARAMETERS, 'name': name, 'value': value, 'bounded': True, 'side_effects': ()}
+    return _set_parameter(name, value)
+
 
 def rule_manifest():
-    return {'ok': True, 'rules': RULES, 'side_effects': ()}
+    return _rule_manifest()
+
 
 def compile_rule(rule):
-    return {'ok': True, 'rule': dict(rule), 'compiled_hash': str(abs(hash(repr(rule)))), 'side_effects': ()}
+    return _compile_rule(rule)
+
 
 def evaluate_rule(rule, payload=None):
-    return {'ok': True, 'passed': True, 'rule': rule, 'payload': dict(payload or {}), 'side_effects': ()}
+    return _evaluate_rule(rule, payload)
+
 
 def governance_smoke_test():
-    return {'ok': validate_configuration()['ok'] and parameter_manifest()['ok'] and rule_manifest()['ok'] and compile_rule({'rule_id': RULES[0]})['ok'] and evaluate_rule(RULES[0])['ok'], 'side_effects': ()}
+    return _governance_smoke_test()
+
 
 def smoke_test():
     return governance_smoke_test()

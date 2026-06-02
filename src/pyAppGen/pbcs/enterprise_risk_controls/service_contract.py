@@ -1,8 +1,26 @@
 """Service contract for the enterprise_risk_controls PBC."""
 
+from __future__ import annotations
+
+from .services import service_operation_contracts
+from .services import service_operation_manifest
+
 
 def build_service_contract():
-    return {'format': 'appgen.enterprise-risk-controls-service-contract.v1', 'ok': True, 'pbc': 'enterprise_risk_controls', 'command_methods': ('command_risk_register', 'configure_runtime', 'set_parameter', 'register_rule'), 'query_methods': ('query_workbench',), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
+    manifest = service_operation_manifest()
+    return {
+        "format": "appgen.enterprise-risk-controls-service-contract.v1",
+        "ok": manifest["ok"],
+        "pbc": "enterprise_risk_controls",
+        "command_methods": manifest["command_operations"],
+        "query_methods": manifest["query_operations"],
+        "operations": manifest["operations"],
+        "shared_table_access": False,
+        "transaction_boundary": "owned_datastore_plus_outbox",
+        "event_contract": "AppGen-X",
+        "service_class": manifest["service_class"],
+        "side_effects": (),
+    }
 
 
 def enterprise_risk_controls_build_service_contract():
@@ -11,26 +29,30 @@ def enterprise_risk_controls_build_service_contract():
 
 def validate_service_contract():
     contract = build_service_contract()
-    return {'ok': contract['ok'] and bool(contract['command_methods']) and bool(contract['query_methods']) and contract['shared_table_access'] is False, 'contract': contract, 'side_effects': ()}
+    required_commands = {
+        "register_risk",
+        "assess_inherent_risk",
+        "define_control",
+        "schedule_control_test",
+        "record_attestation",
+        "open_remediation",
+        "generate_assurance_packet",
+    }
+    required_queries = {
+        "query_enterprise_risk_controls_workbench",
+        "query_enterprise_risk_controls_controls",
+        "query_enterprise_risk_controls_assistant_preview",
+    }
+    return {
+        "ok": contract["ok"]
+        and required_commands <= set(contract["command_methods"])
+        and required_queries <= set(contract["query_methods"])
+        and contract["shared_table_access"] is False,
+        "contract": contract,
+        "operation_contracts": service_operation_contracts(),
+        "side_effects": (),
+    }
 
 
 def smoke_test():
     return validate_service_contract()
-
-from .domain_depth import DOMAIN_OPERATIONS, domain_depth_contract
-
-_BASE_BUILD_SERVICE_CONTRACT = build_service_contract
-
-def build_service_contract():
-    base = dict(_BASE_BUILD_SERVICE_CONTRACT())
-    domain = domain_depth_contract()
-    return {
-        **base,
-        'ok': base.get('ok') is True and domain['ok'],
-        'command_methods': tuple(dict.fromkeys(tuple(base.get('command_methods', ())) + tuple(DOMAIN_OPERATIONS))),
-        'world_class_domain_depth': domain,
-    }
-
-
-def enterprise_risk_controls_build_service_contract():
-    return build_service_contract()

@@ -1,110 +1,76 @@
-# Insurance Underwriting PBC
+# Insurance Underwriting PBC Specification
 
 ## Purpose
 
-The `insurance_underwriting` PBC is a packaged business capability for Risk submissions, rating, quote generation, underwriting decisions, bind packages, exclusions, and referral workflows. It owns schema, migrations, models, services, API contracts, AppGen-X event contracts, handlers, UI fragments, AI agent skills, configuration, rules, parameters, seed data, package metadata, tests, and release evidence. It composes with other AppGen-X PBCs only through declared APIs, AppGen-X events, or package-local projections.
+The `insurance_underwriting` package is a packaged business capability for underwriting intake, risk profiling, rating evidence, quote generation, authority-governed underwriting decisions, bind readiness, exclusions, configuration, rules, parameters, AppGen-X event evidence, package registration, and assistant-led underwriting workflows. The package is intentionally split into two aligned surfaces: a source-package contract used by repo-level PBC discovery and audits, and a package-local standalone app slice used to execute the underwriting lifecycle inside this directory. The PBC owns underwriting submissions, risk profiles, rating factors, quotes, underwriting decisions, bind packages, exclusions, governed rules, runtime parameters, schema extensions, control assertions, governed model metadata, and AppGen-X outbox, inbox, and dead-letter evidence.
 
 ## Stable Identity
 
 - PBC key: `insurance_underwriting`.
-- Mesh: `finops`.
 - Package directory: `src/pyAppGen/pbcs/insurance_underwriting`.
 - Runtime entrypoint: `insurance_underwriting_runtime_capabilities()`.
 - UI entrypoint: `insurance_underwriting_ui_contract()`.
-- Source registration entrypoint: `implementation_contract()`.
-- Allowed database backends: PostgreSQL, MySQL, and MariaDB.
-- Eventing standard: fixed AppGen-X outbox/inbox event contract.
-- User-facing stream-engine selector: forbidden and hidden.
+- Standalone entrypoint: `insurance_underwriting_standalone_app_contract()`.
+- Self-registration entrypoint: `implementation_contract()` with side-effect-free discovery helpers and register plans.
+- Allowed deployment datastore backends: PostgreSQL, MySQL, and MariaDB.
+- Package-local execution datastore: sqlite for standalone development and verification only.
+- Event contract: AppGen-X outbox/inbox/dead-letter with idempotent retry handling.
+- Stream engine picker visibility: forbidden and hidden.
 
-## Owned Datastore Boundary
+## Owned Boundary
 
-- `insurance_underwriting_underwriting_submission`: owns underwriting submission lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `insurance_underwriting_risk_profile`: owns risk profile lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `insurance_underwriting_rating_factor`: owns rating factor lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `insurance_underwriting_quote`: owns quote lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `insurance_underwriting_underwriting_decision`: owns underwriting decision lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `insurance_underwriting_bind_package`: owns bind package lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `insurance_underwriting_exclusion`: owns exclusion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `insurance_underwriting_insurance_underwriting_policy_rule`: owns insurance underwriting policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `insurance_underwriting_insurance_underwriting_runtime_parameter`: owns insurance underwriting runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `insurance_underwriting_insurance_underwriting_schema_extension`: owns insurance underwriting schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `insurance_underwriting_insurance_underwriting_control_assertion`: owns insurance underwriting control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `insurance_underwriting_insurance_underwriting_governed_model`: owns insurance underwriting governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+Owned business tables are `insurance_underwriting_underwriting_submission`, `insurance_underwriting_risk_profile`, `insurance_underwriting_rating_factor`, `insurance_underwriting_quote`, `insurance_underwriting_underwriting_decision`, `insurance_underwriting_bind_package`, `insurance_underwriting_exclusion`, `insurance_underwriting_insurance_underwriting_policy_rule`, `insurance_underwriting_insurance_underwriting_runtime_parameter`, `insurance_underwriting_insurance_underwriting_schema_extension`, `insurance_underwriting_insurance_underwriting_control_assertion`, and `insurance_underwriting_insurance_underwriting_governed_model`. Owned runtime event tables are `insurance_underwriting_appgen_outbox_event`, `insurance_underwriting_appgen_inbox_event`, and `insurance_underwriting_appgen_dead_letter_event`.
 
-Runtime AppGen-X event tables are `insurance_underwriting_appgen_outbox_event`, `insurance_underwriting_appgen_inbox_event`, and `insurance_underwriting_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /underwriting-submissions', 'POST /risk-profiles', 'POST /rating-factors', 'POST /quotes', 'POST /underwriting-decisions', 'GET /insurance-underwriting-workbench').
+The package does not mutate shared or foreign policy, claims, actuarial, broker, or accounting tables. Cross-PBC dependencies are represented only through declared APIs, consumed AppGen-X events, or package-local projections captured in owned tables. This owned boundary is enforced by schema generation, runtime boundary checks, governed CRUD plans, and release evidence.
 
-## Executable Domain Operations
+## Schema, Migration, and Model Generation
 
-- `create_underwriting_submission`: validates policy, writes owned `insurance_underwriting_underwriting_submission` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_risk_profile`: validates policy, writes owned `insurance_underwriting_risk_profile` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_rating_factor`: validates policy, writes owned `insurance_underwriting_rating_factor` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_quote`: validates policy, writes owned `insurance_underwriting_quote` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_underwriting_decision`: validates policy, writes owned `insurance_underwriting_underwriting_decision` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_bind_package`: validates policy, writes owned `insurance_underwriting_bind_package` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_exclusion`: validates policy, writes owned `insurance_underwriting_exclusion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_insurance_underwriting_policy_rule`: validates policy, writes owned `insurance_underwriting_insurance_underwriting_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_insurance_underwriting_runtime_parameter`: validates policy, writes owned `insurance_underwriting_insurance_underwriting_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_insurance_underwriting_schema_extension`: validates policy, writes owned `insurance_underwriting_insurance_underwriting_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_insurance_underwriting_control_assertion`: validates policy, writes owned `insurance_underwriting_insurance_underwriting_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_insurance_underwriting_governed_model`: validates policy, writes owned `insurance_underwriting_insurance_underwriting_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_insurance_underwriting_13`: validates policy, writes owned `insurance_underwriting_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_insurance_underwriting_14`: validates policy, writes owned `insurance_underwriting_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_insurance_underwriting_15`: validates policy, writes owned `insurance_underwriting_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_insurance_underwriting_16`: validates policy, writes owned `insurance_underwriting_underwriting_submission` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_insurance_underwriting_17`: validates policy, writes owned `insurance_underwriting_risk_profile` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_insurance_underwriting_18`: validates policy, writes owned `insurance_underwriting_rating_factor` records, emits AppGen-X events, and returns side-effect-free evidence.
+Schema generation is materialized in `models.py`, `schema_contract.py`, and `migrations/001_initial.sql`. Every owned table has a model contract, an owned migration entry, and package-local sqlite execution support. Migration alignment checks verify that the migration file contains each owned table definition, and release evidence links schema, migration, model, and owned-boundary metadata together. The package exposes source-package schema contracts for repo audits and a standalone model contract for local execution.
 
-Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
+## Service and API Contract
 
-## Standard Table-Stakes Capabilities
+Source-package service contracts remain command and query oriented: `command_underwriting_submission`, `command_risk_profile`, `command_rating_factor`, `command_quote`, `command_underwriting_decision`, and `query_workbench`. Public API route contracts cover `POST /underwriting-submissions`, `POST /risk-profiles`, `POST /rating-factors`, `POST /quotes`, `POST /underwriting-decisions`, and `GET /insurance-underwriting-workbench`.
 
-The package covers lifecycle intake, identity and classification, validation, approvals, exception handling, audit evidence, role-aware workbenches, assistant-guided task execution, configuration, rule compilation, bounded parameters, seed data, RBAC, route dispatch, typed events, idempotent handlers, retry, and dead-letter triage. It includes PostgreSQL, MySQL, and MariaDB backend allowlists and never exposes stream-engine pickers.
+The standalone service adds executable command methods for create submission, build risk profile, review rating factor, generate quote, issue underwriting decision, assemble bind package, record exclusion, register rule, set parameter, receive event, and workflow execution. The standalone query surface supports workbench, detail, and timeline reads. Command and query contracts are separated, route validation checks idempotency requirements, and service execution stays inside owned datastore plus outbox boundaries.
 
-## Advanced Capabilities
+## Events, Handlers, Retry, and Dead-Letter
 
-- Event-sourced operational history for Insurance Underwriting domain records.
-- Multi-tenant policy isolation with owned table boundaries.
-- Schema evolution resilience through package-local schema extensions.
-- Autonomous anomaly detection and specialist exception triage.
-- Semantic document and instruction understanding for professional intake.
-- Predictive risk scoring and confidence-ranked recommendations.
-- Counterfactual scenario simulation for policy and operational choices.
-- Cryptographic audit proofs for high-value records and decisions.
-- Continuous control testing over domain lifecycle events.
-- Carbon and sustainability awareness where operational decisions affect footprint.
-- Cross-PBC event federation through AppGen-X only.
-- Governed AI agent execution with human confirmation for mutations.
+Emitted AppGen-X events are `InsuranceUnderwritingCreated`, `InsuranceUnderwritingUpdated`, `InsuranceUnderwritingApproved`, and `InsuranceUnderwritingExceptionOpened`. Consumed AppGen-X events are `PolicyChanged`, `AuditEventSealed`, and `OperationalKpiChanged`. Event envelopes capture event IDs, aggregate IDs, topics, occurred timestamps, payloads, and idempotency keys.
 
-## Rules, Parameters, and Configuration
+Handlers are idempotent, require an idempotency key, and route unsupported events to the dead-letter table with retry evidence. Retry policy is exponential with at least five attempts. Inbox capture creates control assertions so release evidence can prove event ingestion, retry, and dead-letter coverage.
 
-Rules are first-class artifacts: ('underwriting_submission_policy', 'risk_profile_policy', 'rating_factor_policy', 'quote_policy', 'underwriting_decision_policy', 'bind_package_policy'). Parameters are bounded artifacts: ('quality_score_floor', 'materiality_threshold', 'approval_sla_hours', 'risk_threshold', 'forecast_horizon_days', 'workbench_limit'). Configuration includes database backend, event topic, retry limit, default policy, workbench limits, confirmation requirements for agent writes, and tenant isolation options.
+## UI, Workbench, Permissions, and RBAC
 
-## Public APIs and Services
+The UI contract exposes `InsuranceUnderwritingWorkbench`, `InsuranceUnderwritingDetail`, `InsuranceUnderwritingAssistantPanel`, `SubmissionDetailPanel`, `ReferralQueueBoard`, `QuoteScenarioDesk`, `BindReadinessBoard`, `UnderwriterAssistantPanel`, `GovernanceStudio`, and `ReleaseEvidencePanel`. The workbench includes summary cards, referral queues, quote scenario comparisons, subjectivity checklist controls, and event operations console views.
 
-APIs are ('POST /underwriting-submissions', 'POST /risk-profiles', 'POST /rating-factors', 'POST /quotes', 'POST /underwriting-decisions', 'GET /insurance-underwriting-workbench'). Services preserve idempotency keys, permission names, owned table scopes, route metadata, and event mappings. Services write only to `insurance_underwriting_` tables and package-local event tables.
+Forms, wizards, and controls cover submission intake, risk profile construction, rating review, quote scenarios, underwriting decision review, bind readiness, exclusion capture, rule editing, parameter tuning, and event inbox operations. RBAC and permission evidence are materialized through action permissions, role maps, authority limits, approval checks, and configuration editor controls.
 
-## Events and Handlers
+## Rules, Parameters, Configuration, and Seed Data
 
-Emitted events: ('InsuranceUnderwritingCreated', 'InsuranceUnderwritingUpdated', 'InsuranceUnderwritingApproved', 'InsuranceUnderwritingExceptionOpened'). Consumed events: ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged'). Handlers require event IDs, ignore duplicates, record AppGen-X inbox entries, and write dead-letter evidence for unknown or exhausted events.
+Rules are first-class artifacts: `submission_completeness_gate`, `risk_appetite_screening`, `rating_override_control`, `authority_matrix`, and `bind_readiness`. Parameters are bounded artifacts: `quality_score_floor`, `risk_threshold`, `quote_validity_days`, `auto_bind_limit`, `referral_sla_hours`, and `max_override_delta_pct`. Configuration schema covers database backend, event topic, workbench limit, appetite mode, default authority level, and assistant citation requirements.
 
-## UI, Workbench, and Agent Skills
+Seed data includes starter underwriting rules, runtime parameters, and a default sample submission payload. Configuration schema, rule compilation, parameter edits, and seed evidence are all referenced by release readiness checks.
 
-Workbench views include ('underwriting submission board', 'risk profile board', 'rating factor board', 'quote board', 'underwriting decision board', 'bind package board', 'exclusion board'). The UI exposes operational queues, detail panels, rule editors, parameter editors, assistant panels, exception triage, analytics, and release evidence. The agent contributes `insurance_underwriting_skills`, parses documents and instructions, produces governed CRUD previews, validates owned table boundaries, requires human confirmation for writes, and participates in the composed single application assistant.
+## Agent, Assistant, Chatbot Skills, and Mutations
 
-## Release Evidence and Tests
+The package contributes an underwriting assistant, chatbot, and skill surface with submission summary, risk profile explanation, referral memo drafting, quote scenario comparison, bind readiness review, document instruction intake, governed datastore CRUD, and workbench navigation. Document and instruction plans infer forms, wizards, candidate routes, and owned tables from underwriting documents such as applications, loss runs, or inspection reports.
 
-Release readiness proves schema, migrations, models, service contracts, route contracts, AppGen-X eventing, idempotent handlers, retry/dead-letter evidence, UI surfaces, RBAC, configuration, rules, parameters, seed data, package metadata, side-effect-free registration, domain-depth operations, agent integration, and generation smoke readiness. Focused package tests cover schema/service/release evidence, event contracts, package metadata, route contracts, governance hooks, and idempotent handlers.
+All assistant mutations require a preview, owned-boundary validation, permission checks, and human confirmation. Governed CRUD planning explicitly references datastore mutation boundaries, assistant controls, and event audit plans.
+
+## Self-Registration, Standard Features, Advanced Runtime, Release, and Tests
+
+The package preserves side-effect-free self-registration through `register_pbc()`, `registration_plan()`, `package_metadata_manifest()`, `validate_package_metadata()`, and `package_discovery_plan()`. Standard features include underwriting submission management, insurance underwriting workflow, insurance underwriting analytics, configuration schema, rule engine, parameter engine, owned schema migrations models, AppGen-X outbox/inbox eventing, idempotent handlers, retry dead-letter evidence, permissions, seed data, workbench, agentic document instruction intake, governed datastore CRUD, AI agent task assistance, configuration workbench, standalone package-local app, and continuous release assurance.
+
+Advanced capabilities include insurance underwriting event sourced operational history, multi-tenant policy isolation, schema evolution resilience, autonomous anomaly detection, semantic document instruction understanding, predictive risk scoring, counterfactual scenario simulation, cryptographic audit proofs, continuous control testing, carbon and sustainability awareness, cross-PBC event federation, and governed AI agent execution. Release evidence ties together schema, service, API, event, handler, UI, agent, governance, seed, documentation, and standalone app smoke results. Focused tests cover schema/service/release evidence, event contracts, registration, routes, governance hooks, idempotent handlers, incomplete-submission rejection, standalone lifecycle execution, and package smoke execution.
 
 ## Manifest Traceability Appendix
 
 - tables: underwriting_submission, risk_profile, rating_factor, quote, underwriting_decision, bind_package, exclusion, insurance_underwriting_policy_rule, insurance_underwriting_runtime_parameter, insurance_underwriting_schema_extension, insurance_underwriting_control_assertion, insurance_underwriting_governed_model
-- operations: create_underwriting_submission, record_risk_profile, review_rating_factor, approve_quote, simulate_underwriting_decision, create_bind_package, record_exclusion, review_insurance_underwriting_policy_rule, approve_insurance_underwriting_runtime_parameter, simulate_insurance_underwriting_schema_extension, create_insurance_underwriting_control_assertion, record_insurance_underwriting_governed_model, operate_insurance_underwriting_13, operate_insurance_underwriting_14, operate_insurance_underwriting_15, operate_insurance_underwriting_16, operate_insurance_underwriting_17, operate_insurance_underwriting_18
+- apis: POST /underwriting-submissions, POST /risk-profiles, POST /rating-factors, POST /quotes, POST /underwriting-decisions, GET /insurance-underwriting-workbench
 - emits: InsuranceUnderwritingCreated, InsuranceUnderwritingUpdated, InsuranceUnderwritingApproved, InsuranceUnderwritingExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
-- rules: underwriting_submission_policy, risk_profile_policy, rating_factor_policy, quote_policy, underwriting_decision_policy, bind_package_policy
-- parameters: quality_score_floor, materiality_threshold, approval_sla_hours, risk_threshold, forecast_horizon_days, workbench_limit
-- ui_fragments: InsuranceUnderwritingWorkbench, InsuranceUnderwritingDetail, InsuranceUnderwritingAssistantPanel
-- permissions: insurance_underwriting.read, insurance_underwriting.create, insurance_underwriting.update, insurance_underwriting.approve, insurance_underwriting.admin
-- configuration: INSURANCE_UNDERWRITING_DATABASE_URL, INSURANCE_UNDERWRITING_EVENT_TOPIC, INSURANCE_UNDERWRITING_RETRY_LIMIT, INSURANCE_UNDERWRITING_DEFAULT_POLICY
-- standard_features: underwriting_submission_management, insurance_underwriting_workflow, insurance_underwriting_analytics, configuration_schema, rule_engine, parameter_engine, owned_schema_migrations_models, appgen_x_outbox_inbox_eventing, idempotent_handlers, retry_dead_letter_evidence, permissions, seed_data, workbench, agentic_document_instruction_intake, governed_datastore_crud, ai_agent_task_assistance, configuration_workbench, continuous_release_assurance
+- ui_fragments: InsuranceUnderwritingWorkbench, InsuranceUnderwritingDetail, InsuranceUnderwritingAssistantPanel, SubmissionDetailPanel, ReferralQueueBoard, QuoteScenarioDesk, BindReadinessBoard, UnderwriterAssistantPanel
+- permissions: insurance_underwriting.read, insurance_underwriting.create, insurance_underwriting.update, insurance_underwriting.approve, insurance_underwriting.admin, insurance_underwriting.submission.write, insurance_underwriting.quote.write, insurance_underwriting.decision.approve, insurance_underwriting.bind.approve
+- configuration: INSURANCE_UNDERWRITING_DATABASE_URL, INSURANCE_UNDERWRITING_EVENT_TOPIC, INSURANCE_UNDERWRITING_RETRY_LIMIT, INSURANCE_UNDERWRITING_DEFAULT_POLICY, INSURANCE_UNDERWRITING_WORKBENCH_LIMIT, INSURANCE_UNDERWRITING_DEFAULT_AUTHORITY_LEVEL
+- standard_features: underwriting_submission_management, insurance_underwriting_workflow, insurance_underwriting_analytics, configuration_schema, rule_engine, parameter_engine, owned_schema_migrations_models, appgen_x_outbox_inbox_eventing, idempotent_handlers, retry_dead_letter_evidence, permissions, seed_data, workbench, agentic_document_instruction_intake, governed_datastore_crud, ai_agent_task_assistance, configuration_workbench, standalone_package_local_app, continuous_release_assurance
 - advanced_capabilities: insurance_underwriting_event_sourced_operational_history, insurance_underwriting_multi_tenant_policy_isolation, insurance_underwriting_schema_evolution_resilience, insurance_underwriting_autonomous_anomaly_detection, insurance_underwriting_semantic_document_instruction_understanding, insurance_underwriting_predictive_risk_scoring, insurance_underwriting_counterfactual_scenario_simulation, insurance_underwriting_cryptographic_audit_proofs, insurance_underwriting_continuous_control_testing, insurance_underwriting_carbon_and_sustainability_awareness, insurance_underwriting_cross_pbc_event_federation, insurance_underwriting_governed_ai_agent_execution

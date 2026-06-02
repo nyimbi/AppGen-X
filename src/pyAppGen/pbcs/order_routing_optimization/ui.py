@@ -10,6 +10,10 @@ from .runtime import ORDER_ROUTING_OPTIMIZATION_SUPPORTED_CONFIGURATION_FIELDS
 from .runtime import ORDER_ROUTING_OPTIMIZATION_SUPPORTED_PARAMETER_KEYS
 from .runtime import order_routing_optimization_build_workbench_view
 from .runtime import order_routing_optimization_permissions_contract
+from .app_surface import routing_controls_contract
+from .app_surface import routing_forms_contract
+from .app_surface import routing_wizards_contract
+from .app_surface import single_pbc_routing_app_contract
 
 ORDER_ROUTING_OPTIMIZATION_UI_FRAGMENT_KEYS = (
     "OrderRoutingWorkbench",
@@ -34,6 +38,21 @@ ORDER_ROUTING_OPTIMIZATION_UI_FRAGMENT_KEYS = (
 )
 
 
+def order_routing_optimization_forms_contract() -> dict:
+    """Return standalone database-backed form metadata for generated apps."""
+    return routing_forms_contract()
+
+
+def order_routing_optimization_wizards_contract() -> dict:
+    """Return standalone wizard metadata for generated apps."""
+    return routing_wizards_contract()
+
+
+def order_routing_optimization_controls_contract() -> dict:
+    """Return standalone release/operator controls for generated apps."""
+    return routing_controls_contract()
+
+
 def order_routing_optimization_ui_contract() -> dict:
     return {
         "format": "appgen.order-routing-optimization-ui-contract.v1",
@@ -41,6 +60,10 @@ def order_routing_optimization_ui_contract() -> dict:
         "pbc": "order_routing_optimization",
         "implementation_directory": "src/pyAppGen/pbcs/order_routing_optimization",
         "fragments": ORDER_ROUTING_OPTIMIZATION_UI_FRAGMENT_KEYS,
+        "forms": order_routing_optimization_forms_contract()["forms"],
+        "wizards": order_routing_optimization_wizards_contract()["wizards"],
+        "controls": order_routing_optimization_controls_contract()["controls"],
+        "single_pbc_app": single_pbc_routing_app_contract(),
         "routes": (
             "/workbench/pbcs/order_routing_optimization",
             "/workbench/pbcs/order_routing_optimization/rules",
@@ -270,6 +293,10 @@ def order_routing_optimization_render_workbench(
         "route": "/workbench/pbcs/order_routing_optimization",
         "fragments": contract["fragments"],
         "cards": cards,
+        "forms": contract["forms"],
+        "wizards": contract["wizards"],
+        "controls": contract["controls"],
+        "single_pbc_app": contract["single_pbc_app"],
         "visible_actions": visible_actions,
         "locked_actions": tuple(
             action for action in action_permissions if action not in visible_actions
@@ -354,6 +381,10 @@ def smoke_test():
         and bool(contract.get("fragments"))
         and bool(contract.get("routes"))
         and bool(cards)
+        and bool(contract.get("forms"))
+        and bool(contract.get("wizards"))
+        and bool(contract.get("controls"))
+        and contract.get("single_pbc_app", {}).get("ok") is True
         and bool(contract.get("action_permissions"))
         and bool(configuration_editor)
         and configuration_editor.get("stream_engine_picker_visible", configuration_editor.get("user_facing_stream_engine_picker", False)) is False

@@ -669,16 +669,6 @@ def asset_lifecycle_review_depreciation_plan(state: dict, asset_id: str) -> dict
 
 def asset_lifecycle_run_depreciation(state: dict, *, run_id: str, period: str) -> dict:
     normalized_period = normalize_period(period)
-    active_schedules = tuple(schedule for schedule in state["schedules"].values() if schedule.get("status") == "active")
-    due_fingerprints = tuple(
-        fingerprint
-        for schedule in active_schedules
-        for fingerprint in line_fingerprints_for_period(schedule, normalized_period)
-    )
-    if not due_fingerprints:
-        return {"ok": False, "state": state, "reason": "no_due_schedule_lines", "period": normalized_period}
-
-    idempotency_key = f"asset_lifecycle:depreciation_run:{normalized_period}:{_digest(due_fingerprints)[:20]}"
     if run_id in state.get("depreciation_runs", {}):
         existing = state["depreciation_runs"][run_id]
         return {
@@ -689,6 +679,17 @@ def asset_lifecycle_run_depreciation(state: dict, *, run_id: str, period: str) -
             "journals": existing["journals"],
             "idempotency_key": existing["idempotency_key"],
         }
+
+    active_schedules = tuple(schedule for schedule in state["schedules"].values() if schedule.get("status") == "active")
+    due_fingerprints = tuple(
+        fingerprint
+        for schedule in active_schedules
+        for fingerprint in line_fingerprints_for_period(schedule, normalized_period)
+    )
+    if not due_fingerprints:
+        return {"ok": False, "state": state, "reason": "no_due_schedule_lines", "period": normalized_period}
+
+    idempotency_key = f"asset_lifecycle:depreciation_run:{normalized_period}:{_digest(due_fingerprints)[:20]}"
     existing_run_id = state.get("depreciation_run_index", {}).get(idempotency_key)
     if existing_run_id is not None:
         existing = state["depreciation_runs"][existing_run_id]

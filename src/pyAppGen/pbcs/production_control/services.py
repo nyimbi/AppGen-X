@@ -141,3 +141,28 @@ def smoke_test() -> dict:
     operation = manifest["operations"][0] if manifest["operations"] else None
     result = service.execute_operation(operation, {"smoke": True}) if operation else {"ok": False}
     return {"ok": manifest["ok"] and result.get("ok") is True, "manifest": manifest, "result": result, "side_effects": ()}
+
+
+
+def standalone_service_operation_contracts():
+    contracts=(
+        {'operation':'seed_demo_workspace','operation_kind':'command','method':'POST','path':'/app/production-control/demo-workspace','table':'production_control_production_configuration','wizard':'ShopFloorPacketIntakeWizard','permission':'production_control.configure'},
+        {'operation':'build_workbench','operation_kind':'query','method':'GET','path':'/app/production-control/workbench','table':'production_control_production_order','wizard':None,'permission':'production_control.read'},
+        {'operation':'create_production_order','operation_kind':'command','method':'POST','path':'/app/production-control/orders','table':'production_control_production_order','wizard':'ShopFloorPacketIntakeWizard','permission':'production_control.execute'},
+        {'operation':'confirm_operation','operation_kind':'command','method':'POST','path':'/app/production-control/operations/confirm','table':'production_control_operation_confirmation','wizard':'OperationExecutionWizard','permission':'production_control.execute'},
+        {'operation':'generate_completion_proof','operation_kind':'command','method':'POST','path':'/app/production-control/proofs','table':'production_control_completion_proof','wizard':'ProductionCompletionWizard','permission':'production_control.audit'},
+    )
+    return {'format':'appgen.production-control-standalone-service.v1','ok':all(i['table'].startswith('production_control_') for i in contracts),'pbc':'production_control','contracts':contracts,'operations':tuple(i['operation'] for i in contracts),'command_operations':tuple(i['operation'] for i in contracts if i['operation_kind']=='command'),'query_operations':tuple(i['operation'] for i in contracts if i['operation_kind']=='query'),'side_effects':()}
+
+class ProductionControlStandaloneService:
+    def __init__(self,repository=None,database_path=':memory:'):
+        if repository is None:
+            from .repository import ProductionControlStandaloneRepository
+            repository=ProductionControlStandaloneRepository(database_path=database_path)
+        self.repository=repository
+    def close(self): self.repository.close()
+    def seed_demo_workspace(self,tenant='tenant_demo'): return self.repository.seed_demo_workspace(tenant=tenant)
+    def build_workbench(self,tenant='tenant_demo'): return self.repository.build_workbench(tenant)
+    def create_production_order(self,tenant,order): return self.repository.create_production_order(tenant,order)
+    def confirm_operation(self,tenant,step_id,**kw): return self.repository.confirm_operation(tenant,step_id,**kw)
+    def generate_completion_proof(self,tenant,order_id,disclosure=('order_id','item','completed_qty')): return self.repository.generate_completion_proof(tenant,order_id,tuple(disclosure))

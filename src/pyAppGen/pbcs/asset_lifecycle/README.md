@@ -58,3 +58,21 @@ python3 -m py_compile src/pyAppGen/pbcs/asset_lifecycle/depreciation_engine.py \
 - Eventing remains AppGen-X only.
 - Table access remains inside the owned asset lifecycle boundary.
 - The rest of `improve1.md` remains intentionally deferred to later slices.
+
+
+## Standalone one-PBC application
+
+This directory now includes a package-local standalone application harness for the Asset Lifecycle PBC. The runtime deployment database backends remain PostgreSQL, MySQL, and MariaDB; the SQLite repository is only a deterministic local harness for tests and demos.
+
+- `repository.py` persists runtime state, form submissions, workflow runs, control executions, agent sessions, and a workbench read model.
+- `standalone.py` bootstraps a single-PBC application and publishes smoke/release snapshots.
+- `services.py` and `routes.py` expose app-local commands and route dispatch for asset registration, depreciation, transfer, audit proof, and workbench reads.
+- `ui.py` surfaces standalone forms, wizards, controls, and workbench cards.
+- `agent.py` integrates asset lifecycle skills, document intake, depreciation preview, CRUD planning, and route/wizard candidates into the composed assistant.
+
+Focused verification:
+
+```bash
+PYTHONPATH=src python3 -m py_compile src/pyAppGen/pbcs/asset_lifecycle/*.py src/pyAppGen/pbcs/asset_lifecycle/tests/*.py
+PYTHONPATH=src ./.venv/bin/pytest -q src/pyAppGen/pbcs/asset_lifecycle/tests
+```

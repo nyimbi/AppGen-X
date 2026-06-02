@@ -323,3 +323,17 @@ def smoke_test():
         "cards": cards,
         "side_effects": (),
     }
+
+
+
+def returns_reverse_logistics_standalone_workbench_blueprint():
+    from .forms import returns_reverse_logistics_form_catalog
+    from .wizards import returns_reverse_logistics_wizard_catalog
+    from .controls import returns_reverse_logistics_control_catalog
+    contract=returns_reverse_logistics_ui_contract(); forms=returns_reverse_logistics_form_catalog(); wizards=returns_reverse_logistics_wizard_catalog(); controls=returns_reverse_logistics_control_catalog()
+    return {'format':'appgen.returns-reverse-logistics-standalone-workbench.v1','ok':contract['ok'] and forms['ok'] and wizards['ok'] and controls['ok'],'pbc':'returns_reverse_logistics','route':'/app/returns-reverse-logistics/workbench','navigation':('returns','eligibility','labels','receipts','inspection','disposition','credits','refund_exchange','carrier_claims','exceptions','assistant','controls'),'forms':forms['forms'],'wizards':wizards['wizards'],'controls':controls['controls'],'source_ui_contract':contract,'side_effects':()}
+
+def returns_reverse_logistics_render_standalone_workbench(workbench):
+    blueprint=returns_reverse_logistics_standalone_workbench_blueprint()
+    cards=({'key':'returns','value':int(workbench.get('return_count',0)),'fragment':'ReturnAuthorizationConsole'},{'key':'labels','value':int(workbench.get('label_count',0)),'fragment':'ReturnLabelConsole'},{'key':'receipts','value':int(workbench.get('receipt_count',0)),'fragment':'CarrierHandoffBoard'},{'key':'inspections','value':int(workbench.get('inspection_count',0)),'fragment':'InspectionDispositionWorkbench'},{'key':'credits','value':int(workbench.get('credit_count',0)),'fragment':'CreditAdjustmentConsole'},{'key':'customer_status','value':int(workbench.get('customer_status_count',0)),'fragment':'CustomerReturnStatusPanel'},{'key':'exceptions','value':int(workbench.get('exception_count',0)),'fragment':'ReturnExceptionResolutionBoard'},{'key':'dead_letters','value':int(workbench.get('dead_letter_count',0)),'fragment':'ReturnEventingMonitor'})
+    return {'format':'appgen.returns-reverse-logistics-standalone-render.v1','ok':blueprint['ok'] and any(card['value'] for card in cards),'pbc':'returns_reverse_logistics','tenant':workbench.get('tenant'),'route':blueprint['route'],'cards':cards,'activity_counts':dict(workbench.get('activity_counts',{})),'forms_visible':tuple(f['form_id'] for f in blueprint['forms']),'wizards_visible':tuple(w['wizard_id'] for w in blueprint['wizards']),'controls_visible':tuple(c['control_id'] for c in blueprint['controls']),'agent_entrypoint':'/app/returns-reverse-logistics/assistant/sessions','side_effects':()}

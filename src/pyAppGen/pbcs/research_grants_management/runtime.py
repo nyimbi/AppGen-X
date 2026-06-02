@@ -267,3 +267,42 @@ def research_grants_management_runtime_smoke():
     }
 
 research_grants_management_execute_domain_operation = execute_domain_operation
+
+# Improve1 research grants management control extension.
+from .research_grants_management_control import evaluate_research_grants_management_control, improve1_research_grants_management_control_contract
+
+_RESEARCH_CONTROL_BASE_RUNTIME_CAPABILITIES = research_grants_management_runtime_capabilities
+_RESEARCH_CONTROL_BASE_BUILD_RELEASE_EVIDENCE = research_grants_management_build_release_evidence
+
+
+def research_grants_management_runtime_capabilities() -> dict:
+    runtime = dict(_RESEARCH_CONTROL_BASE_RUNTIME_CAPABILITIES())
+    control = improve1_research_grants_management_control_contract()
+    runtime["ok"] = bool(runtime.get("ok")) and control["ok"]
+    runtime["research_grants_management_control"] = control
+    runtime["operations"] = tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + ("evaluate_research_grants_management_control", "improve1_research_grants_management_control_contract")))
+    runtime["improve1_control_owned_tables"] = control["owned_tables"]
+    return runtime
+
+
+def research_grants_management_build_release_evidence() -> dict:
+    evidence = dict(_RESEARCH_CONTROL_BASE_BUILD_RELEASE_EVIDENCE())
+    control = improve1_research_grants_management_control_contract()
+    artifacts = dict(evidence.get("generated_artifacts", {}))
+    artifacts["research_grants_management_control"] = {
+        "contract": control["format"],
+        "capability_count": control["capability_count"],
+        "owned_tables": control["owned_tables"],
+        "service_apis": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "ui_surfaces": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "test": "tests/test_domain_behavior.py",
+    }
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_research_grants_management_control", "ok": control["ok"]},)
+    evidence.update({
+        "ok": bool(evidence.get("ok")) and control["ok"],
+        "checks": checks,
+        "generated_artifacts": artifacts,
+        "research_grants_management_control": control,
+        "blocking_gaps": tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ())),
+    })
+    return evidence

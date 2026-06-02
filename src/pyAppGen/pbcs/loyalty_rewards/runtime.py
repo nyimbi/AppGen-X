@@ -1637,3 +1637,35 @@ def _digest(payload: dict) -> str:
         return value
 
     return hashlib.sha256(json.dumps(payload, sort_keys=True, default=default, separators=(",", ":")).encode()).hexdigest()
+
+
+# Improve1 loyalty control extension.
+from .loyalty_control import improve1_loyalty_control_contract, evaluate_loyalty_control
+
+_LOYALTY_REWARDS_BASE_RUNTIME_CAPABILITIES = loyalty_rewards_runtime_capabilities
+_LOYALTY_REWARDS_BASE_BUILD_RELEASE_EVIDENCE = loyalty_rewards_build_release_evidence
+
+def loyalty_rewards_runtime_capabilities():
+    runtime = dict(_LOYALTY_REWARDS_BASE_RUNTIME_CAPABILITIES())
+    control = improve1_loyalty_control_contract()
+    runtime["ok"] = bool(runtime.get("ok")) and control["ok"]
+    runtime["loyalty_control"] = control
+    runtime["operations"] = tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + ("evaluate_loyalty_control", "improve1_loyalty_control_contract")))
+    runtime["owned_tables"] = tuple(dict.fromkeys(tuple(runtime.get("owned_tables", ())) + tuple(control["owned_tables"])))
+    return runtime
+
+def loyalty_rewards_build_release_evidence():
+    evidence = dict(_LOYALTY_REWARDS_BASE_BUILD_RELEASE_EVIDENCE())
+    control = improve1_loyalty_control_contract()
+    artifacts = dict(evidence.get("generated_artifacts", {}))
+    artifacts["loyalty_control"] = {
+        "contract": control["format"],
+        "capability_count": control["capability_count"],
+        "owned_tables": control["owned_tables"],
+        "service_apis": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "ui_surfaces": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "test": "tests/test_domain_behavior.py",
+    }
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_loyalty_control", "ok": control["ok"]},)
+    evidence.update({"ok": bool(evidence.get("ok")) and control["ok"], "checks": checks, "generated_artifacts": artifacts, "loyalty_control": control, "blocking_gaps": tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ()))})
+    return evidence

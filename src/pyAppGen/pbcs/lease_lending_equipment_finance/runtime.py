@@ -267,3 +267,45 @@ def lease_lending_equipment_finance_runtime_smoke():
     }
 
 lease_lending_equipment_finance_execute_domain_operation = execute_domain_operation
+
+
+# Improve1 lease control extension.
+from .lease_control import (
+    LEASE_CONTROL_ALLOWED_DATABASE_BACKENDS,
+    LEASE_CONTROL_OWNED_TABLES,
+    LEASE_CONTROL_REQUIRED_EVENT_TOPIC,
+    improve1_lease_control_contract as lease_lending_equipment_finance_improve1_lease_control_contract,
+)
+
+_LEASE_LENDING_EQUIPMENT_FINANCE_BASE_RUNTIME_CAPABILITIES = lease_lending_equipment_finance_runtime_capabilities
+_LEASE_LENDING_EQUIPMENT_FINANCE_BASE_RELEASE_EVIDENCE = lease_lending_equipment_finance_build_release_evidence
+
+
+def lease_lending_equipment_finance_build_release_evidence():
+    evidence = dict(_LEASE_LENDING_EQUIPMENT_FINANCE_BASE_RELEASE_EVIDENCE())
+    lease_control = lease_lending_equipment_finance_improve1_lease_control_contract()
+    checks = tuple(evidence.get("checks", ())) + (
+        {"id": "improve1_lease_control", "ok": lease_control["ok"]},
+        {"id": "lease_lending_equipment_finance_release_pack", "ok": lease_control["capability_count"] == 50},
+    )
+    evidence.update({"lease_control": lease_control, "checks": checks, "blocking_gaps": tuple(check for check in checks if check.get("ok") is not True)})
+    evidence["ok"] = not evidence["blocking_gaps"]
+    return evidence
+
+
+def lease_lending_equipment_finance_runtime_capabilities():
+    runtime = dict(_LEASE_LENDING_EQUIPMENT_FINANCE_BASE_RUNTIME_CAPABILITIES())
+    lease_control = lease_lending_equipment_finance_improve1_lease_control_contract()
+    runtime.update({
+        "ok": runtime.get("ok") is True and lease_control["ok"],
+        "lease_control": lease_control,
+        "improve1_capabilities": lease_control["capabilities"],
+        "operations": tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + ("improve1_lease_control_contract", "evaluate_lease_control"))),
+        "owned_tables": LEASE_CONTROL_OWNED_TABLES,
+        "allowed_database_backends": LEASE_CONTROL_ALLOWED_DATABASE_BACKENDS,
+        "database_backends": LEASE_CONTROL_ALLOWED_DATABASE_BACKENDS,
+        "required_event_topic": LEASE_CONTROL_REQUIRED_EVENT_TOPIC,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+    })
+    return runtime

@@ -23,6 +23,7 @@ def smoke_test():
     return {'ok': validation['ok'], 'validation': validation, 'side_effects': ()}
 
 from .domain_depth import domain_depth_contract, domain_depth_smoke_test
+from .app_surface import app_surface_smoke_test, single_pbc_vendor_supplier_360_app_contract
 
 _BASE_RELEASE_EVIDENCE = build_release_evidence
 
@@ -35,9 +36,39 @@ def build_release_evidence():
         {'id': 'domain_depth_smoke', 'ok': smoke['ok']},
         {'id': 'owned_domain_table_depth', 'ok': len(domain['owned_tables']) >= domain['minimum_owned_domain_tables']},
         {'id': 'domain_operation_depth', 'ok': domain['operation_count'] >= domain['minimum_domain_operations']},
+        {'id': 'standalone_forms_wizards_controls', 'ok': app_surface_smoke_test()['ok']},
     )
-    return {**base, 'ok': base.get('ok') is True and all(check['ok'] for check in checks), 'checks': checks, 'world_class_domain_depth': domain, 'domain_depth_smoke': smoke, 'blocking_gaps': tuple(check for check in checks if not check['ok'])}
+    return {**base, 'ok': base.get('ok') is True and all(check['ok'] for check in checks), 'checks': checks, 'standalone_app': single_pbc_vendor_supplier_360_app_contract(), 'standalone_app_smoke': app_surface_smoke_test(), 'world_class_domain_depth': domain, 'domain_depth_smoke': smoke, 'blocking_gaps': tuple(check for check in checks if not check['ok'])}
 
 
 def vendor_supplier_360_build_release_evidence():
     return build_release_evidence()
+
+
+# Improve1 vendor supplier 360 control release extension.
+from .vendor_supplier_360_control import improve1_vendor_supplier_360_control_contract as _improve1_vendor_supplier_360_control_contract
+
+_VENDOR_CONTROL_BASE_BUILD_RELEASE_EVIDENCE = build_release_evidence
+_VENDOR_CONTROL_BASE_VALIDATE_RELEASE_EVIDENCE = validate_release_evidence
+
+
+def build_release_evidence() -> dict:
+    evidence = dict(_VENDOR_CONTROL_BASE_BUILD_RELEASE_EVIDENCE())
+    control = _improve1_vendor_supplier_360_control_contract()
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_vendor_supplier_360_control", "ok": control["ok"]},)
+    evidence.update({
+        "ok": bool(evidence.get("ok")) and control["ok"],
+        "checks": checks,
+        "vendor_supplier_360_control": control,
+        "blocking_gaps": tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ())),
+    })
+    return evidence
+
+
+def validate_release_evidence() -> dict:
+    validation = dict(_VENDOR_CONTROL_BASE_VALIDATE_RELEASE_EVIDENCE())
+    control = _improve1_vendor_supplier_360_control_contract()
+    validation["ok"] = validation.get("ok") is True and control["ok"]
+    validation["vendor_supplier_360_control"] = control
+    validation["blocking_gaps"] = tuple(validation.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ()))
+    return validation

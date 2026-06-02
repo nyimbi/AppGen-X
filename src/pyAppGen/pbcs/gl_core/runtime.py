@@ -409,6 +409,16 @@ def gl_core_empty_state() -> dict:
         "dead_letter": (),
         "handled_events": {},
         "retry_evidence": (),
+        "chart_accounts": {},
+        "accounting_periods": {},
+        "recurring_runs": {},
+        "accrual_schedules": {},
+        "allocation_runs": (),
+        "currency_translations": (),
+        "intercompany_settlements": (),
+        "statement_mappings": {},
+        "dimension_policies": {},
+        "budget_controls": {},
         "schema_extensions": {},
         "integration_projections": {
             event_type: {}
@@ -484,6 +494,330 @@ def gl_core_register_schema_extension(state: dict, table: str, fields: dict) -> 
         "schema_extension": {"table": table, "fields": dict(fields)},
         "target": table,
         "fields": extensions[table],
+    }
+
+
+def gl_core_register_chart_account(state: dict, account: dict) -> dict:
+    """Register a governed chart-of-accounts node with lifecycle evidence."""
+    required = {"tenant", "account_id", "account_code", "account_type", "normal_balance"}
+    missing = tuple(sorted(field for field in required if field not in account))
+    if missing:
+        raise ValueError(f"Missing required GL account fields: {missing}")
+    allowed_types = tuple(
+        state.get("configuration", {}).get(
+            "allowed_account_types",
+            ("asset", "liability", "equity", "revenue", "expense"),
+        )
+    )
+    if account["account_type"] not in allowed_types:
+        return {"ok": False, "error": "unsupported_account_type", "allowed_account_types": allowed_types, "state": state}
+    if account.get("parent_account_id") == account["account_id"]:
+        return {"ok": False, "error": "self_parent_account", "state": state}
+    account_key = f"{account['tenant']}:{account['account_id']}"
+    stored = {
+        "tenant": account["tenant"],
+        "account_id": account["account_id"],
+        "account_code": account["account_code"],
+        "account_type": account["account_type"],
+        "normal_balance": account["normal_balance"],
+        "parent_account_id": account.get("parent_account_id"),
+        "statement_line": account.get("statement_line"),
+        "lifecycle_state": account.get("lifecycle_state", "active"),
+        "effective_from": account.get("effective_from", "1970-01-01"),
+        "posting_blocked": account.get("lifecycle_state") in {"posting-blocked", "retired"},
+    }
+    accounts = {**state.get("chart_accounts", {}), account_key: stored}
+    next_state = {**state, "chart_accounts": accounts}
+    return {
+        "ok": True,
+        "state": next_state,
+        "account": stored,
+        "impact_preview": {
+            "open_journal_count": len(tuple(event for event in state.get("events", ()) if event.get("tenant") == account["tenant"])),
+            "statement_line": stored.get("statement_line"),
+            "posting_allowed": not stored["posting_blocked"],
+        },
+    }
+
+
+def gl_core_open_accounting_period(state: dict, period: dict) -> dict:
+    """Open or update a governed accounting period."""
+    required = {"tenant", "period_id", "fiscal_year", "period_number"}
+    missing = tuple(sorted(field for field in required if field not in period))
+    if missing:
+        raise ValueError(f"Missing required GL period fields: {missing}")
+    period_key = f"{period['tenant']}:{period['period_id']}"
+    stored = {
+        "tenant": period["tenant"],
+        "period_id": period["period_id"],
+        "fiscal_year": str(period["fiscal_year"]),
+        "period_number": int(period["period_number"]),
+        "status": period.get("status", "open"),
+        "close_phase": period.get("close_phase", "soft_open"),
+        "late_posting_policy": period.get("late_posting_policy", "controller_override"),
+    }
+    periods = {**state.get("accounting_periods", {}), period_key: stored}
+    return {"ok": True, "state": {**state, "accounting_periods": periods}, "period": stored}
+
+
+def gl_core_post_recurring_journal(state: dict, template: dict) -> dict:
+    """Post one idempotent occurrence from a recurring journal template."""
+    required = {"tenant", "template_id", "scheduled_for", "lines"}
+    missing = tuple(sorted(field for field in required if field not in template))
+    if missing:
+        raise ValueError(f"Missing required recurring journal fields: {missing}")
+    run_key = f"{template['tenant']}:{template['template_id']}:{template['scheduled_for']}"
+    if run_key in state.get("recurring_runs", {}):
+        return {"ok": True, "duplicate": True, "state": state, "run": state["recurring_runs"][run_key]}
+    append = gl_core_append_ledger_event(
+        state,
+        "JournalPosted",
+        {
+            "tenant": template["tenant"],
+            "valid_at": template["scheduled_for"],
+            "lines": tuple(template["lines"]),
+            "source_text": template.get("description", "recurring journal"),
+            "recurring_template_id": template["template_id"],
+            "auto_reversal_date": template.get("auto_reversal_date"),
+        },
+    )
+    if not append["ok"]:
+        return append
+    run = {
+        "run_key": run_key,
+        "template_id": template["template_id"],
+        "scheduled_for": template["scheduled_for"],
+        "event_id": append["event"]["event_id"],
+        "auto_reversal_date": template.get("auto_reversal_date"),
+    }
+    runs = {**append["state"].get("recurring_runs", {}), run_key: run}
+    return {"ok": True, "duplicate": False, "state": {**append["state"], "recurring_runs": runs}, "run": run, "event": append["event"]}
+
+
+def gl_core_post_reversal_entry(state: dict, original_event_id: str, *, reversal_date: str, reason: str = "controller_reversal") -> dict:
+    """Create an immutable reversing event linked to the original journal."""
+    original = next((event for event in state.get("events", ()) if event["event_id"] == original_event_id), None)
+    if not original:
+        return {"ok": False, "error": "original_event_not_found", "state": state}
+    reversed_lines = tuple(
+        {
+            **line,
+            "debit": float(line.get("credit", 0)),
+            "credit": float(line.get("debit", 0)),
+        }
+        for line in original["payload"].get("lines", ())
+    )
+    append = gl_core_append_ledger_event(
+        state,
+        "JournalPosted",
+        {
+            "tenant": original["tenant"],
+            "valid_at": reversal_date,
+            "lines": reversed_lines,
+            "reversal_of": original_event_id,
+            "source_text": reason,
+        },
+    )
+    return {**append, "reversal_of": original_event_id, "reversed_lines": reversed_lines}
+
+
+def gl_core_create_accrual_deferral_schedule(state: dict, schedule: dict) -> dict:
+    """Create an owned accrual/deferral schedule with deterministic rollforward."""
+    required = {"tenant", "schedule_id", "amount", "periods", "debit_account", "credit_account"}
+    missing = tuple(sorted(field for field in required if field not in schedule))
+    if missing:
+        raise ValueError(f"Missing required accrual schedule fields: {missing}")
+    periods = tuple(schedule["periods"])
+    amount = float(schedule["amount"])
+    if not periods:
+        return {"ok": False, "error": "schedule_requires_periods", "state": state}
+    periodic_amount = round(amount / len(periods), 6)
+    rollforward = tuple(
+        {
+            "period_id": period_id,
+            "debit_account": schedule["debit_account"],
+            "credit_account": schedule["credit_account"],
+            "amount": periodic_amount,
+            "remaining_balance": round(amount - periodic_amount * (index + 1), 6),
+        }
+        for index, period_id in enumerate(periods)
+    )
+    stored = {**schedule, "rollforward": rollforward, "recognition_method": schedule.get("recognition_method", "straight_line")}
+    schedules = {**state.get("accrual_schedules", {}), f"{schedule['tenant']}:{schedule['schedule_id']}": stored}
+    return {"ok": True, "state": {**state, "accrual_schedules": schedules}, "schedule": stored, "rollforward": rollforward}
+
+
+def gl_core_calculate_allocation(state: dict, rule: dict) -> dict:
+    """Allocate a source pool across targets and post a balanced allocation journal."""
+    required = {"tenant", "rule_id", "source_account", "target_account", "amount", "targets"}
+    missing = tuple(sorted(field for field in required if field not in rule))
+    if missing:
+        raise ValueError(f"Missing required allocation fields: {missing}")
+    targets = tuple(rule["targets"])
+    total_basis = sum(float(target.get("basis", 0)) for target in targets)
+    if total_basis <= 0:
+        return {"ok": False, "error": "allocation_requires_positive_basis", "state": state}
+    amount = float(rule["amount"])
+    allocations = []
+    allocated_total = 0.0
+    for index, target in enumerate(targets):
+        share = round(amount * float(target.get("basis", 0)) / total_basis, 2)
+        if index == len(targets) - 1:
+            share = round(amount - allocated_total, 2)
+        allocated_total = round(allocated_total + share, 2)
+        allocations.append({**target, "amount": share})
+    lines = tuple(
+        {"account": rule["target_account"], "debit": item["amount"], "credit": 0.0, "dimensions": item.get("dimensions", {})}
+        for item in allocations
+    ) + ({"account": rule["source_account"], "debit": 0.0, "credit": amount, "dimensions": rule.get("source_dimensions", {})},)
+    append = gl_core_append_ledger_event(
+        state,
+        "JournalPosted",
+        {
+            "tenant": rule["tenant"],
+            "valid_at": rule.get("valid_at", "1970-01-01T00:00:00Z"),
+            "lines": lines,
+            "allocation_rule_id": rule["rule_id"],
+            "source_text": "allocation journal",
+        },
+    )
+    if not append["ok"]:
+        return append
+    proof = {"rule_id": rule["rule_id"], "total_basis": total_basis, "allocated_total": allocated_total, "rounding_policy": "last_target_true_up"}
+    return {
+        "ok": True,
+        "state": {**append["state"], "allocation_runs": tuple(append["state"].get("allocation_runs", ())) + (proof,)},
+        "allocations": tuple(allocations),
+        "event": append["event"],
+        "proof": proof,
+    }
+
+
+def gl_core_translate_currency(state: dict, rate_set: dict) -> dict:
+    """Translate projected balances into a reporting currency with proof."""
+    projection = gl_core_build_projection(state, tenant=rate_set.get("tenant"))
+    rates = dict(rate_set.get("rates", {}))
+    reporting_currency = rate_set.get("reporting_currency", "USD")
+    translated = {
+        account: round(balance * float(rates.get(account, rate_set.get("default_rate", 1))), 6)
+        for account, balance in projection["balances"].items()
+    }
+    proof = {
+        "rate_set_id": rate_set.get("rate_set_id", "ad_hoc"),
+        "reporting_currency": reporting_currency,
+        "source_event_count": projection["source_event_count"],
+        "translated_hash": _digest(json.dumps(translated, sort_keys=True, default=str)),
+    }
+    next_state = {**state, "currency_translations": tuple(state.get("currency_translations", ())) + (proof,)}
+    return {"ok": True, "state": next_state, "translated_balances": translated, "proof": proof}
+
+
+def gl_core_run_intercompany_settlement(state: dict, settlement: dict) -> dict:
+    """Post due-to/due-from settlement evidence for a cross-entity transaction."""
+    required = {"tenant", "settlement_id", "from_entity", "to_entity", "amount", "due_from_account", "due_to_account"}
+    missing = tuple(sorted(field for field in required if field not in settlement))
+    if missing:
+        raise ValueError(f"Missing required intercompany settlement fields: {missing}")
+    amount = float(settlement["amount"])
+    lines = (
+        {"account": settlement["due_from_account"], "debit": amount, "credit": 0.0, "entity": settlement["from_entity"]},
+        {"account": settlement["due_to_account"], "debit": 0.0, "credit": amount, "entity": settlement["to_entity"]},
+    )
+    append = gl_core_append_ledger_event(
+        state,
+        "JournalPosted",
+        {
+            "tenant": settlement["tenant"],
+            "valid_at": settlement.get("valid_at", "1970-01-01T00:00:00Z"),
+            "lines": lines,
+            "intercompany_settlement_id": settlement["settlement_id"],
+            "source_text": "intercompany settlement",
+        },
+    )
+    if not append["ok"]:
+        return append
+    evidence = {
+        "settlement_id": settlement["settlement_id"],
+        "from_entity": settlement["from_entity"],
+        "to_entity": settlement["to_entity"],
+        "amount": amount,
+        "status": "balanced",
+        "event_id": append["event"]["event_id"],
+    }
+    return {"ok": True, "state": {**append["state"], "intercompany_settlements": tuple(append["state"].get("intercompany_settlements", ())) + (evidence,)}, "settlement": evidence}
+
+
+def gl_core_build_trial_balance(state: dict, *, tenant: str | None = None) -> dict:
+    """Build debit, credit, and ending balance rows with freshness evidence."""
+    rows: dict[str, dict] = {}
+    last_sequence = 0
+    for event in state.get("events", ()):
+        if tenant and event["tenant"] != tenant:
+            continue
+        last_sequence = max(last_sequence, int(event["sequence"]))
+        for line in event["payload"].get("lines", ()):
+            account = line["account"]
+            row = rows.setdefault(account, {"account": account, "debit_total": 0.0, "credit_total": 0.0, "ending_balance": 0.0})
+            row["debit_total"] = round(row["debit_total"] + float(line.get("debit", 0)), 6)
+            row["credit_total"] = round(row["credit_total"] + float(line.get("credit", 0)), 6)
+            row["ending_balance"] = round(row["debit_total"] - row["credit_total"], 6)
+    trial_balance = round(sum(row["ending_balance"] for row in rows.values()), 6)
+    return {
+        "ok": trial_balance == 0,
+        "tenant": tenant or "all",
+        "rows": tuple(rows[account] for account in sorted(rows)),
+        "trial_balance": trial_balance,
+        "freshness": {
+            "last_event_sequence": last_sequence,
+            "source_event_count": len(tuple(event for event in state.get("events", ()) if not tenant or event["tenant"] == tenant)),
+            "projection_lag": 0,
+        },
+    }
+
+
+def gl_core_map_financial_statement(state: dict, mappings: tuple[dict, ...], *, tenant: str | None = None) -> dict:
+    """Map trial-balance accounts to statement lines with sign conventions."""
+    projection = gl_core_build_projection(state, tenant=tenant)
+    statement_lines: dict[str, float] = {}
+    for mapping in mappings:
+        line_name = mapping["statement_line"]
+        sign = -1 if mapping.get("sign") == "credit_positive" else 1
+        for account in mapping.get("accounts", ()):
+            statement_lines[line_name] = round(statement_lines.get(line_name, 0.0) + projection["balances"].get(account, 0.0) * sign, 6)
+    proof = {
+        "mapping_count": len(mappings),
+        "source_event_count": projection["source_event_count"],
+        "mapping_hash": _digest(json.dumps(tuple(mappings), sort_keys=True, default=str)),
+    }
+    next_state = {**state, "statement_mappings": {**state.get("statement_mappings", {}), proof["mapping_hash"]: tuple(mappings)}}
+    return {"ok": True, "state": next_state, "statement_lines": statement_lines, "proof": proof}
+
+
+def gl_core_register_dimension_policy(state: dict, policy: dict) -> dict:
+    """Register allowed dimension combinations for posting-time validation."""
+    required = {"tenant", "policy_id", "account_type", "required_dimensions"}
+    missing = tuple(sorted(field for field in required if field not in policy))
+    if missing:
+        raise ValueError(f"Missing required dimension policy fields: {missing}")
+    stored = {**policy, "required_dimensions": tuple(policy["required_dimensions"]), "status": policy.get("status", "active")}
+    policies = {**state.get("dimension_policies", {}), f"{policy['tenant']}:{policy['policy_id']}": stored}
+    return {"ok": True, "state": {**state, "dimension_policies": policies}, "policy": stored}
+
+
+def gl_core_evaluate_budget_control(state: dict, posting: dict, budget: dict) -> dict:
+    """Evaluate posting-time budget control with explainable override evidence."""
+    amount = sum(float(line.get("debit", 0)) for line in posting.get("lines", ()))
+    available = float(budget.get("available_budget", 0))
+    tolerance = float(budget.get("tolerance", 0))
+    allowed_limit = available * (1 + tolerance)
+    decision = "allow" if amount <= allowed_limit else "block" if not posting.get("override_approved") else "override"
+    return {
+        "ok": decision in {"allow", "override"},
+        "decision": decision,
+        "amount": round(amount, 6),
+        "available_budget": round(available, 6),
+        "tolerance": tolerance,
+        "reason": "within_budget" if decision == "allow" else "approved_override" if decision == "override" else "budget_exceeded",
     }
 
 
@@ -842,7 +1176,19 @@ def gl_core_build_api_contract() -> dict:
             {"route": "POST /gl/close-snapshots", "command": "create_continuous_close_snapshot", "owned_tables": ("gl_core_close_snapshot", "gl_core_account_projection"), "emits": ("CloseSnapshotCreated",), "requires_permission": "gl_core.close", "idempotency_key": "tenant:period"},
             {"route": "POST /gl/reconciliations", "command": "suggest_reconciliation", "owned_tables": ("gl_core_reconciliation_case",), "emits": ("ReconciliationSuggested",), "requires_permission": "gl_core.reconcile", "idempotency_key": "source_id"},
             {"route": "POST /gl/policy-rules", "command": "register_rule", "owned_tables": ("gl_core_policy_rule",), "emits": ("PostingPolicyChanged",), "requires_permission": "gl_core.configure", "idempotency_key": "rule_id"},
+            {"route": "POST /gl/chart-accounts", "command": "register_chart_account", "owned_tables": ("gl_core_ledger_account",), "emits": ("PostingPolicyChanged",), "requires_permission": "gl_core.configure", "idempotency_key": "tenant:account_id"},
+            {"route": "POST /gl/accounting-periods", "command": "open_accounting_period", "owned_tables": ("gl_core_accounting_period",), "emits": ("PostingPolicyChanged",), "requires_permission": "gl_core.configure", "idempotency_key": "tenant:period_id"},
+            {"route": "POST /gl/recurring-journals/run", "command": "post_recurring_journal", "owned_tables": ("gl_core_journal_event", "gl_core_journal_line"), "emits": ("JournalPosted",), "requires_permission": "gl_core.post", "idempotency_key": "tenant:template_id:scheduled_for"},
+            {"route": "POST /gl/reversals", "command": "post_reversal_entry", "owned_tables": ("gl_core_journal_event", "gl_core_journal_line"), "emits": ("JournalPosted",), "requires_permission": "gl_core.post", "idempotency_key": "original_event_id:reversal_date"},
+            {"route": "POST /gl/accrual-schedules", "command": "create_accrual_deferral_schedule", "owned_tables": ("gl_core_probabilistic_posting", "gl_core_journal_event"), "emits": ("PostingPolicyChanged",), "requires_permission": "gl_core.post", "idempotency_key": "tenant:schedule_id"},
+            {"route": "POST /gl/allocations", "command": "calculate_allocation", "owned_tables": ("gl_core_journal_event", "gl_core_journal_line"), "emits": ("JournalPosted",), "requires_permission": "gl_core.post", "idempotency_key": "tenant:rule_id:valid_at"},
+            {"route": "POST /gl/currency-translations", "command": "translate_currency", "owned_tables": ("gl_core_account_projection", "gl_core_journal_event"), "emits": ("LedgerProjectionBuilt",), "requires_permission": "gl_core.close", "idempotency_key": "tenant:rate_set_id"},
+            {"route": "POST /gl/intercompany-settlements", "command": "run_intercompany_settlement", "owned_tables": ("gl_core_journal_event", "gl_core_journal_line", "gl_core_reconciliation_case"), "emits": ("JournalPosted", "ReconciliationSuggested"), "requires_permission": "gl_core.post", "idempotency_key": "tenant:settlement_id"},
+            {"route": "POST /gl/statement-mappings/run", "command": "map_financial_statement", "owned_tables": ("gl_core_ledger_projection", "gl_core_account_projection"), "emits": ("LedgerProjectionBuilt",), "requires_permission": "gl_core.read", "idempotency_key": "tenant:mapping_hash"},
+            {"route": "POST /gl/dimension-policies", "command": "register_dimension_policy", "owned_tables": ("gl_core_policy_rule",), "emits": ("PostingPolicyChanged",), "requires_permission": "gl_core.configure", "idempotency_key": "tenant:policy_id"},
+            {"route": "POST /gl/budget-controls/evaluate", "command": "evaluate_budget_control", "owned_tables": ("gl_core_policy_decision",), "emits": ("PostingPolicyChanged",), "requires_permission": "gl_core.post", "idempotency_key": "tenant:budget_check_hash"},
             {"route": "POST /gl/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": GL_CORE_CONSUMED_EVENT_TYPES, "requires_permission": "gl_core.event", "idempotency_key": "event_id"},
+            {"route": "GET /gl/trial-balance-detail", "query": "build_trial_balance", "owned_tables": ("gl_core_account_projection", "gl_core_journal_event", "gl_core_journal_line"), "requires_permission": "gl_core.read"},
             {"route": "GET /gl/audit-proof", "query": "generate_audit_proof", "owned_tables": ("gl_core_journal_event", "gl_core_close_snapshot"), "requires_permission": "gl_core.audit"},
             {"route": "GET /gl/workbench", "query": "build_workbench_view", "owned_tables": GL_CORE_OWNED_TABLES, "requires_permission": "gl_core.audit"},
         ),
@@ -854,7 +1200,19 @@ def gl_core_build_api_contract() -> dict:
             "POST /gl/close-snapshots",
             "POST /gl/reconciliations",
             "POST /gl/policy-rules",
+            "POST /gl/chart-accounts",
+            "POST /gl/accounting-periods",
+            "POST /gl/recurring-journals/run",
+            "POST /gl/reversals",
+            "POST /gl/accrual-schedules",
+            "POST /gl/allocations",
+            "POST /gl/currency-translations",
+            "POST /gl/intercompany-settlements",
+            "POST /gl/statement-mappings/run",
+            "POST /gl/dimension-policies",
+            "POST /gl/budget-controls/evaluate",
             "POST /gl/events/inbox",
+            "GET /gl/trial-balance-detail",
             "GET /gl/audit-proof",
             "GET /gl/workbench",
         ),
@@ -974,6 +1332,9 @@ def gl_core_build_service_contract() -> dict:
         "calculate_allocation",
         "translate_currency",
         "run_intercompany_settlement",
+        "create_accrual_deferral_schedule",
+        "register_dimension_policy",
+        "evaluate_budget_control",
         "build_projection",
         "build_trial_balance",
         "map_financial_statement",
@@ -1183,6 +1544,16 @@ def _copy_state(state: dict) -> dict:
         "dead_letter": tuple(state.get("dead_letter", ())),
         "handled_events": {key: dict(value) for key, value in state.get("handled_events", {}).items()},
         "retry_evidence": tuple(state.get("retry_evidence", ())),
+        "chart_accounts": {key: dict(value) for key, value in state.get("chart_accounts", {}).items()},
+        "accounting_periods": {key: dict(value) for key, value in state.get("accounting_periods", {}).items()},
+        "recurring_runs": {key: dict(value) for key, value in state.get("recurring_runs", {}).items()},
+        "accrual_schedules": {key: dict(value) for key, value in state.get("accrual_schedules", {}).items()},
+        "allocation_runs": tuple(state.get("allocation_runs", ())),
+        "currency_translations": tuple(state.get("currency_translations", ())),
+        "intercompany_settlements": tuple(state.get("intercompany_settlements", ())),
+        "statement_mappings": {key: tuple(value) for key, value in state.get("statement_mappings", {}).items()},
+        "dimension_policies": {key: dict(value) for key, value in state.get("dimension_policies", {}).items()},
+        "budget_controls": {key: dict(value) for key, value in state.get("budget_controls", {}).items()},
         "schema_extensions": {
             key: dict(value)
             for key, value in state.get("schema_extensions", {}).items()

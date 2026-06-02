@@ -47,6 +47,9 @@ from .runtime import enterprise_pim_start_validation_workflow
 from .runtime import enterprise_pim_upsert_localized_content
 from .runtime import enterprise_pim_upsert_translation_memory
 from .runtime import enterprise_pim_verify_owned_table_boundary
+from .release_evidence import build_release_evidence as standalone_release_evidence
+from .standalone import EnterprisePimStandaloneApp
+from .standalone import create_standalone_app
 from .ui import ENTERPRISE_PIM_UI_FRAGMENT_KEYS
 from .ui import enterprise_pim_render_workbench
 from .ui import enterprise_pim_ui_contract
@@ -65,7 +68,7 @@ def implementation_contract() -> dict:
         "api_contract": enterprise_pim_build_api_contract(),
         "schema_contract": enterprise_pim_build_schema_contract(),
         "service_contract": enterprise_pim_build_service_contract(),
-        "release_evidence_contract": enterprise_pim_build_release_evidence(),
+        "release_evidence_contract": standalone_release_evidence(),
         "permissions_contract": enterprise_pim_permissions_contract(),
         "owned_tables": ENTERPRISE_PIM_OWNED_TABLES,
         "allowed_database_backends": ENTERPRISE_PIM_ALLOWED_DATABASE_BACKENDS,
@@ -116,8 +119,10 @@ def package_discovery_plan(existing_catalog: dict | None = None) -> dict:
 def smoke_test() -> dict:
     """Exercise package metadata validation and discovery planning."""
     discovery = package_discovery_plan()
+    standalone = create_standalone_app()
     return {
-        "ok": discovery["ok"],
+        "ok": discovery["ok"] and standalone.workbench()["ok"],
         "discovery": discovery,
+        "standalone": standalone.workbench(),
         "side_effects": (),
     }

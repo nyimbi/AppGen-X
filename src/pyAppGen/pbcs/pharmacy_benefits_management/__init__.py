@@ -3,6 +3,7 @@ from .manifest import PBC_MANIFEST
 from ..source_contract import source_pbc_package_contract, source_package_metadata, validate_source_package_metadata, source_registration_plan
 from .runtime import *
 from .ui import pharmacy_benefits_management_ui_contract, pharmacy_benefits_management_render_workbench
+from .standalone import PharmacyBenefitsManagementStandaloneApp, single_pbc_app_contract, standalone_smoke_test
 
 PBC_KEY = 'pharmacy_benefits_management'
 

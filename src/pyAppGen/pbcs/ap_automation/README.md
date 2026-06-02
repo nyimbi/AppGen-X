@@ -1,44 +1,37 @@
 # AP Automation Slice
 
-This package now contains an executable accounts-payable automation slice centered on vendor payment readiness, invoice duplicate controls, approval-aware scheduling, payment batching/remittance, and vendor statement reconciliation.
+`ap_automation` is a standalone AppGen-X PBC for accounts payable automation. It owns vendor readiness, invoice intake, matching, approval-aware payment scheduling, payment release, remittance, statement reconciliation, and the supporting AppGen-X event/runtime surfaces.
 
-## Executable workflows
+## Executable surfaces
 
-- `ap_automation_onboard_vendor`
-  Creates a vendor record with an evidence pack and payment-readiness requirements.
-- `ap_automation_validate_vendor_bank_account`
-  Validates vendor banking evidence and updates vendor payment readiness.
-- `ap_automation_register_vendor_tax_profile`
-  Validates AP tax-profile completeness and expiry before enabling payment.
-- `ap_automation_screen_vendor_network`
-  Applies AP screening outcomes and refreshes payment readiness.
-- `ap_automation_capture_invoice`
-  Captures invoices, writes a canonical artifact, scores duplicate risk, and records hold reasons.
-- `ap_automation_match_invoice`
-  Performs AP matching and routes held or duplicate invoices to exception handling.
-- `ap_automation_create_approval_task`
-  Opens AP approval work when thresholds or risk controls require human review.
-- `ap_automation_schedule_payments`
-  Produces liquidity-aware payment plans with explicit scheduling explanations and blocked reasons.
-- `ap_automation_create_payment_batch`
-  Groups scheduled payments into a batch owned by this PBC.
-- `ap_automation_execute_payment`
-  Executes only unblocked payments and preserves AppGen-X event evidence.
-- `ap_automation_generate_remittance_advice`
-  Builds remittance evidence for executed AP payments.
-- `ap_automation_reconcile_vendor_statement`
-  Reconciles supplier statements against owned invoices and records discrepancy evidence.
+- `runtime.py`
+  Domain workflows for vendor onboarding, bank/tax validation, invoice capture, matching, scheduling, batching, payment execution, remittance, reconciliation, risk, controls, and release evidence.
+- `repository.py`
+  Owned-table repository bindings for vendor, invoice, payment-release, and statement datasets that back forms, wizards, controls, and the workbench.
+- `forms.py`
+  Database-backed forms for vendor onboarding, invoice capture, payment batch release, and statement reconciliation.
+- `wizards.py`
+  Guided vendor onboarding, invoice intake, payment release, and statement-reconciliation flows.
+- `controls.py`
+  AP control assertions for vendor readiness, duplicate holds, payment-batch integrity, reconciliation visibility, and AppGen-X event contract lock.
+- `services.py`, `routes.py`, `events.py`, `handlers.py`
+  Executable service/route/event surfaces and handler contracts that stay within `ap_automation_*` owned tables plus AppGen-X inbox/outbox/dead-letter tables.
+- `agent.py`
+  Assistant contribution for repository lookup, form guidance, wizard planning, control interpretation, and governed CRUD.
+- `ui.py`
+  Workbench, forms hub, wizard hub, and controls hub contracts.
 
-## Package wiring
+## How to exercise it
 
-- `runtime.py` contains the executable AP behaviors and state transitions.
-- `services.py` exposes the new runtime-backed execution surface through `ApAutomationExecutionService`.
-- `ui.py` surfaces vendor readiness, payment holds, remittance, and statement reconciliation controls.
-- `agent.py` advertises the execution slice to the composed assistant.
-- `release_evidence.py` now derives release evidence from live runtime, UI, agent, and execution-service surfaces.
+1. Configure a runtime with `ap_automation_configure_runtime(...)`.
+2. Load parameters/rules with `ap_automation_set_parameter(...)` and `ap_automation_register_rule(...)`.
+3. Use `repository_demo_state()` for a deterministic AP state envelope.
+4. Render database-backed forms with `render_form(...)`.
+5. Execute guided flows with `execute_wizard(...)`.
+6. Validate the owned-scope control stack with `controls.smoke_test()` and `release_evidence.smoke_test()`.
 
-## Boundaries
+## Scope boundary
 
-- Eventing remains AppGen-X only.
-- All writes stay within `ap_automation_*` owned tables plus the package runtime state model.
-- No shared-table access is introduced by this slice.
+- Writes remain inside `ap_automation_*` tables and runtime state.
+- Eventing remains locked to AppGen-X on `appgen.ap.events`.
+- No shared-table access or cross-PBC rewrites are introduced.

@@ -167,3 +167,39 @@ def smoke_test():
         'contribution': contribution,
         'side_effects': (),
     }
+
+
+
+def _standalone_operations():
+    return services.standalone_service_operation_contracts().get('contracts', ())
+
+
+def standalone_agent_workspace_contract():
+    from . import ui, routes
+    forms = ui.quality_assurance_form_contracts()
+    wizards = ui.quality_assurance_wizard_contracts()
+    controls = ui.quality_assurance_control_catalog()
+    route_manifest = routes.standalone_route_contracts()
+    return {'format': 'appgen.quality-assurance-standalone-agent-workspace.v1', 'ok': forms['ok'] and wizards['ok'] and controls['ok'] and route_manifest['ok'], 'pbc': PBC_KEY, 'agent': AGENT_NAME, 'forms': tuple(item['key'] for item in forms['contracts']), 'wizards': tuple(item['key'] for item in wizards['contracts']), 'controls': tuple(item['key'] for item in controls['contracts']), 'routes': route_manifest['routes'], 'side_effects': ()}
+
+
+_original_quality_assurance_document_instruction_plan = document_instruction_plan
+
+def document_instruction_plan(document=None, instructions=None):
+    base_plan = _original_quality_assurance_document_instruction_plan(document, instructions)
+    combined = f"{document or ''} {instructions or ''}".lower()
+    from . import ui
+    wizards = ui.quality_assurance_wizard_contracts()['contracts']
+    wizard_candidates = tuple(item['key'] for item in wizards if any(keyword in combined for keyword in item.get('keywords', ()))) or ('InspectionLotIntakeWizard',)
+    route_candidates = tuple(f"{item['method']} {item['path']}" for item in _standalone_operations() if item.get('wizard') in wizard_candidates or item['operation'].replace('_', ' ') in combined)
+    return {**base_plan, 'standalone_routes': route_candidates, 'wizard_candidates': wizard_candidates, 'workspace': standalone_agent_workspace_contract()}
+
+
+_original_quality_assurance_datastore_crud_plan = datastore_crud_plan
+
+def datastore_crud_plan(action='read', table=None, payload=None):
+    plan = _original_quality_assurance_datastore_crud_plan(action, table, payload)
+    selected_table = plan.get('table')
+    normalized_action = plan.get('action')
+    routes = tuple(f"{item['method']} {item['path']}" for item in _standalone_operations() if item['table'] == selected_table and ((normalized_action == 'read' and item['operation_kind'] == 'query') or (normalized_action != 'read' and item['operation_kind'] == 'command')))
+    return {**plan, 'route_candidates': routes, 'workspace': standalone_agent_workspace_contract()}

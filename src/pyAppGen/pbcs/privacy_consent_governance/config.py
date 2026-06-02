@@ -1,45 +1,112 @@
 """Configuration, rules, and parameters for the privacy_consent_governance PBC."""
+
+from __future__ import annotations
+
 PBC_KEY = 'privacy_consent_governance'
-DOMAIN_PARAMETER_SCHEMA = ({'key': 'domain_threshold', 'scope': 'domain', 'default': 1}, {'key': 'advanced_score_floor', 'scope': 'advanced', 'default': 0.75}, {'key': 'workflow_sla_hours', 'scope': 'workflow', 'default': 24}, {'key': 'owned_table_policy', 'scope': 'data_boundary', 'default': 'owned_only'})
-DOMAIN_RULE_SCHEMA = ({'rule_id': 'capability_available', 'scope': 'domain', 'condition': 'capability_available'}, {'rule_id': 'workflow_declared', 'scope': 'workflow', 'condition': 'workflow_declared'}, {'rule_id': 'owned_table_boundary', 'scope': 'data_boundary', 'condition': 'owned_table_boundary'}, {'rule_id': 'approval_required', 'scope': 'advanced', 'condition': 'approval_required'})
+REQUIRED_EVENT_TOPIC = 'appgen.privacy_consent_governance.events'
+ALLOWED_DATABASE_BACKENDS = ('postgresql', 'mysql', 'mariadb')
+DOMAIN_PARAMETER_SCHEMA = (
+    {'key': 'dsar_sla_days', 'scope': 'workflow', 'default': 30, 'minimum': 1, 'maximum': 90},
+    {'key': 'consent_reconfirmation_days', 'scope': 'consent', 'default': 365, 'minimum': 30, 'maximum': 730},
+    {'key': 'retention_review_days', 'scope': 'retention', 'default': 90, 'minimum': 7, 'maximum': 365},
+    {'key': 'cross_border_risk_threshold', 'scope': 'transfers', 'default': 0.7, 'minimum': 0.1, 'maximum': 1.0},
+    {'key': 'auto_revocation_guard_days', 'scope': 'consent', 'default': 14, 'minimum': 1, 'maximum': 60},
+    {'key': 'workbench_limit', 'scope': 'workbench', 'default': 100, 'minimum': 10, 'maximum': 500},
+)
+DOMAIN_RULE_SCHEMA = (
+    {'rule_id': 'lawful_basis_required', 'scope': 'consent', 'condition': 'lawful_basis_present'},
+    {'rule_id': 'purpose_must_exist', 'scope': 'consent', 'condition': 'purpose_registered'},
+    {'rule_id': 'cross_border_transfer_needs_assessment', 'scope': 'transfer', 'condition': 'assessment_required'},
+    {'rule_id': 'dsar_due_date_enforced', 'scope': 'rights', 'condition': 'due_date_present'},
+    {'rule_id': 'erasure_requires_legal_hold_check', 'scope': 'rights', 'condition': 'legal_hold_checked'},
+    {'rule_id': 'policy_publication_requires_notice', 'scope': 'policy', 'condition': 'notice_linked'},
+)
 
 
-def configuration_manifest():
-    return {'ok': True, 'pbc': PBC_KEY, 'database_backends': ('postgresql','mysql','mariadb'), 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'domain_parameter_schema': DOMAIN_PARAMETER_SCHEMA, 'domain_rule_schema': DOMAIN_RULE_SCHEMA, 'side_effects': ()}
+def configuration_manifest() -> dict:
+    return {
+        'ok': True,
+        'pbc': PBC_KEY,
+        'database_backends': ALLOWED_DATABASE_BACKENDS,
+        'required_event_topic': REQUIRED_EVENT_TOPIC,
+        'event_contract': 'AppGen-X',
+        'stream_engine_picker_visible': False,
+        'domain_parameter_schema': DOMAIN_PARAMETER_SCHEMA,
+        'domain_rule_schema': DOMAIN_RULE_SCHEMA,
+        'side_effects': (),
+    }
 
 
-def parameter_manifest():
+def parameter_manifest() -> dict:
     return {'ok': True, 'pbc': PBC_KEY, 'parameters': DOMAIN_PARAMETER_SCHEMA, 'side_effects': ()}
 
 
-def rule_manifest():
+def rule_manifest() -> dict:
     return {'ok': True, 'pbc': PBC_KEY, 'rules': DOMAIN_RULE_SCHEMA, 'side_effects': ()}
 
 
-def validate_configuration(config=None):
-    config = dict(config or {'database_backend': 'postgresql'})
-    return {'ok': config.get('database_backend', 'postgresql') in ('postgresql','mysql','mariadb'), 'config': config, 'side_effects': ()}
+def validate_configuration(config: dict | None = None) -> dict:
+    config = dict(config or {'database_backend': 'postgresql', 'event_topic': REQUIRED_EVENT_TOPIC})
+    ok = (
+        config.get('database_backend', 'postgresql') in ALLOWED_DATABASE_BACKENDS
+        and config.get('event_topic', REQUIRED_EVENT_TOPIC) == REQUIRED_EVENT_TOPIC
+    )
+    return {'ok': ok, 'config': config, 'side_effects': ()}
 
 
-def set_parameter(state, key, value):
+def set_parameter(state: dict | None, key: str, value) -> dict:
     schema = next((item for item in DOMAIN_PARAMETER_SCHEMA if item['key'] == key), None)
-    return {'ok': schema is not None, 'parameter': key, 'value': value, 'parameter_scope': schema['scope'] if schema else None, 'side_effects': ()}
+    if schema is None:
+        return {'ok': False, 'parameter': key, 'value': value, 'reason': 'unknown_parameter', 'side_effects': ()}
+    bounded = schema['minimum'] <= value <= schema['maximum'] if isinstance(value, (int, float)) else True
+    return {
+        'ok': bounded,
+        'parameter': key,
+        'value': value,
+        'parameter_scope': schema['scope'],
+        'bounded': bounded,
+        'side_effects': (),
+    }
 
 
-def compile_rule(rule):
+def compile_rule(rule: dict) -> dict:
     if 'stream_engine' in rule or 'stream_engine_picker' in rule:
         return {'ok': False, 'compiled': False, 'reason': 'stream_engine_picker_disallowed', 'side_effects': ()}
-    return {'ok': True, 'compiled': True, 'rule': dict(rule), 'scope': rule.get('scope'), 'condition': rule.get('condition'), 'side_effects': ()}
+    allowed = {item['rule_id'] for item in DOMAIN_RULE_SCHEMA}
+    rule_id = rule.get('rule_id')
+    return {
+        'ok': rule_id in allowed,
+        'compiled': rule_id in allowed,
+        'rule': dict(rule),
+        'scope': rule.get('scope'),
+        'condition': rule.get('condition'),
+        'side_effects': (),
+    }
 
 
-def evaluate_rule(compiled, context=None):
-    return {'ok': compiled.get('ok') is True, 'allowed': compiled.get('ok') is True, 'scope': compiled.get('scope'), 'context': dict(context or {}), 'side_effects': ()}
+def evaluate_rule(compiled: dict, context: dict | None = None) -> dict:
+    context = dict(context or {})
+    return {
+        'ok': compiled.get('ok') is True,
+        'allowed': compiled.get('ok') is True,
+        'scope': compiled.get('scope'),
+        'context': context,
+        'side_effects': (),
+    }
 
 
-def governance_smoke_test():
+def governance_smoke_test() -> dict:
     compiled = compile_rule(DOMAIN_RULE_SCHEMA[0])
-    return {'ok': configuration_manifest()['ok'] and parameter_manifest()['ok'] and rule_manifest()['ok'] and evaluate_rule(compiled)['allowed'], 'side_effects': ()}
+    parameter = set_parameter({}, 'workbench_limit', 100)
+    return {
+        'ok': configuration_manifest()['ok']
+        and parameter_manifest()['ok']
+        and rule_manifest()['ok']
+        and evaluate_rule(compiled)['allowed']
+        and parameter['ok'],
+        'side_effects': (),
+    }
 
 
-def smoke_test():
+def smoke_test() -> dict:
     return governance_smoke_test()

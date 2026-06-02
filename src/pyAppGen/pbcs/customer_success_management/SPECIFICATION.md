@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The `customer_success_management` PBC is a world-class packaged business capability for Owns customer success accounts, onboarding, adoption, health, playbooks, tasks, escalations, renewals, expansions, executive reviews, and churn-risk intelligence. It is designed as a composable AppGen-X package, not a thin catalog entry. The package owns its schema, migrations, models, services, APIs, event contracts, handlers, UI fragments, AI agent skills, configuration, rules, parameters, release evidence, and runtime smoke checks. It composes with other PBCs only through declared APIs, AppGen-X events, and read-only projections.
+The `customer_success_management` PBC is a world-class packaged business capability for Owns customer success accounts, onboarding, touchpoints, adoption, health, playbooks, tasks, escalations, renewals, expansions, executive reviews, and churn-risk intelligence. It is designed as a composable AppGen-X package, not a thin catalog entry. The package owns its schema, migrations, models, services, APIs, event contracts, handlers, UI fragments, AI agent skills, configuration, rules, parameters, release evidence, and runtime smoke checks. It composes with other PBCs only through declared APIs, AppGen-X events, and read-only projections.
 
 ## Owned Datastore Boundary
 
@@ -11,6 +11,7 @@ The package owns the following operational tables, all under the `customer_succe
 - `customer_success_management_customer_success_account`: owns customer success account lifecycle state, evidence payloads, tenant boundary, status, versioning, and audit timestamps.
 - `customer_success_management_success_plan`: owns success plan lifecycle state, evidence payloads, tenant boundary, status, versioning, and audit timestamps.
 - `customer_success_management_onboarding_milestone`: owns onboarding milestone lifecycle state, evidence payloads, tenant boundary, status, versioning, and audit timestamps.
+- `customer_success_management_customer_touchpoint`: owns customer touchpoint lifecycle state, channel/outcome evidence, tenant boundary, status, versioning, and audit timestamps.
 - `customer_success_management_adoption_signal`: owns adoption signal lifecycle state, evidence payloads, tenant boundary, status, versioning, and audit timestamps.
 - `customer_success_management_health_score`: owns health score lifecycle state, evidence payloads, tenant boundary, status, versioning, and audit timestamps.
 - `customer_success_management_health_score_component`: owns health score component lifecycle state, evidence payloads, tenant boundary, status, versioning, and audit timestamps.
@@ -37,13 +38,14 @@ Supported backing stores are PostgreSQL, MySQL, and MariaDB. Configuration rejec
 
 ## Standard Table-Stakes Capabilities
 
-The package implements the full table-stakes lifecycle for customer accounts: intake and creation, identity and classification, operational state management, policy validation, approvals, exception handling, audit evidence, user workbenches, assistant-guided task execution, configuration, runtime parameters, rule compilation, seed data, RBAC, route dispatch, typed events, idempotent handlers, retry, and dead-letter triage. The domain surface is intentionally broad enough for real enterprise use instead of only demonstrating a happy path.
+The package implements the full table-stakes lifecycle for customer accounts: intake and creation, touchpoint capture, identity and classification, operational state management, policy validation, approvals, exception handling, audit evidence, user workbenches, assistant-guided task execution, configuration, runtime parameters, rule compilation, seed data, RBAC, route dispatch, typed events, idempotent handlers, retry, and dead-letter triage. The domain surface is intentionally broad enough for real enterprise use instead of only demonstrating a happy path.
 
 ## Executable Domain Operations
 
 - `create_success_account`: command/query implementation with validation, owned table writes or read-only projections, AppGen-X event planning, permissions, rule checks, and release evidence.
 - `create_success_plan`: command/query implementation with validation, owned table writes or read-only projections, AppGen-X event planning, permissions, rule checks, and release evidence.
 - `track_onboarding_milestone`: command/query implementation with validation, owned table writes or read-only projections, AppGen-X event planning, permissions, rule checks, and release evidence.
+- `record_touchpoint`: command/query implementation with validation, owned table writes or read-only projections, AppGen-X event planning, permissions, rule checks, and release evidence.
 - `ingest_adoption_signal`: command/query implementation with validation, owned table writes or read-only projections, AppGen-X event planning, permissions, rule checks, and release evidence.
 - `calculate_health_score`: command/query implementation with validation, owned table writes or read-only projections, AppGen-X event planning, permissions, rule checks, and release evidence.
 - `explain_health_component`: command/query implementation with validation, owned table writes or read-only projections, AppGen-X event planning, permissions, rule checks, and release evidence.
@@ -104,6 +106,7 @@ The service layer exposes package-local commands for the domain operations above
 Emitted events:
 
 - `SuccessAccountCreated`
+- `CustomerTouchpointLogged`
 - `HealthScoreChanged`
 - `PlaybookLaunched`
 - `CustomerEscalationOpened`
@@ -124,6 +127,7 @@ Handlers use idempotency keys of the form `customer_success_management:<event_ty
 The package includes professional workbench surfaces:
 
 - customer success workbench.
+- touchpoint timeline.
 - health cockpit.
 - onboarding tracker.
 - playbook board.
@@ -131,7 +135,7 @@ The package includes professional workbench surfaces:
 - executive review builder.
 - churn risk panel.
 
-The UI exposes operational queues, detail panels, rule and parameter editors, assistant panels, exception triage, analytics, and release-evidence status. Actions are permission-bound and grounded in owned state.
+The UI exposes operational queues, detail panels, touchpoint timelines, rule and parameter editors, assistant panels, exception triage, analytics, and release-evidence status. Actions are permission-bound and grounded in owned state.
 
 ## AI Agent and Skills
 
@@ -143,9 +147,9 @@ Release readiness requires the package to prove schema, migrations, models, serv
 
 ## Manifest Traceability Appendix
 
-- tables: customer_success_account, success_plan, onboarding_milestone, adoption_signal, health_score, health_score_component, success_playbook, playbook_task, customer_escalation, renewal_motion, expansion_opportunity, executive_business_review, customer_objective, customer_value_realization, churn_risk_signal, success_exception_case, success_policy_rule, success_runtime_parameter, success_schema_extension, success_control_assertion, success_governed_model
-- operations: create_success_account, create_success_plan, track_onboarding_milestone, ingest_adoption_signal, calculate_health_score, explain_health_component, launch_playbook, complete_playbook_task, open_customer_escalation, start_renewal_motion, identify_expansion_opportunity, prepare_executive_review, record_customer_objective, measure_value_realization, score_churn_risk, resolve_success_exception, compile_success_rule, simulate_renewal_outcome
-- emits: SuccessAccountCreated, HealthScoreChanged, PlaybookLaunched, CustomerEscalationOpened, RenewalMotionStarted, ChurnRiskChanged
+- tables: customer_success_account, success_plan, onboarding_milestone, customer_touchpoint, adoption_signal, health_score, health_score_component, success_playbook, playbook_task, customer_escalation, renewal_motion, expansion_opportunity, executive_business_review, customer_objective, customer_value_realization, churn_risk_signal, success_exception_case, success_policy_rule, success_runtime_parameter, success_schema_extension, success_control_assertion, success_governed_model
+- operations: create_success_account, create_success_plan, track_onboarding_milestone, record_touchpoint, ingest_adoption_signal, calculate_health_score, explain_health_component, launch_playbook, complete_playbook_task, open_customer_escalation, start_renewal_motion, identify_expansion_opportunity, prepare_executive_review, record_customer_objective, measure_value_realization, score_churn_risk, resolve_success_exception, compile_success_rule, simulate_renewal_outcome
+- emits: SuccessAccountCreated, CustomerTouchpointLogged, HealthScoreChanged, PlaybookLaunched, CustomerEscalationOpened, RenewalMotionStarted, ChurnRiskChanged
 - consumes: CustomerUpdated, SubscriptionActivated, TicketClosed, PaymentFailed
 - rules: health_score_policy, playbook_trigger_policy, renewal_risk_policy, escalation_policy, value_realization_policy, expansion_policy
 - parameters: churn_risk_threshold, onboarding_sla_days, health_warning_score, renewal_notice_days, playbook_task_sla_hours, workbench_limit

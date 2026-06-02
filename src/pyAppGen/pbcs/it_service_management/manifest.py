@@ -57,7 +57,7 @@ PBC_MANIFEST = {'advanced_capabilities': ('it_service_management_event_sourced_o
  'datastore_backend': 'postgresql',
  'description': 'Incidents, requests, changes, problems, configuration items, service levels, and '
                 'IT operations controls',
- 'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md'),
+ 'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md', 'README.md', 'implementation-plan.md', 'implementation-status.md'),
  'emits': ('ItServiceManagementCreated',
            'ItServiceManagementUpdated',
            'ItServiceManagementApproved',
@@ -103,10 +103,15 @@ PBC_MANIFEST = {'advanced_capabilities': ('it_service_management_event_sourced_o
             'it_service_management_control_assertion',
             'it_service_management_governed_model'),
  'template': None,
- 'tests': ('tests/test_contract.py',),
+ 'tests': ('tests/test_contract.py', 'tests/test_standalone.py'),
  'ui_fragments': ('ItServiceManagementWorkbench',
                   'ItServiceManagementDetail',
                   'ItServiceManagementAssistantPanel'),
  'version': '1.0.0',
  'workflows': ('it_service_management_create_it_incident_workflow',
-               'it_service_management_record_service_request_workflow')}
+               'it_service_management_record_service_request_workflow',
+               'it_service_management_major_incident_command_workflow',
+               'it_service_management_catalog_fulfillment_workflow',
+               'it_service_management_change_cab_workflow',
+               'it_service_management_problem_known_error_workflow',
+               'it_service_management_cmdb_impact_workflow')}

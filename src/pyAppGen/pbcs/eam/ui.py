@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .eam_control import improve1_eam_control_contract
 from .runtime import EAM_ALLOWED_DATABASE_BACKENDS
 from .runtime import EAM_CONSUMED_EVENT_TYPES
 from .runtime import EAM_EMITTED_EVENT_TYPES
@@ -39,6 +40,7 @@ def eam_ui_contract() -> dict:
         "implementation_directory": "src/pyAppGen/pbcs/eam",
         "owned_tables": EAM_OWNED_TABLES,
         "fragments": EAM_UI_FRAGMENT_KEYS,
+        "eam_control_contract": improve1_eam_control_contract(),
         "routes": (
             "/workbench/pbcs/eam",
             "/workbench/pbcs/eam/equipment",
@@ -130,6 +132,7 @@ def eam_ui_contract() -> dict:
             "event_contract": EAM_EVENT_CONTRACT,
             "required_event_topic": EAM_REQUIRED_EVENT_TOPIC,
             "shared_table_access": False,
+            "improve1_control_panels": tuple(item["ui_surface"] for item in improve1_eam_control_contract()["capabilities"]),
         },
     }
 
@@ -247,6 +250,55 @@ def smoke_test():
         "manifest": {"fragments": contract.get("fragments", ()), "routes": contract.get("routes", ())},
         "contract": contract,
         "governance": governance,
+        "rendered": rendered,
+        "cards": cards,
+        "side_effects": (),
+    }
+
+
+from .app_surface import (
+    eam_controls_contract,
+    eam_forms_contract,
+    eam_wizards_contract,
+    single_pbc_eam_app_contract,
+)
+
+_BASE_EAM_UI_CONTRACT = eam_ui_contract
+_BASE_EAM_RENDER_WORKBENCH = eam_render_workbench
+
+def eam_ui_contract() -> dict:
+    base = dict(_BASE_EAM_UI_CONTRACT())
+    return {
+        **base,
+        "forms_contract": eam_forms_contract(),
+        "wizards_contract": eam_wizards_contract(),
+        "controls_contract": eam_controls_contract(),
+        "single_pbc_app": single_pbc_eam_app_contract(),
+    }
+
+def eam_render_workbench(
+    state: dict,
+    *,
+    tenant: str,
+    principal_permissions: tuple[str, ...],
+) -> dict:
+    base = dict(_BASE_EAM_RENDER_WORKBENCH(state, tenant=tenant, principal_permissions=principal_permissions))
+    return {**base, "single_pbc_app": single_pbc_eam_app_contract(state)}
+
+def smoke_test():
+    contract = eam_ui_contract()
+    permissions = tuple(dict.fromkeys(contract.get("action_permissions", {}).values()))
+    rendered = eam_render_workbench(
+        _appgen_smoke_state(),
+        tenant="smoke",
+        principal_permissions=permissions,
+    )
+    cards = tuple(rendered.get("cards") or contract.get("panels") or contract.get("fragments", ()))
+    return {
+        "format": "appgen.pbc-ui-smoke-test.v1",
+        "ok": contract.get("ok") is True and rendered.get("ok") is True and contract["single_pbc_app"]["ok"] and bool(cards),
+        "manifest": {"fragments": contract.get("fragments", ()), "routes": contract.get("routes", ())},
+        "contract": contract,
         "rendered": rendered,
         "cards": cards,
         "side_effects": (),

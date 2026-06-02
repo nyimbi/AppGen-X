@@ -17,3 +17,34 @@ def publishing_editorial_operations_render_workbench():
 
 def smoke_test():
     return {'ok': publishing_editorial_operations_ui_contract()['ok'] and publishing_editorial_operations_render_workbench()['ok'], 'side_effects': ()}
+
+# Improve1 publishing editorial control UI extension.
+from .publishing_editorial_control import improve1_publishing_editorial_control_contract as _improve1_publishing_editorial_control_contract
+
+_PUBLISHING_EDITORIAL_CONTROL_BASE_UI_CONTRACT = publishing_editorial_operations_ui_contract
+_PUBLISHING_EDITORIAL_CONTROL_BASE_RENDER_WORKBENCH = publishing_editorial_operations_render_workbench
+
+
+def publishing_editorial_operations_ui_contract() -> dict:
+    ui = dict(_PUBLISHING_EDITORIAL_CONTROL_BASE_UI_CONTRACT())
+    control = _improve1_publishing_editorial_control_contract()
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "publishing_editorial_control_contract": control,
+        "publishing_editorial_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "publishing_editorial_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def publishing_editorial_operations_render_workbench(*args, **kwargs) -> dict:
+    workbench = dict(_PUBLISHING_EDITORIAL_CONTROL_BASE_RENDER_WORKBENCH(*args, **kwargs))
+    control = _improve1_publishing_editorial_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "publishing_editorial_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "publishing_editorial_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "publishing_editorial_control_agent_tools": tuple(f"publishing_editorial_operations.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench

@@ -10,6 +10,7 @@ from ..source_contract import (
 from .runtime import *
 from .ui import (
     capital_projects_delivery_render_workbench,
+    capital_projects_delivery_standalone_app_contract,
     capital_projects_delivery_ui_contract,
 )
 
@@ -19,6 +20,8 @@ PBC_KEY = "capital_projects_delivery"
 def implementation_contract() -> dict:
     runtime = capital_projects_delivery_runtime_capabilities()
     contract = source_pbc_package_contract(PBC_KEY, tuple(runtime["capabilities"]))
+    from .standalone import standalone_app_manifest
+
     return {
         **contract,
         "standard_features": runtime["standard_features"],
@@ -27,6 +30,7 @@ def implementation_contract() -> dict:
         "api_contract": capital_projects_delivery_build_api_contract(),
         "schema_contract": capital_projects_delivery_build_schema_contract(),
         "service_contract": capital_projects_delivery_build_service_contract(),
+        "workflow_contract": capital_projects_delivery_build_workflow_contracts(),
         "release_evidence_contract": capital_projects_delivery_build_release_evidence(),
         "permissions_contract": capital_projects_delivery_permissions_contract(),
         "forms_contract": capital_projects_delivery_build_forms_contract(),
@@ -34,15 +38,14 @@ def implementation_contract() -> dict:
         "controls_contract": capital_projects_delivery_build_controls_contract(),
         "agent_help_contract": capital_projects_delivery_build_agent_help_contract(),
         "single_pbc_app_contract": capital_projects_delivery_build_single_pbc_app_contract(),
+        "standalone_app_manifest": standalone_app_manifest(),
         "owned_tables": CAPITAL_PROJECTS_DELIVERY_OWNED_TABLES,
         "runtime_tables": CAPITAL_PROJECTS_DELIVERY_RUNTIME_TABLES,
         "allowed_database_backends": CAPITAL_PROJECTS_DELIVERY_ALLOWED_DATABASE_BACKENDS,
         "required_event_topic": CAPITAL_PROJECTS_DELIVERY_REQUIRED_EVENT_TOPIC,
         "emits": CAPITAL_PROJECTS_DELIVERY_EMITTED_EVENT_TYPES,
         "consumes": CAPITAL_PROJECTS_DELIVERY_CONSUMED_EVENT_TYPES,
-        "boundary_contract": capital_projects_delivery_verify_owned_table_boundary(
-            CAPITAL_PROJECTS_DELIVERY_OWNED_TABLES + ("api_dependency",)
-        ),
+        "boundary_contract": capital_projects_delivery_verify_owned_table_boundary(CAPITAL_PROJECTS_DELIVERY_OWNED_TABLES + ("api_dependency",)),
     }
 
 
@@ -78,4 +81,13 @@ def package_discovery_plan(existing_catalog: dict | None = None) -> dict:
 def smoke_test() -> dict:
     discovery = package_discovery_plan()
     runtime = capital_projects_delivery_runtime_smoke()
-    return {"ok": discovery["ok"] and runtime["ok"], "discovery": discovery, "runtime": runtime, "side_effects": ()}
+    from .standalone import smoke_test as standalone_smoke_test
+
+    standalone = standalone_smoke_test()
+    return {
+        "ok": discovery["ok"] and runtime["ok"] and standalone["ok"],
+        "discovery": discovery,
+        "runtime": runtime,
+        "standalone": standalone,
+        "side_effects": (),
+    }

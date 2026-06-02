@@ -2,11 +2,13 @@
 
 Package directory: `pbcs/sports_venue_event_operations`.
 
-This PBC includes owned schema, migration DDL, models, services, routes, events, handlers, UI workbench surfaces, agent skills, permissions, configuration, seed data, package metadata, side-effect-free registration, and focused package tests.
+This standalone slice includes owned schema contracts, runtime and standalone services, route dispatch, workbench UI surfaces, agent previews, package-local audits, and focused tests.
 
 ## Evidence
 
-- Release Evidence: schema, service, route, event, handler, UI, agent, and governance contracts are materialized.
-- Owned datastore boundary: every owned table starts with `sports_venue_event_operations_` and cross-PBC collaboration uses AppGen-X events or declared APIs.
-- Event contract: AppGen-X outbox/inbox with retry and dead-letter evidence.
-- Package tests: `tests/test_contract.py` validates schema/service/release, event contracts, side-effect-free registration, routes, governance, and idempotent handlers.
+- Standalone app: venue setup, calendar, ingress or egress, staffing, concessions, ticketing, credentialing, crowd, incidents, weather, broadcast, sponsor, turnover, accessibility, lost or found, emergency, and analytics flows execute in package-local smoke tests.
+- UI and workbench: forms, wizards, controls, supervisor workbench, and rendered summary cards are exposed without any stream engine picker.
+- Agent: document intake and CRUD preview planning stay inside owned tables and always require confirmation for mutations.
+- Boundaries: owned datastore references stay inside `sports_venue_event_operations_` tables and only use the AppGen-X outbox, inbox, and dead-letter tables for eventing.
+- Backends: runtime and standalone manifests allow only PostgreSQL, MySQL, and MariaDB.
+- Audits: source, package, spec, agent, implementation, capability, and generation audits run from `audit.py`.

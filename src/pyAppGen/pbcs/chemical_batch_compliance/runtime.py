@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .chemical_control import improve1_chemical_control_contract
 from .slice_app import ALLOWED_DATABASE_BACKENDS as CHEMICAL_BATCH_COMPLIANCE_ALLOWED_DATABASE_BACKENDS
 from .slice_app import BUSINESS_TABLES as CHEMICAL_BATCH_COMPLIANCE_BUSINESS_TABLES
 from .slice_app import COMMAND_METHODS
@@ -169,7 +170,16 @@ def chemical_batch_compliance_build_api_contract() -> dict:
 
 
 def chemical_batch_compliance_build_release_evidence(state: dict | None = None) -> dict:
-    return build_release_evidence(state)
+    evidence = build_release_evidence(state)
+    contract = improve1_chemical_control_contract()
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_chemical_control", "ok": contract["capability_count"] == 50},)
+    return {
+        **evidence,
+        "ok": evidence.get("ok") is True and all(check["ok"] for check in checks),
+        "checks": checks,
+        "improve1_chemical_control": contract,
+        "blocking_gaps": tuple(check for check in checks if not check["ok"]),
+    }
 
 
 def chemical_batch_compliance_build_workbench_view(tenant: str = "default", state: dict | None = None) -> dict:

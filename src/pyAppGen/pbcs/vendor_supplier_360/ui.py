@@ -1,5 +1,6 @@
 """UI fragments for the vendor_supplier_360 PBC."""
 PBC_KEY = 'vendor_supplier_360'
+from .app_surface import single_pbc_vendor_supplier_360_app_contract
 UI_FRAGMENTS = ('VendorSupplier360Workbench', 'VendorSupplier360Detail', 'VendorSupplier360AssistantPanel')
 
 
@@ -22,6 +23,19 @@ _BASE_VENDOR_SUPPLIER_360_UI_CONTRACT = vendor_supplier_360_ui_contract
 _BASE_VENDOR_SUPPLIER_360_RENDER_WORKBENCH = vendor_supplier_360_render_workbench
 
 
+def vendor_supplier_360_forms_contract():
+    from .app_surface import vendor_supplier_360_forms_contract as _forms
+    return _forms()
+
+def vendor_supplier_360_wizards_contract():
+    from .app_surface import vendor_supplier_360_wizards_contract as _wizards
+    return _wizards()
+
+def vendor_supplier_360_controls_contract():
+    from .app_surface import vendor_supplier_360_controls_contract as _controls
+    return _controls()
+
+
 def vendor_supplier_360_ui_contract():
     base = dict(_BASE_VENDOR_SUPPLIER_360_UI_CONTRACT())
     full = vendor_supplier_360_ui_capability_surface_contract()
@@ -35,7 +49,7 @@ def vendor_supplier_360_ui_contract():
         'advanced_panels': full['advanced_panels'],
         'edge_case_queues': full['edge_case_queues'],
         'table_browsers': full['table_browsers'],
-        'navigation_sections': full['navigation_sections'],
+        'navigation_sections': full['navigation_sections'], 'forms': vendor_supplier_360_forms_contract()['forms'], 'wizards': vendor_supplier_360_wizards_contract()['wizards'], 'controls': vendor_supplier_360_controls_contract()['controls'], 'single_pbc_app': single_pbc_vendor_supplier_360_app_contract(),
     }
 
 
@@ -50,5 +64,43 @@ def vendor_supplier_360_render_workbench(state=None):
         'advanced_panels': full['advanced_panels'],
         'edge_case_queues': full['edge_case_queues'],
         'table_browsers': full['table_browsers'],
-        'agent_tools': full['agent_tools'],
+        'agent_tools': full['agent_tools'], 'forms': vendor_supplier_360_forms_contract()['forms'], 'wizards': vendor_supplier_360_wizards_contract()['wizards'], 'controls': vendor_supplier_360_controls_contract()['controls'], 'single_pbc_app': single_pbc_vendor_supplier_360_app_contract(),
     }
+
+
+def standalone_ui_smoke_test():
+    contract = vendor_supplier_360_ui_contract()
+    rendered = vendor_supplier_360_render_workbench()
+    return {'ok': contract['ok'] and rendered['ok'] and bool(contract['forms']) and bool(contract['wizards']) and bool(contract['controls']) and contract['single_pbc_app']['ok'], 'contract': contract, 'rendered': rendered, 'side_effects': ()}
+
+
+# Improve1 vendor supplier 360 control UI extension.
+from .vendor_supplier_360_control import improve1_vendor_supplier_360_control_contract as _improve1_vendor_supplier_360_control_contract
+
+_VENDOR_CONTROL_BASE_UI_CONTRACT = vendor_supplier_360_ui_contract
+_VENDOR_CONTROL_BASE_RENDER_WORKBENCH = vendor_supplier_360_render_workbench
+
+
+def vendor_supplier_360_ui_contract() -> dict:
+    ui = dict(_VENDOR_CONTROL_BASE_UI_CONTRACT())
+    control = _improve1_vendor_supplier_360_control_contract()
+    ui.update({
+        "ok": ui.get("ok") is True and control["ok"],
+        "vendor_supplier_360_control_contract": control,
+        "vendor_supplier_360_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "vendor_supplier_360_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "stream_engine_picker_visible": False,
+    })
+    return ui
+
+
+def vendor_supplier_360_render_workbench(*args, **kwargs) -> dict:
+    workbench = dict(_VENDOR_CONTROL_BASE_RENDER_WORKBENCH(*args, **kwargs))
+    control = _improve1_vendor_supplier_360_control_contract()
+    workbench.update({
+        "ok": workbench.get("ok") is True and control["ok"],
+        "vendor_supplier_360_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]),
+        "vendor_supplier_360_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]),
+        "vendor_supplier_360_control_agent_tools": tuple(f"vendor_supplier_360.skills.{item['slug']}" for item in control["capabilities"]),
+    })
+    return workbench

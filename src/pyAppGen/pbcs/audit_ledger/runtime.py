@@ -654,7 +654,9 @@ def audit_ledger_verify_signature_chain(state: dict, *, tenant: str) -> dict:
 
 def audit_ledger_publish_audit_projection(state: dict, audit_id: str, systems: tuple[str, ...]) -> dict:
     next_state = _copy_state(state)
+    tenant = next_state["audit_events"][audit_id]["tenant"]
     projection = {
+        "tenant": tenant,
         "projection_id": f"projection_{audit_id}",
         "audit_id": audit_id,
         "systems": systems,
@@ -664,7 +666,6 @@ def audit_ledger_publish_audit_projection(state: dict, audit_id: str, systems: t
         "handoffs": tuple(f"{system}_audit_projection" for system in systems),
     }
     next_state["projections"][projection["projection_id"]] = projection
-    tenant = next_state["audit_events"][audit_id]["tenant"]
     next_state = _emit(next_state, "AuditProjectionPublished", tenant, projection["projection_id"], projection)
     return {"ok": True, "state": next_state, "projection": projection, "handoffs": projection["handoffs"]}
 

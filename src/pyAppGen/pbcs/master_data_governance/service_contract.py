@@ -1,36 +1,43 @@
-"""Service contract for the master_data_governance PBC."""
+"""Service contract for the standalone master_data_governance slice."""
+from __future__ import annotations
+
+from .standalone import standalone_service_operation_contracts
+
+PBC_KEY = "master_data_governance"
+
 
 
 def build_service_contract():
-    return {'format': 'appgen.master-data-governance-service-contract.v1', 'ok': True, 'pbc': 'master_data_governance', 'command_methods': ('command_master_record', 'configure_runtime', 'set_parameter', 'register_rule'), 'query_methods': ('query_workbench',), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
+    manifest = standalone_service_operation_contracts()
+    return {
+        "format": "appgen.master-data-governance-service-contract.v1",
+        "ok": manifest["ok"],
+        "pbc": PBC_KEY,
+        "command_methods": manifest["command_operations"],
+        "query_methods": manifest["query_operations"],
+        "shared_table_access": False,
+        "transaction_boundary": "package_local_sqlite_plus_outbox",
+        "event_contract": "AppGen-X",
+        "store_contract": manifest["store_contract"],
+        "side_effects": (),
+    }
+
 
 
 def master_data_governance_build_service_contract():
     return build_service_contract()
+
 
 
 def validate_service_contract():
     contract = build_service_contract()
-    return {'ok': contract['ok'] and bool(contract['command_methods']) and bool(contract['query_methods']) and contract['shared_table_access'] is False, 'contract': contract, 'side_effects': ()}
+    return {
+        "ok": contract["ok"] and bool(contract["command_methods"]) and bool(contract["query_methods"]) and contract["shared_table_access"] is False,
+        "contract": contract,
+        "side_effects": (),
+    }
+
 
 
 def smoke_test():
     return validate_service_contract()
-
-from .domain_depth import DOMAIN_OPERATIONS, domain_depth_contract
-
-_BASE_BUILD_SERVICE_CONTRACT = build_service_contract
-
-def build_service_contract():
-    base = dict(_BASE_BUILD_SERVICE_CONTRACT())
-    domain = domain_depth_contract()
-    return {
-        **base,
-        'ok': base.get('ok') is True and domain['ok'],
-        'command_methods': tuple(dict.fromkeys(tuple(base.get('command_methods', ())) + tuple(DOMAIN_OPERATIONS))),
-        'world_class_domain_depth': domain,
-    }
-
-
-def master_data_governance_build_service_contract():
-    return build_service_contract()

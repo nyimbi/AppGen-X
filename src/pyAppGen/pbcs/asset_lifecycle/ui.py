@@ -277,3 +277,50 @@ def smoke_test():
         "cards": cards,
         "side_effects": (),
     }
+
+
+
+def asset_lifecycle_form_contracts() -> dict:
+    contracts=(
+        {'key':'AssetConfigurationForm','operation':'configure_runtime','table':'asset_lifecycle_asset_configuration','fields':('database_backend','event_topic','retry_limit','default_currency','default_timezone','default_book'),'permission':'asset_lifecycle.configure','keywords':('configure','book','currency')},
+        {'key':'AssetRegisterForm','operation':'register_asset','table':'asset_lifecycle_fixed_asset','fields':('asset_id','tenant','legal_entity','description','category','cost','residual_value','useful_life_months','book','location','custodian','cost_center','components'),'permission':'asset_lifecycle.register','keywords':('asset','capitalization','register')},
+        {'key':'PlaceInServiceForm','operation':'place_asset_in_service','table':'asset_lifecycle_fixed_asset','fields':('asset_id','service_date'),'permission':'asset_lifecycle.service','keywords':('service','placed in service','in service')},
+        {'key':'DepreciationScheduleForm','operation':'build_depreciation_schedule','table':'asset_lifecycle_asset_depreciation_schedule','fields':('asset_id','method'),'permission':'asset_lifecycle.depreciation','keywords':('schedule','depreciation','method')},
+        {'key':'DepreciationRunForm','operation':'run_depreciation','table':'asset_lifecycle_asset_depreciation_run','fields':('run_id','period'),'permission':'asset_lifecycle.depreciation','keywords':('run','post depreciation','period')},
+        {'key':'AssetTransferForm','operation':'transfer_asset','table':'asset_lifecycle_asset_transfer','fields':('asset_id','location','cost_center','approved_by'),'permission':'asset_lifecycle.transfer','keywords':('transfer','location','cost center')},
+        {'key':'ValuationForm','operation':'revalue_asset','table':'asset_lifecycle_asset_valuation_adjustment','fields':('asset_id','fair_value','recoverable_amount','approved_by'),'permission':'asset_lifecycle.valuation','keywords':('revalue','impair','valuation')},
+        {'key':'MaintenanceAdjustmentForm','operation':'record_maintenance_adjustment','table':'asset_lifecycle_asset_maintenance_adjustment','fields':('asset_id','useful_life_delta_months','evidence'),'permission':'asset_lifecycle.maintenance','keywords':('maintenance','life extension','adjustment')},
+    )
+    return {'format':'appgen.asset-lifecycle-standalone-forms.v1','ok':all(i['table'].startswith('asset_lifecycle_') for i in contracts),'pbc':'asset_lifecycle','contracts':contracts,'side_effects':()}
+
+def asset_lifecycle_wizard_contracts() -> dict:
+    contracts=(
+        {'key':'AssetCapitalizationWizard','steps':('parse_capitalization_packet','register_asset','validate_threshold','preview_owned_record'),'forms':('AssetRegisterForm',),'keywords':('document','capitalization','asset','receipt')},
+        {'key':'PlaceInServiceWizard','steps':('validate_service_date','place_in_service','emit_appgen_event'),'forms':('PlaceInServiceForm',),'keywords':('service','in service')},
+        {'key':'DepreciationScheduleWizard','steps':('build_schedule','review_revision','store_schedule_version'),'forms':('DepreciationScheduleForm',),'keywords':('schedule','revision','depreciation')},
+        {'key':'DepreciationRunWizard','steps':('select_due_lines','post_run','emit_journal_event','record_idempotency'),'forms':('DepreciationRunForm',),'keywords':('run','post','journal','period')},
+        {'key':'AssetTransferWizard','steps':('validate_policy','update_location_cost_center','emit_transfer_event'),'forms':('AssetTransferForm',),'keywords':('transfer','location')},
+        {'key':'AssetAuditProofWizard','steps':('run_controls','select_disclosure','generate_zero_knowledge_proof'),'forms':('AssetRegisterForm',),'keywords':('audit','proof','control')},
+    )
+    return {'format':'appgen.asset-lifecycle-standalone-wizards.v1','ok':all(i['steps'] for i in contracts),'pbc':'asset_lifecycle','contracts':contracts,'side_effects':()}
+
+def asset_lifecycle_control_catalog() -> dict:
+    contracts=(
+        {'key':'asset_backend_event_contract','operation':'run_control_tests','table':'asset_lifecycle_asset_control_assertion','permission':'asset_lifecycle.audit'},
+        {'key':'depreciation_idempotency_control','operation':'run_control_tests','table':'asset_lifecycle_asset_depreciation_run','permission':'asset_lifecycle.audit'},
+        {'key':'asset_audit_proof_control','operation':'generate_asset_audit_proof','table':'asset_lifecycle_asset_audit_proof','permission':'asset_lifecycle.audit'},
+    )
+    return {'format':'appgen.asset-lifecycle-standalone-controls.v1','ok':all(i['table'].startswith('asset_lifecycle_') for i in contracts),'pbc':'asset_lifecycle','contracts':contracts,'side_effects':()}
+
+def asset_lifecycle_standalone_workbench_blueprint() -> dict:
+    forms=asset_lifecycle_form_contracts(); wizards=asset_lifecycle_wizard_contracts(); controls=asset_lifecycle_control_catalog()
+    return {'format':'appgen.asset-lifecycle-standalone-workbench.v1','ok':forms['ok'] and wizards['ok'] and controls['ok'],'pbc':'asset_lifecycle','forms':forms['contracts'],'wizards':wizards['contracts'],'controls':controls['contracts'],'panels':asset_lifecycle_ui_contract()['panels'],'side_effects':()}
+
+def asset_lifecycle_render_standalone_workbench(workbench: dict) -> dict:
+    bp=asset_lifecycle_standalone_workbench_blueprint(); cards=(
+        {'key':'assets','value':workbench.get('asset_count',0),'fragment':'AssetRegisterConsole'},
+        {'key':'in_service','value':workbench.get('in_service_count',0),'fragment':'PlacedInServiceBoard'},
+        {'key':'retired','value':workbench.get('retired_count',0),'fragment':'AssetRetirementConsole'},
+        {'key':'net_book_value','value':workbench.get('net_book_value',0),'fragment':'AssetLifecycleWorkbench'},
+        {'key':'pending_schedule_revisions','value':workbench.get('pending_schedule_revisions',0),'fragment':'DepreciationRevisionConsole'},)
+    return {'format':'appgen.asset-lifecycle-standalone-render.v1','ok':bp['ok'] and bool(cards),'pbc':'asset_lifecycle','tenant':workbench.get('tenant'),'cards':cards,'forms':tuple(i['key'] for i in bp['forms']),'wizards':tuple(i['key'] for i in bp['wizards']),'controls':tuple(i['key'] for i in bp['controls']),'side_effects':()}

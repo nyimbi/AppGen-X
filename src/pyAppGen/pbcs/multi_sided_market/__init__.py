@@ -3,7 +3,8 @@
 from .manifest import PBC_MANIFEST
 from ..source_contract import source_pbc_package_contract, source_package_metadata, validate_source_package_metadata, source_registration_plan
 from .runtime import MULTI_SIDED_MARKET_REQUIRED_EVENT_TOPIC, MULTI_SIDED_MARKET_ALLOWED_DATABASE_BACKENDS, MULTI_SIDED_MARKET_CONSUMED_EVENT_TYPES, MULTI_SIDED_MARKET_EMITTED_EVENT_TYPES, MULTI_SIDED_MARKET_OWNED_TABLES, MULTI_SIDED_MARKET_RUNTIME_TABLES, MULTI_SIDED_MARKET_RUNTIME_CAPABILITY_KEYS, MULTI_SIDED_MARKET_STANDARD_FEATURE_KEYS, multi_sided_market_empty_state, multi_sided_market_configure_runtime, multi_sided_market_set_parameter, multi_sided_market_register_rule, multi_sided_market_register_schema_extension, multi_sided_market_receive_event, multi_sided_market_verify_participant, multi_sided_market_publish_listing, multi_sided_market_register_listing_asset, multi_sided_market_create_service_offer, multi_sided_market_publish_availability_window, multi_sided_market_place_trade_order, multi_sided_market_match_barter_offer, multi_sided_market_prepare_exchange_proposal, multi_sided_market_execute_sale, multi_sided_market_reserve_booking, multi_sided_market_start_rental, multi_sided_market_issue_loan, multi_sided_market_open_escrow, multi_sided_market_compile_escrow_release_policy, multi_sided_market_release_escrow, multi_sided_market_prepare_settlement, multi_sided_market_record_reputation_signal, multi_sided_market_open_dispute, multi_sided_market_resolve_dispute, multi_sided_market_publish_market_clearing_projection, multi_sided_market_score_reputation, multi_sided_market_optimize_exchange_match, multi_sided_market_simulate_counterfactual_terms, multi_sided_market_parse_market_instruction, multi_sided_market_detect_collusion_anomaly, multi_sided_market_generate_reputation_proof, multi_sided_market_select_carbon_fulfillment, multi_sided_market_build_schema_contract, multi_sided_market_build_service_contract, multi_sided_market_build_api_contract, multi_sided_market_build_release_evidence, multi_sided_market_permissions_contract, multi_sided_market_build_workbench_view, multi_sided_market_verify_owned_table_boundary, multi_sided_market_runtime_capabilities, multi_sided_market_runtime_smoke
-from .ui import multi_sided_market_ui_contract, multi_sided_market_render_workbench
+from .ui import multi_sided_market_ui_contract, multi_sided_market_render_workbench, multi_sided_market_forms_contract, multi_sided_market_wizards_contract, multi_sided_market_controls_contract
+from .app_surface import app_surface_smoke_test, document_instruction_multi_sided_market_plan, single_pbc_multi_sided_market_app_contract
 
 PBC_KEY = 'multi_sided_market'
 
@@ -16,6 +17,8 @@ def implementation_contract() -> dict:
         'standard_features': runtime['standard_features'],
         'advanced_runtime': runtime,
         'ui_contract': multi_sided_market_ui_contract(),
+        'single_pbc_app': single_pbc_multi_sided_market_app_contract(),
+        'app_surface_smoke': app_surface_smoke_test(),
         'api_contract': multi_sided_market_build_api_contract(),
         'schema_contract': multi_sided_market_build_schema_contract(),
         'service_contract': multi_sided_market_build_service_contract(),

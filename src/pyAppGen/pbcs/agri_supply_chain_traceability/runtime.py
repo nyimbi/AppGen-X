@@ -76,6 +76,7 @@ AGRI_SUPPLY_CHAIN_TRACEABILITY_BUSINESS_TABLES = ('agri_supply_chain_traceabilit
  'agri_supply_chain_traceability_agri_supply_chain_traceability_governed_model')
 AGRI_SUPPLY_CHAIN_TRACEABILITY_RECORD_TABLES = {
     'farm_lot': 'agri_supply_chain_traceability_farm_lot',
+    'input_batch': 'agri_supply_chain_traceability_input_batch',
     'certification': 'agri_supply_chain_traceability_certification',
     'storage_event': 'agri_supply_chain_traceability_storage_event',
     'transport_leg': 'agri_supply_chain_traceability_transport_leg',
@@ -158,6 +159,10 @@ def agri_supply_chain_traceability_command_farm_lot(state, payload):
     normalized = {'status': 'active', **dict(payload)}
     return _upsert_business_record(state, 'farm_lot', normalized, AGRI_SUPPLY_CHAIN_TRACEABILITY_EMITTED_EVENT_TYPES[0])
 
+def agri_supply_chain_traceability_record_input_batch(state, payload):
+    normalized = {'status': 'recorded', **dict(payload)}
+    return _upsert_business_record(state, 'input_batch', normalized, AGRI_SUPPLY_CHAIN_TRACEABILITY_EMITTED_EVENT_TYPES[1])
+
 def agri_supply_chain_traceability_record_certification(state, payload):
     normalized = {'status': 'active', **dict(payload)}
     return _upsert_business_record(state, 'certification', normalized, AGRI_SUPPLY_CHAIN_TRACEABILITY_EMITTED_EVENT_TYPES[1])
@@ -230,19 +235,34 @@ def agri_supply_chain_traceability_build_schema_contract():
     return {'format': 'appgen.agri-supply-chain-traceability-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/agri_supply_chain_traceability/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': AGRI_SUPPLY_CHAIN_TRACEABILITY_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': AGRI_SUPPLY_CHAIN_TRACEABILITY_ALLOWED_DATABASE_BACKENDS, 'database_backends': AGRI_SUPPLY_CHAIN_TRACEABILITY_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': AGRI_SUPPLY_CHAIN_TRACEABILITY_OWNED_TABLES}
 
 def agri_supply_chain_traceability_build_service_contract():
-    return {'format': 'appgen.agri-supply-chain-traceability-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_farm_lot','record_certification','record_storage_event','record_transport_leg','record_recall_link','record_provenance_proof','assess_release_readiness','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
+    return {'format': 'appgen.agri-supply-chain-traceability-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_farm_lot','record_input_batch','record_certification','record_storage_event','record_transport_leg','record_recall_link','record_provenance_proof','assess_release_readiness','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view','query_service_contract','query_release_evidence'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
 
 def agri_supply_chain_traceability_build_api_contract():
-    return {'format': 'appgen.agri-supply-chain-traceability-api-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'routes': ('POST /farm-lots',
+    return {'format': 'appgen.agri-supply-chain-traceability-api-contract.v2', 'ok': True, 'pbc': PBC_KEY, 'routes': ('POST /api/pbc/agri_supply_chain_traceability/runtime/configuration',
+ 'POST /api/pbc/agri_supply_chain_traceability/runtime/parameters',
+ 'POST /api/pbc/agri_supply_chain_traceability/runtime/rules',
+ 'POST /api/pbc/agri_supply_chain_traceability/events/inbox',
+ 'POST /api/pbc/agri_supply_chain_traceability/farm-lots',
+ 'POST /api/pbc/agri_supply_chain_traceability/input-batches',
+ 'POST /api/pbc/agri_supply_chain_traceability/certifications',
+ 'POST /api/pbc/agri_supply_chain_traceability/storage-events',
+ 'POST /api/pbc/agri_supply_chain_traceability/transport-legs',
+ 'POST /api/pbc/agri_supply_chain_traceability/recall-links',
+ 'POST /api/pbc/agri_supply_chain_traceability/provenance-proofs',
+ 'POST /api/pbc/agri_supply_chain_traceability/release-gates',
+ 'GET /api/pbc/agri_supply_chain_traceability/workbench',
+ 'GET /api/pbc/agri_supply_chain_traceability/service-contract',
+ 'GET /api/pbc/agri_supply_chain_traceability/release-evidence',
+ 'POST /farm-lots',
  'POST /input-batchs',
  'POST /certifications',
  'POST /storage-events',
  'POST /transport-legs',
- 'GET /agri-supply-chain-traceability-workbench'), 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'owned_tables': AGRI_SUPPLY_CHAIN_TRACEABILITY_OWNED_TABLES}
+ 'GET /agri-supply-chain-traceability-workbench'), 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'owned_tables': AGRI_SUPPLY_CHAIN_TRACEABILITY_OWNED_TABLES, 'shared_table_access': False}
 
 def agri_supply_chain_traceability_build_release_evidence():
     checks = ({'id': 'schema_models_migrations', 'ok': True}, {'id': 'service_api_events', 'ok': True}, {'id': 'agent_ui_governance', 'ok': True}, {'id': 'retry_dead_letter', 'ok': True}, {'id': 'release_gate_execution', 'ok': True})
-    return {'format': 'appgen.agri-supply-chain-traceability-release-evidence.v1', 'ok': True, 'pbc': PBC_KEY, 'checks': checks, 'generated_artifacts': {'migrations': agri_supply_chain_traceability_build_schema_contract()['migrations'], 'models': agri_supply_chain_traceability_build_schema_contract()['models'], 'events': {'contract': 'AppGen-X', 'emits': AGRI_SUPPLY_CHAIN_TRACEABILITY_EMITTED_EVENT_TYPES, 'consumes': AGRI_SUPPLY_CHAIN_TRACEABILITY_CONSUMED_EVENT_TYPES}, 'handlers': ('receive_event',), 'ui': AGRI_SUPPLY_CHAIN_TRACEABILITY_UI_FRAGMENT_KEYS, 'release_gate': {'operation': AGRI_SUPPLY_CHAIN_TRACEABILITY_RELEASE_GATE_ACTION, 'required_evidence': ('farm_lot','provenance_proof','certification','storage_event','transport_leg'), 'decision_states': ('approved','blocked')}}, 'blocking_gaps': ()}
+    return {'format': 'appgen.agri-supply-chain-traceability-release-evidence.v2', 'ok': True, 'pbc': PBC_KEY, 'checks': checks, 'generated_artifacts': {'migrations': agri_supply_chain_traceability_build_schema_contract()['migrations'], 'models': agri_supply_chain_traceability_build_schema_contract()['models'], 'api_routes': agri_supply_chain_traceability_build_api_contract()['routes'], 'events': {'contract': 'AppGen-X', 'emits': AGRI_SUPPLY_CHAIN_TRACEABILITY_EMITTED_EVENT_TYPES, 'consumes': AGRI_SUPPLY_CHAIN_TRACEABILITY_CONSUMED_EVENT_TYPES}, 'handlers': ('receive_event',), 'ui': AGRI_SUPPLY_CHAIN_TRACEABILITY_UI_FRAGMENT_KEYS, 'release_gate': {'operation': AGRI_SUPPLY_CHAIN_TRACEABILITY_RELEASE_GATE_ACTION, 'required_evidence': ('farm_lot','provenance_proof','certification','storage_event','transport_leg','recall_link'), 'decision_states': ('approved','blocked')}, 'standalone_app': {'app_id': 'agri_supply_chain_traceability_one_pbc_app', 'workbench_route': '/workbench/pbcs/agri_supply_chain_traceability'}}, 'blocking_gaps': ()}
 
 def agri_supply_chain_traceability_permissions_contract():
     return {'ok': True, 'pbc': PBC_KEY, 'permissions': ('agri_supply_chain_traceability.read',
@@ -274,6 +294,7 @@ def agri_supply_chain_traceability_runtime_capabilities():
         'permissions_contract',
         'verify_owned_table_boundary',
         'command_farm_lot',
+        'record_input_batch',
         'record_certification',
         'record_storage_event',
         'record_transport_leg',
@@ -315,7 +336,8 @@ def agri_supply_chain_traceability_runtime_smoke():
     duplicate = agri_supply_chain_traceability_receive_event(received['state'], event)
     dead = agri_supply_chain_traceability_receive_event(duplicate['state'], {'event_type': 'UnexpectedEvent', 'idempotency_key': 'bad-smoke'})
     command = agri_supply_chain_traceability_command_farm_lot(dead['state'], {'tenant': 'tenant-smoke', 'code': 'SMOKE'})
-    certification = agri_supply_chain_traceability_record_certification(command['state'], {'tenant': 'tenant-smoke', 'id': 'CERT-SMOKE', 'farm_lot_id': 'SMOKE', 'covered_farm_lot_ids': ('SMOKE',), 'covered_commodities': ('maize',), 'covered_site_ids': ('SITE-1',), 'valid_from': '2026-01-01', 'valid_to': '2026-12-31'})
+    input_batch = agri_supply_chain_traceability_record_input_batch(command['state'], {'tenant': 'tenant-smoke', 'id': 'INPUT-SMOKE', 'farm_lot_id': 'SMOKE', 'supplier': 'SoilWorks', 'applied_at': '2026-04-02'})
+    certification = agri_supply_chain_traceability_record_certification(input_batch['state'], {'tenant': 'tenant-smoke', 'id': 'CERT-SMOKE', 'farm_lot_id': 'SMOKE', 'covered_farm_lot_ids': ('SMOKE',), 'covered_commodities': ('maize',), 'covered_site_ids': ('SITE-1',), 'valid_from': '2026-01-01', 'valid_to': '2026-12-31'})
     storage = agri_supply_chain_traceability_record_storage_event(certification['state'], {'tenant': 'tenant-smoke', 'id': 'STORE-SMOKE', 'subject_ids': ('SHIP-SMOKE',), 'farm_lot_id': 'SMOKE', 'status': 'released'})
     transport = agri_supply_chain_traceability_record_transport_leg(storage['state'], {'tenant': 'tenant-smoke', 'id': 'LEG-SMOKE', 'subject_ids': ('SHIP-SMOKE',), 'farm_lot_id': 'SMOKE', 'seal_state': 'intact', 'receiving_confirmed': True, 'status': 'in_transit'})
     provenance = agri_supply_chain_traceability_record_provenance_proof(transport['state'], {'tenant': 'tenant-smoke', 'id': 'PROOF-SMOKE', 'subject_ids': ('SHIP-SMOKE',), 'source_farm_lot_ids': ('SMOKE',), 'status': 'verified'})
@@ -334,6 +356,7 @@ def agri_supply_chain_traceability_runtime_smoke():
         {'id': 'idempotent_duplicate', 'ok': duplicate.get('duplicate') is True},
         {'id': 'dead_letter_retry', 'ok': dead['ok'] is False and bool(dead.get('dead_letter_table'))},
         {'id': 'command_farm_lot', 'ok': command['ok']},
+        {'id': 'record_input_batch', 'ok': input_batch['ok']},
         {'id': 'record_certification', 'ok': certification['ok']},
         {'id': 'record_storage_event', 'ok': storage['ok']},
         {'id': 'record_transport_leg', 'ok': transport['ok']},

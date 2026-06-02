@@ -24,3 +24,10 @@
 
 - Execution is deterministic and in-memory; no external network calls or shared-table reads are introduced.
 - Collision analysis currently focuses on exact and prefix-shadowing overlaps within the same tenant/host/method/protocol tuple.
+
+## Standalone Workbench Completion Pass
+
+- Added package-local forms for gateway service onboarding, route publication, rate limits, workload identity, synthetic health probes, and configuration changes.
+- Added operator wizards for service onboarding, incident triage, and configuration blast-radius review.
+- Added controls for publication safety, route collision detection, quota/policy governance, identity rotation, and release evidence gating.
+- Added focused tests proving forms, wizards, controls, UI exposure, owned-boundary mutation previews, and repository-backed persistence.

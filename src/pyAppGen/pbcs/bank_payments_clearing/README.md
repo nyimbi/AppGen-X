@@ -1,39 +1,42 @@
 # Bank Payments Clearing PBC
 
-The Bank Payments Clearing PBC owns the operational lifecycle of payment instructions after they enter the clearing domain. It validates instructions, applies participant-bank and rail rules, releases payments through maker-checker control, assembles clearing batches, generates settlement files, processes acknowledgements and returns, and reconciles bank statement evidence.
+`bank_payments_clearing` is now a standalone AppGen-X packaged business capability for ACH, wire, instant, and settlement-clearing operations. The package owns its executable schema/model contracts, in-memory service layer, route contracts, AppGen-X event envelope/handler surface, UI/workbench metadata, assistant planning helpers, release evidence, and focused tests without mutating shared generator code.
 
-This PBC does not own deposit accounts, fraud master data, sanctions lists, FX rates, billing, or general ledger postings. Those concerns arrive as AppGen-X events, API projections, or immutable evidence references. The PBC stores its own decisions, exceptions, runtime parameters, rules, outbox/inbox evidence, and operator workbench state.
+## What This Package Provides
 
-## Executable Surfaces
+- A package-local execution spine for participant-bank registration, payment validation, duplicate prevention, maker-checker release, liquidity controls, clearing batches, settlement files, acknowledgements, returns, reconciliation, and operator workbench evidence.
+- Runtime-aligned schema and model contracts that point to real package artifacts instead of placeholder migration lists.
+- An executable service and route surface for a one-PBC app, including standalone bootstrap and demo workflow smoke paths.
+- Forms, wizards, controls, and workflow metadata for payment intake, release, batch assembly, return/reconciliation triage, and assistant-guided document instruction review.
+- Governed assistant planning for document/instruction intake and CRUD previews with route, permission, idempotency, and AppGen-X event evidence.
+- Release evidence that reports package artifacts plus repo-style gates: source artifact contract, implementation release audit, and generation smoke audit.
 
-- `payment_operations.py` implements the domain execution slice.
-- `runtime.py` exports package-level aliases and includes the payment operations evidence in runtime smoke checks.
-- `services.py` exposes the payment operations in `service_operation_manifest()`.
-- `ui.py` adds payment-release, clearing-batch, settlement-file, return, and reconciliation workbench actions.
-- `agent.py` contributes assistant skills for payment validation, release decisions, batch assembly, acknowledgement explanation, and exception triage.
-- `release_evidence.py` validates the executable payment operations alongside the existing generated release checks.
+## Key Entrypoints
 
-## Core Workflows
+- Runtime: `runtime.py`
+- Schema and models: `schema_contract.py`, `models.py`
+- Services and routes: `services.py`, `service_contract.py`, `routes.py`
+- UI/workbench: `ui.py`
+- Standalone app surface: `standalone.py`
+- Assistant planning: `agent.py`
+- Release audit: `release_evidence.py`
 
-- Register participant banks with supported rails and routing identifiers.
-- Validate payment instructions against rail limits, beneficiary/originator data, participant-bank status, screening freshness, and duplicate signatures.
-- Release instructions only when maker-checker and liquidity controls pass.
-- Assemble clearing batches idempotently and lock finalized batches.
-- Generate settlement files with deterministic control totals, checksums, and signature evidence.
-- Process accepted, rejected, duplicate, and partial acknowledgements.
-- Process returns with reason-specific repair eligibility and financial impact.
-- Reconcile statement lines, fees, variances, and unmatched records into operator-visible breaks.
+## Standalone App Surface
 
-## Single-PBC App Surface
+The one-PBC surface exposed by this package includes:
 
-A composed application containing only this PBC has enough surface to operate the payment-clearing domain:
+- Owned tables, migration, schema contract, and model contract metadata
+- Payment, participant-bank, acknowledgement, return, reconciliation, and document-instruction forms
+- Release, batching, return/reconciliation, and assistant-review wizards
+- Controls for rail validation, participant capability, duplicate prevention, maker-checker release, liquidity, settlement-file integrity, acknowledgement idempotency, reconciliation breaks, and release evidence review
+- Workbench and release routes: `/bank-payments-clearing-workbench` and `/bank-payments-clearing-release-evidence`
 
-- Database backing through owned tables, the package migration, generated models, and schema contracts.
-- Forms for payment instructions, participant banks, settlement acknowledgements, returns, and bank reconciliation.
-- Wizards for payment release, clearing batch assembly, and return/reconciliation triage.
-- Controls for rail validation, participant-bank capability, duplicate prevention, maker-checker release, liquidity buffers, settlement-file integrity, acknowledgement idempotency, return deadlines, and reconciliation break creation.
-- Workbench views and assistant skills that expose the same executable operations.
+## Validation
 
-## Governance Boundaries
+Focused package-local validation lives in:
 
-The implementation uses AppGen-X event evidence only and keeps every table reference within `bank_payments_clearing_*`. Stream-engine pickers are not visible to users. Reconciliation and settlement outcomes are emitted as domain evidence; external account ledgers and GL systems consume those facts through declared contracts.
+- `tests/test_contract.py`
+- `tests/test_payment_operations.py`
+- `tests/test_standalone.py`
+- `implementation-status.md`
+- `RELEASE_EVIDENCE.md`

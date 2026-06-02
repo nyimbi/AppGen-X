@@ -41,3 +41,49 @@ def build_release_evidence():
 
 def revenue_recognition_build_release_evidence():
     return build_release_evidence()
+
+
+from .app_surface import app_surface_smoke_test, single_pbc_revenue_recognition_app_contract
+
+_BASE_RELEASE_EVIDENCE_WITH_DOMAIN = build_release_evidence
+
+def build_release_evidence():
+    base = dict(_BASE_RELEASE_EVIDENCE_WITH_DOMAIN())
+    app_surface = app_surface_smoke_test()
+    standalone = single_pbc_revenue_recognition_app_contract()
+    checks = tuple(base.get('checks', ())) + (
+        {'id': 'standalone_app_surface', 'ok': app_surface['ok']},
+        {'id': 'standalone_forms_wizards_controls', 'ok': standalone['forms']['ok'] and standalone['wizards']['ok'] and standalone['controls']['ok']},
+    )
+    return {**base, 'ok': base.get('ok') is True and all(check['ok'] for check in checks), 'checks': checks, 'standalone_app': standalone, 'standalone_app_smoke': app_surface, 'blocking_gaps': tuple(check for check in checks if not check['ok'])}
+
+def revenue_recognition_build_release_evidence():
+    return build_release_evidence()
+
+# Improve1 revenue recognition control release extension.
+from .revenue_recognition_control import improve1_revenue_recognition_control_contract as _improve1_revenue_recognition_control_contract
+
+_REVENUE_CONTROL_BASE_BUILD_RELEASE_EVIDENCE = build_release_evidence
+_REVENUE_CONTROL_BASE_VALIDATE_RELEASE_EVIDENCE = validate_release_evidence
+
+
+def build_release_evidence() -> dict:
+    evidence = dict(_REVENUE_CONTROL_BASE_BUILD_RELEASE_EVIDENCE())
+    control = _improve1_revenue_recognition_control_contract()
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_revenue_recognition_control", "ok": control["ok"]},)
+    evidence.update({
+        "ok": bool(evidence.get("ok")) and control["ok"],
+        "checks": checks,
+        "revenue_recognition_control": control,
+        "blocking_gaps": tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ())),
+    })
+    return evidence
+
+
+def validate_release_evidence() -> dict:
+    validation = dict(_REVENUE_CONTROL_BASE_VALIDATE_RELEASE_EVIDENCE())
+    control = _improve1_revenue_recognition_control_contract()
+    validation["ok"] = validation.get("ok") is True and control["ok"]
+    validation["revenue_recognition_control"] = control
+    validation["blocking_gaps"] = tuple(validation.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ()))
+    return validation

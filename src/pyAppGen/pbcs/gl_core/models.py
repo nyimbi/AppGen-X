@@ -927,6 +927,19 @@ MODELS = ({'class_name': 'GlCoreLedgerEventLog',
   'relationships': ()})
 
 
+def database_model_contract():
+    """Return package-local model ownership and migration evidence."""
+    return {
+        'ok': bool(MODELS),
+        'pbc': PBC_KEY,
+        'schema': OWNED_SCHEMA['schema'],
+        'table_prefix': OWNED_SCHEMA['table_prefix'],
+        'models': tuple(MODELS),
+        'migrations': tuple(f"migrations/001_initial.sql#{model['table']}" for model in MODELS),
+        'side_effects': (),
+    }
+
+
 def model_manifest():
     """Return executable owned model/table alignment evidence."""
     schema_tables = tuple(table['owned_table'] for table in OWNED_SCHEMA.get('tables', ()))

@@ -2,7 +2,8 @@
 from .manifest import PBC_MANIFEST
 from ..source_contract import source_pbc_package_contract, source_package_metadata, validate_source_package_metadata, source_registration_plan
 from .runtime import *
-from .ui import planning_budgeting_forecasting_ui_contract, planning_budgeting_forecasting_render_workbench
+from .ui import planning_budgeting_forecasting_ui_contract, planning_budgeting_forecasting_render_workbench, planning_budgeting_forecasting_forms_contract, planning_budgeting_forecasting_wizards_contract, planning_budgeting_forecasting_controls_contract
+from .app_surface import app_surface_smoke_test, document_instruction_planning_budgeting_forecasting_plan, single_pbc_planning_budgeting_forecasting_app_contract
 
 PBC_KEY = 'planning_budgeting_forecasting'
 
@@ -10,7 +11,7 @@ PBC_KEY = 'planning_budgeting_forecasting'
 def implementation_contract() -> dict:
     runtime = planning_budgeting_forecasting_runtime_capabilities()
     contract = source_pbc_package_contract(PBC_KEY, tuple(runtime['capabilities']))
-    return {**contract, 'standard_features': runtime['standard_features'], 'advanced_runtime': runtime, 'ui_contract': planning_budgeting_forecasting_ui_contract(), 'api_contract': planning_budgeting_forecasting_build_api_contract(), 'schema_contract': planning_budgeting_forecasting_build_schema_contract(), 'service_contract': planning_budgeting_forecasting_build_service_contract(), 'release_evidence_contract': planning_budgeting_forecasting_build_release_evidence(), 'permissions_contract': planning_budgeting_forecasting_permissions_contract(), 'owned_tables': PLANNING_BUDGETING_FORECASTING_OWNED_TABLES, 'runtime_tables': PLANNING_BUDGETING_FORECASTING_RUNTIME_TABLES, 'allowed_database_backends': PLANNING_BUDGETING_FORECASTING_ALLOWED_DATABASE_BACKENDS, 'required_event_topic': PLANNING_BUDGETING_FORECASTING_REQUIRED_EVENT_TOPIC, 'emits': PLANNING_BUDGETING_FORECASTING_EMITTED_EVENT_TYPES, 'consumes': PLANNING_BUDGETING_FORECASTING_CONSUMED_EVENT_TYPES, 'boundary_contract': planning_budgeting_forecasting_verify_owned_table_boundary(PLANNING_BUDGETING_FORECASTING_OWNED_TABLES + ('api_dependency',))}
+    return {**contract, 'standard_features': runtime['standard_features'], 'advanced_runtime': runtime, 'ui_contract': planning_budgeting_forecasting_ui_contract(), 'single_pbc_app': single_pbc_planning_budgeting_forecasting_app_contract(), 'app_surface_smoke': app_surface_smoke_test(), 'api_contract': planning_budgeting_forecasting_build_api_contract(), 'schema_contract': planning_budgeting_forecasting_build_schema_contract(), 'service_contract': planning_budgeting_forecasting_build_service_contract(), 'release_evidence_contract': planning_budgeting_forecasting_build_release_evidence(), 'permissions_contract': planning_budgeting_forecasting_permissions_contract(), 'owned_tables': PLANNING_BUDGETING_FORECASTING_OWNED_TABLES, 'runtime_tables': PLANNING_BUDGETING_FORECASTING_RUNTIME_TABLES, 'allowed_database_backends': PLANNING_BUDGETING_FORECASTING_ALLOWED_DATABASE_BACKENDS, 'required_event_topic': PLANNING_BUDGETING_FORECASTING_REQUIRED_EVENT_TOPIC, 'emits': PLANNING_BUDGETING_FORECASTING_EMITTED_EVENT_TYPES, 'consumes': PLANNING_BUDGETING_FORECASTING_CONSUMED_EVENT_TYPES, 'boundary_contract': planning_budgeting_forecasting_verify_owned_table_boundary(PLANNING_BUDGETING_FORECASTING_OWNED_TABLES + ('api_dependency',))}
 
 
 def register_pbc() -> dict:

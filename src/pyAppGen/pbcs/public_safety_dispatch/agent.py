@@ -1,39 +1,71 @@
-PBC_KEY = 'public_safety_dispatch'
-OWNED_TABLES = ('public_safety_dispatch_emergency_call',
- 'public_safety_dispatch_response_unit',
- 'public_safety_dispatch_incident',
- 'public_safety_dispatch_dispatch_assignment',
- 'public_safety_dispatch_mutual_aid',
- 'public_safety_dispatch_response_milestone',
- 'public_safety_dispatch_case_disposition',
- 'public_safety_dispatch_public_safety_dispatch_policy_rule',
- 'public_safety_dispatch_public_safety_dispatch_runtime_parameter',
- 'public_safety_dispatch_public_safety_dispatch_schema_extension',
- 'public_safety_dispatch_public_safety_dispatch_control_assertion',
- 'public_safety_dispatch_public_safety_dispatch_governed_model',
- 'public_safety_dispatch_appgen_outbox_event',
- 'public_safety_dispatch_appgen_inbox_event',
- 'public_safety_dispatch_appgen_dead_letter_event')
+from __future__ import annotations
 
-def agent_skill_manifest():
-    skills = tuple({'name': name, 'scope': PBC_KEY, 'description': f'{name} for {PBC_KEY}', 'requires_confirmation_for_mutation': True, 'uses_appgen_event_contract': True, 'stream_engine_picker_visible': False} for name in (f'{PBC_KEY}_guide_user', f'{PBC_KEY}_read_records', f'{PBC_KEY}_create_record', f'{PBC_KEY}_update_record'))
-    return {'ok': True, 'pbc': PBC_KEY, 'skills': skills, 'side_effects': ()}
+from .standalone import PBC_KEY, build_agent_contract, build_standalone_app
 
-def chatbot_interface_contract():
-    return {'ok': True, 'pbc': PBC_KEY, 'entrypoint': f'/assistant/pbc/{PBC_KEY}', 'single_agent_contribution': f'{PBC_KEY}_skills', 'capabilities': ('task_guidance','document_instruction_intake','governed_datastore_crud','mutation_preview'), 'side_effects': ()}
+OWNED_TABLES = tuple(build_standalone_app().verify_owned_table_boundary(()).get("owned_tables", ()))
 
-def document_instruction_plan(document, instruction):
-    return {'ok': True, 'pbc': PBC_KEY, 'document_digest': str(abs(hash(document))), 'instruction': instruction, 'candidate_tables': OWNED_TABLES[:3], 'requires_human_confirmation': True, 'crud_preview': {'operation': 'create', 'event_contract': 'AppGen-X'}, 'side_effects': ()}
 
-def datastore_crud_plan(action, table=None, payload=None):
+def agent_skill_manifest() -> dict:
+    contract = build_agent_contract()
+    skills = tuple({
+        **skill,
+        "scope": PBC_KEY,
+        "requires_confirmation_for_mutation": True,
+        "uses_appgen_event_contract": True,
+        "stream_engine_picker_visible": False,
+    } for skill in contract["skills"])
+    return {
+        "ok": contract["ok"],
+        "pbc": PBC_KEY,
+        "skills": skills,
+        "stream_engine_picker_visible": False,
+        "side_effects": (),
+    }
+
+
+def chatbot_interface_contract() -> dict:
+    contract = build_agent_contract()
+    return {
+        "ok": contract["ok"],
+        "pbc": PBC_KEY,
+        "entrypoint": contract["entrypoint"],
+        "single_agent_contribution": f"{PBC_KEY}_skills",
+        "single_agent_skill_namespace": f"{PBC_KEY}_skills",
+        "capabilities": contract["capabilities"],
+        "stream_engine_picker_visible": False,
+        "side_effects": (),
+    }
+
+
+def document_instruction_plan(document: str, instruction: str) -> dict:
+    return build_standalone_app().document_instruction_plan(document, instruction)
+
+
+def datastore_crud_plan(action: str, table: str | None = None, payload: dict | None = None) -> dict:
     target = table or OWNED_TABLES[0]
-    if not str(target).startswith(f'{PBC_KEY}_'):
-        return {'ok': False, 'reason': 'foreign_table_rejected', 'table': target, 'side_effects': ()}
-    return {'ok': True, 'pbc': PBC_KEY, 'action': action, 'table': target, 'payload': dict(payload or {}), 'requires_confirmation': action in ('create','update','delete'), 'event_contract': 'AppGen-X', 'side_effects': ()}
+    if not str(target).startswith(f"{PBC_KEY}_"):
+        return {"ok": False, "reason": "foreign_table_rejected", "table": target, "side_effects": ()}
+    plan = build_standalone_app().datastore_crud_plan(action, target, payload)
+    if plan.get("ok") is True:
+        plan["event_contract"] = "AppGen-X"
+    return plan
 
-def composed_agent_contribution():
-    namespace = f'{PBC_KEY}_skills'
-    return {'ok': True, 'pbc': PBC_KEY, 'single_agent_skill_namespace': namespace, 'dsl_tools': (namespace, f'{PBC_KEY}_crud', f'{PBC_KEY}_documents'), 'side_effects': ()}
 
-def smoke_test():
-    return {'ok': agent_skill_manifest()['ok'] and chatbot_interface_contract()['ok'] and document_instruction_plan('doc','create')['ok'] and datastore_crud_plan('create')['ok'] and datastore_crud_plan('update', table='foreign_table')['ok'] is False and composed_agent_contribution()['ok'], 'side_effects': ()}
+def composed_agent_contribution() -> dict:
+    contract = build_agent_contract()
+    namespace = f"{PBC_KEY}_skills"
+    return {
+        "ok": contract["ok"],
+        "pbc": PBC_KEY,
+        "single_agent_skill_namespace": namespace,
+        "dsl_tools": (namespace,) + tuple(skill["name"] for skill in contract["skills"]),
+        "stream_engine_picker_visible": False,
+        "side_effects": (),
+    }
+
+
+def smoke_test() -> dict:
+    return {
+        "ok": agent_skill_manifest()["ok"] and chatbot_interface_contract()["ok"] and document_instruction_plan("incident note", "summarize")["ok"] and datastore_crud_plan("create")["ok"] and datastore_crud_plan("update", table="foreign_table")["ok"] is False and composed_agent_contribution()["ok"],
+        "side_effects": (),
+    }

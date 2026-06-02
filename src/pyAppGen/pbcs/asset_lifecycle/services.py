@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from . import runtime as asset_runtime
 from .depreciation_engine import build_schedule_version
 from .manifest import PBC_MANIFEST
 from .runtime import ASSET_LIFECYCLE_REQUIRED_EVENT_TOPIC
@@ -186,7 +187,10 @@ def operation_plan(operation_name, payload=None):
 
 
 class AssetLifecycleService:
-    """Side-effect-free facade for route-bound operations and slice previews."""
+    """Runtime-backed facade for route-bound asset lifecycle operations."""
+
+    def __init__(self, state=None):
+        self.state = state or asset_runtime.asset_lifecycle_empty_state()
 
     def _execute(self, operation_name, payload):
         plan = operation_plan(operation_name, payload)
@@ -223,9 +227,97 @@ class AssetLifecycleService:
         return result
 
     def _command(self, command_name, payload):
-        return self._execute(command_name, payload)
+        try:
+            result = self._execute_runtime_command(command_name, dict(payload or {}))
+        except (KeyError, TypeError):
+            return self._execute(command_name, payload)
+        if isinstance(result, dict) and "state" in result:
+            self.state = result["state"]
+        return result
 
     def _query(self, query_name, payload):
+        try:
+            return self._execute_runtime_query(query_name, dict(payload or {}))
+        except (KeyError, TypeError):
+            return self._execute(query_name, payload)
+
+    def _execute_runtime_command(self, command_name, payload):
+        if command_name == "command_assets":
+            return asset_runtime.asset_lifecycle_register_asset(self.state, payload.get("asset", payload))
+        if command_name == "command_assets_asset_id_service":
+            return asset_runtime.asset_lifecycle_place_asset_in_service(
+                self.state,
+                payload["asset_id"],
+                service_date=payload["service_date"],
+            )
+        if command_name == "command_assets_asset_id_depreciation_schedules":
+            return asset_runtime.asset_lifecycle_build_depreciation_schedule(
+                self.state,
+                payload["asset_id"],
+                method=payload.get("method", "straight_line"),
+            )
+        if command_name == "command_depreciation_runs":
+            return asset_runtime.asset_lifecycle_run_depreciation(
+                self.state,
+                run_id=payload["run_id"],
+                period=payload["period"],
+            )
+        if command_name == "command_assets_asset_id_transfers":
+            return asset_runtime.asset_lifecycle_transfer_asset(
+                self.state,
+                payload["asset_id"],
+                location=payload["location"],
+                cost_center=payload["cost_center"],
+                approved_by=payload["approved_by"],
+            )
+        if command_name == "command_assets_asset_id_revaluations":
+            return asset_runtime.asset_lifecycle_revalue_asset(
+                self.state,
+                payload["asset_id"],
+                fair_value=payload["fair_value"],
+                approved_by=payload["approved_by"],
+            )
+        if command_name == "command_assets_asset_id_impairments":
+            return asset_runtime.asset_lifecycle_impair_asset(
+                self.state,
+                payload["asset_id"],
+                recoverable_amount=payload["recoverable_amount"],
+                approved_by=payload["approved_by"],
+            )
+        if command_name == "command_assets_asset_id_maintenance_adjustments":
+            return asset_runtime.asset_lifecycle_record_maintenance_adjustment(
+                self.state,
+                payload["asset_id"],
+                useful_life_delta_months=payload["useful_life_delta_months"],
+                evidence=payload["evidence"],
+            )
+        if command_name == "command_assets_asset_id_retirements":
+            return asset_runtime.asset_lifecycle_retire_asset(
+                self.state,
+                payload["asset_id"],
+                proceeds=payload["proceeds"],
+                approved_by=payload["approved_by"],
+            )
+        if command_name == "command_assets_events_inbox":
+            return asset_runtime.asset_lifecycle_receive_event(self.state, payload.get("event", payload))
+        return self._execute(command_name, payload)
+
+    def _execute_runtime_query(self, query_name, payload):
+        if query_name == "query_assets":
+            tenant = payload.get("tenant")
+            assets = tuple(
+                asset
+                for asset in self.state.get("assets", {}).values()
+                if tenant is None or asset.get("tenant") == tenant
+            )
+            return {"ok": True, "assets": assets, "count": len(assets), "side_effects": ()}
+        if query_name == "query_assets_asset_id_risk":
+            return asset_runtime.asset_lifecycle_estimate_useful_life(
+                self.state,
+                payload["asset_id"],
+                operating_hours=float(payload.get("operating_hours", 0)),
+                maintenance_score=float(payload.get("maintenance_score", 0.8)),
+            )
         return self._execute(query_name, payload)
 
     def command_assets(self, payload=None):
@@ -317,6 +409,7 @@ def service_operation_manifest():
         "operation_contracts": contracts["contracts"],
         "transaction_boundary": "owned_datastore_plus_outbox",
         "outbox_table": EVENT_CONTRACT["outbox_table"],
+        "event_contract": EVENT_CONTRACT,
         "side_effects": (),
     }
 
@@ -349,3 +442,30 @@ def smoke_test():
         "preview": preview,
         "side_effects": (),
     }
+
+
+
+def standalone_service_operation_contracts():
+    contracts=(
+        {'operation':'seed_demo_workspace','operation_kind':'command','method':'POST','path':'/app/asset-lifecycle/demo-workspace','table':'asset_lifecycle_asset_configuration','wizard':'AssetCapitalizationWizard','permission':'asset_lifecycle.configure'},
+        {'operation':'build_workbench','operation_kind':'query','method':'GET','path':'/app/asset-lifecycle/workbench','table':'asset_lifecycle_fixed_asset','wizard':None,'permission':'asset_lifecycle.read'},
+        {'operation':'register_asset','operation_kind':'command','method':'POST','path':'/app/asset-lifecycle/assets','table':'asset_lifecycle_fixed_asset','wizard':'AssetCapitalizationWizard','permission':'asset_lifecycle.register'},
+        {'operation':'run_depreciation','operation_kind':'command','method':'POST','path':'/app/asset-lifecycle/depreciation-runs','table':'asset_lifecycle_asset_depreciation_run','wizard':'DepreciationRunWizard','permission':'asset_lifecycle.depreciation'},
+        {'operation':'transfer_asset','operation_kind':'command','method':'POST','path':'/app/asset-lifecycle/transfers','table':'asset_lifecycle_asset_transfer','wizard':'AssetTransferWizard','permission':'asset_lifecycle.transfer'},
+        {'operation':'generate_asset_audit_proof','operation_kind':'command','method':'POST','path':'/app/asset-lifecycle/audit-proofs','table':'asset_lifecycle_asset_audit_proof','wizard':'AssetAuditProofWizard','permission':'asset_lifecycle.audit'},
+    )
+    return {'format':'appgen.asset-lifecycle-standalone-service.v1','ok':all(i['table'].startswith('asset_lifecycle_') for i in contracts),'pbc':'asset_lifecycle','contracts':contracts,'operations':tuple(i['operation'] for i in contracts),'command_operations':tuple(i['operation'] for i in contracts if i['operation_kind']=='command'),'query_operations':tuple(i['operation'] for i in contracts if i['operation_kind']=='query'),'side_effects':()}
+
+class AssetLifecycleStandaloneService:
+    def __init__(self,repository=None,database_path=':memory:'):
+        if repository is None:
+            from .repository import AssetLifecycleStandaloneRepository
+            repository=AssetLifecycleStandaloneRepository(database_path=database_path)
+        self.repository=repository
+    def close(self): self.repository.close()
+    def seed_demo_workspace(self,tenant='tenant_demo'): return self.repository.seed_demo_workspace(tenant=tenant)
+    def build_workbench(self,tenant='tenant_demo'): return self.repository.build_workbench(tenant)
+    def register_asset(self,tenant,asset): return self.repository.register_asset(tenant,asset)
+    def run_depreciation(self,tenant,run_id,period): return self.repository.run_depreciation(tenant,run_id,period)
+    def transfer_asset(self,tenant,asset_id,location,cost_center,approved_by): return self.repository.transfer_asset(tenant,asset_id,location,cost_center,approved_by)
+    def generate_asset_audit_proof(self,tenant,asset_id,disclosure=('asset_id','status','book_value','location')): return self.repository.generate_asset_audit_proof(tenant,asset_id,tuple(disclosure))

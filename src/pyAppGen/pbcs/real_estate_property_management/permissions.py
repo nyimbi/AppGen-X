@@ -1,15 +1,18 @@
-PBC_KEY = 'real_estate_property_management'
-PERMISSIONS = ('real_estate_property_management.read',
- 'real_estate_property_management.create',
- 'real_estate_property_management.update',
- 'real_estate_property_management.approve',
- 'real_estate_property_management.admin')
+"""Permission and RBAC descriptors for real estate property management."""
+from .standalone import PBC_KEY, PERMISSIONS
+from .standalone import permission_manifest as _permission_manifest
+from .standalone import authorize as _authorize
+
 
 def permission_manifest():
-    return {'ok': True, 'pbc': PBC_KEY, 'permissions': PERMISSIONS, 'roles': ('operator','approver','auditor'), 'side_effects': ()}
+    manifest = _permission_manifest()
+    manifest['rbac'] = {'roles': manifest.get('roles', ()), 'permissions': PERMISSIONS}
+    return manifest
+
 
 def authorize(permission, actor=None):
-    return {'ok': permission in PERMISSIONS or permission == f'{PBC_KEY}.operate', 'permission': permission, 'actor': dict(actor or {}), 'side_effects': ()}
+    return _authorize(permission, actor)
+
 
 def smoke_test():
     return {'ok': permission_manifest()['ok'] and authorize(PERMISSIONS[0])['ok'], 'side_effects': ()}

@@ -41,3 +41,31 @@ def build_release_evidence():
 
 def facilities_space_management_build_release_evidence():
     return build_release_evidence()
+
+
+from .facilities_control import improve1_facilities_control_contract
+
+_FACILITIES_SPACE_MANAGEMENT_DOMAIN_RELEASE_EVIDENCE = build_release_evidence
+
+
+def build_release_evidence():
+    base = dict(_FACILITIES_SPACE_MANAGEMENT_DOMAIN_RELEASE_EVIDENCE())
+    facilities_control = improve1_facilities_control_contract()
+    checks = tuple(base.get('checks', ())) + (
+        {'id': 'improve1_facilities_control_contract', 'ok': facilities_control['ok']},
+        {'id': 'improve1_facilities_control_capability_count', 'ok': facilities_control['capability_count'] == 50},
+        {'id': 'improve1_facilities_control_release_boundary', 'ok': not facilities_control['blocking_gaps']},
+    )
+    return {
+        **base,
+        'ok': base.get('ok') is True and all(check['ok'] for check in checks),
+        'checks': checks,
+        'facilities_control': facilities_control,
+        'blocking_gaps': tuple(check for check in checks if not check['ok']),
+        'sections': tuple(dict.fromkeys(tuple(base.get('sections', ())) + ('facilities_control',))),
+        'side_effects': (),
+    }
+
+
+def facilities_space_management_build_release_evidence():
+    return build_release_evidence()

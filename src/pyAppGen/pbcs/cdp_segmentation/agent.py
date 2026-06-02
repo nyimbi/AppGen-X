@@ -42,6 +42,77 @@ def _command_operations():
     return services.service_operation_manifest().get('command_operations', ())
 
 
+def _route_for_operation(operation_name: str) -> dict | None:
+    route_manifest = routes.api_route_contracts()
+    return next(
+        (item for item in route_manifest.get('contracts', ()) if item.get('operation') == operation_name),
+        None,
+    )
+
+
+def _document_target(lower_text: str, suggested_action: str) -> tuple[str, str, dict]:
+    if suggested_action == 'define_segment':
+        if 'rule' in lower_text or 'criteria' in lower_text:
+            return (
+                f'{PBC_KEY}_segment_rule',
+                'parse_segment_rule',
+                {
+                    'tenant': 'tenant_demo',
+                    'segment_id': 'seg_from_document',
+                    'rule_text': lower_text.strip() or 'segment audience criteria',
+                },
+            )
+        return (
+            f'{PBC_KEY}_segment_definition',
+            'define_segment',
+            {
+                'segment_id': 'seg_from_document',
+                'tenant': 'tenant_demo',
+                'name': 'Document Authored Segment',
+                'criteria': {
+                    'min_payment_value': 1000 if 'high value' in lower_text else 0,
+                    'requires_shipment': 'shipment' in lower_text or 'deliver' in lower_text,
+                    'min_engagement': 0.2 if 'engagement' in lower_text else 0.0,
+                },
+                'status': 'draft',
+            },
+        )
+    if suggested_action == 'upsert_profile_property':
+        property_name = 'consent_status' if 'consent' in lower_text or 'opt in' in lower_text or 'opt-in' in lower_text else 'profile_attribute'
+        property_value = 'opt_in' if property_name == 'consent_status' else 'document_capture'
+        return (
+            f'{PBC_KEY}_profile_property',
+            'upsert_profile_property',
+            {
+                'property_id': 'prop_from_document',
+                'tenant': 'tenant_demo',
+                'customer_id': 'cust_demo',
+                'name': property_name,
+                'value': property_value,
+                'source': 'document_instruction',
+            },
+        )
+    if suggested_action == 'resolve_audience_exception':
+        return (
+            f'{PBC_KEY}_profile_exception',
+            'resolve_audience_exception',
+            {
+                'exception_id': 'exc_from_document',
+                'tenant': 'tenant_demo',
+                'customer_id': 'cust_demo',
+                'reason': 'document_identified_conflict',
+                'resolution': 'route_to_segmentation_steward',
+            },
+        )
+    return (
+        f'{PBC_KEY}_profile',
+        'build_workbench_view',
+        {
+            'tenant': 'tenant_demo',
+        },
+    )
+
+
 def agent_skill_manifest():
     """Return the skills this PBC contributes to the composed application assistant."""
     return {
@@ -75,12 +146,14 @@ def chatbot_interface_contract():
         'agent': AGENT_NAME,
         'entrypoint': f'/assistant/pbc/{PBC_KEY}',
         'single_agent_contribution': f'{PBC_KEY}_skills',
+        'single_agent_skill_namespace': f'{PBC_KEY}_skills',
         'capabilities': (
             'task_guidance',
             'document_and_instruction_intake',
             'governed_datastore_crud',
             'policy_and_permission_explanation',
             'workbench_navigation',
+            'mutation_preview',
         ),
         'professional_controls': (
             'citation_required_for_document_facts',
@@ -100,11 +173,13 @@ def document_instruction_plan(document=None, instructions=None):
     digest = hashlib.sha256(f'{PBC_KEY}:{document_text}:{instruction_text}'.encode('utf-8')).hexdigest()
     lower = f"{document_text}\n{instruction_text}".lower()
     suggested_action = (
+        'resolve_audience_exception' if 'exception' in lower or 'conflict' in lower else
         'define_segment' if 'segment' in lower or 'audience' in lower else
         'upsert_profile_property' if 'profile' in lower or 'consent' in lower else
-        'resolve_audience_exception' if 'exception' in lower or 'conflict' in lower else
         'read'
     )
+    target_table, preferred_operation, payload_template = _document_target(lower, suggested_action)
+    preferred_route = _route_for_operation(preferred_operation)
     candidate_tables = _owned_tables()
     return {
         'ok': bool(document_text or instruction_text),
@@ -115,6 +190,10 @@ def document_instruction_plan(document=None, instructions=None):
         'candidate_operations': _command_operations() + _query_operations(),
         'suggested_action': suggested_action,
         'suggested_crud_action': 'update' if suggested_action in {'define_segment', 'upsert_profile_property', 'resolve_audience_exception'} else 'read',
+        'target_table': target_table,
+        'preferred_operation': preferred_operation,
+        'preferred_route': preferred_route['route_id'] if preferred_route else None,
+        'payload_template': payload_template,
         'domain_entities': (
             'profile',
             'profile_consent',
@@ -143,22 +222,62 @@ def datastore_crud_plan(action='read', table=None, payload=None):
     operation_pool = _query_operations() if normalized_action == 'read' else _command_operations()
     preferred_operation = (
         'define_segment' if selected_table == f'{PBC_KEY}_segment_definition' else
+        'parse_segment_rule' if selected_table == f'{PBC_KEY}_segment_rule' else
         'upsert_profile_property' if selected_table in {f'{PBC_KEY}_profile_property', f'{PBC_KEY}_profile_consent'} else
         'resolve_audience_exception' if selected_table == f'{PBC_KEY}_profile_exception' else
         ('build_workbench_view' if normalized_action == 'read' else None)
     )
+    preferred_route = _route_for_operation(preferred_operation) if preferred_operation else None
     return {
         'ok': allowed and bool(operation_pool),
         'pbc': PBC_KEY,
         'action': normalized_action,
         'table': selected_table,
+        'allowed_tables': owned_tables,
         'payload_keys': tuple(sorted(dict(payload or {}))),
         'owned_tables': owned_tables,
         'candidate_operations': operation_pool,
         'preferred_operation': preferred_operation,
+        'preferred_route': preferred_route['route_id'] if preferred_route else None,
         'requires_confirmation': normalized_action != 'read',
         'event_contract': 'AppGen-X',
         'stream_engine_picker_visible': False,
+        'side_effects': (),
+    }
+
+
+def document_instruction_crud_support(document=None, instructions=None, *, payload=None):
+    """Return a governed mutation preview for document/instruction intake."""
+    plan = document_instruction_plan(document=document, instructions=instructions)
+    preview_payload = dict(payload or plan.get('payload_template') or {})
+    crud = datastore_crud_plan(
+        plan['suggested_crud_action'],
+        table=plan['target_table'],
+        payload=preview_payload,
+    )
+    route_contract = _route_for_operation(plan['preferred_operation'])
+    permission = route_contract['permission'] if route_contract else None
+    boundary_ok = bool(crud['ok']) and plan['target_table'] in set(_owned_tables())
+    return {
+        'ok': plan['ok'] and crud['ok'] and boundary_ok and permission is not None,
+        'pbc': PBC_KEY,
+        'document_plan': plan,
+        'crud_plan': crud,
+        'preferred_operation': plan['preferred_operation'],
+        'preferred_route': plan['preferred_route'],
+        'permission': permission,
+        'requires_confirmation': crud['requires_confirmation'],
+        'mutation_preview': {
+            'table': plan['target_table'],
+            'payload': preview_payload,
+            'payload_keys': tuple(sorted(preview_payload)),
+            'boundary': {
+                'ok': boundary_ok,
+                'table': plan['target_table'],
+                'owned_tables': _owned_tables(),
+            },
+            'event_contract': 'AppGen-X',
+        },
         'side_effects': (),
     }
 
@@ -184,13 +303,18 @@ def smoke_test():
     skills = agent_skill_manifest()
     chatbot = chatbot_interface_contract()
     document = document_instruction_plan('sample instruction', 'create or update the primary record')
+    support = document_instruction_crud_support(
+        'Retention audience brief',
+        'Create a segment for high value opted-in customers and preview the mutation.',
+    )
     read_plan = datastore_crud_plan('read')
-    create_plan = datastore_crud_plan('create', payload={'status': 'draft'})
+    create_plan = datastore_crud_plan('create', table='cdp_segmentation_segment_definition', payload={'status': 'draft'})
     contribution = composed_agent_contribution()
     return {
         'ok': skills['ok']
         and chatbot['ok']
         and document['ok']
+        and support['ok']
         and read_plan['ok']
         and create_plan['ok']
         and contribution['ok']
@@ -198,6 +322,7 @@ def smoke_test():
         'skills': skills,
         'chatbot': chatbot,
         'document': document,
+        'support': support,
         'read_plan': read_plan,
         'create_plan': create_plan,
         'contribution': contribution,

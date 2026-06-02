@@ -3,6 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 import hashlib
 from .domain_depth import domain_depth_contract, domain_depth_smoke_test, execute_domain_operation, DOMAIN_OPERATIONS, DOMAIN_OWNED_TABLES
+from .clinical_control import improve1_clinical_control_contract
 from .care_coordination_app import (
     care_coordination_controls_contract,
     care_coordination_forms_contract,
@@ -173,8 +174,8 @@ def clinical_care_coordination_build_api_contract():
  'GET /clinical-care-coordination-workbench'), 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'owned_tables': CLINICAL_CARE_COORDINATION_OWNED_TABLES}
 
 def clinical_care_coordination_build_release_evidence():
-    checks = ({'id': 'schema_models_migrations', 'ok': True}, {'id': 'service_api_events', 'ok': True}, {'id': 'agent_ui_governance', 'ok': True}, {'id': 'retry_dead_letter', 'ok': True})
-    return {'format': 'appgen.clinical-care-coordination-release-evidence.v1', 'ok': True, 'pbc': PBC_KEY, 'checks': checks, 'generated_artifacts': {'migrations': clinical_care_coordination_build_schema_contract()['migrations'], 'models': clinical_care_coordination_build_schema_contract()['models'], 'events': {'contract': 'AppGen-X', 'emits': CLINICAL_CARE_COORDINATION_EMITTED_EVENT_TYPES, 'consumes': CLINICAL_CARE_COORDINATION_CONSUMED_EVENT_TYPES}, 'handlers': ('receive_event',), 'ui': CLINICAL_CARE_COORDINATION_UI_FRAGMENT_KEYS}, 'blocking_gaps': ()}
+    checks = ({'id': 'schema_models_migrations', 'ok': True}, {'id': 'service_api_events', 'ok': True}, {'id': 'agent_ui_governance', 'ok': True}, {'id': 'retry_dead_letter', 'ok': True}, {'id': 'improve1_clinical_control', 'ok': improve1_clinical_control_contract()['ok']})
+    return {'format': 'appgen.clinical-care-coordination-release-evidence.v1', 'ok': True, 'pbc': PBC_KEY, 'checks': checks, 'generated_artifacts': {'migrations': clinical_care_coordination_build_schema_contract()['migrations'], 'models': clinical_care_coordination_build_schema_contract()['models'], 'events': {'contract': 'AppGen-X', 'emits': CLINICAL_CARE_COORDINATION_EMITTED_EVENT_TYPES, 'consumes': CLINICAL_CARE_COORDINATION_CONSUMED_EVENT_TYPES}, 'handlers': ('receive_event',), 'ui': CLINICAL_CARE_COORDINATION_UI_FRAGMENT_KEYS, 'improve1_clinical_control': improve1_clinical_control_contract()}, 'blocking_gaps': ()}
 
 def clinical_care_coordination_permissions_contract():
     return {'ok': True, 'pbc': PBC_KEY, 'permissions': ('clinical_care_coordination.read',
@@ -209,6 +210,7 @@ def clinical_care_coordination_runtime_capabilities():
         'query_workbench',
         'run_advanced_assessment',
         'parse_document_instruction',
+        'improve1_clinical_control_contract',
     ) + tuple(DOMAIN_OPERATIONS)
     return {
         'format': 'appgen.clinical-care-coordination-runtime-capabilities.v1',
@@ -226,6 +228,7 @@ def clinical_care_coordination_runtime_capabilities():
         'single_pbc_app': single_pbc_app_contract(),
         'smoke': smoke,
         'world_class_domain_depth': domain,
+        'improve1_clinical_control': improve1_clinical_control_contract(),
         'database_backends': CLINICAL_CARE_COORDINATION_ALLOWED_DATABASE_BACKENDS,
         'event_contract': 'AppGen-X',
         'stream_engine_picker_visible': False,
@@ -252,6 +255,7 @@ def clinical_care_coordination_runtime_smoke():
     app_smoke = care_coordination_smoke_test()
     boundary = clinical_care_coordination_verify_owned_table_boundary(CLINICAL_CARE_COORDINATION_OWNED_TABLES + ('foreign_table',))
     domain = domain_depth_contract()
+    clinical_control = improve1_clinical_control_contract()
     checks = (
         {'id': 'configure_runtime', 'ok': cfg['ok']},
         {'id': 'set_parameter', 'ok': param['ok']},
@@ -267,6 +271,7 @@ def clinical_care_coordination_runtime_smoke():
         {'id': 'single_pbc_care_coordination_app', 'ok': app_smoke['ok']},
         {'id': 'owned_boundary_rejects_foreign_table', 'ok': boundary['ok'] is False},
         {'id': 'domain_depth', 'ok': domain['ok']},
+        {'id': 'improve1_clinical_control', 'ok': clinical_control['ok']},
     ) + tuple({'id': capability, 'ok': True} for capability in CLINICAL_CARE_COORDINATION_RUNTIME_CAPABILITY_KEYS)
     return {
         'format': 'appgen.clinical-care-coordination-runtime-smoke.v1',
@@ -280,6 +285,7 @@ def clinical_care_coordination_runtime_smoke():
         'workbench': workbench,
         'single_pbc_app': app_smoke,
         'domain_depth': domain,
+        'improve1_clinical_control': clinical_control,
         'blocking_gaps': tuple(check for check in checks if not check['ok']),
         'side_effects': (),
     }

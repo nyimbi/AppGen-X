@@ -17,3 +17,24 @@ def waste_recycling_operations_render_workbench():
 
 def smoke_test():
     return {'ok': waste_recycling_operations_ui_contract()['ok'] and waste_recycling_operations_render_workbench()['ok'], 'side_effects': ()}
+
+
+# Improve1 waste recycling operations control UI extension.
+from .waste_recycling_operations_control import improve1_waste_recycling_operations_control_contract as _improve1_waste_recycling_operations_control_contract
+
+_WASTE_CONTROL_BASE_UI_CONTRACT = waste_recycling_operations_ui_contract
+_WASTE_CONTROL_BASE_RENDER_WORKBENCH = waste_recycling_operations_render_workbench
+
+
+def waste_recycling_operations_ui_contract() -> dict:
+    ui = dict(_WASTE_CONTROL_BASE_UI_CONTRACT())
+    control = _improve1_waste_recycling_operations_control_contract()
+    ui.update({"ok": ui.get("ok") is True and control["ok"], "waste_recycling_operations_control_contract": control, "waste_recycling_operations_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]), "waste_recycling_operations_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]), "stream_engine_picker_visible": False})
+    return ui
+
+
+def waste_recycling_operations_render_workbench(*args, **kwargs) -> dict:
+    workbench = dict(_WASTE_CONTROL_BASE_RENDER_WORKBENCH(*args, **kwargs))
+    control = _improve1_waste_recycling_operations_control_contract()
+    workbench.update({"ok": workbench.get("ok") is True and control["ok"], "waste_recycling_operations_control_panels": tuple(item["evidence"]["ui_surface"] for item in control["capabilities"]), "waste_recycling_operations_control_service_actions": tuple(item["evidence"]["service_api"] for item in control["capabilities"]), "waste_recycling_operations_control_agent_tools": tuple(f"waste_recycling_operations.skills.{item['slug']}" for item in control["capabilities"])})
+    return workbench

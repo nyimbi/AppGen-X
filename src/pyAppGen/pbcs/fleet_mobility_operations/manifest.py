@@ -58,7 +58,7 @@ PBC_MANIFEST = {'advanced_capabilities': ('fleet_mobility_operations_event_sourc
  'datastore_backend': 'postgresql',
  'description': 'Vehicles, drivers, telematics, routing, maintenance, utilization, fuel, safety, '
                 'and fleet compliance',
- 'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md'),
+ 'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md', 'README.md', 'implementation-plan.md', 'implementation-status.md'),
  'emits': ('FleetMobilityOperationsCreated',
            'FleetMobilityOperationsUpdated',
            'FleetMobilityOperationsApproved',
@@ -104,10 +104,14 @@ PBC_MANIFEST = {'advanced_capabilities': ('fleet_mobility_operations_event_sourc
             'fleet_mobility_operations_control_assertion',
             'fleet_mobility_operations_governed_model'),
  'template': 'logistics',
- 'tests': ('tests/test_contract.py',),
+ 'tests': ('tests/test_contract.py', 'tests/test_standalone.py'),
  'ui_fragments': ('FleetMobilityOperationsWorkbench',
                   'FleetMobilityOperationsDetail',
                   'FleetMobilityOperationsAssistantPanel'),
  'version': '1.0.0',
  'workflows': ('fleet_mobility_operations_create_vehicle_workflow',
-               'fleet_mobility_operations_record_driver_assignment_workflow')}
+               'fleet_mobility_operations_record_driver_assignment_workflow',
+               'fleet_mobility_operations_validate_dispatch_readiness_workflow',
+               'fleet_mobility_operations_reallocate_route_workflow',
+               'fleet_mobility_operations_quarantine_telematics_workflow',
+               'fleet_mobility_operations_close_roadside_incident_workflow')}

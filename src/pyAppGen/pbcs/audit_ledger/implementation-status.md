@@ -42,3 +42,18 @@
 - Add retention conflict resolution and legal-hold workflows.
 - Add deeper anomaly taxonomy and source-PBC evidence quality scoring.
 - Add reviewer workspace and regulator-specific minimized evidence surfaces.
+
+## 2026-05-30 Behavior Traceability Slice
+
+- Added `tests/test_domain_behavior.py` to prove the standalone Audit Ledger app can configure rules and parameters, seal audit events, capture access evidence, enforce retention/export approval, verify signature chains, publish projections, render UI/workbench state, expose agent CRUD/document plans, and produce release evidence.
+- Fixed standalone repository persistence so repeated inbox attempts remain idempotent and retry/dead-letter handler status survives reloads.
+- Updated `IMPROVE1_TRACEABILITY.md` so all 50 improve1 rows cite the new executable domain behavior test as feature evidence.
+
+Validation evidence:
+
+- `/Volumes/Media/src/pjs/appgen/.venv/bin/pytest src/pyAppGen/pbcs/audit_ledger/tests`
+  Result: `24 passed in 1.46s`.
+- `python3` improve1 sweep over 441 improve1 test files.
+  Result: `877 passed, 197 warnings in 10.80s`.
+- `git diff --check -- src/pyAppGen/pbcs`
+  Result: completed successfully.

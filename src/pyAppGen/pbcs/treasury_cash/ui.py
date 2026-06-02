@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .repository import repository_manifest
 from .runtime import TREASURY_CASH_ALLOWED_DATABASE_BACKENDS
 from .runtime import TREASURY_CASH_CONSUMED_EVENT_TYPES
 from .runtime import TREASURY_CASH_EMITTED_EVENT_TYPES
@@ -12,6 +13,7 @@ from .runtime import treasury_cash_permissions_contract
 
 TREASURY_CASH_UI_FRAGMENT_KEYS = (
     "TreasuryCashWorkbench",
+    "TreasuryCashAssistantPanel",
     "BankAccountConsole",
     "BalanceCaptureBoard",
     "BankStatementReconciliationBoard",
@@ -29,8 +31,221 @@ TREASURY_CASH_UI_FRAGMENT_KEYS = (
     "TreasuryConfigurationPanel",
 )
 
+TREASURY_CASH_FORMS = (
+    {
+        "form": "BankAccountMandateForm",
+        "route": "/workbench/pbcs/treasury_cash/bank-accounts/new",
+        "owned_table": "treasury_cash_bank_account",
+        "fields": (
+            "account_id",
+            "tenant",
+            "legal_entity",
+            "bank_id",
+            "currency",
+            "country",
+            "signatories",
+            "identity",
+            "risk_signals",
+        ),
+        "submit_action": "register_bank_account",
+        "validation_controls": (
+            "legal_entity_required",
+            "signatory_authority_validation",
+            "counterparty_identity_proof",
+            "bank_country_policy_check",
+        ),
+    },
+    {
+        "form": "BalanceCaptureForm",
+        "route": "/workbench/pbcs/treasury_cash/balances/new",
+        "owned_table": "treasury_cash_balance",
+        "fields": (
+            "balance_id",
+            "tenant",
+            "account_id",
+            "value_date",
+            "amount",
+            "currency",
+            "kind",
+        ),
+        "submit_action": "capture_bank_balance",
+        "validation_controls": (
+            "value_date_required",
+            "currency_consistency",
+            "balance_freshness_score",
+        ),
+    },
+    {
+        "form": "BankStatementIngestionForm",
+        "route": "/workbench/pbcs/treasury_cash/statements/new",
+        "owned_table": "treasury_cash_statement",
+        "fields": (
+            "statement_id",
+            "tenant",
+            "account_id",
+            "statement_date",
+            "lines",
+        ),
+        "submit_action": "ingest_bank_statement",
+        "validation_controls": (
+            "statement_completeness_proof",
+            "opening_closing_balance_continuity",
+            "duplicate_file_detection",
+        ),
+    },
+    {
+        "form": "CashForecastScenarioForm",
+        "route": "/workbench/pbcs/treasury_cash/forecasts/new",
+        "owned_table": "treasury_cash_cash_forecast",
+        "fields": (
+            "tenant",
+            "inflows",
+            "outflows",
+            "scenario_name",
+            "confidence_floor",
+        ),
+        "submit_action": "forecast_cash",
+        "validation_controls": (
+            "confidence_floor_enforced",
+            "forecast_horizon_consistency",
+            "scenario_assumptions_documented",
+        ),
+    },
+    {
+        "form": "LiquidityFundingRequestForm",
+        "route": "/workbench/pbcs/treasury_cash/liquidity-plans/new",
+        "owned_table": "treasury_cash_liquidity_plan",
+        "fields": (
+            "tenant",
+            "target_balance",
+            "funding_options",
+            "priority",
+            "approval_context",
+        ),
+        "submit_action": "optimize_liquidity",
+        "validation_controls": (
+            "minimum_liquidity_buffer",
+            "dual_approval_funding_gate",
+            "counterparty_risk_limit",
+        ),
+    },
+    {
+        "form": "CapitalActionsForm",
+        "route": "/workbench/pbcs/treasury_cash/capital-actions/new",
+        "owned_table": "treasury_cash_capital_action",
+        "fields": (
+            "tenant",
+            "investment_id",
+            "draw_id",
+            "currency_pair",
+            "exposure",
+            "amount",
+        ),
+        "submit_action": "place_investment",
+        "validation_controls": (
+            "investment_policy_limit",
+            "debt_draw_limit",
+            "fx_hedge_threshold",
+        ),
+    },
+)
+
+TREASURY_CASH_WIZARDS = (
+    {
+        "wizard": "BankAccountActivationWizard",
+        "steps": (
+            "capture_legal_entity_and_purpose",
+            "attach_signatories_and_limits",
+            "verify_identity_and_kyc_evidence",
+            "review_counterparty_risk",
+            "activate_account",
+        ),
+        "commands": ("register_bank_account",),
+        "controls": (
+            "signatory_authority_validation",
+            "counterparty_identity_proof",
+            "activation_requires_dual_review",
+        ),
+    },
+    {
+        "wizard": "StatementReconciliationWizard",
+        "steps": (
+            "ingest_bank_statement",
+            "parse_bank_narrative",
+            "match_expected_flows",
+            "open_exceptions_for_breaks",
+            "publish_reconciliation_result",
+        ),
+        "commands": ("ingest_bank_statement", "reconcile_statement"),
+        "controls": (
+            "statement_completeness_proof",
+            "narrative_parsing_explainability",
+            "exception_evidence_required",
+        ),
+    },
+    {
+        "wizard": "LiquidityOptimizationWizard",
+        "steps": (
+            "build_cash_position",
+            "forecast_cash",
+            "compare_funding_options",
+            "route_payment_rail_for_selected_source",
+            "commit_liquidity_plan",
+        ),
+        "commands": (
+            "build_cash_position",
+            "forecast_cash",
+            "optimize_liquidity",
+            "route_payment_rail",
+        ),
+        "controls": (
+            "minimum_liquidity_buffer",
+            "dual_approval_funding_gate",
+            "counterparty_risk_limit",
+            "payment_rail_failover_policy",
+        ),
+    },
+    {
+        "wizard": "CapitalActionsWizard",
+        "steps": (
+            "review_fx_exposure",
+            "recommend_hedge",
+            "place_investment",
+            "draw_debt_facility",
+            "generate_covenant_proof",
+        ),
+        "commands": (
+            "recommend_hedge",
+            "place_investment",
+            "draw_debt_facility",
+        ),
+        "controls": (
+            "investment_policy_limit",
+            "debt_draw_limit",
+            "covenant_floor_protection",
+            "governed_model_drift_gate",
+        ),
+    },
+)
+
+TREASURY_CASH_CONTROLS = (
+    {"control": "signatory_authority_validation", "enforced_by": "register_bank_account"},
+    {"control": "counterparty_identity_proof", "enforced_by": "register_bank_account"},
+    {"control": "statement_completeness_proof", "enforced_by": "ingest_bank_statement"},
+    {"control": "balance_freshness_score", "enforced_by": "capture_bank_balance"},
+    {"control": "minimum_liquidity_buffer", "enforced_by": "optimize_liquidity"},
+    {"control": "dual_approval_funding_gate", "enforced_by": "optimize_liquidity"},
+    {"control": "payment_rail_failover_policy", "enforced_by": "route_payment_rail"},
+    {"control": "counterparty_risk_limit", "enforced_by": "optimize_liquidity"},
+    {"control": "investment_policy_limit", "enforced_by": "place_investment"},
+    {"control": "debt_draw_limit", "enforced_by": "draw_debt_facility"},
+    {"control": "covenant_floor_protection", "enforced_by": "generate_covenant_proof"},
+    {"control": "governed_model_drift_gate", "enforced_by": "run_control_tests"},
+)
+
 
 def treasury_cash_ui_contract() -> dict:
+    permissions = treasury_cash_permissions_contract()
     return {
         "format": "appgen.treasury-cash-ui-contract.v1",
         "ok": True,
@@ -87,7 +302,11 @@ def treasury_cash_ui_contract() -> dict:
                 "commands": ("register_rule", "set_parameter", "configure_runtime"),
             },
         ),
-        "action_permissions": treasury_cash_permissions_contract()["action_permissions"],
+        "forms": TREASURY_CASH_FORMS,
+        "wizards": TREASURY_CASH_WIZARDS,
+        "controls": TREASURY_CASH_CONTROLS,
+        "action_permissions": permissions["action_permissions"],
+        "permissions_contract": permissions,
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_currency", "default_timezone"),
             "allowed_database_backends": TREASURY_CASH_ALLOWED_DATABASE_BACKENDS,
@@ -150,6 +369,9 @@ def treasury_cash_render_workbench(
         "route": "/workbench/pbcs/treasury_cash",
         "fragments": contract["fragments"],
         "cards": cards,
+        "forms": contract["forms"],
+        "wizards": contract["wizards"],
+        "controls": contract["controls"],
         "visible_actions": visible_actions,
         "locked_actions": tuple(action for action in contract["action_permissions"] if action not in visible_actions),
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
@@ -166,6 +388,36 @@ def treasury_cash_render_workbench(
         },
     }
 
+
+def treasury_cash_single_pbc_app_contract() -> dict:
+    ui = treasury_cash_ui_contract()
+    repository = repository_manifest()
+    database_backing = {
+        "owned_tables": TREASURY_CASH_OWNED_TABLES,
+        "migration": "migrations/001_initial.sql",
+        "models_module": "models.py",
+        "schema_contract_module": "schema_contract.py",
+        "service_contract_module": "service_contract.py",
+        "repository_module": repository["module"],
+        "repository_class": repository["class"],
+        "shared_table_access": False,
+    }
+    return {
+        "ok": bool(ui["forms"]) and bool(ui["wizards"]) and bool(ui["controls"]) and bool(database_backing["owned_tables"]),
+        "pbc": "treasury_cash",
+        "database_backing": database_backing,
+        "repository": repository,
+        "forms": ui["forms"],
+        "wizards": ui["wizards"],
+        "controls": ui["controls"],
+        "workbench_route": "/workbench/pbcs/treasury_cash",
+        "assistant_panel": "TreasuryCashAssistantPanel",
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "side_effects": (),
+    }
+
+
 class _AppGenSmokeState(dict):
     """Tolerant empty state for side-effect-free workbench smoke rendering."""
 
@@ -173,6 +425,7 @@ class _AppGenSmokeState(dict):
         value = _AppGenSmokeState()
         self[key] = value
         return value
+
 
 
 def _appgen_smoke_state():
@@ -189,6 +442,7 @@ def _appgen_smoke_state():
     })
 
 
+
 def smoke_test():
     """Exercise the PBC workbench contract and render path without side effects."""
     contract = treasury_cash_ui_contract()
@@ -198,6 +452,7 @@ def smoke_test():
         tenant="smoke",
         principal_permissions=permissions,
     )
+    app_contract = treasury_cash_single_pbc_app_contract()
     cards = tuple(rendered.get("cards") or contract.get("panels") or contract.get("fragments", ()))
     configuration_editor = contract.get("configuration_editor", {})
     event_surfaces = contract.get("event_surfaces", {})
@@ -217,8 +472,12 @@ def smoke_test():
         "format": "appgen.pbc-ui-smoke-test.v1",
         "ok": contract.get("ok") is True
         and rendered.get("ok") is True
+        and app_contract["ok"] is True
         and bool(contract.get("fragments"))
         and bool(contract.get("routes"))
+        and bool(contract.get("forms"))
+        and bool(contract.get("wizards"))
+        and bool(contract.get("controls"))
         and bool(cards)
         and bool(contract.get("action_permissions"))
         and bool(configuration_editor)
@@ -234,5 +493,6 @@ def smoke_test():
         "governance": governance,
         "rendered": rendered,
         "cards": cards,
+        "single_pbc_app": app_contract,
         "side_effects": (),
     }

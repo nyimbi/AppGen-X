@@ -58,7 +58,7 @@ PBC_MANIFEST = {'advanced_capabilities': ('humanitarian_relief_operations_event_
  'datastore_backend': 'postgresql',
  'description': 'Needs assessment, aid distribution, logistics, protection, field partners, donor '
                 'reporting, and relief accountability',
- 'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md'),
+ 'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md', 'README.md', 'implementation-plan.md', 'implementation-status.md'),
  'emits': ('HumanitarianReliefOperationsCreated',
            'HumanitarianReliefOperationsUpdated',
            'HumanitarianReliefOperationsApproved',
@@ -104,10 +104,14 @@ PBC_MANIFEST = {'advanced_capabilities': ('humanitarian_relief_operations_event_
             'humanitarian_relief_operations_control_assertion',
             'humanitarian_relief_operations_governed_model'),
  'template': 'logistics',
- 'tests': ('tests/test_contract.py',),
+ 'tests': ('tests/test_contract.py', 'tests/test_standalone.py'),
  'ui_fragments': ('HumanitarianReliefOperationsWorkbench',
                   'HumanitarianReliefOperationsDetail',
                   'HumanitarianReliefOperationsAssistantPanel'),
  'version': '1.0.0',
  'workflows': ('humanitarian_relief_operations_create_needs_assessment_workflow',
-               'humanitarian_relief_operations_record_aid_item_workflow')}
+               'humanitarian_relief_operations_record_aid_item_workflow',
+               'humanitarian_relief_operations_register_beneficiary_workflow',
+               'humanitarian_relief_operations_dispatch_relief_shipment_workflow',
+               'humanitarian_relief_operations_reconcile_distribution_workflow',
+               'humanitarian_relief_operations_prepare_donor_pack_workflow')}

@@ -58,7 +58,7 @@ PBC_MANIFEST = {'advanced_capabilities': ('lease_lending_equipment_finance_event
  'datastore_backend': 'postgresql',
  'description': 'Equipment leases, assets, schedules, residuals, buyouts, repossession, and '
                 'finance servicing',
- 'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md'),
+ 'docs': ('SPECIFICATION.md', 'RELEASE_EVIDENCE.md', 'README.md', 'implementation-plan.md', 'implementation-status.md'),
  'emits': ('LeaseLendingEquipmentFinanceCreated',
            'LeaseLendingEquipmentFinanceUpdated',
            'LeaseLendingEquipmentFinanceApproved',
@@ -104,10 +104,16 @@ PBC_MANIFEST = {'advanced_capabilities': ('lease_lending_equipment_finance_event
             'lease_lending_equipment_finance_control_assertion',
             'lease_lending_equipment_finance_governed_model'),
  'template': 'reporting',
- 'tests': ('tests/test_contract.py',),
+ 'tests': ('tests/test_contract.py', 'tests/test_standalone.py'),
  'ui_fragments': ('LeaseLendingEquipmentFinanceWorkbench',
                   'LeaseLendingEquipmentFinanceDetail',
                   'LeaseLendingEquipmentFinanceAssistantPanel'),
  'version': '1.0.0',
  'workflows': ('lease_lending_equipment_finance_create_equipment_lease_workflow',
-               'lease_lending_equipment_finance_record_leased_asset_workflow')}
+               'lease_lending_equipment_finance_record_leased_asset_workflow',
+               'lease_lending_equipment_finance_application_to_booking_workflow',
+               'lease_lending_equipment_finance_structure_pricing_workflow',
+               'lease_lending_equipment_finance_funding_package_workflow',
+               'lease_lending_equipment_finance_end_of_term_workflow',
+               'lease_lending_equipment_finance_collections_repo_workflow',
+               'lease_lending_equipment_finance_investor_remittance_workflow')}

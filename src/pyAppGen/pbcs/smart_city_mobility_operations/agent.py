@@ -1,39 +1,257 @@
-PBC_KEY = 'smart_city_mobility_operations'
-OWNED_TABLES = ('smart_city_mobility_operations_transit_service',
- 'smart_city_mobility_operations_parking_asset',
- 'smart_city_mobility_operations_signal_plan',
- 'smart_city_mobility_operations_traffic_incident',
- 'smart_city_mobility_operations_curb_allocation',
- 'smart_city_mobility_operations_mobility_sensor',
- 'smart_city_mobility_operations_service_disruption',
- 'smart_city_mobility_operations_smart_city_mobility_operations_policy_rule',
- 'smart_city_mobility_operations_smart_city_mobility_operations_runtime_parameter',
- 'smart_city_mobility_operations_smart_city_mobility_operations_schema_extension',
- 'smart_city_mobility_operations_smart_city_mobility_operations_control_assertion',
- 'smart_city_mobility_operations_smart_city_mobility_operations_governed_model',
- 'smart_city_mobility_operations_appgen_outbox_event',
- 'smart_city_mobility_operations_appgen_inbox_event',
- 'smart_city_mobility_operations_appgen_dead_letter_event')
+"""AI agent and governed assistant contracts for smart city mobility operations."""
+
+from __future__ import annotations
+
+import hashlib
+
+from .domain_depth import DOMAIN_OWNED_TABLES, PBC_KEY
+from .models import standalone_model_contract
+from . import routes
+from . import services
+from .ui import (
+    smart_city_mobility_operations_form_contracts,
+    smart_city_mobility_operations_wizard_contracts,
+)
+
+AGENT_NAME = "SmartCityMobilityOperationsAgent"
+_DOCUMENT_ACTIONS = ("summarize", "extract_fields", "validate_against_rules", "draft_crud_plan")
+_CRUD_ACTIONS = ("create", "read", "update", "delete")
+_SKILL_NAMES = (
+    f"{PBC_KEY}.corridor_command",
+    f"{PBC_KEY}.incident_playbooks",
+    f"{PBC_KEY}.signal_review",
+    f"{PBC_KEY}.public_notifications",
+    f"{PBC_KEY}.document_instruction_intake",
+    f"{PBC_KEY}.governed_datastore_crud",
+)
+
+
+def _owned_tables():
+    return DOMAIN_OWNED_TABLES
+
+
+def _query_operations():
+    return services.service_operation_manifest().get("query_operations", ())
+
+
+def _command_operations():
+    return services.service_operation_manifest().get("command_operations", ())
+
+
+def _standalone_operations():
+    return services.standalone_service_operation_contracts().get("contracts", ())
+
+
+def _standalone_tables():
+    return tuple(standalone_model_contract().get("table_keys", ()))
+
+
+def standalone_agent_workspace_contract():
+    """Return the package-local assistant surface for the standalone one-PBC app."""
+    form_manifest = smart_city_mobility_operations_form_contracts()
+    wizard_manifest = smart_city_mobility_operations_wizard_contracts()
+    route_manifest = routes.standalone_route_contracts()
+    return {
+        "format": "appgen.smart-city-mobility-operations-standalone-agent-workspace.v1",
+        "ok": form_manifest["ok"] and wizard_manifest["ok"] and route_manifest["ok"],
+        "pbc": PBC_KEY,
+        "agent": AGENT_NAME,
+        "forms": tuple(item["key"] for item in form_manifest["contracts"]),
+        "wizards": tuple(item["key"] for item in wizard_manifest["contracts"]),
+        "routes": route_manifest["routes"],
+        "tables": _standalone_tables(),
+        "side_effects": (),
+    }
+
 
 def agent_skill_manifest():
-    skills = tuple({'name': name, 'scope': PBC_KEY, 'description': f'{name} for {PBC_KEY}', 'requires_confirmation_for_mutation': True, 'uses_appgen_event_contract': True, 'stream_engine_picker_visible': False} for name in (f'{PBC_KEY}_guide_user', f'{PBC_KEY}_read_records', f'{PBC_KEY}_create_record', f'{PBC_KEY}_update_record'))
-    return {'ok': True, 'pbc': PBC_KEY, 'skills': skills, 'side_effects': ()}
+    """Return the skills this PBC contributes to the composed application assistant."""
+    return {
+        "ok": bool(_SKILL_NAMES) and bool(_owned_tables()) and bool(_query_operations()),
+        "pbc": PBC_KEY,
+        "agent": AGENT_NAME,
+        "skills": tuple(
+            {
+                "name": skill,
+                "scope": PBC_KEY,
+                "owned_tables": _owned_tables(),
+                "allowed_crud_actions": _CRUD_ACTIONS,
+                "document_actions": _DOCUMENT_ACTIONS,
+                "requires_confirmation_for_mutation": True,
+                "uses_appgen_event_contract": True,
+                "stream_engine_picker_visible": False,
+            }
+            for skill in _SKILL_NAMES
+        ),
+        "query_operations": _query_operations(),
+        "command_operations": _command_operations(),
+        "side_effects": (),
+    }
+
 
 def chatbot_interface_contract():
-    return {'ok': True, 'pbc': PBC_KEY, 'entrypoint': f'/assistant/pbc/{PBC_KEY}', 'single_agent_contribution': f'{PBC_KEY}_skills', 'capabilities': ('task_guidance','document_instruction_intake','governed_datastore_crud','mutation_preview'), 'side_effects': ()}
+    """Return the professional help/chatbot surface contract for this PBC."""
+    return {
+        "ok": True,
+        "pbc": PBC_KEY,
+        "agent": AGENT_NAME,
+        "entrypoint": f"/assistant/pbc/{PBC_KEY}",
+        "single_agent_contribution": f"{PBC_KEY}_skills",
+        "capabilities": (
+            "corridor_command_guidance",
+            "incident_and_closure_playbooks",
+            "signal_timing_review",
+            "document_and_instruction_intake",
+            "governed_mutation_preview",
+            "governed_datastore_crud",
+            "public_alert_assistance",
+        ),
+        "professional_controls": (
+            "citation_required_for_document_facts",
+            "mutation_preview_before_commit",
+            "permission_check_before_mutation",
+            "owned_table_boundary_check",
+            "human_confirmation_required",
+        ),
+        "side_effects": (),
+    }
 
-def document_instruction_plan(document, instruction):
-    return {'ok': True, 'pbc': PBC_KEY, 'document_digest': str(abs(hash(document))), 'instruction': instruction, 'candidate_tables': OWNED_TABLES[:3], 'requires_human_confirmation': True, 'crud_preview': {'operation': 'create', 'event_contract': 'AppGen-X'}, 'side_effects': ()}
 
-def datastore_crud_plan(action, table=None, payload=None):
-    target = table or OWNED_TABLES[0]
-    if not str(target).startswith(f'{PBC_KEY}_'):
-        return {'ok': False, 'reason': 'foreign_table_rejected', 'table': target, 'side_effects': ()}
-    return {'ok': True, 'pbc': PBC_KEY, 'action': action, 'table': target, 'payload': dict(payload or {}), 'requires_confirmation': action in ('create','update','delete'), 'event_contract': 'AppGen-X', 'side_effects': ()}
+def document_instruction_plan(document=None, instruction=None):
+    """Plan document/instruction handling without mutating state."""
+    document_text = str(document or "")
+    instruction_text = str(instruction or "")
+    digest = hashlib.sha256(
+        f"{PBC_KEY}:{document_text}:{instruction_text}".encode("utf-8")
+    ).hexdigest()
+    combined = f"{document_text} {instruction_text}".lower()
+    wizard_manifest = smart_city_mobility_operations_wizard_contracts()["contracts"]
+    standalone_operations = _standalone_operations()
+    wizard_candidates = tuple(
+        wizard["key"]
+        for wizard in wizard_manifest
+        if any(keyword in combined for keyword in wizard.get("keywords", ()))
+    ) or ("GovernedPreviewWizard",)
+    route_candidates = tuple(
+        f"{item['method']} {item['path']}"
+        for item in standalone_operations
+        if item["operation_kind"] == "command"
+        and (
+            item.get("wizard") in wizard_candidates
+            or item["operation"].replace("_", " ") in combined
+            or item["table"].split("_")[-1] in combined
+        )
+    ) or ("POST /app/smart-city-mobility-operations/governed-previews",)
+    form_candidates = tuple(
+        form["key"]
+        for form in smart_city_mobility_operations_form_contracts()["contracts"]
+        if form["operation"] in tuple(
+            item["operation"]
+            for item in standalone_operations
+            if f"{item['method']} {item['path']}" in route_candidates
+        )
+    ) or ("GovernedPreviewForm",)
+    return {
+        "ok": bool(document_text or instruction_text),
+        "pbc": PBC_KEY,
+        "document_digest": digest,
+        "document_actions": _DOCUMENT_ACTIONS,
+        "candidate_tables": _owned_tables(),
+        "candidate_operations": _command_operations() + _query_operations(),
+        "standalone_tables": _standalone_tables(),
+        "wizard_candidates": wizard_candidates,
+        "form_candidates": form_candidates,
+        "route_candidates": route_candidates,
+        "requires_human_confirmation": True,
+        "crud_preview": {
+            "operation": "preview_governed_instruction",
+            "route": route_candidates[0],
+            "event_contract": "AppGen-X",
+        },
+        "side_effects": (),
+    }
+
+
+def datastore_crud_plan(action="read", table=None, payload=None):
+    """Plan governed CRUD against owned tables only."""
+    normalized_action = str(action).lower()
+    owned_tables = _owned_tables() + _standalone_tables()
+    selected_table = table or (owned_tables[0] if owned_tables else None)
+    allowed = normalized_action in _CRUD_ACTIONS and selected_table in owned_tables
+    standalone_operations = _standalone_operations()
+    operation_pool = _query_operations() if normalized_action == "read" else _command_operations()
+    route_candidates = tuple(
+        f"{item['method']} {item['path']}"
+        for item in standalone_operations
+        if (
+            item["table"] == selected_table
+            and (
+                (normalized_action == "read" and item["operation_kind"] == "query")
+                or (normalized_action != "read" and item["operation_kind"] == "command")
+            )
+        )
+    )
+    form_candidates = tuple(
+        form["key"]
+        for form in smart_city_mobility_operations_form_contracts()["contracts"]
+        if form["table"] == selected_table
+    )
+    wizard_candidates = tuple(
+        item["wizard"]
+        for item in standalone_operations
+        if item["table"] == selected_table and item.get("wizard")
+    )
+    return {
+        "ok": allowed and bool(operation_pool),
+        "pbc": PBC_KEY,
+        "action": normalized_action,
+        "table": selected_table,
+        "payload_keys": tuple(sorted(dict(payload or {}))),
+        "owned_tables": owned_tables,
+        "candidate_operations": operation_pool,
+        "route_candidates": route_candidates,
+        "form_candidates": form_candidates,
+        "wizard_candidates": tuple(dict.fromkeys(wizard_candidates)),
+        "requires_confirmation": normalized_action != "read",
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "side_effects": (),
+    }
+
 
 def composed_agent_contribution():
-    namespace = f'{PBC_KEY}_skills'
-    return {'ok': True, 'pbc': PBC_KEY, 'single_agent_skill_namespace': namespace, 'dsl_tools': (namespace, f'{PBC_KEY}_crud', f'{PBC_KEY}_documents'), 'side_effects': ()}
+    """Return the package contribution to the application's single assistant."""
+    skills = agent_skill_manifest()
+    chatbot = chatbot_interface_contract()
+    return {
+        "ok": skills["ok"] and chatbot["ok"],
+        "pbc": PBC_KEY,
+        "agent": AGENT_NAME,
+        "single_agent_skill_namespace": f"{PBC_KEY}_skills",
+        "dsl_tools": (f"{PBC_KEY}_skills", f"{PBC_KEY}_documents", f"{PBC_KEY}_crud"),
+        "skills": tuple(item["name"] for item in skills["skills"]),
+        "chatbot": chatbot,
+        "standalone_workspace": standalone_agent_workspace_contract(),
+        "side_effects": (),
+    }
+
 
 def smoke_test():
-    return {'ok': agent_skill_manifest()['ok'] and chatbot_interface_contract()['ok'] and document_instruction_plan('doc','create')['ok'] and datastore_crud_plan('create')['ok'] and datastore_crud_plan('update', table='foreign_table')['ok'] is False and composed_agent_contribution()['ok'], 'side_effects': ()}
+    workspace = standalone_agent_workspace_contract()
+    document = document_instruction_plan(
+        "planned closure and detour bulletin",
+        "prepare a governed signal and public alert preview",
+    )
+    crud = datastore_crud_plan(
+        "create",
+        f"{PBC_KEY}_signal_plan",
+        {"signal_plan_id": "sp_agent"},
+    )
+    return {
+        "ok": agent_skill_manifest()["ok"]
+        and chatbot_interface_contract()["ok"]
+        and workspace["ok"]
+        and document["ok"]
+        and crud["ok"],
+        "side_effects": (),
+    }

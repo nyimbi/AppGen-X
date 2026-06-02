@@ -8,6 +8,7 @@ import json
 import math
 
 from .domain_schema import class_name_for, field_names_for, fields_for, relationships_for
+from .search_control import SEARCH_CONTROL_CAPABILITIES, improve1_search_control_contract
 
 ENTERPRISE_SEARCH_VECTOR_REQUIRED_EVENT_TOPIC = "appgen.enterprise_search_vector.events"
 ENTERPRISE_SEARCH_VECTOR_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
@@ -167,9 +168,10 @@ _PARAMETER_BOUNDS = {
 
 def enterprise_search_vector_runtime_capabilities() -> dict:
     smoke = enterprise_search_vector_runtime_smoke()
+    search_control = improve1_search_control_contract()
     return {
         "format": "appgen.enterprise-search-vector-runtime-capabilities.v1",
-        "ok": smoke["ok"],
+        "ok": smoke["ok"] and search_control["ok"],
         "pbc": "enterprise_search_vector",
         "implementation_directory": "src/pyAppGen/pbcs/enterprise_search_vector",
         "owned_tables": ENTERPRISE_SEARCH_VECTOR_OWNED_TABLES,
@@ -177,6 +179,7 @@ def enterprise_search_vector_runtime_capabilities() -> dict:
         "capabilities": ENTERPRISE_SEARCH_VECTOR_RUNTIME_CAPABILITY_KEYS,
         "standard_features": ENTERPRISE_SEARCH_VECTOR_STANDARD_FEATURE_KEYS,
         "operations": (
+            "improve1_search_control_contract",
             "configure_runtime",
             "set_parameter",
             "register_rule",
@@ -207,6 +210,8 @@ def enterprise_search_vector_runtime_capabilities() -> dict:
             "verify_owned_table_boundary",
         ),
         "smoke": smoke,
+        "search_control": search_control,
+        "improve1_search_control_capabilities": tuple(capability.slug for capability in SEARCH_CONTROL_CAPABILITIES),
     }
 
 

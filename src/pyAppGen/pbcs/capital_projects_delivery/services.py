@@ -12,6 +12,7 @@ from .runtime import (
     capital_projects_delivery_build_agent_help_contract,
     capital_projects_delivery_build_single_pbc_app_contract,
     capital_projects_delivery_build_workbench_view,
+    capital_projects_delivery_build_workflow_contracts,
     capital_projects_delivery_command_capital_project,
     capital_projects_delivery_configure_runtime,
     capital_projects_delivery_empty_state,
@@ -55,6 +56,7 @@ QUERY_OPERATIONS = (
     "query_workbench",
     "get_capital_project_detail",
     "build_workbench_view",
+    "build_workflow_contracts",
     "build_single_pbc_app_contract",
     "build_agent_help_contract",
 )
@@ -62,28 +64,44 @@ QUERY_OPERATIONS = (
 
 def _operation_contract(name, kind):
     emitted_event = None
+    owned_tables = ()
+    read_tables = ()
     if kind == "command":
         if name == "approve_capital_project_gate":
             emitted_event = CAPITAL_PROJECTS_DELIVERY_EMITTED_EVENT_TYPES[2]
+            owned_tables = OWNED_TABLES[:1]
         elif name in ("record_gate_checklist", "receive_event"):
             emitted_event = CAPITAL_PROJECTS_DELIVERY_EMITTED_EVENT_TYPES[1]
+            owned_tables = OWNED_TABLES[:1]
+        elif name == "command_capital_project":
+            emitted_event = CAPITAL_PROJECTS_DELIVERY_EMITTED_EVENT_TYPES[0]
+            owned_tables = OWNED_TABLES[:1]
+        elif name in DOMAIN_DEPTH_COMMAND_OPERATIONS:
+            domain_plan = execute_domain_depth_operation(name, {})
+            emitted_event = domain_plan.get("emitted_event")
+            owned_tables = tuple(domain_plan.get("owned_tables", ()))
         else:
             emitted_event = CAPITAL_PROJECTS_DELIVERY_EMITTED_EVENT_TYPES[0]
+            owned_tables = OWNED_TABLES[:1]
+    elif name in ("query_workbench", "get_capital_project_detail", "build_workbench_view"):
+        read_tables = OWNED_TABLES[:1]
     return {
         "operation": name,
         "operation_kind": kind,
-        "owned_tables": OWNED_TABLES[:1] if kind == "command" else (),
-        "read_tables": OWNED_TABLES[:1] if kind == "query" else (),
+        "owned_tables": owned_tables,
+        "read_tables": read_tables,
         "emitted_event": emitted_event,
-        "transaction_boundary": (
-            "owned_datastore_plus_outbox" if kind == "command" else "read_only_projection"
-        ),
+        "transaction_boundary": "owned_datastore_plus_outbox" if kind == "command" else "read_only_projection",
     }
 
 
 class CapitalProjectsDeliveryService:
     def __init__(self, state=None):
         self._state = capital_projects_delivery_empty_state() if state is None else state
+
+    @property
+    def state(self):
+        return self._state
 
     def __getattr__(self, name):
         if name in COMMAND_OPERATIONS:
@@ -117,30 +135,19 @@ class CapitalProjectsDeliveryService:
                 rebaseline_reason=payload.get("rebaseline_reason"),
             )
         elif name == "set_parameter":
-            result = capital_projects_delivery_set_parameter(
-                self._state,
-                payload["name"],
-                payload.get("value"),
-            )
+            result = capital_projects_delivery_set_parameter(self._state, payload["name"], payload.get("value"))
         elif name == "configure_runtime":
             result = capital_projects_delivery_configure_runtime(self._state, payload)
         elif name == "register_rule":
             result = capital_projects_delivery_register_rule(self._state, payload)
         elif name == "register_schema_extension":
-            result = capital_projects_delivery_register_schema_extension(
-                self._state,
-                payload["table"],
-                payload.get("fields", {}),
-            )
+            result = capital_projects_delivery_register_schema_extension(self._state, payload["table"], payload.get("fields", {}))
         elif name == "receive_event":
             result = capital_projects_delivery_receive_event(self._state, payload)
         elif name == "run_advanced_assessment":
             result = capital_projects_delivery_run_advanced_assessment(self._state, payload)
         elif name == "parse_document_instruction":
-            result = capital_projects_delivery_parse_document_instruction(
-                payload.get("document", ""),
-                payload.get("instruction", ""),
-            )
+            result = capital_projects_delivery_parse_document_instruction(payload.get("document", ""), payload.get("instruction", ""))
         elif name in DOMAIN_DEPTH_COMMAND_OPERATIONS:
             plan = execute_domain_depth_operation(name, payload)
             return {
@@ -158,7 +165,7 @@ class CapitalProjectsDeliveryService:
                     "transaction_boundary": "owned_datastore_plus_outbox",
                 },
                 "outbox_table": EVENT_CONTRACT["outbox_table"],
-                "emits": (plan.get("emitted_event"),),
+                "emits": (plan.get("emitted_event"),) if plan.get("emitted_event") else (),
                 "transaction_boundary": "owned_datastore_plus_outbox",
                 "domain_depth": plan,
                 "side_effects": (),
@@ -188,14 +195,11 @@ class CapitalProjectsDeliveryService:
         if name == "query_workbench":
             result = capital_projects_delivery_query_workbench(self._state, payload)
         elif name == "get_capital_project_detail":
-            result = capital_projects_delivery_get_capital_project_detail(
-                self._state,
-                payload["project_id"],
-            )
+            result = capital_projects_delivery_get_capital_project_detail(self._state, payload["project_id"])
         elif name == "build_workbench_view":
-            result = capital_projects_delivery_build_workbench_view(
-                tenant=payload.get("tenant", "default"),
-            )
+            result = capital_projects_delivery_build_workbench_view(tenant=payload.get("tenant", "default"))
+        elif name == "build_workflow_contracts":
+            result = capital_projects_delivery_build_workflow_contracts()
         elif name == "build_single_pbc_app_contract":
             result = capital_projects_delivery_build_single_pbc_app_contract()
         elif name == "build_agent_help_contract":
@@ -230,9 +234,7 @@ def service_operation_manifest():
 
 
 def service_operation_contracts():
-    contracts = tuple(_operation_contract(name, "command") for name in COMMAND_OPERATIONS) + tuple(
-        _operation_contract(name, "query") for name in QUERY_OPERATIONS
-    )
+    contracts = tuple(_operation_contract(name, "command") for name in COMMAND_OPERATIONS) + tuple(_operation_contract(name, "query") for name in QUERY_OPERATIONS)
     return {
         "ok": True,
         "pbc": PBC_KEY,
@@ -256,42 +258,34 @@ def operation_plan(operation, payload=None):
 
 def smoke_test():
     service = CapitalProjectsDeliveryService()
-    created = service.command_capital_project(
-        {
-            "tenant": "tenant-smoke",
-            "code": "SVC-SMOKE",
-            "name": "Service Smoke",
-            "reported_at": "2026-05-29",
-        }
-    )
-    checklist = service.record_gate_checklist(
-        {
-            "project_id": "SVC-SMOKE",
-            "criteria_status": {
-                "business_case_defined": True,
-                "sponsorship_assigned": True,
-            },
-            "updated_by": "controls",
-            "updated_at": "2026-05-29",
-        }
-    )
-    approved = service.approve_capital_project_gate(
-        {
-            "project_id": "SVC-SMOKE",
-            "target_stage": "screening",
-            "approver_role": "project_sponsor",
-            "approved_by": "sponsor.user",
-            "approved_at": "2026-05-29",
-        }
-    )
+    created = service.command_capital_project({
+        "tenant": "tenant-smoke",
+        "code": "SVC-SMOKE",
+        "name": "Service Smoke",
+        "reported_at": "2026-05-29",
+    })
+    checklist = service.record_gate_checklist({
+        "project_id": "SVC-SMOKE",
+        "criteria_status": {
+            "business_case_defined": True,
+            "sponsorship_assigned": True,
+        },
+        "updated_by": "controls",
+        "updated_at": "2026-05-29",
+    })
+    approved = service.approve_capital_project_gate({
+        "project_id": "SVC-SMOKE",
+        "target_stage": "screening",
+        "approver_role": "project_sponsor",
+        "approved_by": "sponsor.user",
+        "approved_at": "2026-05-29",
+    })
     query = service.query_workbench({"tenant": "tenant-smoke"})
+    workflows = service.build_workflow_contracts({})
     return {
-        "ok": created["ok"]
-        and checklist["ok"]
-        and approved["ok"]
-        and query["ok"]
-        and service_operation_contracts()["ok"],
+        "ok": created["ok"] and checklist["ok"] and approved["ok"] and query["ok"] and workflows["ok"] and service_operation_contracts()["ok"],
         "command": approved,
         "query": query,
+        "workflows": workflows,
         "side_effects": (),
     }

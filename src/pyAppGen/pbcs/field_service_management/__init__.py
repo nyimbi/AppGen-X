@@ -2,7 +2,8 @@
 from .manifest import PBC_MANIFEST
 from ..source_contract import source_pbc_package_contract, source_package_metadata, validate_source_package_metadata, source_registration_plan
 from .runtime import *
-from .ui import field_service_management_ui_contract, field_service_management_render_workbench
+from .ui import field_service_management_ui_contract, field_service_management_render_workbench, field_service_management_forms_contract, field_service_management_wizards_contract, field_service_management_controls_contract
+from .app_surface import app_surface_smoke_test, document_instruction_field_service_management_plan, single_pbc_field_service_management_app_contract
 
 PBC_KEY = 'field_service_management'
 
@@ -10,7 +11,7 @@ PBC_KEY = 'field_service_management'
 def implementation_contract() -> dict:
     runtime = field_service_management_runtime_capabilities()
     contract = source_pbc_package_contract(PBC_KEY, tuple(runtime['capabilities']))
-    return {**contract, 'ok': True, 'standard_features': runtime['standard_features'], 'advanced_runtime': runtime, 'ui_contract': field_service_management_ui_contract(), 'api_contract': field_service_management_build_api_contract(), 'schema_contract': field_service_management_build_schema_contract(), 'service_contract': field_service_management_build_service_contract(), 'release_evidence_contract': field_service_management_build_release_evidence(), 'permissions_contract': field_service_management_permissions_contract(), 'owned_tables': tuple(runtime['owned_tables']), 'runtime_tables': tuple(runtime['owned_tables']), 'allowed_database_backends': FIELD_SERVICE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'required_event_topic': FIELD_SERVICE_MANAGEMENT_REQUIRED_EVENT_TOPIC, 'emits': FIELD_SERVICE_MANAGEMENT_EMITTED_EVENT_TYPES, 'consumes': FIELD_SERVICE_MANAGEMENT_CONSUMED_EVENT_TYPES, 'boundary_contract': field_service_management_verify_owned_table_boundary(tuple(runtime['owned_tables']) + ('api_dependency',))}
+    return {**contract, 'ok': True, 'standard_features': runtime['standard_features'], 'advanced_runtime': runtime, 'ui_contract': field_service_management_ui_contract(), 'single_pbc_app': single_pbc_field_service_management_app_contract(), 'app_surface_smoke': app_surface_smoke_test(), 'api_contract': field_service_management_build_api_contract(), 'schema_contract': field_service_management_build_schema_contract(), 'service_contract': field_service_management_build_service_contract(), 'release_evidence_contract': field_service_management_build_release_evidence(), 'permissions_contract': field_service_management_permissions_contract(), 'owned_tables': tuple(runtime['owned_tables']), 'runtime_tables': tuple(runtime['owned_tables']), 'allowed_database_backends': FIELD_SERVICE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'required_event_topic': FIELD_SERVICE_MANAGEMENT_REQUIRED_EVENT_TOPIC, 'emits': FIELD_SERVICE_MANAGEMENT_EMITTED_EVENT_TYPES, 'consumes': FIELD_SERVICE_MANAGEMENT_CONSUMED_EVENT_TYPES, 'boundary_contract': field_service_management_verify_owned_table_boundary(tuple(runtime['owned_tables']) + ('api_dependency',))}
 
 
 def register_pbc() -> dict:

@@ -1,57 +1,148 @@
-from pyAppGen.pbcs.energy_trading_risk import implementation_contract, package_discovery_plan, package_metadata_manifest, validate_package_metadata
+import unittest
+
+from pyAppGen.pbcs.energy_trading_risk import implementation_contract
+from pyAppGen.pbcs.energy_trading_risk import package_discovery_plan
+from pyAppGen.pbcs.energy_trading_risk import package_metadata_manifest
+from pyAppGen.pbcs.energy_trading_risk import validate_package_metadata
+from pyAppGen.pbcs.energy_trading_risk.agent import agent_skill_manifest
+from pyAppGen.pbcs.energy_trading_risk.agent import assistant_help_manifest
+from pyAppGen.pbcs.energy_trading_risk.agent import chatbot_interface_contract
+from pyAppGen.pbcs.energy_trading_risk.agent import datastore_crud_plan
+from pyAppGen.pbcs.energy_trading_risk.agent import document_instruction_plan
+from pyAppGen.pbcs.energy_trading_risk.application import EnergyTradingRiskApp
+from pyAppGen.pbcs.energy_trading_risk.controls import energy_trading_risk_control_catalog
+from pyAppGen.pbcs.energy_trading_risk.forms import energy_trading_risk_form_catalog
+from pyAppGen.pbcs.energy_trading_risk.models import model_contracts
+from pyAppGen.pbcs.energy_trading_risk.release_evidence import build_release_evidence
+from pyAppGen.pbcs.energy_trading_risk.release_evidence import release_readiness_manifest
+from pyAppGen.pbcs.energy_trading_risk.release_evidence import validate_release_evidence
+from pyAppGen.pbcs.energy_trading_risk.events import event_contract_manifest
+from pyAppGen.pbcs.energy_trading_risk.events import validate_event_contract
+from pyAppGen.pbcs.energy_trading_risk.handlers import dispatch_event
+from pyAppGen.pbcs.energy_trading_risk.handlers import handler_manifest
+from pyAppGen.pbcs.energy_trading_risk.routes import api_route_contracts
+from pyAppGen.pbcs.energy_trading_risk.routes import validate_api_route_contracts
 from pyAppGen.pbcs.energy_trading_risk.schema_contract import build_schema_contract
 from pyAppGen.pbcs.energy_trading_risk.service_contract import build_service_contract
-from pyAppGen.pbcs.energy_trading_risk.release_evidence import build_release_evidence, release_readiness_manifest, validate_release_evidence
-from pyAppGen.pbcs.energy_trading_risk.events import event_contract_manifest, validate_event_contract
-from pyAppGen.pbcs.energy_trading_risk.handlers import dispatch_event, handler_manifest
 from pyAppGen.pbcs.energy_trading_risk.services import service_operation_contracts
-from pyAppGen.pbcs.energy_trading_risk.routes import api_route_contracts, validate_api_route_contracts
-from pyAppGen.pbcs.energy_trading_risk.config import governance_smoke_test
-from pyAppGen.pbcs.energy_trading_risk.agent import agent_skill_manifest, chatbot_interface_contract, document_instruction_plan, datastore_crud_plan
+from pyAppGen.pbcs.energy_trading_risk.ui import energy_trading_risk_single_pbc_app_ui_contract
+from pyAppGen.pbcs.energy_trading_risk.wizards import energy_trading_risk_wizard_catalog
 
 
-def test_generated_schema_service_and_release_evidence():
-    assert build_schema_contract()['ok'] is True
-    assert build_service_contract()['ok'] is True
-    assert build_release_evidence()['ok'] is True
-    assert release_readiness_manifest()['ok'] is True
-    assert validate_release_evidence()['ok'] is True
+class ContractTests(unittest.TestCase):
+    def test_generated_schema_service_and_release_evidence(self):
+        self.assertTrue(build_schema_contract()["ok"])
+        self.assertTrue(build_service_contract()["ok"])
+        self.assertTrue(build_release_evidence()["ok"])
+        self.assertTrue(release_readiness_manifest()["ok"])
+        self.assertTrue(validate_release_evidence()["ok"])
+
+    def test_manifest_and_event_contract(self):
+        self.assertEqual(implementation_contract()["pbc"], "energy_trading_risk")
+        self.assertTrue(event_contract_manifest()["ok"])
+        self.assertTrue(validate_event_contract()["ok"])
+
+    def test_app_surface_contracts_are_present(self):
+        self.assertTrue(energy_trading_risk_form_catalog()["ok"])
+        self.assertTrue(energy_trading_risk_wizard_catalog()["ok"])
+        self.assertTrue(energy_trading_risk_control_catalog()["ok"])
+        self.assertTrue(energy_trading_risk_single_pbc_app_ui_contract()["ok"])
+        self.assertTrue(model_contracts()["ok"])
+
+    def test_agent_chatbot_skills_are_executable(self):
+        self.assertTrue(agent_skill_manifest()["ok"])
+        self.assertTrue(assistant_help_manifest()["ok"])
+        self.assertTrue(chatbot_interface_contract()["ok"])
+        self.assertTrue(document_instruction_plan("doc", "create")["ok"])
+        self.assertTrue(datastore_crud_plan("create")["ok"])
+        self.assertFalse(datastore_crud_plan("update", table="foreign_table")["ok"])
+
+    def test_registration_plan_is_side_effect_free(self):
+        self.assertEqual(package_metadata_manifest()["pbc"], "energy_trading_risk")
+        self.assertTrue(validate_package_metadata()["ok"])
+        self.assertTrue(package_discovery_plan()["ok"])
+        self.assertEqual(package_discovery_plan()["side_effects"], ())
+
+    def test_service_and_route_surface_are_executable(self):
+        self.assertTrue(service_operation_contracts()["ok"])
+        self.assertTrue(api_route_contracts()["ok"])
+        self.assertTrue(validate_api_route_contracts()["ok"])
+        self.assertTrue(service_operation_contracts()["operation_contract"])
+
+    def test_release_evidence_requires_docs_and_app_surfaces(self):
+        validation = validate_release_evidence()
+        self.assertTrue(validation["ok"])
+        self.assertTrue(validation["manifest"]["docs_present"]["README.md"])
+        self.assertTrue(validation["manifest"]["docs_present"]["implementation-plan.md"])
+        self.assertTrue(validation["manifest"]["docs_present"]["implementation-status.md"])
+
+    def test_event_handlers_are_idempotent_and_retryable(self):
+        manifest = handler_manifest()
+        self.assertTrue(manifest["ok"])
+        self.assertTrue(dispatch_event({"event_type": ("PolicyChanged", "AuditEventSealed", "OperationalKpiChanged")[0], "idempotency_key": "idem-energy_trading_risk-contract"})["ok"])
+        self.assertTrue(dispatch_event({"event_type": "Unexpected", "idempotency_key": "bad-energy_trading_risk-contract"})["dead_letter_table"].endswith("dead_letter_event"))
+
+    def test_application_contract_is_executable(self):
+        app = EnergyTradingRiskApp()
+        try:
+            contract = app.app_contract()
+            self.assertTrue(contract["ok"])
+            self.assertFalse(contract["database"]["shared_table_access"])
+            self.assertIn("trade_capture_release", contract["wizards"]["wizard_ids"])
+        finally:
+            app.close()
 
 
-def test_manifest_and_event_contract():
-    assert implementation_contract()['pbc'] == 'energy_trading_risk'
-    assert event_contract_manifest()['ok'] is True
-    assert validate_event_contract()['ok'] is True
+if __name__ == "__main__":
+    unittest.main()
 
-
-def test_agent_chatbot_skills_are_executable():
-    assert agent_skill_manifest()['ok'] is True
-    assert chatbot_interface_contract()['ok'] is True
-    assert document_instruction_plan('doc', 'create')['ok'] is True
-    assert datastore_crud_plan('create')['ok'] is True
-    assert datastore_crud_plan('update', table='foreign_table')['ok'] is False
-
-
-def test_registration_plan_is_side_effect_free():
-    assert package_metadata_manifest()['pbc'] == 'energy_trading_risk'
-    assert validate_package_metadata()['ok'] is True
-    assert package_discovery_plan()['ok'] is True
-    assert package_discovery_plan()['side_effects'] == ()
-
-
+# AppGen-X canonical source-audit contract tests for energy_trading_risk.
 def test_service_and_route_surface_are_executable():
-    assert service_operation_contracts()['ok'] is True
-    assert api_route_contracts()['ok'] is True
-    assert validate_api_route_contracts()['ok'] is True
-    assert service_operation_contracts()['operation_contract']
+    import importlib
+
+    services = importlib.import_module("pyAppGen.pbcs.energy_trading_risk.services")
+    routes = importlib.import_module("pyAppGen.pbcs.energy_trading_risk.routes")
+    service_contracts = services.service_operation_contracts()
+    route_contracts = routes.api_route_contracts()
+    route_validation = routes.validate_api_route_contracts()
+    operation_contract = service_contracts.get("operation_contract") or service_contracts.get("contracts", ({},))[0]
+    assert service_contracts["ok"] is True
+    assert route_contracts["ok"] is True
+    assert route_validation["ok"] is True
+    assert operation_contract
 
 
 def test_configuration_permissions_and_seed_hooks_are_executable():
-    assert governance_smoke_test()['ok'] is True
+    import importlib
+
+    config = importlib.import_module("pyAppGen.pbcs.energy_trading_risk.config")
+    permissions = importlib.import_module("pyAppGen.pbcs.energy_trading_risk.permissions")
+    seed_data = importlib.import_module("pyAppGen.pbcs.energy_trading_risk.seed_data")
+    assert config.governance_smoke_test()["ok"] is True
+    assert permissions.smoke_test()["ok"] is True
+    assert seed_data.smoke_test()["ok"] is True
 
 
 def test_event_handlers_are_idempotent_and_retryable():
-    manifest = handler_manifest()
-    assert manifest['ok'] is True
-    assert dispatch_event({'event_type': ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged')[0], 'idempotency_key': 'idem-energy_trading_risk'})['ok'] is True
-    assert dispatch_event({'event_type': 'Unexpected', 'idempotency_key': 'bad-energy_trading_risk'})['dead_letter_table'].endswith('dead_letter_event')
+    import importlib
+
+    events = importlib.import_module("pyAppGen.pbcs.energy_trading_risk.events")
+    handlers = importlib.import_module("pyAppGen.pbcs.energy_trading_risk.handlers")
+    event_contract_manifest = events.event_contract_manifest
+    validate_event_contract = events.validate_event_contract
+    assert event_contract_manifest()["ok"] is True
+    assert validate_event_contract()["ok"] is True
+    handler_smoke = handlers.smoke_test()
+    assert handler_smoke["ok"] is True
+
+
+def test_release_registration_and_package_metadata_are_executable():
+    import importlib
+
+    package = importlib.import_module("pyAppGen.pbcs.energy_trading_risk")
+    release_evidence = importlib.import_module("pyAppGen.pbcs.energy_trading_risk.release_evidence")
+    assert package.package_metadata_manifest()["ok"] is True
+    assert package.validate_package_metadata()["ok"] is True
+    assert package.package_discovery_plan()["ok"] is True
+    assert release_evidence.release_readiness_manifest()["ok"] is True
+    assert release_evidence.validate_release_evidence()["ok"] is True

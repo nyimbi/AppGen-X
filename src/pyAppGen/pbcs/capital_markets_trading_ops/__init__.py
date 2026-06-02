@@ -2,6 +2,7 @@
 from .manifest import PBC_MANIFEST
 from ..source_contract import source_pbc_package_contract, source_package_metadata, validate_source_package_metadata, source_registration_plan
 from .application import CapitalMarketsTradingOpsApp
+from .standalone import CapitalMarketsTradingOpsStandaloneApp, single_pbc_app_contract, standalone_smoke_test
 from .runtime import *
 from .ui import capital_markets_trading_ops_ui_contract, capital_markets_trading_ops_render_workbench
 

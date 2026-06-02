@@ -3,6 +3,7 @@ from .manifest import PBC_MANIFEST
 from ..source_contract import source_pbc_package_contract, source_package_metadata, validate_source_package_metadata, source_registration_plan
 from .runtime import *
 from .ui import claims_adjudication_healthcare_ui_contract, claims_adjudication_healthcare_render_workbench
+from .standalone import single_pbc_app_contract, standalone_smoke_test
 
 PBC_KEY = 'claims_adjudication_healthcare'
 
@@ -10,7 +11,7 @@ PBC_KEY = 'claims_adjudication_healthcare'
 def implementation_contract() -> dict:
     runtime = claims_adjudication_healthcare_runtime_capabilities()
     contract = source_pbc_package_contract(PBC_KEY, tuple(runtime['capabilities']))
-    return {**contract, 'standard_features': runtime['standard_features'], 'advanced_runtime': runtime, 'ui_contract': claims_adjudication_healthcare_ui_contract(), 'api_contract': claims_adjudication_healthcare_build_api_contract(), 'schema_contract': claims_adjudication_healthcare_build_schema_contract(), 'service_contract': claims_adjudication_healthcare_build_service_contract(), 'release_evidence_contract': claims_adjudication_healthcare_build_release_evidence(), 'permissions_contract': claims_adjudication_healthcare_permissions_contract(), 'owned_tables': CLAIMS_ADJUDICATION_HEALTHCARE_OWNED_TABLES, 'runtime_tables': CLAIMS_ADJUDICATION_HEALTHCARE_RUNTIME_TABLES, 'allowed_database_backends': CLAIMS_ADJUDICATION_HEALTHCARE_ALLOWED_DATABASE_BACKENDS, 'required_event_topic': CLAIMS_ADJUDICATION_HEALTHCARE_REQUIRED_EVENT_TOPIC, 'emits': CLAIMS_ADJUDICATION_HEALTHCARE_EMITTED_EVENT_TYPES, 'consumes': CLAIMS_ADJUDICATION_HEALTHCARE_CONSUMED_EVENT_TYPES, 'boundary_contract': claims_adjudication_healthcare_verify_owned_table_boundary(CLAIMS_ADJUDICATION_HEALTHCARE_OWNED_TABLES + ('api_dependency',))}
+    return {**contract, 'standard_features': runtime['standard_features'], 'advanced_runtime': runtime, 'single_pbc_app': single_pbc_app_contract(), 'standalone_app_smoke': standalone_smoke_test(), 'ui_contract': claims_adjudication_healthcare_ui_contract(), 'api_contract': claims_adjudication_healthcare_build_api_contract(), 'schema_contract': claims_adjudication_healthcare_build_schema_contract(), 'service_contract': claims_adjudication_healthcare_build_service_contract(), 'release_evidence_contract': claims_adjudication_healthcare_build_release_evidence(), 'permissions_contract': claims_adjudication_healthcare_permissions_contract(), 'owned_tables': CLAIMS_ADJUDICATION_HEALTHCARE_OWNED_TABLES, 'runtime_tables': CLAIMS_ADJUDICATION_HEALTHCARE_RUNTIME_TABLES, 'allowed_database_backends': CLAIMS_ADJUDICATION_HEALTHCARE_ALLOWED_DATABASE_BACKENDS, 'required_event_topic': CLAIMS_ADJUDICATION_HEALTHCARE_REQUIRED_EVENT_TOPIC, 'emits': CLAIMS_ADJUDICATION_HEALTHCARE_EMITTED_EVENT_TYPES, 'consumes': CLAIMS_ADJUDICATION_HEALTHCARE_CONSUMED_EVENT_TYPES, 'boundary_contract': claims_adjudication_healthcare_verify_owned_table_boundary(CLAIMS_ADJUDICATION_HEALTHCARE_OWNED_TABLES + ('api_dependency',))}
 
 
 def register_pbc() -> dict:
@@ -38,4 +39,4 @@ def package_discovery_plan(existing_catalog: dict | None = None) -> dict:
 def smoke_test() -> dict:
     discovery = package_discovery_plan()
     runtime = claims_adjudication_healthcare_runtime_smoke()
-    return {'ok': discovery['ok'] and runtime['ok'], 'discovery': discovery, 'runtime': runtime, 'side_effects': ()}
+    standalone = standalone_smoke_test(); return {'ok': discovery['ok'] and runtime['ok'] and standalone['ok'], 'discovery': discovery, 'runtime': runtime, 'standalone': standalone, 'side_effects': ()}

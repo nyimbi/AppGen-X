@@ -167,3 +167,37 @@ def smoke_test():
         'contribution': contribution,
         'side_effects': (),
     }
+
+
+
+def _standalone_operations():
+    from .services import standalone_service_operation_contracts
+    return standalone_service_operation_contracts()['operations']
+
+def standalone_agent_workspace_contract():
+    from .routes import standalone_route_contracts
+    from .ui import returns_reverse_logistics_standalone_workbench_blueprint
+    routes_contract=standalone_route_contracts(); workbench=returns_reverse_logistics_standalone_workbench_blueprint()
+    return {'format':'appgen.returns-reverse-logistics-agent-workspace.v1','ok':routes_contract['ok'] and workbench['ok'],'pbc':PBC_KEY,'agent':AGENT_NAME,'entrypoint':'/app/returns-reverse-logistics/assistant/sessions','skill_namespace':f'{PBC_KEY}_skills','dsl_tools':(f'{PBC_KEY}_skills',f'{PBC_KEY}_documents',f'{PBC_KEY}_crud',f'{PBC_KEY}_workflows'),'standalone_operations':_standalone_operations(),'standalone_routes':routes_contract['routes'],'forms':tuple(f['form_id'] for f in workbench['forms']),'wizards':tuple(w['wizard_id'] for w in workbench['wizards']),'controls':tuple(c['control_id'] for c in workbench['controls']),'professional_controls':chatbot_interface_contract()['professional_controls'],'side_effects':()}
+
+_BASE_DOCUMENT_INSTRUCTION_PLAN=document_instruction_plan
+_BASE_DATASTORE_CRUD_PLAN=datastore_crud_plan
+
+def document_instruction_plan(document=None, instructions=None):
+    plan=_BASE_DOCUMENT_INSTRUCTION_PLAN(document,instructions)
+    from .wizards import returns_reverse_logistics_wizard_catalog
+    from .routes import standalone_route_contracts
+    text=f"{document or ''} {instructions or ''}".lower(); target='returns_reverse_logistics_return_authorization'
+    if 'label' in text: target='returns_reverse_logistics_return_label'
+    elif 'inspect' in text or 'inspection' in text: target='returns_reverse_logistics_inspection_grade'
+    elif 'credit' in text or 'refund' in text: target='returns_reverse_logistics_credit_adjustment'
+    elif 'claim' in text: target='returns_reverse_logistics_carrier_claim'
+    elif 'exception' in text: target='returns_reverse_logistics_return_exception_case'
+    return {**plan,'candidate_table':target,'wizard_candidates':returns_reverse_logistics_wizard_catalog()['wizard_ids'],'standalone_routes':standalone_route_contracts()['routes'],'workspace':'returns_reverse_logistics_standalone_app'}
+
+def datastore_crud_plan(action='read', table=None, payload=None):
+    base=_BASE_DATASTORE_CRUD_PLAN(action,table,payload)
+    standalone_tables=('returns_reverse_logistics_runtime_state','returns_reverse_logistics_form_submission','returns_reverse_logistics_workflow_run','returns_reverse_logistics_control_execution','returns_reverse_logistics_agent_session','returns_reverse_logistics_workbench_read_model')
+    selected=base.get('table') or table
+    allowed=base.get('ok') is True or (str(action).lower() in _CRUD_ACTIONS and selected in standalone_tables)
+    return {**base,'ok':allowed,'owned_tables':tuple(dict.fromkeys(tuple(base.get('owned_tables',()))+standalone_tables)),'standalone_tables':standalone_tables,'standalone_operations':_standalone_operations(),'event_contract':'AppGen-X','stream_engine_picker_visible':False}

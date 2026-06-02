@@ -107,3 +107,52 @@ def smoke_test():
         'evidence': evidence,
         'side_effects': (),
     }
+
+
+
+def _standalone_documentation_evidence():
+    base = Path(__file__).resolve().parent
+    required = ('README.md', 'SPECIFICATION.md', 'RELEASE_EVIDENCE.md', 'repository.py', 'standalone.py')
+    docs = tuple({'path': name, 'exists': (base / name).exists()} for name in required)
+    return {'ok': all(item['exists'] for item in docs), 'docs': docs, 'side_effects': ()}
+
+
+_original_quality_assurance_build_release_evidence = build_release_evidence
+
+def build_release_evidence():
+    evidence = dict(_original_quality_assurance_build_release_evidence())
+    from . import standalone
+    from .repository import standalone_repository_smoke_test
+    evidence['documentation'] = _standalone_documentation_evidence()
+    evidence['standalone_app'] = standalone.quality_assurance_standalone_app_smoke()
+    evidence['standalone_repository'] = standalone_repository_smoke_test()
+    evidence['ok'] = evidence.get('ok') is True and evidence['documentation']['ok'] and evidence['standalone_app']['ok'] and evidence['standalone_repository']['ok']
+    return evidence
+
+# Improve1 quality assurance control release extension.
+from .quality_assurance_control import improve1_quality_assurance_control_contract as _improve1_quality_assurance_control_contract
+
+_QUALITY_ASSURANCE_CONTROL_BASE_BUILD_RELEASE_EVIDENCE = build_release_evidence
+_QUALITY_ASSURANCE_CONTROL_BASE_VALIDATE_RELEASE_EVIDENCE = validate_release_evidence
+
+
+def build_release_evidence() -> dict:
+    evidence = dict(_QUALITY_ASSURANCE_CONTROL_BASE_BUILD_RELEASE_EVIDENCE())
+    control = _improve1_quality_assurance_control_contract()
+    checks = tuple(evidence.get("checks", ())) + ({"id": "improve1_quality_assurance_control", "ok": control["ok"]},)
+    evidence.update({
+        "ok": bool(evidence.get("ok")) and control["ok"],
+        "checks": checks,
+        "quality_assurance_control": control,
+        "blocking_gaps": tuple(evidence.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ())),
+    })
+    return evidence
+
+
+def validate_release_evidence() -> dict:
+    validation = dict(_QUALITY_ASSURANCE_CONTROL_BASE_VALIDATE_RELEASE_EVIDENCE())
+    control = _improve1_quality_assurance_control_contract()
+    validation["ok"] = validation.get("ok") is True and control["ok"]
+    validation["quality_assurance_control"] = control
+    validation["blocking_gaps"] = tuple(validation.get("blocking_gaps", ())) + tuple(control.get("blocking_gaps", ()))
+    return validation

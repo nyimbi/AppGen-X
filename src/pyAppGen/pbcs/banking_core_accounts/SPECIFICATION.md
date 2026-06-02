@@ -2,9 +2,9 @@
 
 ## Scope
 
-`banking_core_accounts` is a standalone PBC for deposit account operations. A generated application that contains only this PBC must still let an operations team open, approve, activate, restrict, reopen, service, and close accounts without relying on shared foreign tables. The package owns its datastore boundary, service layer, API route layer, AppGen-X event contract, forms, wizards, controls, workbench, RBAC permission set, agent assistant, seed data, configuration schema, runtime parameters, release evidence, and tests.
+`banking_core_accounts` is a standalone PBC for a focused deposit-account lifecycle slice. A generated application that contains only this PBC must still let an operations team open, approve, activate, restrict, reopen, service, and close accounts without relying on shared foreign tables. The package owns its datastore boundary, service layer, API route layer, AppGen-X event contract, forms, wizards, controls, workflow catalog, workbench, RBAC permission set, assistant document-intake planning, seed data, configuration schema, runtime parameters, release evidence, and tests.
 
-The standard capability surface covers deposit account management, available and ledger balance tracking, account holds, interest accrual, fee assessment, statement cycle readiness, service cases, lifecycle state transitions, maker-checker approval, operational exceptions, and audit-ready account history. The advanced capability surface adds event-sourced operational history, multi-tenant policy isolation, schema evolution resilience, autonomous anomaly detection, semantic document instruction understanding, predictive risk scoring, counterfactual scenario simulation, cryptographic audit proofs, continuous control testing, carbon and sustainability awareness, cross-PBC event federation, and governed AI agent execution.
+The implemented surface is intentionally narrow. It covers deposit-account lifecycle state transitions, maker-checker approval, operational exceptions, AppGen-X outbox/inbox handling, workbench detail and queue queries, governed assistant CRUD planning, and audit-ready lifecycle history. Manifest-level balance, hold, interest, and fee assets remain represented as owned schema and contracts, but their richer operational behavior remains backlog work from `improve1.md`.
 
 ## Owned Boundary
 
@@ -12,27 +12,27 @@ The PBC owns every table required to operate the domain: deposit accounts, balan
 
 ## Functional Workflows
 
-The primary account-opening wizard captures product, party reference, currency, account purpose, source of funds, opening channel, required documents, initial restrictions, and risk flags. The service validates rule configuration and parameter thresholds, creates the account in pending state, records an outbox event, and exposes the record in the workbench. The approval workflow requires an operator with the approve permission, verifies all mandatory controls, emits an approved event, and activates the account. Lifecycle commands restrict, dormancy-mark, close, and reopen accounts with reason codes, effective dates, and idempotency keys.
+The primary account-opening workflow captures product, party reference, currency, and opening metadata through the package-local form and wizard. The service validates rule configuration and parameter thresholds, creates the account in pending state, records an outbox event, and exposes the record in the workbench. The lifecycle workflow requires the correct permission set, verifies maker-checker and reason controls where needed, and transitions accounts through approved, active, restricted, dormant, closed, and reopened states with idempotency protection.
 
-Balance workflows record ledger balance, available balance, holds, interest, and fees with explicit transaction boundaries. Hold forms capture amount, expiration, legal basis, and release rule. Interest and fee services calculate postings from configured rules but leave posting into external ledgers to declared API/event dependencies. Query APIs return account detail, workbench queues, risk indicators, and control exceptions. Mutations are routed through the service layer so that every command is auditable, retryable, and protected from duplicate execution.
+The document-instruction workflow uses the assistant panel to parse operator instructions, preview the CRUD intent, select the workflow route, show the required permission, and require human confirmation before mutation. Query APIs return account detail, lifecycle queues, workflow coverage, and control exceptions. Mutations are routed through the service layer so that every command is auditable, retryable, and protected from duplicate execution.
 
 ## UI, Controls, And Agent
 
-The generated UI must include a BankingCoreAccountsWorkbench for queues and metrics, BankingCoreAccountsDetail for lifecycle and financial state, and BankingCoreAccountsAssistantPanel for professional help. Forms cover account opening, balance adjustment, hold placement, fee assessment, interest accrual, statement readiness, and service-case creation. Wizards guide account opening and lifecycle approval. Controls surface maker-checker separation, duplicate request detection, policy rule violations, stale document checks, negative available balance prevention, restriction override review, dormant account governance, and owned-table boundary enforcement.
+The generated UI must include a BankingCoreAccountsWorkbench for queues and metrics, BankingCoreAccountsDetail for lifecycle state, and BankingCoreAccountsAssistantPanel for professional help. Forms cover account opening, lifecycle transition, and detail filtering. Wizards guide account opening and lifecycle approval. Controls surface maker-checker separation, duplicate request detection, transition guardrails, reason requirements, and owned-table boundary enforcement. The workflow surface declares explicit flows for account opening, lifecycle servicing, and assistant-driven document intake.
 
 The agent, assistant, and chatbot expose skills for document instruction intake, guided CRUD datastore mutation, account-opening help, lifecycle guidance, exception explanation, and composition into the application-wide single agent. The agent can parse onboarding documents or operator instructions, propose a side-effect-free plan, show required permissions, and execute create, update, approve, or query actions only through governed service commands.
 
 ## Events And Resilience
 
-Ordinary eventing uses the AppGen-X contract only. There is no user-visible stream picker. The PBC writes emitted events to its outbox and consumes declared events through its inbox. Idempotent handlers enforce idempotency_key semantics, retry failed policy/audit/operational messages, and route unrecoverable messages to the dead-letter table. Release evidence must show the outbox, inbox, retry policy, and dead-letter path for every command and consumed event.
+Ordinary eventing uses the AppGen-X contract only. There is no user-visible stream picker. The PBC writes emitted events to its outbox and consumes declared events through its inbox. Idempotent handlers enforce `idempotency_key` semantics, retry failed policy/audit/operational messages, and route unrecoverable messages to the dead-letter table. Release evidence must show the outbox, inbox, retry policy, and dead-letter path for every command and consumed event.
 
 ## Configuration And Registration
 
-Configuration includes database URL, event topic, retry limit, and default policy. The rule engine compiles deposit-account lifecycle rules, hold release rules, approval requirements, risk score thresholds, dormancy parameters, and assistant mutation policies. Runtime parameters are editable through governed configuration workbench controls. Package registration is side-effect-free: discovery, metadata validation, and registration plan generation must not mutate the datastore or call external services.
+Configuration includes database URL, event topic, retry limit, and default policy. The rule engine compiles deposit-account lifecycle rules, approval requirements, and assistant mutation policies. Runtime parameters are editable through governed configuration workbench controls. Package registration is side-effect-free: discovery, metadata validation, and registration plan generation must not mutate the datastore or call external services.
 
 ## Release Requirements
 
-The package is releasable only when schema, migration, model, service, API route, event, handler, UI, permission, configuration, seed, registration, agent, and release tests pass. A generation smoke test must prove the single-PBC app includes database-backed forms, wizards, controls, workbench views, service commands, route contracts, agent skills, and AppGen-X event evidence.
+The package is releasable only when schema, migration, model, service, API route, event, handler, UI, workflow, permission, configuration, seed, registration, agent, and release tests pass. A generation smoke test must prove the single-PBC app includes database-backed forms, wizards, controls, workflow views, service commands, route contracts, agent skills, and AppGen-X event evidence.
 
 ## Manifest Traceability Appendix
 
@@ -46,7 +46,7 @@ Consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged.
 
 UI fragments: BankingCoreAccountsWorkbench, BankingCoreAccountsDetail, BankingCoreAccountsAssistantPanel.
 
-Permissions: banking_core_accounts.read, banking_core_accounts.create, banking_core_accounts.update, banking_core_accounts.approve, banking_core_accounts.admin.
+Permissions: banking_core_accounts.read, banking_core_accounts.create, banking_core_accounts.update, banking_core_accounts.approve, banking_core_accounts.admin, banking_core_accounts.operate.
 
 Configuration: BANKING_CORE_ACCOUNTS_DATABASE_URL, BANKING_CORE_ACCOUNTS_EVENT_TOPIC, BANKING_CORE_ACCOUNTS_RETRY_LIMIT, BANKING_CORE_ACCOUNTS_DEFAULT_POLICY.
 

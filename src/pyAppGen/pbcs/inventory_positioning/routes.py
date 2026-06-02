@@ -1,122 +1,151 @@
 """API route contracts for the inventory_positioning PBC."""
 
-from .services import InventoryPositioningService, service_operation_contracts
+from __future__ import annotations
+
+import re
+
+from .services import InventoryPositioningService
+from .services import operation_plan
+from .services import service_operation_contracts
 
 
+PBC_KEY = "inventory_positioning"
 ROUTES = (
-    {'method': 'POST', 'path': '/api/pbc/inventory_positioning/inventory/items', 'handler': 'command_inventory_items', 'permission': 'inventory_positioning.command.1'},
-    {'method': 'POST', 'path': '/api/pbc/inventory_positioning/inventory/nodes', 'handler': 'command_inventory_nodes', 'permission': 'inventory_positioning.command.2'},
-    {'method': 'POST', 'path': '/api/pbc/inventory_positioning/inventory/receipts', 'handler': 'command_inventory_receipts', 'permission': 'inventory_positioning.command.3'},
-    {'method': 'POST', 'path': '/api/pbc/inventory_positioning/inventory/adjustments', 'handler': 'command_inventory_adjustments', 'permission': 'inventory_positioning.command.4'},
-    {'method': 'GET', 'path': '/api/pbc/inventory_positioning/inventory/availability', 'handler': 'query_inventory_availability', 'permission': 'inventory_positioning.query.5'},
-    {'method': 'POST', 'path': '/api/pbc/inventory_positioning/inventory/allocations', 'handler': 'command_inventory_allocations', 'permission': 'inventory_positioning.command.6'},
-    {'method': 'POST', 'path': '/api/pbc/inventory_positioning/inventory/allocations/{id}/release', 'handler': 'command_inventory_allocations_id_release', 'permission': 'inventory_positioning.command.7'},
-    {'method': 'POST', 'path': '/api/pbc/inventory_positioning/inventory/quality-holds', 'handler': 'command_inventory_quality_holds', 'permission': 'inventory_positioning.command.8'},
-    {'method': 'POST', 'path': '/api/pbc/inventory_positioning/inventory/events/inbox', 'handler': 'command_inventory_events_inbox', 'permission': 'inventory_positioning.command.9'},
-    {'method': 'GET', 'path': '/api/pbc/inventory_positioning/inventory/workbench', 'handler': 'query_inventory_workbench', 'permission': 'inventory_positioning.query.10'},
+    {"method": "POST", "path": "/inventory/items", "handler": "register_item", "permission": "inventory_positioning.master"},
+    {"method": "POST", "path": "/inventory/nodes", "handler": "register_node", "permission": "inventory_positioning.master"},
+    {"method": "POST", "path": "/inventory/receipts", "handler": "post_goods_receipt", "permission": "inventory_positioning.receive"},
+    {"method": "POST", "path": "/inventory/adjustments", "handler": "post_adjustment", "permission": "inventory_positioning.adjust"},
+    {"method": "GET", "path": "/inventory/availability", "handler": "calculate_availability", "permission": "inventory_positioning.read"},
+    {"method": "POST", "path": "/inventory/allocations", "handler": "allocate_inventory", "permission": "inventory_positioning.allocate"},
+    {"method": "POST", "path": "/inventory/allocations/{id}/release", "handler": "release_allocation", "permission": "inventory_positioning.release"},
+    {"method": "POST", "path": "/inventory/quality-holds", "handler": "apply_quality_hold", "permission": "inventory_positioning.quality"},
+    {"method": "POST", "path": "/inventory/events/inbox", "handler": "receive_event", "permission": "inventory_positioning.event"},
+    {"method": "GET", "path": "/inventory/workbench", "handler": "build_workbench_view", "permission": "inventory_positioning.audit"},
 )
 
 
-API_ROUTE_CONTRACTS = ({'method': 'POST', 'path': '/api/pbc/inventory_positioning/inventory/items', 'handler': 'command_inventory_items', 'permission': 'inventory_positioning.command.1', 'operation': 'command_inventory_items', 'operation_kind': 'command', 'owned_tables': ('inventory_positioning_item', 'inventory_positioning_item_attribute', 'inventory_positioning_item_substitution', 'inventory_positioning_lot', 'inventory_positioning_serial', 'inventory_positioning_node', 'inventory_positioning_node_calendar', 'inventory_positioning_node_capacity', 'inventory_positioning_node_identity', 'inventory_positioning_inventory_position', 'inventory_positioning_position_snapshot', 'inventory_positioning_receipt', 'inventory_positioning_receipt_line', 'inventory_positioning_adjustment', 'inventory_positioning_cycle_count', 'inventory_positioning_reservation', 'inventory_positioning_allocation', 'inventory_positioning_allocation_line', 'inventory_positioning_allocation_expiry', 'inventory_positioning_quality_hold', 'inventory_positioning_quality_release', 'inventory_positioning_in_transit_projection', 'inventory_positioning_traceability_event', 'inventory_positioning_backorder', 'inventory_positioning_replenishment_signal', 'inventory_positioning_replenishment_plan', 'inventory_positioning_reconciliation', 'inventory_positioning_policy_screening', 'inventory_positioning_stock_proof', 'inventory_positioning_cross_node_federation', 'inventory_positioning_carbon_fulfillment', 'inventory_positioning_channel_allocation', 'inventory_positioning_anomaly_signal', 'inventory_positioning_stock_risk_model', 'inventory_positioning_seed_data', 'inventory_positioning_schema_extension', 'inventory_positioning_control_assertion', 'inventory_positioning_governed_model', 'inventory_positioning_rule', 'inventory_positioning_parameter', 'inventory_positioning_configuration'), 'read_tables': (), 'emitted_event': 'ItemRegistered', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'inventory_positioning:command_inventory_items:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'POST', 'path': '/api/pbc/inventory_positioning/inventory/nodes', 'handler': 'command_inventory_nodes', 'permission': 'inventory_positioning.command.2', 'operation': 'command_inventory_nodes', 'operation_kind': 'command', 'owned_tables': ('inventory_positioning_item', 'inventory_positioning_item_attribute', 'inventory_positioning_item_substitution', 'inventory_positioning_lot', 'inventory_positioning_serial', 'inventory_positioning_node', 'inventory_positioning_node_calendar', 'inventory_positioning_node_capacity', 'inventory_positioning_node_identity', 'inventory_positioning_inventory_position', 'inventory_positioning_position_snapshot', 'inventory_positioning_receipt', 'inventory_positioning_receipt_line', 'inventory_positioning_adjustment', 'inventory_positioning_cycle_count', 'inventory_positioning_reservation', 'inventory_positioning_allocation', 'inventory_positioning_allocation_line', 'inventory_positioning_allocation_expiry', 'inventory_positioning_quality_hold', 'inventory_positioning_quality_release', 'inventory_positioning_in_transit_projection', 'inventory_positioning_traceability_event', 'inventory_positioning_backorder', 'inventory_positioning_replenishment_signal', 'inventory_positioning_replenishment_plan', 'inventory_positioning_reconciliation', 'inventory_positioning_policy_screening', 'inventory_positioning_stock_proof', 'inventory_positioning_cross_node_federation', 'inventory_positioning_carbon_fulfillment', 'inventory_positioning_channel_allocation', 'inventory_positioning_anomaly_signal', 'inventory_positioning_stock_risk_model', 'inventory_positioning_seed_data', 'inventory_positioning_schema_extension', 'inventory_positioning_control_assertion', 'inventory_positioning_governed_model', 'inventory_positioning_rule', 'inventory_positioning_parameter', 'inventory_positioning_configuration'), 'read_tables': (), 'emitted_event': 'InventoryNodeRegistered', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'inventory_positioning:command_inventory_nodes:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'POST', 'path': '/api/pbc/inventory_positioning/inventory/receipts', 'handler': 'command_inventory_receipts', 'permission': 'inventory_positioning.command.3', 'operation': 'command_inventory_receipts', 'operation_kind': 'command', 'owned_tables': ('inventory_positioning_item', 'inventory_positioning_item_attribute', 'inventory_positioning_item_substitution', 'inventory_positioning_lot', 'inventory_positioning_serial', 'inventory_positioning_node', 'inventory_positioning_node_calendar', 'inventory_positioning_node_capacity', 'inventory_positioning_node_identity', 'inventory_positioning_inventory_position', 'inventory_positioning_position_snapshot', 'inventory_positioning_receipt', 'inventory_positioning_receipt_line', 'inventory_positioning_adjustment', 'inventory_positioning_cycle_count', 'inventory_positioning_reservation', 'inventory_positioning_allocation', 'inventory_positioning_allocation_line', 'inventory_positioning_allocation_expiry', 'inventory_positioning_quality_hold', 'inventory_positioning_quality_release', 'inventory_positioning_in_transit_projection', 'inventory_positioning_traceability_event', 'inventory_positioning_backorder', 'inventory_positioning_replenishment_signal', 'inventory_positioning_replenishment_plan', 'inventory_positioning_reconciliation', 'inventory_positioning_policy_screening', 'inventory_positioning_stock_proof', 'inventory_positioning_cross_node_federation', 'inventory_positioning_carbon_fulfillment', 'inventory_positioning_channel_allocation', 'inventory_positioning_anomaly_signal', 'inventory_positioning_stock_risk_model', 'inventory_positioning_seed_data', 'inventory_positioning_schema_extension', 'inventory_positioning_control_assertion', 'inventory_positioning_governed_model', 'inventory_positioning_rule', 'inventory_positioning_parameter', 'inventory_positioning_configuration'), 'read_tables': (), 'emitted_event': 'GoodsReceiptPosted', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'inventory_positioning:command_inventory_receipts:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'POST', 'path': '/api/pbc/inventory_positioning/inventory/adjustments', 'handler': 'command_inventory_adjustments', 'permission': 'inventory_positioning.command.4', 'operation': 'command_inventory_adjustments', 'operation_kind': 'command', 'owned_tables': ('inventory_positioning_item', 'inventory_positioning_item_attribute', 'inventory_positioning_item_substitution', 'inventory_positioning_lot', 'inventory_positioning_serial', 'inventory_positioning_node', 'inventory_positioning_node_calendar', 'inventory_positioning_node_capacity', 'inventory_positioning_node_identity', 'inventory_positioning_inventory_position', 'inventory_positioning_position_snapshot', 'inventory_positioning_receipt', 'inventory_positioning_receipt_line', 'inventory_positioning_adjustment', 'inventory_positioning_cycle_count', 'inventory_positioning_reservation', 'inventory_positioning_allocation', 'inventory_positioning_allocation_line', 'inventory_positioning_allocation_expiry', 'inventory_positioning_quality_hold', 'inventory_positioning_quality_release', 'inventory_positioning_in_transit_projection', 'inventory_positioning_traceability_event', 'inventory_positioning_backorder', 'inventory_positioning_replenishment_signal', 'inventory_positioning_replenishment_plan', 'inventory_positioning_reconciliation', 'inventory_positioning_policy_screening', 'inventory_positioning_stock_proof', 'inventory_positioning_cross_node_federation', 'inventory_positioning_carbon_fulfillment', 'inventory_positioning_channel_allocation', 'inventory_positioning_anomaly_signal', 'inventory_positioning_stock_risk_model', 'inventory_positioning_seed_data', 'inventory_positioning_schema_extension', 'inventory_positioning_control_assertion', 'inventory_positioning_governed_model', 'inventory_positioning_rule', 'inventory_positioning_parameter', 'inventory_positioning_configuration'), 'read_tables': (), 'emitted_event': 'InventoryAdjusted', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'inventory_positioning:command_inventory_adjustments:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'GET', 'path': '/api/pbc/inventory_positioning/inventory/availability', 'handler': 'query_inventory_availability', 'permission': 'inventory_positioning.query.5', 'operation': 'query_inventory_availability', 'operation_kind': 'query', 'owned_tables': (), 'read_tables': ('inventory_positioning_item', 'inventory_positioning_item_attribute', 'inventory_positioning_item_substitution', 'inventory_positioning_lot', 'inventory_positioning_serial', 'inventory_positioning_node', 'inventory_positioning_node_calendar', 'inventory_positioning_node_capacity', 'inventory_positioning_node_identity', 'inventory_positioning_inventory_position', 'inventory_positioning_position_snapshot', 'inventory_positioning_receipt', 'inventory_positioning_receipt_line', 'inventory_positioning_adjustment', 'inventory_positioning_cycle_count', 'inventory_positioning_reservation', 'inventory_positioning_allocation', 'inventory_positioning_allocation_line', 'inventory_positioning_allocation_expiry', 'inventory_positioning_quality_hold', 'inventory_positioning_quality_release', 'inventory_positioning_in_transit_projection', 'inventory_positioning_traceability_event', 'inventory_positioning_backorder', 'inventory_positioning_replenishment_signal', 'inventory_positioning_replenishment_plan', 'inventory_positioning_reconciliation', 'inventory_positioning_policy_screening', 'inventory_positioning_stock_proof', 'inventory_positioning_cross_node_federation', 'inventory_positioning_carbon_fulfillment', 'inventory_positioning_channel_allocation', 'inventory_positioning_anomaly_signal', 'inventory_positioning_stock_risk_model', 'inventory_positioning_seed_data', 'inventory_positioning_schema_extension', 'inventory_positioning_control_assertion', 'inventory_positioning_governed_model', 'inventory_positioning_rule', 'inventory_positioning_parameter', 'inventory_positioning_configuration'), 'emitted_event': None, 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': False, 'idempotency_key': None, 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'POST', 'path': '/api/pbc/inventory_positioning/inventory/allocations', 'handler': 'command_inventory_allocations', 'permission': 'inventory_positioning.command.6', 'operation': 'command_inventory_allocations', 'operation_kind': 'command', 'owned_tables': ('inventory_positioning_item', 'inventory_positioning_item_attribute', 'inventory_positioning_item_substitution', 'inventory_positioning_lot', 'inventory_positioning_serial', 'inventory_positioning_node', 'inventory_positioning_node_calendar', 'inventory_positioning_node_capacity', 'inventory_positioning_node_identity', 'inventory_positioning_inventory_position', 'inventory_positioning_position_snapshot', 'inventory_positioning_receipt', 'inventory_positioning_receipt_line', 'inventory_positioning_adjustment', 'inventory_positioning_cycle_count', 'inventory_positioning_reservation', 'inventory_positioning_allocation', 'inventory_positioning_allocation_line', 'inventory_positioning_allocation_expiry', 'inventory_positioning_quality_hold', 'inventory_positioning_quality_release', 'inventory_positioning_in_transit_projection', 'inventory_positioning_traceability_event', 'inventory_positioning_backorder', 'inventory_positioning_replenishment_signal', 'inventory_positioning_replenishment_plan', 'inventory_positioning_reconciliation', 'inventory_positioning_policy_screening', 'inventory_positioning_stock_proof', 'inventory_positioning_cross_node_federation', 'inventory_positioning_carbon_fulfillment', 'inventory_positioning_channel_allocation', 'inventory_positioning_anomaly_signal', 'inventory_positioning_stock_risk_model', 'inventory_positioning_seed_data', 'inventory_positioning_schema_extension', 'inventory_positioning_control_assertion', 'inventory_positioning_governed_model', 'inventory_positioning_rule', 'inventory_positioning_parameter', 'inventory_positioning_configuration'), 'read_tables': (), 'emitted_event': 'InventoryReleased', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'inventory_positioning:command_inventory_allocations:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'POST', 'path': '/api/pbc/inventory_positioning/inventory/allocations/{id}/release', 'handler': 'command_inventory_allocations_id_release', 'permission': 'inventory_positioning.command.7', 'operation': 'command_inventory_allocations_id_release', 'operation_kind': 'command', 'owned_tables': ('inventory_positioning_item', 'inventory_positioning_item_attribute', 'inventory_positioning_item_substitution', 'inventory_positioning_lot', 'inventory_positioning_serial', 'inventory_positioning_node', 'inventory_positioning_node_calendar', 'inventory_positioning_node_capacity', 'inventory_positioning_node_identity', 'inventory_positioning_inventory_position', 'inventory_positioning_position_snapshot', 'inventory_positioning_receipt', 'inventory_positioning_receipt_line', 'inventory_positioning_adjustment', 'inventory_positioning_cycle_count', 'inventory_positioning_reservation', 'inventory_positioning_allocation', 'inventory_positioning_allocation_line', 'inventory_positioning_allocation_expiry', 'inventory_positioning_quality_hold', 'inventory_positioning_quality_release', 'inventory_positioning_in_transit_projection', 'inventory_positioning_traceability_event', 'inventory_positioning_backorder', 'inventory_positioning_replenishment_signal', 'inventory_positioning_replenishment_plan', 'inventory_positioning_reconciliation', 'inventory_positioning_policy_screening', 'inventory_positioning_stock_proof', 'inventory_positioning_cross_node_federation', 'inventory_positioning_carbon_fulfillment', 'inventory_positioning_channel_allocation', 'inventory_positioning_anomaly_signal', 'inventory_positioning_stock_risk_model', 'inventory_positioning_seed_data', 'inventory_positioning_schema_extension', 'inventory_positioning_control_assertion', 'inventory_positioning_governed_model', 'inventory_positioning_rule', 'inventory_positioning_parameter', 'inventory_positioning_configuration'), 'read_tables': (), 'emitted_event': 'QualityHoldApplied', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'inventory_positioning:command_inventory_allocations_id_release:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'POST', 'path': '/api/pbc/inventory_positioning/inventory/quality-holds', 'handler': 'command_inventory_quality_holds', 'permission': 'inventory_positioning.command.8', 'operation': 'command_inventory_quality_holds', 'operation_kind': 'command', 'owned_tables': ('inventory_positioning_item', 'inventory_positioning_item_attribute', 'inventory_positioning_item_substitution', 'inventory_positioning_lot', 'inventory_positioning_serial', 'inventory_positioning_node', 'inventory_positioning_node_calendar', 'inventory_positioning_node_capacity', 'inventory_positioning_node_identity', 'inventory_positioning_inventory_position', 'inventory_positioning_position_snapshot', 'inventory_positioning_receipt', 'inventory_positioning_receipt_line', 'inventory_positioning_adjustment', 'inventory_positioning_cycle_count', 'inventory_positioning_reservation', 'inventory_positioning_allocation', 'inventory_positioning_allocation_line', 'inventory_positioning_allocation_expiry', 'inventory_positioning_quality_hold', 'inventory_positioning_quality_release', 'inventory_positioning_in_transit_projection', 'inventory_positioning_traceability_event', 'inventory_positioning_backorder', 'inventory_positioning_replenishment_signal', 'inventory_positioning_replenishment_plan', 'inventory_positioning_reconciliation', 'inventory_positioning_policy_screening', 'inventory_positioning_stock_proof', 'inventory_positioning_cross_node_federation', 'inventory_positioning_carbon_fulfillment', 'inventory_positioning_channel_allocation', 'inventory_positioning_anomaly_signal', 'inventory_positioning_stock_risk_model', 'inventory_positioning_seed_data', 'inventory_positioning_schema_extension', 'inventory_positioning_control_assertion', 'inventory_positioning_governed_model', 'inventory_positioning_rule', 'inventory_positioning_parameter', 'inventory_positioning_configuration'), 'read_tables': (), 'emitted_event': 'ItemRegistered', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'inventory_positioning:command_inventory_quality_holds:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'POST', 'path': '/api/pbc/inventory_positioning/inventory/events/inbox', 'handler': 'command_inventory_events_inbox', 'permission': 'inventory_positioning.command.9', 'operation': 'command_inventory_events_inbox', 'operation_kind': 'command', 'owned_tables': ('inventory_positioning_item', 'inventory_positioning_item_attribute', 'inventory_positioning_item_substitution', 'inventory_positioning_lot', 'inventory_positioning_serial', 'inventory_positioning_node', 'inventory_positioning_node_calendar', 'inventory_positioning_node_capacity', 'inventory_positioning_node_identity', 'inventory_positioning_inventory_position', 'inventory_positioning_position_snapshot', 'inventory_positioning_receipt', 'inventory_positioning_receipt_line', 'inventory_positioning_adjustment', 'inventory_positioning_cycle_count', 'inventory_positioning_reservation', 'inventory_positioning_allocation', 'inventory_positioning_allocation_line', 'inventory_positioning_allocation_expiry', 'inventory_positioning_quality_hold', 'inventory_positioning_quality_release', 'inventory_positioning_in_transit_projection', 'inventory_positioning_traceability_event', 'inventory_positioning_backorder', 'inventory_positioning_replenishment_signal', 'inventory_positioning_replenishment_plan', 'inventory_positioning_reconciliation', 'inventory_positioning_policy_screening', 'inventory_positioning_stock_proof', 'inventory_positioning_cross_node_federation', 'inventory_positioning_carbon_fulfillment', 'inventory_positioning_channel_allocation', 'inventory_positioning_anomaly_signal', 'inventory_positioning_stock_risk_model', 'inventory_positioning_seed_data', 'inventory_positioning_schema_extension', 'inventory_positioning_control_assertion', 'inventory_positioning_governed_model', 'inventory_positioning_rule', 'inventory_positioning_parameter', 'inventory_positioning_configuration'), 'read_tables': (), 'emitted_event': 'InventoryNodeRegistered', 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': True, 'idempotency_key': 'inventory_positioning:command_inventory_events_inbox:idempotency_key', 'shared_table_access': False, 'stream_engine_picker_visible': False}, {'method': 'GET', 'path': '/api/pbc/inventory_positioning/inventory/workbench', 'handler': 'query_inventory_workbench', 'permission': 'inventory_positioning.query.10', 'operation': 'query_inventory_workbench', 'operation_kind': 'query', 'owned_tables': (), 'read_tables': ('inventory_positioning_item', 'inventory_positioning_item_attribute', 'inventory_positioning_item_substitution', 'inventory_positioning_lot', 'inventory_positioning_serial', 'inventory_positioning_node', 'inventory_positioning_node_calendar', 'inventory_positioning_node_capacity', 'inventory_positioning_node_identity', 'inventory_positioning_inventory_position', 'inventory_positioning_position_snapshot', 'inventory_positioning_receipt', 'inventory_positioning_receipt_line', 'inventory_positioning_adjustment', 'inventory_positioning_cycle_count', 'inventory_positioning_reservation', 'inventory_positioning_allocation', 'inventory_positioning_allocation_line', 'inventory_positioning_allocation_expiry', 'inventory_positioning_quality_hold', 'inventory_positioning_quality_release', 'inventory_positioning_in_transit_projection', 'inventory_positioning_traceability_event', 'inventory_positioning_backorder', 'inventory_positioning_replenishment_signal', 'inventory_positioning_replenishment_plan', 'inventory_positioning_reconciliation', 'inventory_positioning_policy_screening', 'inventory_positioning_stock_proof', 'inventory_positioning_cross_node_federation', 'inventory_positioning_carbon_fulfillment', 'inventory_positioning_channel_allocation', 'inventory_positioning_anomaly_signal', 'inventory_positioning_stock_risk_model', 'inventory_positioning_seed_data', 'inventory_positioning_schema_extension', 'inventory_positioning_control_assertion', 'inventory_positioning_governed_model', 'inventory_positioning_rule', 'inventory_positioning_parameter', 'inventory_positioning_configuration'), 'emitted_event': None, 'event_contract': 'AppGen-X', 'transaction_boundary': 'owned_datastore_plus_outbox', 'idempotency_required': False, 'idempotency_key': None, 'shared_table_access': False, 'stream_engine_picker_visible': False})
+def _contract_for_route(route: dict) -> dict:
+    operation = operation_plan(route["handler"])
+    return {
+        "method": route["method"],
+        "path": route["path"],
+        "handler": route["handler"],
+        "permission": route["permission"],
+        "operation": route["handler"],
+        "operation_kind": operation.get("operation_kind"),
+        "owned_tables": operation.get("owned_tables", ()),
+        "read_tables": operation.get("read_tables", ()),
+        "emitted_event": operation.get("emitted_event"),
+        "event_contract": "AppGen-X",
+        "transaction_boundary": operation.get("transaction_boundary"),
+        "idempotency_required": route["method"] == "POST",
+        "idempotency_key": f"{PBC_KEY}:{route['handler']}:idempotency_key" if route["method"] == "POST" else None,
+        "shared_table_access": False,
+        "stream_engine_picker_visible": False,
+    }
+
+
+API_ROUTE_CONTRACTS = tuple(_contract_for_route(route) for route in ROUTES)
 
 
 def register_routes(app=None):
-    """Return route metadata without mutating an application object."""
     return ROUTES
 
 
-def api_route_contracts():
-    """Return executable API route contracts with policy and boundary evidence."""
-    service_contracts = service_operation_contracts()['contracts']
-    operation_index = {item['operation']: item for item in service_contracts}
-    contracts = tuple(
-        {
-            **contract,
-            'service_operation': operation_index.get(contract['operation']),
-            'route_id': f"{contract['method']} {contract['path']}",
-        }
-        for contract in API_ROUTE_CONTRACTS
-    )
+def api_route_contracts() -> dict:
+    indexed = {item["operation"]: item for item in service_operation_contracts()["contracts"]}
+    contracts = tuple({**contract, "service_operation": indexed.get(contract["operation"]), "route_id": f"{contract['method']} {contract['path']}"} for contract in API_ROUTE_CONTRACTS)
     return {
-        'ok': bool(contracts)
-        and all(item['event_contract'] == 'AppGen-X' for item in contracts)
-        and all(item['transaction_boundary'] == 'owned_datastore_plus_outbox' for item in contracts)
-        and all(item['stream_engine_picker_visible'] is False for item in contracts)
-        and all(item['shared_table_access'] is False for item in contracts),
-        'pbc': 'inventory_positioning',
-        'contracts': contracts,
-        'routes': tuple(item['route_id'] for item in contracts),
-        'side_effects': (),
+        "ok": bool(contracts)
+        and all(item["event_contract"] == "AppGen-X" for item in contracts)
+        and all(item["stream_engine_picker_visible"] is False for item in contracts)
+        and all(item["shared_table_access"] is False for item in contracts),
+        "pbc": PBC_KEY,
+        "contracts": contracts,
+        "routes": tuple(item["route_id"] for item in contracts),
+        "side_effects": (),
     }
 
 
-def validate_api_route_contracts():
-    """Validate routes against service operations, permissions, idempotency, and table boundaries."""
+def validate_api_route_contracts() -> dict:
     manifest = api_route_contracts()
-    contracts = manifest['contracts']
+    contracts = manifest["contracts"]
     service_mismatches = tuple(
-        item['route_id']
+        item["route_id"]
         for item in contracts
-        if not item['service_operation']
-        or item['service_operation']['method'] != item['method']
-        or item['service_operation']['path'] != item['path']
-        or item['service_operation']['permission'] != item['permission']
+        if not item["service_operation"]
+        or item["service_operation"]["method"] != item["method"]
+        or item["service_operation"]["path"] != item["path"]
+        or item["service_operation"]["permission"] != item["permission"]
     )
-    missing_idempotency = tuple(
-        item['route_id']
-        for item in contracts
-        if item['idempotency_required'] and not item['idempotency_key']
-    )
+    missing_idempotency = tuple(item["route_id"] for item in contracts if item["idempotency_required"] and not item["idempotency_key"])
     invalid_table_scope = tuple(
-        item['route_id']
+        item["route_id"]
         for item in contracts
-        for table in item['owned_tables'] + item['read_tables']
-        if not table.startswith('inventory_positioning_')
+        for table in item["owned_tables"] + item["read_tables"]
+        if not table.startswith(PBC_KEY + "_")
     )
     return {
-        'ok': manifest['ok']
-        and not service_mismatches
-        and not missing_idempotency
-        and not invalid_table_scope,
-        'pbc': 'inventory_positioning',
-        'contracts': contracts,
-        'service_mismatches': service_mismatches,
-        'missing_idempotency': missing_idempotency,
-        'invalid_table_scope': invalid_table_scope,
-        'side_effects': (),
+        "ok": manifest["ok"] and not service_mismatches and not missing_idempotency and not invalid_table_scope,
+        "pbc": PBC_KEY,
+        "contracts": contracts,
+        "service_mismatches": service_mismatches,
+        "missing_idempotency": missing_idempotency,
+        "invalid_table_scope": invalid_table_scope,
+        "side_effects": (),
     }
 
 
-def dispatch_route(method, path, payload=None):
-    """Dispatch a route contract to its service command without side effects."""
-    route = next(
-        (item for item in ROUTES if item['method'] == method and item['path'] == path),
-        None,
-    )
+def _match_route(method: str, path: str) -> tuple[dict | None, dict]:
+    for route in ROUTES:
+        pattern = "^" + re.escape(route["path"]).replace(re.escape("{id}"), r"(?P<id>[^/]+)") + "$"
+        match = re.match(pattern, path)
+        if route["method"] == method and match:
+            return route, match.groupdict()
+    return None, {}
+
+
+def dispatch_route(method: str, path: str, payload: dict | None = None, *, service: InventoryPositioningService | None = None) -> dict:
+    route, extracted = _match_route(method, path)
     if route is None:
-        return {'ok': False, 'handled': False, 'reason': 'route_not_found'}
-    service = InventoryPositioningService()
-    handler = getattr(service, route['handler'])
-    result = handler(payload or {})
+        return {"ok": False, "handled": False, "reason": "route_not_found", "side_effects": ()}
+    service = service or InventoryPositioningService()
+    merged_payload = {**extracted, **dict(payload or {})}
+    if route["handler"] == "release_allocation" and "allocation_id" not in merged_payload and "id" in merged_payload:
+        merged_payload["allocation_id"] = merged_payload["id"]
+    handler = getattr(service, route["handler"])
+    result = handler(merged_payload)
     return {
-        'ok': result.get('ok') is True,
-        'handled': True,
-        'route': route,
-        'result': result,
-        'side_effects': (),
+        "ok": result.get("ok") is True,
+        "handled": True,
+        "route": route,
+        "result": result,
+        "service_state": service.state,
+        "side_effects": (),
     }
 
 
-def smoke_test():
-    """Execute the first route and validate the API contract surface."""
+def smoke_test() -> dict:
+    service = InventoryPositioningService()
+    service.configure_runtime(
+        {
+            "database_backend": "postgresql",
+            "event_topic": "appgen.inventory.events",
+            "retry_limit": 3,
+            "default_uom": "EA",
+            "precision": 2,
+            "allowed_statuses": ("available", "reserved", "quarantine", "damaged", "in_transit"),
+            "workbench_limit": 100,
+        }
+    )
+    service.register_item({"tenant": "tenant_alpha", "item_id": "sku_100", "sku": "SKU-100", "uom": "EA", "lot_tracked": True, "serial_tracked": False, "substitution_group": "sku_100_core"})
+    service.register_node({"tenant": "tenant_alpha", "node_id": "node_east", "node_type": "warehouse", "country": "US", "region": "east", "calendar": "weekday", "identity": {"did": "did:example:node-east", "issuer": "trusted_registry", "status": "active"}})
+    service.post_goods_receipt({"tenant": "tenant_alpha", "receipt_id": "rcpt_route_001", "node_id": "node_east", "item_id": "sku_100", "quantity": 25.0, "lot_id": "lot_route_001", "expires": "2030-12-31"})
     validation = validate_api_route_contracts()
-    if not ROUTES:
-        return {'ok': False, 'reason': 'no_routes'}
-    first = ROUTES[0]
-    dispatched = dispatch_route(first['method'], first['path'], {'smoke': True})
+    dispatched = dispatch_route("GET", "/inventory/workbench", {"tenant": "tenant_alpha"}, service=service)
     return {
-        'ok': validation['ok'] and dispatched['ok'],
-        'validation': validation,
-        'dispatch': dispatched,
-        'side_effects': (),
+        "ok": validation["ok"] and dispatched["ok"],
+        "validation": validation,
+        "dispatch": dispatched,
+        "side_effects": (),
     }

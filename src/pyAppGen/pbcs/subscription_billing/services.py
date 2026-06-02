@@ -180,3 +180,38 @@ def smoke_test():
         'result': result,
         'side_effects': (),
     }
+
+
+
+STANDALONE_OPERATION_CONTRACTS = (
+    {'operation':'seed_demo_workspace','operation_kind':'command','method':'POST','path':'/app/subscription-billing/demo-workspace','permission':'subscription_billing.configure','owned_tables':('subscription_billing_runtime_state','subscription_billing_form_submission','subscription_billing_workflow_run','subscription_billing_control_execution','subscription_billing_agent_session','subscription_billing_workbench_read_model'),'read_tables':(),'emitted_event':'SubscriptionActivated'},
+    {'operation':'build_workbench','operation_kind':'query','method':'GET','path':'/app/subscription-billing/workbench','permission':'subscription_billing.audit','owned_tables':(),'read_tables':('subscription_billing_workbench_read_model',),'emitted_event':None},
+    {'operation':'create_subscription','operation_kind':'command','method':'POST','path':'/app/subscription-billing/subscriptions','permission':'subscription_billing.subscription','owned_tables':('subscription_billing_runtime_state','subscription_billing_form_submission'),'read_tables':(),'emitted_event':'SubscriptionActivated'},
+    {'operation':'record_usage','operation_kind':'command','method':'POST','path':'/app/subscription-billing/usage','permission':'subscription_billing.usage','owned_tables':('subscription_billing_runtime_state','subscription_billing_form_submission'),'read_tables':(),'emitted_event':'UsageRated'},
+    {'operation':'generate_invoice','operation_kind':'command','method':'POST','path':'/app/subscription-billing/invoices','permission':'subscription_billing.invoice','owned_tables':('subscription_billing_runtime_state','subscription_billing_workflow_run'),'read_tables':(),'emitted_event':'InvoiceApproved'},
+    {'operation':'apply_payment_to_invoice','operation_kind':'command','method':'POST','path':'/app/subscription-billing/payment-applications','permission':'subscription_billing.invoice','owned_tables':('subscription_billing_runtime_state','subscription_billing_form_submission'),'read_tables':(),'emitted_event':'PaymentApplied'},
+    {'operation':'run_agent_skill','operation_kind':'command','method':'POST','path':'/app/subscription-billing/assistant/sessions','permission':'subscription_billing.audit','owned_tables':('subscription_billing_agent_session',),'read_tables':(),'emitted_event':'SubscriptionAssistantSessionRecorded'},
+)
+
+def standalone_service_operation_contracts():
+    commands=tuple(i for i in STANDALONE_OPERATION_CONTRACTS if i['operation_kind']=='command'); queries=tuple(i for i in STANDALONE_OPERATION_CONTRACTS if i['operation_kind']=='query')
+    tables=tuple(t for i in STANDALONE_OPERATION_CONTRACTS for t in i['owned_tables']+i['read_tables'])
+    return {'format':'appgen.subscription-billing-standalone-services.v1','ok':bool(STANDALONE_OPERATION_CONTRACTS) and all(t.startswith('subscription_billing_') for t in tables) and all(i['emitted_event'] for i in commands) and all(i['emitted_event'] is None for i in queries),'pbc':'subscription_billing','service_class':'SubscriptionBillingStandaloneService','operations':tuple(i['operation'] for i in STANDALONE_OPERATION_CONTRACTS),'command_operations':tuple(i['operation'] for i in commands),'query_operations':tuple(i['operation'] for i in queries),'contracts':STANDALONE_OPERATION_CONTRACTS,'event_contract':'AppGen-X','stream_engine_picker_visible':False,'side_effects':()}
+
+class SubscriptionBillingStandaloneService:
+    def __init__(self, repository=None, *, database_path=':memory:'):
+        if repository is None:
+            from .repository import SubscriptionBillingStandaloneRepository
+            repository=SubscriptionBillingStandaloneRepository(database_path=database_path)
+        self.repository=repository
+    def close(self):
+        close=getattr(self.repository,'close',None)
+        if callable(close): close()
+    def seed_demo_workspace(self, tenant='tenant_demo'): return self.repository.seed_demo_workspace(tenant=tenant)
+    def build_workbench(self, tenant='tenant_demo'): return self.repository.build_workbench(tenant)
+    def create_subscription(self,payload=None,*,tenant='tenant_demo'): supplied=dict(payload or {}); return self.repository.create_subscription(supplied.get('tenant',tenant), supplied)
+    def record_usage(self,payload=None,*,tenant='tenant_demo'): supplied=dict(payload or {}); return self.repository.record_usage(supplied.get('tenant',tenant), supplied)
+    def generate_invoice(self,subscription_id,period,*,tenant='tenant_demo'): return self.repository.generate_invoice(tenant,subscription_id,period)
+    def apply_payment_to_invoice(self,invoice_id,payment_event_id,amount,*,tenant='tenant_demo'): return self.repository.apply_payment_to_invoice(tenant,invoice_id,payment_event_id,amount)
+    def run_agent_skill(self,payload=None,*,skill='subscription_billing.document_instruction_intake',tenant='tenant_demo'):
+        supplied=dict(payload or {}); return self.repository.run_agent_skill(supplied.get('tenant',tenant), supplied.get('skill',skill), supplied)

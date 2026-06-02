@@ -1,9 +1,10 @@
-"""Command and query service layer for the audit_ledger PBC."""
+"""Command/query services for the audit_ledger PBC."""
 
 from __future__ import annotations
 
 from .ledger_proofs import build_evidence_envelope
 from .ledger_proofs import plan_disclosure_minimization
+from .repository import AuditLedgerRepository
 from .runtime import audit_ledger_build_api_contract
 from .runtime import audit_ledger_build_service_contract
 
@@ -193,6 +194,133 @@ def service_operation_manifest() -> dict:
     }
 
 
+STANDALONE_OPERATION_CONTRACTS = (
+    {"operation": "configure_runtime", "operation_kind": "command", "method": "POST", "path": "/app/audit-ledger/runtime/configuration", "handler": "configure_runtime", "permission": "audit_ledger.configure", "table": "audit_ledger_configuration", "form": "AuditLedgerConfigurationForm", "wizard": "AuditLedgerRuntimeSetupWizard"},
+    {"operation": "set_parameter", "operation_kind": "command", "method": "POST", "path": "/app/audit-ledger/runtime/parameters", "handler": "set_parameter", "permission": "audit_ledger.configure", "table": "audit_ledger_parameter", "form": "AuditLedgerParameterForm", "wizard": "AuditLedgerRuntimeSetupWizard"},
+    {"operation": "register_rule", "operation_kind": "command", "method": "POST", "path": "/app/audit-ledger/runtime/rules", "handler": "register_rule", "permission": "audit_ledger.configure", "table": "audit_ledger_rule", "form": "AuditLedgerRuleForm", "wizard": "AuditLedgerRetentionGovernanceWizard"},
+    {"operation": "receive_event", "operation_kind": "command", "method": "POST", "path": "/app/audit-ledger/events/inbox", "handler": "receive_event", "permission": "audit_ledger.event", "table": "audit_ledger_appgen_inbox_event", "form": "AuditLedgerInboxEventForm", "wizard": "AuditLedgerRuntimeSetupWizard"},
+    {"operation": "record_audit_event", "operation_kind": "command", "method": "POST", "path": "/app/audit-ledger/audit-events", "handler": "record_audit_event", "permission": "audit_ledger.seal", "table": "audit_ledger_audit_event", "form": "AuditLedgerAuditEventForm", "wizard": "AuditLedgerEventCaptureWizard"},
+    {"operation": "record_access_evidence", "operation_kind": "command", "method": "POST", "path": "/app/audit-ledger/access-evidence", "handler": "record_access_evidence", "permission": "audit_ledger.seal", "table": "audit_ledger_access_evidence", "form": "AuditLedgerAccessEvidenceForm", "wizard": "AuditLedgerEventCaptureWizard"},
+    {"operation": "define_retention_policy", "operation_kind": "command", "method": "POST", "path": "/app/audit-ledger/retention-policies", "handler": "define_retention_policy", "permission": "audit_ledger.configure", "table": "audit_ledger_retention_policy", "form": "AuditLedgerRetentionPolicyForm", "wizard": "AuditLedgerRetentionGovernanceWizard"},
+    {"operation": "assert_control", "operation_kind": "command", "method": "POST", "path": "/app/audit-ledger/control-assertions", "handler": "assert_control", "permission": "audit_ledger.audit", "table": "audit_ledger_control_assertion", "form": "AuditLedgerControlAssertionForm", "wizard": "AuditLedgerReleaseEvidenceWizard"},
+    {"operation": "prepare_forensic_export", "operation_kind": "command", "method": "POST", "path": "/app/audit-ledger/forensic-exports", "handler": "prepare_forensic_export", "permission": "audit_ledger.export", "table": "audit_ledger_forensic_export", "form": "AuditLedgerForensicExportForm", "wizard": "AuditLedgerForensicExportWizard"},
+    {"operation": "verify_signature_chain", "operation_kind": "command", "method": "POST", "path": "/app/audit-ledger/signature-chain/verify", "handler": "verify_signature_chain", "permission": "audit_ledger.verify", "table": "audit_ledger_signature_chain", "form": "AuditLedgerSignatureVerificationForm", "wizard": "AuditLedgerReleaseEvidenceWizard"},
+    {"operation": "publish_audit_projection", "operation_kind": "command", "method": "POST", "path": "/app/audit-ledger/projections", "handler": "publish_audit_projection", "permission": "audit_ledger.publish", "table": "audit_ledger_projection_link", "form": "AuditLedgerProjectionForm", "wizard": "AuditLedgerReleaseEvidenceWizard"},
+    {"operation": "build_workbench", "operation_kind": "query", "method": "GET", "path": "/app/audit-ledger/workbench", "handler": "build_workbench", "permission": "audit_ledger.read", "table": "audit_ledger_audit_event", "form": None, "wizard": None},
+    {"operation": "ledger_summary", "operation_kind": "query", "method": "GET", "path": "/app/audit-ledger/summary", "handler": "ledger_summary", "permission": "audit_ledger.read", "table": "audit_ledger_audit_event", "form": None, "wizard": None},
+    {"operation": "release_snapshot", "operation_kind": "query", "method": "GET", "path": "/app/audit-ledger/release-snapshot", "handler": "release_snapshot", "permission": "audit_ledger.read", "table": "audit_ledger_control_assertion", "form": None, "wizard": None},
+)
+
+
+def standalone_service_operation_contracts() -> dict:
+    """Return the service operation surface for the standalone app."""
+    return {
+        "format": "appgen.audit-ledger-standalone-service-contract.v1",
+        "ok": bool(STANDALONE_OPERATION_CONTRACTS),
+        "pbc": "audit_ledger",
+        "contracts": STANDALONE_OPERATION_CONTRACTS,
+        "routes": tuple(f"{item['method']} {item['path']}" for item in STANDALONE_OPERATION_CONTRACTS),
+        "tables": tuple(dict.fromkeys(item["table"] for item in STANDALONE_OPERATION_CONTRACTS)),
+        "side_effects": (),
+    }
+
+
+class AuditLedgerStandaloneService:
+    """Stateful service facade over the SQLite-backed standalone repository."""
+
+    def __init__(self, repository: AuditLedgerRepository | None = None):
+        self.repository = repository or AuditLedgerRepository()
+
+    def close(self) -> None:
+        self.repository.close()
+
+    def standalone_service_manifest(self) -> dict:
+        return standalone_service_operation_contracts()
+
+    def _wrap(self, operation: str, result: dict) -> dict:
+        contract = next(item for item in STANDALONE_OPERATION_CONTRACTS if item["operation"] == operation)
+        return {
+            "ok": result.get("ok") is True,
+            "operation": operation,
+            "operation_kind": contract["operation_kind"],
+            "route": {"method": contract["method"], "path": contract["path"]},
+            "permission": contract["permission"],
+            "table": contract["table"],
+            "form": contract["form"],
+            "wizard": contract["wizard"],
+            "result": result,
+            "side_effects": (),
+        }
+
+    def configure_runtime(self, payload: dict | None = None) -> dict:
+        supplied = dict(payload or {})
+        return self._wrap("configure_runtime", self.repository.configure_runtime(supplied.get("configuration", supplied)))
+
+    def set_parameter(self, payload: dict | None = None) -> dict:
+        supplied = dict(payload or {})
+        return self._wrap("set_parameter", self.repository.set_parameter(str(supplied.get("name", "")), supplied.get("value")))
+
+    def register_rule(self, payload: dict | None = None) -> dict:
+        supplied = dict(payload or {})
+        return self._wrap("register_rule", self.repository.register_rule(dict(supplied.get("rule", supplied))))
+
+    def receive_event(self, payload: dict | None = None) -> dict:
+        supplied = dict(payload or {})
+        return self._wrap(
+            "receive_event",
+            self.repository.receive_event(
+                dict(supplied.get("envelope", supplied)),
+                simulate_failure=bool(supplied.get("simulate_failure", False)),
+            ),
+        )
+
+    def record_audit_event(self, payload: dict | None = None) -> dict:
+        supplied = dict(payload or {})
+        return self._wrap("record_audit_event", self.repository.record_audit_event(dict(supplied.get("audit_event", supplied))))
+
+    def record_access_evidence(self, payload: dict | None = None) -> dict:
+        supplied = dict(payload or {})
+        return self._wrap("record_access_evidence", self.repository.record_access_evidence(dict(supplied.get("evidence", supplied))))
+
+    def define_retention_policy(self, payload: dict | None = None) -> dict:
+        supplied = dict(payload or {})
+        return self._wrap("define_retention_policy", self.repository.define_retention_policy(dict(supplied.get("policy", supplied))))
+
+    def assert_control(self, payload: dict | None = None) -> dict:
+        supplied = dict(payload or {})
+        return self._wrap("assert_control", self.repository.assert_control(dict(supplied.get("assertion", supplied))))
+
+    def prepare_forensic_export(self, payload: dict | None = None) -> dict:
+        supplied = dict(payload or {})
+        return self._wrap("prepare_forensic_export", self.repository.prepare_forensic_export(dict(supplied.get("export", supplied))))
+
+    def verify_signature_chain(self, payload: dict | None = None) -> dict:
+        supplied = dict(payload or {})
+        return self._wrap("verify_signature_chain", self.repository.verify_signature_chain(tenant=str(supplied.get("tenant", ""))))
+
+    def publish_audit_projection(self, payload: dict | None = None) -> dict:
+        supplied = dict(payload or {})
+        return self._wrap(
+            "publish_audit_projection",
+            self.repository.publish_audit_projection(
+                str(supplied.get("audit_id", "")),
+                systems=tuple(supplied.get("systems", ())),
+            ),
+        )
+
+    def build_workbench(self, payload: dict | None = None) -> dict:
+        supplied = dict(payload or {})
+        return self._wrap("build_workbench", self.repository.build_workbench(tenant=str(supplied.get("tenant", ""))))
+
+    def ledger_summary(self, payload: dict | None = None) -> dict:
+        supplied = dict(payload or {})
+        return self._wrap("ledger_summary", self.repository.ledger_summary(tenant=str(supplied.get("tenant", ""))))
+
+    def release_snapshot(self, payload: dict | None = None) -> dict:
+        supplied = dict(payload or {})
+        return self._wrap("release_snapshot", self.repository.release_snapshot(tenant=str(supplied.get("tenant", ""))))
+
+
 def smoke_test() -> dict:
     """Execute one side-effect-free service operation through the facade."""
     manifest = service_operation_manifest()
@@ -205,3 +333,47 @@ def smoke_test() -> dict:
         "result": result,
         "side_effects": (),
     }
+
+
+def standalone_service_smoke_test() -> dict:
+    service = AuditLedgerStandaloneService()
+    try:
+        configured = service.configure_runtime(
+            {
+                "configuration": {
+                    "database_backend": "postgresql",
+                    "event_topic": "appgen.audit.events",
+                    "retry_limit": 3,
+                    "signature_algorithm": "dilithium3_simulated",
+                    "allowed_classifications": ("public", "internal", "regulated"),
+                    "export_modes": ("proof_bundle",),
+                    "default_timezone": "UTC",
+                    "workbench_limit": 100,
+                }
+            }
+        )
+        event = service.record_audit_event(
+            {
+                "audit_event": {
+                    "audit_id": "audit_service",
+                    "tenant": "tenant_service",
+                    "source_pbc": "workflow_orchestration",
+                    "aggregate_id": "wf_service",
+                    "actor": "operator",
+                    "action": "complete_workflow",
+                    "classification": "regulated",
+                    "payload": {"workflow_id": "wf_service"},
+                }
+            }
+        )
+        summary = service.ledger_summary({"tenant": "tenant_service"})
+        return {
+            "ok": configured["ok"] and event["ok"] and summary["ok"],
+            "service_contract": standalone_service_operation_contracts(),
+            "configured": configured,
+            "event": event,
+            "summary": summary,
+            "side_effects": (),
+        }
+    finally:
+        service.close()

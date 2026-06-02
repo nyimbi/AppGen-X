@@ -1,18 +1,53 @@
 """Accounts Receivable and Credit PBC implementation package."""
 
+from __future__ import annotations
+
 from .manifest import PBC_MANIFEST
 
-from ..source_contract import source_pbc_package_contract
 from ..source_contract import source_package_metadata
-from ..source_contract import validate_source_package_metadata
+from ..source_contract import source_pbc_package_contract
 from ..source_contract import source_registration_plan
+from ..source_contract import validate_source_package_metadata
+from .controls import ar_credit_control_catalog
+from .controls import ar_credit_control_center
+from .controls import ar_credit_mutation_preview
+from .events import EVENT_CONTRACT
+from .events import build_event_envelope
+from .events import event_contract_manifest
+from .events import event_dispatch_plan
+from .forms import AR_CREDIT_FORM_DEFINITIONS
+from .forms import ar_credit_form_catalog
+from .forms import ar_credit_get_form
+from .forms import ar_credit_prepare_form_submission
+from .forms import ar_credit_validate_form_payload
+from .handlers import HANDLER_CONTRACTS
+from .handlers import dispatch_event
+from .handlers import handler_manifest
+from .receivables_workflows import AR_CREDIT_IMPLEMENTED_BACKLOG_ITEMS
+from .receivables_workflows import AR_CREDIT_WORKFLOW_OPERATIONS
+from .receivables_workflows import ar_credit_build_collections_follow_up
+from .receivables_workflows import ar_credit_execute_customer_onboarding
+from .receivables_workflows import ar_credit_execute_invoice_issuance
+from .receivables_workflows import ar_credit_execute_receipt_application
+from .receivables_workflows import ar_credit_review_credit_onboarding
+from .receivables_workflows import ar_credit_review_invoice_readiness
+from .receivables_workflows import ar_credit_workflow_release_evidence
+from .release_evidence import RELEASE_EVIDENCE
+from .release_evidence import build_release_evidence
+from .release_evidence import release_readiness_manifest
+from .release_evidence import validate_release_evidence
+from .repository import ArCreditRepository
+from .repository import REPOSITORY_TABLES
+from .routes import ROUTES
+from .routes import api_route_contracts
+from .routes import dispatch_route
 from .runtime import AR_CREDIT_ALLOWED_DATABASE_BACKENDS
 from .runtime import AR_CREDIT_CONSUMED_EVENT_TYPES
 from .runtime import AR_CREDIT_EMITTED_EVENT_TYPES
 from .runtime import AR_CREDIT_OWNED_TABLES
 from .runtime import AR_CREDIT_REQUIRED_EVENT_TOPIC
-from .runtime import AR_CREDIT_STANDARD_FEATURE_KEYS
 from .runtime import AR_CREDIT_RUNTIME_CAPABILITY_KEYS
+from .runtime import AR_CREDIT_STANDARD_FEATURE_KEYS
 from .runtime import ar_credit_apply_cash
 from .runtime import ar_credit_build_api_contract
 from .runtime import ar_credit_build_release_evidence
@@ -64,18 +99,25 @@ from .runtime import ar_credit_verify_formal_invariants
 from .runtime import ar_credit_verify_owned_table_boundary
 from .runtime import ar_credit_verify_revenue_proof
 from .runtime import ar_credit_write_off_receivable
-from .receivables_workflows import AR_CREDIT_IMPLEMENTED_BACKLOG_ITEMS
-from .receivables_workflows import AR_CREDIT_WORKFLOW_OPERATIONS
-from .receivables_workflows import ar_credit_build_collections_follow_up
-from .receivables_workflows import ar_credit_execute_customer_onboarding
-from .receivables_workflows import ar_credit_execute_invoice_issuance
-from .receivables_workflows import ar_credit_execute_receipt_application
-from .receivables_workflows import ar_credit_review_credit_onboarding
-from .receivables_workflows import ar_credit_review_invoice_readiness
-from .receivables_workflows import ar_credit_workflow_release_evidence
+from .seed_data import DEFAULT_CONFIGURATION
+from .seed_data import DEFAULT_PARAMETERS
+from .seed_data import DEFAULT_RULE
+from .seed_data import load_demo_state
+from .seed_data import seed_plan
+from .services import ArCreditService
+from .services import service_operation_contracts
+from .services import service_operation_manifest
+from .standalone import ArCreditStandaloneApp
+from .standalone import standalone_app_manifest
 from .ui import AR_CREDIT_UI_FRAGMENT_KEYS
+from .ui import ar_credit_render_standalone_app
 from .ui import ar_credit_render_workbench
+from .ui import ar_credit_standalone_app_contract
 from .ui import ar_credit_ui_contract
+from .wizards import AR_CREDIT_WIZARDS
+from .wizards import ar_credit_plan_wizard
+from .wizards import ar_credit_wizard_catalog
+
 
 PBC_KEY = "ar_credit"
 
@@ -88,16 +130,26 @@ def implementation_contract() -> dict:
         "standard_features": runtime["standard_features"],
         "advanced_runtime": runtime,
         "ui_contract": ar_credit_ui_contract(),
+        "standalone_app_contract": ar_credit_standalone_app_contract(),
         "api_contract": ar_credit_build_api_contract(),
         "schema_contract": ar_credit_build_schema_contract(),
         "service_contract": ar_credit_build_service_contract(),
-        "release_evidence_contract": ar_credit_build_release_evidence(),
+        "service_surface": service_operation_manifest(),
+        "release_evidence_contract": build_release_evidence(),
         "permissions_contract": ar_credit_permissions_contract(),
+        "forms": ar_credit_form_catalog(),
+        "wizards": ar_credit_wizard_catalog(),
+        "controls": ar_credit_control_catalog(),
+        "repository": {
+            "tables": REPOSITORY_TABLES,
+            "shared_table_access": False,
+        },
         "owned_tables": AR_CREDIT_OWNED_TABLES,
         "allowed_database_backends": AR_CREDIT_ALLOWED_DATABASE_BACKENDS,
         "required_event_topic": AR_CREDIT_REQUIRED_EVENT_TOPIC,
         "consumes": AR_CREDIT_CONSUMED_EVENT_TYPES,
         "emits": AR_CREDIT_EMITTED_EVENT_TYPES,
+        "event_contract": "AppGen-X",
         "workflow_operations": AR_CREDIT_WORKFLOW_OPERATIONS,
         "implemented_backlog_items": AR_CREDIT_IMPLEMENTED_BACKLOG_ITEMS,
     }
@@ -110,11 +162,7 @@ def register_pbc() -> dict:
 
 def registration_plan(existing_catalog: dict | None = None) -> dict:
     """Return a side-effect-free registration plan for this PBC package."""
-    return source_registration_plan(
-        PBC_KEY,
-        register_pbc(),
-        existing_catalog=existing_catalog,
-    )
+    return source_registration_plan(PBC_KEY, register_pbc(), existing_catalog=existing_catalog)
 
 
 def package_metadata_manifest() -> dict:

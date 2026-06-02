@@ -19,6 +19,7 @@ from .domain_depth import WORKBENCH_FORMS
 from .domain_depth import WORKBENCH_WIZARDS
 from .models import OWNED_TABLES
 from .models import build_schema_contract
+from .support_control import improve1_support_control_contract
 
 
 CASE_KNOWLEDGE_MANAGEMENT_OWNED_TABLES = OWNED_TABLES
@@ -206,6 +207,7 @@ def case_knowledge_management_build_release_evidence() -> dict:
         {"id": "owned_table_depth", "ok": len(OWNED_TABLES) >= 24},
         {"id": "domain_operation_depth", "ok": len(DOMAIN_OPERATIONS) >= 16},
         {"id": "rules_parameters_depth", "ok": len(DOMAIN_RULES) >= 6 and len(DOMAIN_PARAMETERS) >= 6},
+        {"id": "improve1_support_control", "ok": improve1_support_control_contract()["capability_count"] == 50},
     )
     return {
         "format": "appgen.case-knowledge-management-release-evidence.v2",
@@ -215,6 +217,7 @@ def case_knowledge_management_build_release_evidence() -> dict:
         "blocking_gaps": tuple(check for check in checks if not check["ok"]),
         "boundary_gaps": (),
         "runtime_smoke": smoke,
+        "improve1_support_control": improve1_support_control_contract(),
         "side_effects": (),
     }
 

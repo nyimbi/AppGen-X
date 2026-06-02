@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .claims_control import CLAIMS_CONTROL_CAPABILITIES, improve1_claims_control_contract
 from typing import Any
 
 from .config import PARAMETERS
@@ -76,7 +77,9 @@ def claims_adjudication_healthcare_ui_contract() -> dict[str, Any]:
             "operation_actions": DOMAIN_OPERATIONS,
             "rule_editors": RULES,
             "parameter_editors": PARAMETERS,
-            "advanced_panels": DOMAIN_ADVANCED_CAPABILITIES,
+            "advanced_panels": DOMAIN_ADVANCED_CAPABILITIES + CLAIMS_CONTROL_CAPABILITIES,
+            "claims_control_panels": tuple(f"claims_control_{capability}" for capability in CLAIMS_CONTROL_CAPABILITIES),
+            "claims_control_contract": improve1_claims_control_contract(),
             "table_browsers": BUSINESS_TABLES,
             "edge_case_queues": DOMAIN_EDGE_CASES,
             "agent_tools": tuple(f"{PBC_KEY}_skills.{op}" for op in DOMAIN_OPERATIONS),
@@ -116,3 +119,33 @@ def smoke_test() -> dict[str, Any]:
         "ok": claims_adjudication_healthcare_ui_contract()["ok"] and claims_adjudication_healthcare_render_workbench()["ok"],
         "side_effects": (),
     }
+
+
+# Standalone one-PBC UI surface extensions.
+_BASE_UI_CONTRACT = claims_adjudication_healthcare_ui_contract
+_BASE_RENDER_WORKBENCH = claims_adjudication_healthcare_render_workbench
+_BASE_SMOKE_TEST = smoke_test
+
+
+def claims_adjudication_healthcare_ui_contract():
+    base = _BASE_UI_CONTRACT()
+    from .standalone import controls_contract, forms_contract, single_pbc_app_contract, wizards_contract
+    forms = forms_contract()
+    wizards = wizards_contract()
+    controls = controls_contract()
+    app = single_pbc_app_contract()
+    return {**base, 'ok': base['ok'] and forms['ok'] and wizards['ok'] and controls['ok'] and app['ok'], 'forms_contract': forms, 'wizards_contract': wizards, 'controls_contract': controls, 'single_pbc_app': app}
+
+
+def claims_adjudication_healthcare_render_workbench(tenant: str = 'default'):
+    base = _BASE_RENDER_WORKBENCH(tenant=tenant)
+    from .standalone import single_pbc_app_contract
+    app = single_pbc_app_contract()
+    return {**base, 'ok': base['ok'] and app['ok'], 'standalone_app': app, 'form_count': len(app['forms']['forms']), 'wizard_count': len(app['wizards']['wizards'])}
+
+
+def smoke_test():
+    base = _BASE_SMOKE_TEST()
+    from .standalone import standalone_smoke_test
+    standalone = standalone_smoke_test()
+    return {'ok': base['ok'] and standalone['ok'], 'base': base, 'standalone': standalone, 'side_effects': ()}
