@@ -13506,10 +13506,14 @@ def pbc_implementation_contract(key: str) -> dict:
             "permissions": permissions,
             "configuration": configuration,
             "capabilities": tuple(item["capability"] for item in domain_functionality["capability_modules"]),
-            "standard_features": tuple(advanced_runtime.get("standard_features", ())),
+            "standard_features": tuple(
+                advanced_runtime.get("standard_features", ())
+                or service.get("standard_features", ())
+            ),
             "workflows": tuple(item["workflow"] for item in domain_functionality["workflow_implementations"]),
             "analytics": tuple(item["metric"] for item in domain_functionality["analytics"]),
             "advanced_capabilities": tuple(advanced_runtime.get("capabilities", ()))
+            or tuple(service.get("advanced_capabilities", ()))
             or tuple(item["capability"] for item in advanced_blueprint.get("capabilities", ())),
             "migrations": ("migrations/001_initial.sql",),
             "seed_data": ("seed_data.py",),
@@ -14732,6 +14736,18 @@ def _pbc_descriptor(key: str, pbc: dict) -> dict:
         "emits": pbc["emits"],
         "consumes": pbc["consumes"],
         "template": pbc["template"],
+        "ui_fragments": tuple(pbc.get("ui_fragments", ())),
+        "permissions": tuple(pbc.get("permissions", ())),
+        "configuration": tuple(pbc.get("configuration", ())),
+        "migrations": tuple(pbc.get("migrations", ())),
+        "seed_data": tuple(pbc.get("seed_data", ())),
+        "tests": tuple(pbc.get("tests", ())),
+        "docs": tuple(pbc.get("docs", ())),
+        "capabilities": tuple(pbc.get("capabilities", ())),
+        "standard_features": tuple(pbc.get("standard_features", ())),
+        "advanced_capabilities": tuple(pbc.get("advanced_capabilities", ())),
+        "workflows": tuple(pbc.get("workflows", ())),
+        "analytics": tuple(pbc.get("analytics", ())),
         "package_directory": f"pbcs/{key}",
         "selectable": True,
     }
@@ -14761,6 +14777,11 @@ def _pbc_descriptor_from_manifest(manifest: dict) -> dict:
         "seed_data": tuple(manifest.get("seed_data", ())),
         "tests": tuple(manifest.get("tests", ())),
         "docs": tuple(manifest.get("docs", ())),
+        "capabilities": tuple(manifest.get("capabilities", ())),
+        "standard_features": tuple(manifest.get("standard_features", ())),
+        "advanced_capabilities": tuple(manifest.get("advanced_capabilities", ())),
+        "workflows": tuple(manifest.get("workflows", ())),
+        "analytics": tuple(manifest.get("analytics", ())),
         "package_directory": f"pbcs/{key}",
         "selectable": True,
     }
@@ -15007,7 +15028,7 @@ def _domain_functionality_contract(
     workbench_actions = tuple(
         {
             "action": f"{key}.{verb}",
-            "surface": service.get("ui_fragments", (f"{service['class_name']}Workbench",))[0],
+            "surface": (service.get("ui_fragments") or (f"{service['class_name']}Workbench",))[0],
             "requires_permission": f"{key}.{verb}",
         }
         for verb in ("inspect", "simulate", "approve", "optimize", "audit")

@@ -52,6 +52,48 @@ def dispatch_route(route, payload=None, service: ConstructionContractsCommercial
     }
 
 
+STANDALONE_ROUTES = (
+    "POST /app/construction-contracts-commercials/contracts",
+    "POST /app/construction-contracts-commercials/pay-applications",
+    "POST /app/construction-contracts-commercials/lien-waivers",
+    "POST /app/construction-contracts-commercials/pay-applications/certify",
+    "GET /app/construction-contracts-commercials/workbench",
+)
+_STANDALONE_ROUTE_TO_OPERATION = {
+    STANDALONE_ROUTES[0]: "create_contract",
+    STANDALONE_ROUTES[1]: "record_pay_application",
+    STANDALONE_ROUTES[2]: "create_lien_waiver",
+    STANDALONE_ROUTES[3]: "certify_pay_application",
+    STANDALONE_ROUTES[4]: "build_workbench",
+}
+
+
+def standalone_route_contracts():
+    return {
+        "format": "appgen.construction-contracts-commercials-standalone-routes.v1",
+        "ok": True,
+        "pbc": PBC_KEY,
+        "routes": tuple({"route": route, "operation": operation} for route, operation in _STANDALONE_ROUTE_TO_OPERATION.items()),
+        "event_contract": "AppGen-X",
+        "side_effects": (),
+    }
+
+
+def dispatch_standalone_route(method: str, path: str, payload=None, *, service=None):
+    route = f"{method.upper()} {path}"
+    operation = _STANDALONE_ROUTE_TO_OPERATION.get(route)
+    if operation is None:
+        return {"ok": False, "route": route, "reason": "unknown_route", "side_effects": ()}
+    result = getattr(service, operation)(dict(payload or {}))
+    return {
+        "ok": result["ok"],
+        "route": route,
+        "operation": operation,
+        "result": result,
+        "side_effects": (),
+    }
+
+
 def smoke_test():
     service = ConstructionContractsCommercialsService()
     contract = dispatch_route(

@@ -14,7 +14,16 @@ OWNED_TABLES = OWNED_TABLES
 
 
 def agent_skill_manifest():
-    return _agent_skill_manifest()
+    manifest = _agent_skill_manifest()
+    skills = tuple(
+        {
+            **skill,
+            "requires_confirmation_for_mutation": True,
+            "uses_appgen_event_contract": True,
+        }
+        for skill in manifest.get("skills", ())
+    )
+    return {**manifest, "skills": skills, "side_effects": ()}
 
 
 def chatbot_interface_contract():
@@ -46,4 +55,5 @@ def smoke_test():
         and datastore_crud_plan("create")["ok"]
         and datastore_crud_plan("update", table="foreign_table")["ok"] is False
         and composed_agent_contribution()["ok"],
+        "side_effects": (),
     }

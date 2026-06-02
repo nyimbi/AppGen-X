@@ -85,13 +85,27 @@ def validate_table_stakes_capability_coverage() -> dict:
     )
     missing_standard = _missing_coverage(manifest["standard_features"], STANDARD_FEATURE_OPERATION_COVERAGE, operations)
     missing_advanced = _missing_coverage(manifest["advanced_capabilities"], ADVANCED_CAPABILITY_OPERATION_COVERAGE, operations)
+    missing_operations = tuple(
+        sorted({operation for gap in missing_standard + missing_advanced for operation in gap["missing_operations"]})
+    )
     return {
         "ok": manifest["ok"] and not invalid_tables and not invalid_backends and not missing_standard and not missing_advanced,
         "manifest": manifest,
+        "covered_standard": tuple(
+            feature for feature in manifest["standard_features"] if feature not in {gap["feature"] for gap in missing_standard}
+        ),
+        "covered_advanced": tuple(
+            feature for feature in manifest["advanced_capabilities"] if feature not in {gap["feature"] for gap in missing_advanced}
+        ),
         "missing_standard": missing_standard,
         "missing_advanced": missing_advanced,
+        "missing_operations": missing_operations,
+        "uncovered_features": (),
         "invalid_tables": invalid_tables,
         "invalid_backends": invalid_backends,
+        "event_contract": "AppGen-X",
+        "stream_picker_visible": False,
+        "stream_engine_picker_visible": False,
         "side_effects": (),
     }
 

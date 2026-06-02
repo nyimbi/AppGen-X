@@ -42,6 +42,27 @@ def composed_agent_contribution():
     }
 
 
+def standalone_agent_workspace_contract():
+    """Return the assistant surface exposed by the one-PBC standalone app."""
+    skills = agent_skill_manifest()
+    chatbot = chatbot_interface_contract()
+    contribution = composed_agent_contribution()
+    return {
+        "format": "appgen.construction-contracts-commercials-standalone-agent.v1",
+        "ok": skills["ok"] and chatbot["ok"] and contribution["ok"],
+        "pbc": "construction_contracts_commercials",
+        "skills": skills.get("skills", ()),
+        "chatbot": chatbot,
+        "single_agent_skill_namespace": contribution["single_agent_skill_namespace"],
+        "document_instruction_intake": True,
+        "governed_datastore_crud": True,
+        "requires_confirmation_for_mutation": True,
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "side_effects": (),
+    }
+
+
 def smoke_test():
     return {
         "ok": agent_skill_manifest()["ok"]

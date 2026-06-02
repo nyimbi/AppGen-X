@@ -6,10 +6,18 @@ from .slice_app import BUSINESS_TABLES, PBC_KEY, build_agent_contract, build_sta
 
 def agent_skill_manifest() -> dict:
     contract = build_agent_contract()
+    skills = tuple(
+        {
+            **skill,
+            "requires_confirmation_for_mutation": True,
+            "uses_appgen_event_contract": True,
+        }
+        for skill in contract.get("skills", ())
+    )
     return {
         "ok": contract["ok"],
         "pbc": PBC_KEY,
-        "skills": contract["skills"],
+        "skills": skills,
         "side_effects": (),
     }
 

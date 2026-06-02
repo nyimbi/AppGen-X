@@ -68,6 +68,13 @@ def empty_fundraising_state() -> dict:
         "restrictions": {},
         "grant_applications": {},
         "stewardship": {},
+        "donor_relationships": {},
+        "proposal_workspaces": {},
+        "acknowledgements": {},
+        "briefing_packets": {},
+        "opportunity_scores": {},
+        "review_chains": {},
+        "budget_validations": {},
         "exceptions": {},
         "outbox": [],
     }
@@ -315,6 +322,166 @@ def record_stewardship_touchpoint(state: dict, payload: dict) -> dict:
     next_state["stewardship"][touchpoint_id] = touchpoint
     _emit(next_state, "DonorGrantFundraisingExceptionOpened" if blockers else "DonorGrantFundraisingUpdated", {"entity": "stewardship_touchpoint", "id": touchpoint_id, "blockers": tuple(blockers)})
     return {"ok": not blockers, "state": next_state, "stewardship_touchpoint": touchpoint, "side_effects": ()}
+
+
+def map_donor_relationship(state: dict, payload: dict) -> dict:
+    next_state = _copy_state(state)
+    relationship_id = payload.get("relationship_id") or f"rel-{_digest((payload.get('donor_id'), payload.get('related_donor_id'), payload.get('relationship_type')))[:8]}"
+    blockers = tuple(
+        f"{field}_missing"
+        for field in ("donor_id", "related_donor_id", "relationship_type")
+        if not payload.get(field)
+    )
+    relationship = {
+        "id": relationship_id,
+        "table": "donor_grant_fundraising_donor_relationship",
+        "donor_id": payload.get("donor_id"),
+        "related_donor_id": payload.get("related_donor_id"),
+        "relationship_type": payload.get("relationship_type"),
+        "influence_weight": float(payload.get("influence_weight", 1.0)),
+        "notes": payload.get("notes"),
+        "blockers": blockers,
+    }
+    next_state.setdefault("donor_relationships", {})[relationship_id] = relationship
+    _emit(next_state, "DonorGrantFundraisingExceptionOpened" if blockers else "DonorGrantFundraisingUpdated", {"entity": "donor_relationship", "id": relationship_id, "blockers": blockers})
+    return {"ok": not blockers, "state": next_state, "relationship": relationship, "side_effects": ()}
+
+
+def compose_proposal_workspace(state: dict, payload: dict) -> dict:
+    next_state = _copy_state(state)
+    workspace_id = payload.get("workspace_id") or f"proposal-{_digest((payload.get('grant_application_id'), payload.get('final_signoff')))[:8]}"
+    checklist = tuple(payload.get("attachment_checklist", ()))
+    blockers = []
+    if payload.get("grant_application_id") not in next_state.get("grant_applications", {}):
+        blockers.append("grant_application_missing")
+    if checklist and not all(item.get("complete") for item in checklist):
+        blockers.append("attachment_checklist_incomplete")
+    if not payload.get("final_signoff"):
+        blockers.append("final_signoff_missing")
+    workspace = {
+        "id": workspace_id,
+        "table": "donor_grant_fundraising_proposal_workspace",
+        "grant_application_id": payload.get("grant_application_id"),
+        "attachment_checklist": checklist,
+        "final_signoff": bool(payload.get("final_signoff")),
+        "collaborators": tuple(payload.get("collaborators", ())),
+        "blockers": tuple(blockers),
+    }
+    next_state.setdefault("proposal_workspaces", {})[workspace_id] = workspace
+    _emit(next_state, "DonorGrantFundraisingExceptionOpened" if blockers else "DonorGrantFundraisingUpdated", {"entity": "proposal_workspace", "id": workspace_id, "blockers": tuple(blockers)})
+    return {"ok": not blockers, "state": next_state, "proposal_workspace": workspace, "side_effects": ()}
+
+
+def track_acknowledgement(state: dict, payload: dict) -> dict:
+    next_state = _copy_state(state)
+    acknowledgement_id = payload.get("acknowledgement_id") or f"ack-{_digest((payload.get('donor_id'), payload.get('gift_id'), payload.get('channel')))[:8]}"
+    status = payload.get("status", "queued")
+    blockers = []
+    if payload.get("gift_id") not in next_state.get("gifts", {}):
+        blockers.append("gift_missing")
+    if status not in {"queued", "sent", "received", "failed"}:
+        blockers.append("invalid_acknowledgement_status")
+    acknowledgement = {
+        "id": acknowledgement_id,
+        "table": "donor_grant_fundraising_acknowledgement",
+        "donor_id": payload.get("donor_id"),
+        "gift_id": payload.get("gift_id"),
+        "channel": payload.get("channel", "email"),
+        "status": status,
+        "sent_at": payload.get("sent_at"),
+        "blockers": tuple(blockers),
+    }
+    next_state.setdefault("acknowledgements", {})[acknowledgement_id] = acknowledgement
+    _emit(next_state, "DonorGrantFundraisingExceptionOpened" if blockers else "DonorGrantFundraisingUpdated", {"entity": "acknowledgement", "id": acknowledgement_id, "blockers": tuple(blockers)})
+    return {"ok": not blockers, "state": next_state, "acknowledgement": acknowledgement, "side_effects": ()}
+
+
+def generate_briefing_packet(state: dict, payload: dict) -> dict:
+    next_state = _copy_state(state)
+    packet_id = payload.get("packet_id") or f"brief-{_digest((payload.get('donor_id'), payload.get('generated_for_date')))[:8]}"
+    packet = {
+        "id": packet_id,
+        "table": "donor_grant_fundraising_briefing_packet",
+        "donor_count": len(next_state.get("donors", {})),
+        "gift_count": len(next_state.get("gifts", {})),
+        "grant_count": len(next_state.get("grant_applications", {})),
+        "generated_for_date": payload.get("generated_for_date"),
+        "sections": tuple(payload.get("sections", ("portfolio", "recent_gifts", "grant_pipeline", "next_actions"))),
+    }
+    next_state.setdefault("briefing_packets", {})[packet_id] = packet
+    _emit(next_state, "DonorGrantFundraisingUpdated", {"entity": "briefing_packet", "id": packet_id})
+    return {"ok": True, "state": next_state, "briefing_packet": packet, "side_effects": ()}
+
+
+def score_fundraising_opportunity(state: dict, payload: dict) -> dict:
+    next_state = _copy_state(state)
+    score_id = payload.get("score_id") or f"score-{_digest((payload.get('donor_id'), payload.get('grant_application_id')))[:8]}"
+    potential_value = float(payload.get("potential_value", 0.0))
+    likelihood = float(payload.get("likelihood", 0.0))
+    urgency = float(payload.get("urgency", 0.0))
+    delivery_risk = float(payload.get("delivery_risk", 0.0))
+    score_value = round((likelihood * 0.5 + urgency * 0.2 + min(potential_value / 250000.0, 1.0) * 0.2 - delivery_risk * 0.1), 4)
+    score = {
+        "id": score_id,
+        "table": "donor_grant_fundraising_opportunity_score",
+        "donor_id": payload.get("donor_id"),
+        "grant_application_id": payload.get("grant_application_id"),
+        "potential_value": potential_value,
+        "likelihood": likelihood,
+        "urgency": urgency,
+        "delivery_risk": delivery_risk,
+        "score": max(0.0, min(1.0, score_value)),
+    }
+    next_state.setdefault("opportunity_scores", {})[score_id] = score
+    _emit(next_state, "DonorGrantFundraisingUpdated", {"entity": "opportunity_score", "id": score_id, "score": score["score"]})
+    return {"ok": True, "state": next_state, "opportunity_score": score, "side_effects": ()}
+
+
+def manage_review_chain(state: dict, payload: dict) -> dict:
+    next_state = _copy_state(state)
+    review_id = payload.get("review_id") or f"review-{_digest((payload.get('entity_type'), payload.get('entity_id')))[:8]}"
+    required_roles = tuple(payload.get("required_roles", ()))
+    completed_roles = tuple(payload.get("completed_roles", ()))
+    blockers = tuple(role for role in required_roles if role not in completed_roles)
+    review = {
+        "id": review_id,
+        "table": "donor_grant_fundraising_review_chain",
+        "entity_type": payload.get("entity_type"),
+        "entity_id": payload.get("entity_id"),
+        "required_roles": required_roles,
+        "completed_roles": completed_roles,
+        "status": "blocked" if blockers else payload.get("status", "approved"),
+        "blockers": blockers,
+    }
+    next_state.setdefault("review_chains", {})[review_id] = review
+    _emit(next_state, "DonorGrantFundraisingExceptionOpened" if blockers else "DonorGrantFundraisingApproved", {"entity": "review_chain", "id": review_id, "blockers": blockers})
+    return {"ok": not blockers, "state": next_state, "review_chain": review, "side_effects": ()}
+
+
+def validate_grant_budget(state: dict, payload: dict) -> dict:
+    next_state = _copy_state(state)
+    validation_id = payload.get("validation_id") or f"budget-{_digest((payload.get('grant_application_id'), payload.get('period')))[:8]}"
+    grant = next_state.get("grant_applications", {}).get(payload.get("grant_application_id"))
+    restriction = next_state.get("restrictions", {}).get(payload.get("restriction_id"))
+    blockers = []
+    if grant is None:
+        blockers.append("grant_application_missing")
+    if restriction is None:
+        blockers.append("restriction_missing")
+    if restriction and tuple(restriction.get("required_approvals", ())) and not set(restriction.get("required_approvals", ())) <= set(payload.get("approvals", ())):
+        blockers.append("required_approvals_missing")
+    validation = {
+        "id": validation_id,
+        "table": "donor_grant_fundraising_budget_validation",
+        "grant_application_id": payload.get("grant_application_id"),
+        "restriction_id": payload.get("restriction_id"),
+        "period": payload.get("period"),
+        "status": "blocked" if blockers else "validated",
+        "blockers": tuple(blockers),
+    }
+    next_state.setdefault("budget_validations", {})[validation_id] = validation
+    _emit(next_state, "DonorGrantFundraisingExceptionOpened" if blockers else "DonorGrantFundraisingApproved", {"entity": "budget_validation", "id": validation_id, "blockers": tuple(blockers)})
+    return {"ok": not blockers, "state": next_state, "budget_validation": validation, "side_effects": ()}
 
 
 def build_fundraising_workbench(state: dict) -> dict:

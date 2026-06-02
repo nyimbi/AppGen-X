@@ -277,7 +277,85 @@ def sign_and_enter_order(state: dict, order_id: str, payload: dict) -> dict:
     return {"ok": True, "state": next_state, "court_order": order, "docket_entry": docket["docket_entry"], "side_effects": ()}
 
 
-def court_workbench(state: dict) -> dict:
+def register_evidence(state: dict, payload: dict) -> dict:
+    next_state = _copy_state(state)
+    if payload.get("case_id") not in next_state["cases"]:
+        return {"ok": False, "state": next_state, "reason": "case_not_found", "side_effects": ()}
+    evidence_id = payload.get("evidence_id") or f"evidence-{_digest((payload.get('case_id'), payload.get('title')))[:10]}"
+    evidence = {
+        "id": evidence_id,
+        "table": "court_case_management_docket_entry",
+        "case_id": payload["case_id"],
+        "title": payload.get("title", "Evidence"),
+        "source_type": "evidence",
+        "access_class": payload.get("access_class", "public"),
+        "chain_of_custody": tuple(payload.get("chain_of_custody", ())),
+    }
+    next_state["docket_entries"][evidence_id] = evidence
+    _emit(next_state, "CourtCaseManagementUpdated", {"entity": "evidence", "id": evidence_id})
+    return {"ok": True, "state": next_state, "evidence": evidence, "side_effects": ()}
+
+
+def create_task(state: dict, payload: dict) -> dict:
+    next_state = _copy_state(state)
+    task_id = payload.get("task_id") or f"task-{_digest((payload.get('case_id'), payload.get('title')))[:10]}"
+    task = {
+        "id": task_id,
+        "table": "court_case_management_task",
+        "case_id": payload.get("case_id"),
+        "title": payload.get("title", "Court task"),
+        "assigned_to": payload.get("assigned_to"),
+        "due_at": payload.get("due_at"),
+        "status": payload.get("status", "open"),
+    }
+    next_state.setdefault("tasks", {})[task_id] = task
+    _emit(next_state, "CourtCaseManagementUpdated", {"entity": "task", "id": task_id})
+    return {"ok": True, "state": next_state, "task": task, "side_effects": ()}
+
+
+def complete_task(state: dict, task_id: str, payload: dict) -> dict:
+    next_state = _copy_state(state)
+    task = deepcopy(next_state.setdefault("tasks", {}).get(task_id))
+    if not task:
+        return {"ok": False, "state": next_state, "reason": "task_not_found", "side_effects": ()}
+    task["status"] = "complete"
+    task["completed_by"] = payload.get("completed_by")
+    task["completed_at"] = payload.get("completed_at")
+    next_state["tasks"][task_id] = task
+    _emit(next_state, "CourtCaseManagementUpdated", {"entity": "task", "id": task_id, "status": "complete"})
+    return {"ok": True, "state": next_state, "task": task, "side_effects": ()}
+
+
+def case_detail(state: dict, case_id: str, *, permissions: tuple[str, ...] | None = None) -> dict:
+    """Return a court case detail projection with related owned records."""
+    case = deepcopy(state.get("cases", {}).get(case_id))
+    if not case:
+        return {"ok": False, "pbc": PBC_KEY, "reason": "case_not_found", "case_id": case_id, "side_effects": ()}
+    permission_set = set(permissions or ("court_case_management.read",))
+    can_view_restricted = "court_case_management.admin" in permission_set
+    def visible(item: dict) -> bool:
+        return can_view_restricted or item.get("access_class", "public") not in {"sealed", "restricted"}
+
+    filings = tuple(item for item in state.get("filings", {}).values() if item.get("case_id") == case_id and visible(item))
+    hearings = tuple(item for item in state.get("hearings", {}).values() if item.get("case_id") == case_id)
+    docket_entries = tuple(item for item in state.get("docket_entries", {}).values() if item.get("case_id") == case_id and visible(item))
+    parties = tuple(item for item in state.get("parties", {}).values() if item.get("case_id") == case_id)
+    orders = tuple(item for item in state.get("orders", {}).values() if item.get("case_id") == case_id and visible(item))
+    return {
+        "ok": True,
+        "pbc": PBC_KEY,
+        "case": case,
+        "filings": filings,
+        "hearings": hearings,
+        "docket_entries": docket_entries,
+        "parties": parties,
+        "orders": orders,
+        "permissions": tuple(sorted(permission_set)),
+        "side_effects": (),
+    }
+
+
+def court_workbench(state: dict, *, permissions: tuple[str, ...] | None = None) -> dict:
     filings = tuple(state.get("filings", {}).values())
     hearings = tuple(state.get("hearings", {}).values())
     orders = tuple(state.get("orders", {}).values())

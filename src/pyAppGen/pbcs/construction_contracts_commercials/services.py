@@ -118,6 +118,52 @@ class ConstructionContractsCommercialsService:
         }
 
 
+class ConstructionContractsCommercialsStandaloneService:
+    """Standalone service facade backed by the package-local store."""
+
+    def __init__(self, store):
+        self.store = store
+
+    def create_contract(self, payload=None):
+        return self.store.create_contract(dict(payload or {}))
+
+    def record_pay_application(self, payload=None):
+        return self.store.record_pay_application(dict(payload or {}))
+
+    def create_lien_waiver(self, payload=None):
+        return self.store.create_lien_waiver(dict(payload or {}))
+
+    def certify_pay_application(self, payload=None):
+        return self.store.certify_pay_application(dict(payload or {}))
+
+    def build_workbench(self, payload=None):
+        payload = dict(payload or {})
+        return self.store.build_workbench(payload.get("tenant", "default"))
+
+    def close(self):
+        return self.store.close()
+
+
+def standalone_service_operation_contracts() -> dict:
+    operations = (
+        "create_contract",
+        "record_pay_application",
+        "create_lien_waiver",
+        "certify_pay_application",
+        "build_workbench",
+    )
+    return {
+        "format": "appgen.construction-contracts-commercials-standalone-service-contract.v1",
+        "ok": True,
+        "pbc": PBC_KEY,
+        "service_class": "ConstructionContractsCommercialsStandaloneService",
+        "operations": operations,
+        "transaction_boundary": "owned_store_plus_outbox",
+        "event_contract": "AppGen-X",
+        "side_effects": (),
+    }
+
+
 def service_operation_manifest() -> dict:
     return {
         "ok": True,

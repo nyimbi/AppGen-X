@@ -2699,6 +2699,7 @@ def runtime_capabilities() -> dict:
             "register_rule",
             "register_schema_extension",
             "receive_event",
+            "parse_document_instruction",
             "query_workbench",
             "build_workbench_view",
             "build_schema_contract",

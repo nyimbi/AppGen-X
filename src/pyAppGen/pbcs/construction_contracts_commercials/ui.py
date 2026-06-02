@@ -23,6 +23,33 @@ def construction_contracts_commercials_render_workbench(state=None, tenant="defa
     return {**rendered, "pbc": PBC_KEY}
 
 
+def construction_contracts_commercials_standalone_workbench_blueprint():
+    contract = construction_contracts_commercials_ui_contract()
+    return {
+        "format": "appgen.construction-contracts-commercials-standalone-workbench.v1",
+        "ok": contract["ok"],
+        "pbc": PBC_KEY,
+        "forms": ("contract_award_wizard", "pay_application_certification_wizard", "lien_waiver_review_form"),
+        "views": ("contracts", "pay_applications", "retainage", "claims", "workbench"),
+        "agent_panel": "ConstructionContractsCommercialsAssistantPanel",
+        "event_contract": "AppGen-X",
+        "stream_engine_picker_visible": False,
+        "side_effects": (),
+    }
+
+
+def construction_contracts_commercials_render_standalone_workbench(workbench):
+    return {
+        "format": "appgen.construction-contracts-commercials-standalone-workbench-render.v1",
+        "ok": bool(workbench.get("ok", True)),
+        "pbc": PBC_KEY,
+        "cards": tuple((workbench.get("result") or workbench).get("cards", ())),
+        "queues": (workbench.get("result") or workbench).get("queues", {}),
+        "source": workbench,
+        "side_effects": (),
+    }
+
+
 def smoke_test():
     view = construction_contracts_commercials_build_workbench_view()
     rendered = construction_contracts_commercials_render_workbench()

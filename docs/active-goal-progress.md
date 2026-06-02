@@ -4675,3 +4675,9 @@ Extend generated target outputs beyond dependency-free runtime contracts by addi
   `appgen contributor-tasks`, and `appgen priority-order` now use focused
   registries by default, expose `deep_audit_command` for release-grade evidence,
   and retain aggregate-backed behavior when tests inject a deep audit payload.
+- Current local-main PBC merge stabilization preserves local `main` as the
+  authoritative enhanced branch. Preservation commit `d4cea774` captured dirty
+  local work before merge, merge commit `86d38dca` integrated
+  `pbc/improve1-full-traceability` while keeping local conflict resolutions, and
+  the follow-up audit fixes restore full `pbc_release_audit()` approval across
+  package assurance, agent capability, implementation, and generation contracts.

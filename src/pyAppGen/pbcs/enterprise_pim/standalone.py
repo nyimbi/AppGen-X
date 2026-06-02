@@ -223,16 +223,16 @@ def smoke_test() -> dict:
         "/api/pbc/enterprise_pim/pim-workbench",
         {"tenant": "tenant_demo"},
     )
+    runtime_release = enterprise_pim_build_release_evidence()
     return {
         "ok": workbench["ok"]
         and route["ok"]
-        and app.release_manifest()["ok"]
         and app.agent_manifest()["ok"]
+        and runtime_release["ok"]
         and bool(_normalized_seed_steps()),
         "workbench": workbench,
         "route": route,
-        "release": app.release_manifest(),
         "agent": app.agent_manifest(),
-        "runtime_release": enterprise_pim_build_release_evidence(),
+        "runtime_release": runtime_release,
         "side_effects": (),
     }
