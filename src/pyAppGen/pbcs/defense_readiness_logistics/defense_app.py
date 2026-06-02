@@ -89,6 +89,7 @@ def assess_unit_readiness(state: dict, payload: dict) -> dict:
     record = {
         "id": unit_id,
         "table": "defense_readiness_logistics_unit_readiness",
+        "unit_code": payload.get("unit_code", unit_id),
         "unit_name": payload.get("unit_name", unit_id),
         "mission_set": mission_set,
         "reported_status": payload.get("reported_status", "reported"),
@@ -113,6 +114,8 @@ def record_mission_asset(state: dict, payload: dict) -> dict:
         "id": asset_id,
         "table": "defense_readiness_logistics_mission_asset",
         "unit_id": payload.get("unit_id"),
+        "unit_code": payload.get("unit_code"),
+        "asset_code": payload.get("asset_code", asset_id),
         "asset_type": payload.get("asset_type"),
         "serial": payload.get("serial"),
         "serviceability": payload.get("serviceability", "serviceable"),
@@ -202,6 +205,27 @@ def score_supply_readiness(state: dict, payload: dict) -> dict:
     return {"ok": not shortages, "state": next_state, "supply_readiness": record, "side_effects": ()}
 
 
+def allocate_fuel_reserve(state: dict, payload: dict) -> dict:
+    next_state = _copy_state(state)
+    allocation_code = payload.get("allocation_code") or f"fuel-{_digest((payload.get('unit_code'), payload.get('fuel_required'), payload.get('fuel_available')))[:8]}"
+    required = float(payload.get("fuel_required", 0.0)) + float(payload.get("contingency_reserve", 0.0))
+    available = float(payload.get("fuel_available", 0.0))
+    allocation = {
+        "id": allocation_code,
+        "allocation_code": allocation_code,
+        "table": "defense_readiness_logistics_fuel_allocation",
+        "tenant_id": payload.get("tenant_id"),
+        "unit_code": payload.get("unit_code"),
+        "fuel_required": float(payload.get("fuel_required", 0.0)),
+        "fuel_available": available,
+        "contingency_reserve": float(payload.get("contingency_reserve", 0.0)),
+        "status": "allocated" if available >= required else "shortage",
+    }
+    next_state["fuel_allocations"][allocation_code] = allocation
+    _emit(next_state, "DefenseReadinessLogisticsUpdated" if allocation["status"] == "allocated" else "DefenseReadinessLogisticsExceptionOpened", {"entity": "fuel_allocation", "id": allocation_code, "status": allocation["status"]})
+    return {"ok": allocation["status"] == "allocated", "state": next_state, "fuel_allocation": allocation, "side_effects": ()}
+
+
 def build_mission_capability(state: dict, payload: dict) -> dict:
     unit_id = payload.get("unit_id")
     mission_set = payload.get("mission_set", "general_deployment")
@@ -237,6 +261,7 @@ def validate_deployment_kit(state: dict, payload: dict) -> dict:
     kit = {
         "id": payload.get("kit_id", f"kit-{_digest((required, tuple(sorted(packed))))[:8]}"),
         "table": "defense_readiness_logistics_deployment_plan",
+        "deployment_code": payload.get("deployment_code") or payload.get("kit_id", f"kit-{_digest((required, tuple(sorted(packed))))[:8]}"),
         "required_items": required,
         "packed_items": tuple(sorted(packed)),
         "missing_items": missing,
@@ -388,6 +413,32 @@ def controls_contract() -> dict:
         {"control_id": "offline_sync_conflict_gate", "blocks_on_failure": True, "table_scope": ("defense_readiness_logistics_readiness_exception",)},
     )
     return {"ok": True, "pbc": PBC_KEY, "controls": controls, "side_effects": ()}
+
+
+def run_readiness_validation_workflow(state: dict, payload: dict) -> dict:
+    readiness = assess_unit_readiness(state, dict(payload.get("readiness", payload)))
+    return {
+        "ok": readiness["ok"],
+        "pbc": PBC_KEY,
+        "workflow": "readiness_validation",
+        "steps": ("assess_unit_readiness",),
+        "state": readiness["state"],
+        "unit_readiness": readiness["unit_readiness"],
+        "side_effects": (),
+    }
+
+
+def workflow_contracts() -> dict:
+    return {
+        "ok": True,
+        "pbc": PBC_KEY,
+        "workflows": (
+            {"workflow": "readiness_validation", "steps": ("assess_unit_readiness",)},
+            {"workflow": "deployment_release", "steps": ("validate_deployment_kit", "plan_logistics_movement", "release_deployment_plan")},
+            {"workflow": "supply_and_fuel_readiness", "steps": ("score_supply_readiness", "allocate_fuel_reserve")},
+        ),
+        "side_effects": (),
+    }
 
 
 def single_pbc_app_contract() -> dict:

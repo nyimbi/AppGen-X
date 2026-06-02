@@ -229,3 +229,19 @@ def smoke_test() -> dict:
         "rendered": rendered,
         "side_effects": (),
     }
+
+
+def clinical_trials_management_standalone_app_contract() -> dict:
+    """Return the UI contract exposed by the generated standalone app shell."""
+    contract = clinical_trials_management_ui_contract()
+    return {
+        **contract,
+        "format": "appgen.clinical-trials-management-standalone-app-ui-contract.v1",
+        "single_pbc_app": True,
+        "database_backends": CLINICAL_TRIALS_MANAGEMENT_ALLOWED_DATABASE_BACKENDS,
+        "runtime_tables": CLINICAL_TRIALS_MANAGEMENT_RUNTIME_TABLES,
+        "owned_tables": CLINICAL_TRIALS_MANAGEMENT_OWNED_TABLES,
+        "event_topic": CLINICAL_TRIALS_MANAGEMENT_REQUIRED_EVENT_TOPIC,
+        "consumes": CLINICAL_TRIALS_MANAGEMENT_CONSUMED_EVENT_TYPES,
+        "stream_engine_picker_visible": False,
+    }

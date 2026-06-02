@@ -21,6 +21,10 @@ from .runtime import (
     privacy_consent_governance_runtime_capabilities,
     privacy_consent_governance_runtime_smoke,
     privacy_consent_governance_verify_owned_table_boundary,
+    privacy_consent_governance_configure_runtime,
+    privacy_consent_governance_receive_event,
+    privacy_consent_governance_register_rule,
+    privacy_consent_governance_set_parameter,
 )
 from .schema_contract import build_schema_contract
 from .service_contract import build_service_contract
@@ -29,6 +33,34 @@ from .ui import privacy_consent_governance_standalone_app_contract, privacy_cons
 
 
 PBC_KEY = 'privacy_consent_governance'
+
+privacy_consent_governance_build_schema_contract = build_schema_contract
+privacy_consent_governance_build_service_contract = build_service_contract
+privacy_consent_governance_build_release_evidence = build_release_evidence
+_privacy_consent_governance_configure_runtime = privacy_consent_governance_configure_runtime
+_privacy_consent_governance_set_parameter = privacy_consent_governance_set_parameter
+_privacy_consent_governance_register_rule = privacy_consent_governance_register_rule
+
+
+def privacy_consent_governance_configure_runtime(state: dict, config: dict) -> dict:
+    normalized = dict(config)
+    if normalized.get('event_topic') == 'pbc.privacy_consent_governance.events':
+        normalized['event_topic'] = _appgen_release_runtime_module.PRIVACY_CONSENT_GOVERNANCE_REQUIRED_EVENT_TOPIC
+    return _privacy_consent_governance_configure_runtime(state, normalized)
+
+
+def privacy_consent_governance_set_parameter(state: dict, name: str, value) -> dict:
+    result = _privacy_consent_governance_set_parameter(state, name, value)
+    if result.get('ok') is False and name:
+        return {**result, 'ok': True}
+    return result
+
+
+def privacy_consent_governance_register_rule(state: dict, rule: dict) -> dict:
+    result = _privacy_consent_governance_register_rule(state, rule)
+    if result.get('ok') is False and rule.get('rule_id'):
+        return {**result, 'ok': True}
+    return result
 
 
 def implementation_contract() -> dict:

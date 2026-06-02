@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from copy import deepcopy
 
 from .agent import composed_agent_contribution
 from .config import (
@@ -87,6 +88,50 @@ INSURANCE_UNDERWRITING_SUPPORTED_CONFIGURATION_FIELDS = SUPPORTED_CONFIGURATION_
 INSURANCE_UNDERWRITING_SUPPORTED_PARAMETER_KEYS = tuple(DEFAULT_RUNTIME_PARAMETERS)
 INSURANCE_UNDERWRITING_REQUIRED_RULE_FIELDS = ("rule_id", "rule_type", "description")
 BASE_DIR = Path(__file__).parent
+
+
+def insurance_underwriting_empty_state() -> dict:
+    return {"records": {}, "parameters": {}, "rules": {}, "configuration": {}, "inbox": [], "outbox": [], "dead_letter": [], "idempotency_keys": set()}
+
+
+def _copy_state(state: dict) -> dict:
+    copied = deepcopy(state)
+    copied["idempotency_keys"] = set(state.get("idempotency_keys", set()))
+    return copied
+
+
+def insurance_underwriting_configure_runtime(state: dict, payload: dict | None = None) -> dict:
+    payload = dict(payload or {})
+    next_state = _copy_state(state)
+    ok = payload.get("database_backend") in ALLOWED_DATABASE_BACKENDS and payload.get("event_topic", TOPIC) == TOPIC
+    next_state["configuration"] = {**payload, "ok": ok, "event_contract": "AppGen-X", "stream_engine_picker_visible": False}
+    return {"ok": ok, "state": next_state, "configuration": next_state["configuration"], "side_effects": ()}
+
+
+def insurance_underwriting_set_parameter(state: dict, name: str, value) -> dict:
+    next_state = _copy_state(state)
+    next_state["parameters"][name] = {"name": name, "value": value, "scope": "insurance_underwriting"}
+    return {"ok": True, "state": next_state, "parameter": next_state["parameters"][name], "side_effects": ()}
+
+
+def insurance_underwriting_register_rule(state: dict, rule: dict) -> dict:
+    next_state = _copy_state(state)
+    rule_id = rule.get("rule_id", "insurance_underwriting_rule")
+    next_state["rules"][rule_id] = {**dict(rule), "event_contract": "AppGen-X"}
+    return {"ok": True, "state": next_state, "rule": next_state["rules"][rule_id], "side_effects": ()}
+
+
+def insurance_underwriting_receive_event(state: dict, event: dict) -> dict:
+    next_state = _copy_state(state)
+    idempotency_key = event.get("idempotency_key") or event.get("event_id") or repr(event)
+    if idempotency_key in next_state["idempotency_keys"]:
+        return {"ok": True, "duplicate": True, "state": next_state, "side_effects": ()}
+    next_state["idempotency_keys"].add(idempotency_key)
+    if event.get("event_type") not in CONSUMED:
+        next_state["dead_letter"].append(dict(event))
+        return {"ok": False, "duplicate": False, "state": next_state, "dead_letter_table": f"{PBC_KEY}_appgen_dead_letter_event", "side_effects": ()}
+    next_state["inbox"].append(dict(event))
+    return {"ok": True, "duplicate": False, "state": next_state, "side_effects": ()}
 
 
 def insurance_underwriting_build_schema_contract() -> dict:

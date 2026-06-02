@@ -341,6 +341,7 @@ def case_detail(state: dict, case_id: str, *, permissions: tuple[str, ...] | Non
     docket_entries = tuple(item for item in state.get("docket_entries", {}).values() if item.get("case_id") == case_id and visible(item))
     parties = tuple(item for item in state.get("parties", {}).values() if item.get("case_id") == case_id)
     orders = tuple(item for item in state.get("orders", {}).values() if item.get("case_id") == case_id and visible(item))
+    evidence_items = tuple(item for item in docket_entries if item.get("source_type") == "evidence")
     return {
         "ok": True,
         "pbc": PBC_KEY,
@@ -348,8 +349,17 @@ def case_detail(state: dict, case_id: str, *, permissions: tuple[str, ...] | Non
         "filings": filings,
         "hearings": hearings,
         "docket_entries": docket_entries,
+        "evidence_items": evidence_items,
         "parties": parties,
         "orders": orders,
+        "counts": {
+            "filings": len(filings),
+            "hearings": len(hearings),
+            "docket_entries": len(docket_entries),
+            "evidence_items": len(evidence_items),
+            "parties": len(parties),
+            "orders": len(orders),
+        },
         "permissions": tuple(sorted(permission_set)),
         "side_effects": (),
     }
@@ -386,6 +396,8 @@ def forms_contract() -> dict:
             {"form_id": "filing_intake_form", "writes_table": "court_case_management_filing", "fields": ("case_id", "filing_type", "document_title", "deficiency_codes", "access_class")},
             {"form_id": "hearing_schedule_form", "writes_table": "court_case_management_hearing", "fields": ("case_id", "hearing_type", "scheduled_at", "courtroom", "session_block", "assigned_judge")},
             {"form_id": "order_drafting_form", "writes_table": "court_case_management_court_order", "fields": ("case_id", "title", "draft_text", "effective_date")},
+            {"form_id": "evidence_registry_form", "writes_table": "court_case_management_docket_entry", "fields": ("case_id", "title", "source_type", "chain_of_custody", "access_class")},
+            {"form_id": "case_task_form", "writes_table": "court_case_management_case_task", "fields": ("case_id", "title", "task_type", "assignee", "status")},
         ),
         "side_effects": (),
     }
@@ -399,6 +411,8 @@ def wizards_contract() -> dict:
             {"wizard_id": "filing_deficiency_wizard", "steps": ("receive_packet", "review_defects", "issue_notice", "accept_or_reject_cure")},
             {"wizard_id": "hearing_calendar_wizard", "steps": ("select_case", "check_readiness", "reserve_courtroom", "confirm_setting")},
             {"wizard_id": "order_entry_wizard", "steps": ("draft_order", "review_signature", "enter_on_docket", "service_linkage")},
+            {"wizard_id": "evidence_intake_wizard", "steps": ("identify_source", "classify_access", "capture_chain", "publish_docket_entry")},
+            {"wizard_id": "case_task_completion_wizard", "steps": ("assign_task", "track_due_date", "complete_task", "audit_completion")},
         ),
         "side_effects": (),
     }
@@ -414,6 +428,8 @@ def controls_contract() -> dict:
             {"control_id": "courtroom_double_booking_guard", "blocks_on_failure": True, "table_scope": ("court_case_management_hearing",)},
             {"control_id": "signed_order_entry_guard", "blocks_on_failure": True, "table_scope": ("court_case_management_court_order",)},
             {"control_id": "sealed_record_access_guard", "blocks_on_failure": True, "table_scope": OWNED_TABLES},
+            {"control_id": "evidence_chain_of_custody_guard", "blocks_on_failure": True, "table_scope": ("court_case_management_docket_entry",)},
+            {"control_id": "case_task_closure_guard", "blocks_on_failure": True, "table_scope": ("court_case_management_case_task",)},
         ),
         "side_effects": (),
     }

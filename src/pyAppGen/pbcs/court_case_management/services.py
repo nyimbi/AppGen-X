@@ -70,6 +70,23 @@ def service_operation_contracts():
     contracts = tuple(_operation_contract(name, 'command') for name in COMMAND_OPERATIONS) + tuple(_operation_contract(name, 'query') for name in QUERY_OPERATIONS)
     return {'ok': True, 'pbc': PBC_KEY, 'contracts': contracts, 'operation_contract': contracts[0], 'side_effects': ()}
 
+def standalone_service_manifest():
+    return {'ok': True, 'pbc': PBC_KEY, 'service_class': 'CourtCaseManagementStandaloneService', 'service_methods': COMMAND_OPERATIONS + QUERY_OPERATIONS, 'command_operations': COMMAND_OPERATIONS, 'query_operations': QUERY_OPERATIONS, 'event_contract': EVENT_CONTRACT, 'side_effects': ()}
+
+class CourtCaseManagementStandaloneService(CourtCaseManagementService):
+    def __init__(self, tenant='default', state=None):
+        super().__init__(state=state)
+        self.tenant = tenant
+        from .standalone import build_standalone_app
+
+        self.app = build_standalone_app(tenant=tenant)
+
+    def configure(self, configuration=None):
+        return self.app.configure(configuration)
+
+    def register_defaults(self):
+        return self.app.register_defaults()
+
 def operation_plan(operation, payload=None):
     manifest = service_operation_manifest(); kind = 'query' if operation in manifest['query_operations'] else 'command'
     return {'ok': operation in manifest['query_operations'] + manifest['command_operations'], 'operation': operation, 'operation_kind': kind, 'payload': dict(payload or {}), 'side_effects': ()}

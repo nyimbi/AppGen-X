@@ -4,6 +4,7 @@ EVENT_CONTRACT = {'outbox_table': f'{PBC_KEY}_appgen_outbox_event', 'inbox_table
 from .domain_depth import DOMAIN_OPERATIONS as DOMAIN_DEPTH_COMMAND_OPERATIONS, DOMAIN_OWNED_TABLES as DOMAIN_DEPTH_OWNED_TABLES, execute_domain_operation as execute_domain_depth_operation
 from .defense_app import (
     assess_unit_readiness,
+    allocate_fuel_reserve,
     build_defense_workbench,
     build_mission_capability,
     empty_defense_state,
@@ -19,6 +20,7 @@ APP_COMMAND_HANDLERS = {
     'record_mission_asset': record_mission_asset,
     'project_maintenance_status': project_maintenance_status,
     'score_supply_readiness': score_supply_readiness,
+    'allocate_fuel_reserve': allocate_fuel_reserve,
     'validate_deployment_kit': validate_deployment_kit,
     'plan_logistics_movement': plan_logistics_movement,
     'release_deployment_plan': release_deployment_plan,

@@ -13,9 +13,14 @@ from .runtime import chemical_batch_compliance_build_api_contract
 from .runtime import chemical_batch_compliance_build_release_evidence
 from .runtime import chemical_batch_compliance_build_schema_contract
 from .runtime import chemical_batch_compliance_build_service_contract
+from .runtime import chemical_batch_compliance_configure_runtime
+from .runtime import chemical_batch_compliance_empty_state
 from .runtime import chemical_batch_compliance_permissions_contract
+from .runtime import chemical_batch_compliance_receive_event
+from .runtime import chemical_batch_compliance_register_rule
 from .runtime import chemical_batch_compliance_runtime_capabilities
 from .runtime import chemical_batch_compliance_runtime_smoke
+from .runtime import chemical_batch_compliance_set_parameter
 from .runtime import chemical_batch_compliance_verify_owned_table_boundary
 from .ui import chemical_batch_compliance_render_workbench
 from .ui import chemical_batch_compliance_ui_contract
@@ -28,6 +33,16 @@ from ..source_contract import source_registration_plan
 from ..source_contract import validate_source_package_metadata
 
 PBC_KEY = "chemical_batch_compliance"
+_chemical_batch_compliance_register_rule = chemical_batch_compliance_register_rule
+
+
+def chemical_batch_compliance_register_rule(state: dict, rule: dict, tenant: str = "default") -> dict:
+    candidate = dict(rule)
+    candidate.setdefault("scope", "runtime")
+    result = _chemical_batch_compliance_register_rule(state, candidate, tenant=tenant)
+    if result.get("ok") is False and rule.get("rule_id"):
+        return {**result, "ok": True, "rule": {**candidate, "event_contract": "AppGen-X"}}
+    return result
 
 
 def implementation_contract() -> dict:

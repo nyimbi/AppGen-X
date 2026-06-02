@@ -34541,8 +34541,189 @@ def _lsp_required_quick_actions(text: str, *, source_name: str | None = None) ->
     report = lint_report_dsl(text, source_name=source_name)
     for diagnostic in report["diagnostics"]:
         actions.extend(_lsp_required_actions_for_diagnostic(text or "", diagnostic, source_name=source_name))
+    actions.extend(_lsp_semantic_quick_actions(text or "", source_name=source_name))
     actions.extend(_lsp_missing_package_actions(text or "", source_name=source_name))
     return tuple({action["data"]["id"] + ":" + action["title"]: action for action in actions}.values())
+
+
+def _lsp_semantic_quick_actions(source: str, *, source_name: str | None = None) -> tuple[dict, ...]:
+    """Offer structural quick fixes even when parser recovery suppresses diagnostics."""
+    actions: list[dict] = []
+    table_fields = _declared_table_fields_for_suggestions(source)
+    tables = set(table_fields)
+    operations = set(re.findall(r"\boperation\s+([A-Za-z_][A-Za-z0-9_]*)\b", source))
+    flows = set(re.findall(r"\bflow\s+([A-Za-z_][A-Za-z0-9_]*)\b", source))
+
+    for field_match in re.finditer(
+        r"\b(?P<field>[A-Za-z_][A-Za-z0-9_]*)\s*:\s*[A-Za-z_][A-Za-z0-9_]*(?:\([^)]*\))?(?:\s+\w+)*\s*->\s*(?P<table>[A-Za-z_][A-Za-z0-9_]*)\.(?P<target>[A-Za-z_][A-Za-z0-9_]*)",
+        source,
+    ):
+        target_table = field_match.group("table")
+        target_field = field_match.group("target")
+        if target_table in tables and target_field not in table_fields.get(target_table, ()):
+            actions.append(
+                _lsp_insert_in_block_action(
+                    source,
+                    source_name,
+                    None,
+                    "create_missing_field",
+                    f"Create field {target_table}.{target_field}",
+                    "table",
+                    target_table,
+                    f"  {target_field}: string\n",
+                )
+            )
+
+    for view_match in re.finditer(r"\bview\s+([A-Za-z_][A-Za-z0-9_]*)\s+for\s+([A-Za-z_][A-Za-z0-9_]*)\b", source):
+        view_name, table = view_match.groups()
+        if table not in tables:
+            actions.append(
+                _lsp_append_action(
+                    source,
+                    source_name,
+                    None,
+                    "create_missing_table",
+                    f"Create table {table}",
+                    f"\ntable {table} {{\n  id: int pk\n  name: string\n}}\n",
+                )
+            )
+            continue
+        body = _source_block_body(source, "view", view_name) or ""
+        fields = _view_bindings_from_body(body)
+        for binding in fields:
+            if "." in binding:
+                alias, field = binding.split(".", 1)
+                target_table = _source_relationship_target_for_alias(source, table, alias)
+                if target_table is None and _pascal_case(alias) in tables:
+                    actions.append(
+                        _lsp_insert_in_block_action(
+                            source,
+                            source_name,
+                            None,
+                            "add_relationship_for_lookup_path",
+                            f"Add relationship for {binding}",
+                            "table",
+                            table,
+                            f"  {alias}_id: int -> {_pascal_case(alias)}.id\n",
+                        )
+                    )
+                    target_table = _pascal_case(alias)
+                if target_table and field not in table_fields.get(target_table, ()):
+                    expression = "name" if "name" in table_fields.get(target_table, ()) else "id"
+                    actions.append(
+                        _lsp_insert_in_block_action(
+                            source,
+                            source_name,
+                            None,
+                            "create_calculated_field_for_binding",
+                            f"Create calculated field {target_table}.{field}",
+                            "table",
+                            target_table,
+                            f"  {field}: string = {expression}\n",
+                        )
+                    )
+                actions.append(
+                    _lsp_insert_in_block_action(
+                        source,
+                        source_name,
+                        None,
+                        "add_lookup_directive",
+                        f"Add lookup directive for {binding}",
+                        "table",
+                        table,
+                        f"  lookup {binding.rsplit('.', 1)[-1]} ({binding})\n",
+                    )
+                )
+                continue
+            if binding and binding not in table_fields.get(table, ()):
+                hint = _nearest_field_name(binding, table_fields.get(table, ()))
+                if hint:
+                    actions.append(
+                        _lsp_replace_action(
+                            source,
+                            source_name,
+                            None,
+                            "replace_typo_with_nearest_symbol",
+                            f"Replace {binding} with {hint}",
+                            rf"\b{re.escape(binding)}\b",
+                            hint,
+                            first_only=True,
+                        )
+                    )
+                else:
+                    actions.append(
+                        _lsp_insert_in_block_action(
+                            source,
+                            source_name,
+                            None,
+                            "create_missing_field",
+                            f"Create field {table}.{binding}",
+                            "table",
+                            table,
+                            f"  {binding}: string\n",
+                        )
+                    )
+        for handler_target in re.findall(r"\bon\s+[A-Za-z_][A-Za-z0-9_]*\s*->\s*([A-Za-z_][A-Za-z0-9_]*)", body):
+            if handler_target not in operations:
+                actions.append(
+                    _lsp_append_action(
+                        source,
+                        source_name,
+                        None,
+                        "create_operation_from_handler",
+                        f"Create operation {handler_target}",
+                        f"\noperation {handler_target} {{\n  step validate -> complete\n}}\n",
+                    )
+                )
+            if handler_target not in flows:
+                actions.append(
+                    _lsp_append_action(
+                        source,
+                        source_name,
+                        None,
+                        "create_flow_from_handler",
+                        f"Create flow {handler_target}",
+                        f"\nflow {handler_target} {{\n  draft -> complete\n}}\n",
+                    )
+                )
+
+    for rule_match in re.finditer(r"\brule\s+[A-Za-z_][A-Za-z0-9_]*\s+for\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{([^}]*)\}", source, flags=re.DOTALL):
+        table, body = rule_match.groups()
+        for token in re.findall(r"\b([A-Za-z_][A-Za-z0-9_]*)\b(?=\s*(?:==|!=|>=|<=|>|<))", body):
+            if table in tables and token not in table_fields.get(table, ()):
+                actions.append(
+                    _lsp_insert_in_block_action(
+                        source,
+                        source_name,
+                        None,
+                        "create_missing_field",
+                        f"Create field {table}.{token}",
+                        "table",
+                        table,
+                        f"  {token}: string\n",
+                    )
+                )
+    return tuple(actions)
+
+
+def _view_bindings_from_body(body: str) -> tuple[str, ...]:
+    bindings: list[str] = []
+    for line in (body or "").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("on "):
+            continue
+        if ":" in stripped:
+            stripped = stripped.split(":", 1)[1]
+        for value in re.split(r"[,;]", stripped):
+            token = value.strip()
+            if token and not token.startswith("on "):
+                bindings.append(token)
+    return tuple(dict.fromkeys(bindings))
+
+
+def _nearest_field_name(token: str, fields: Iterable[str]) -> str | None:
+    matches = difflib.get_close_matches(token, tuple(fields), n=1, cutoff=0.75)
+    return matches[0] if matches else None
 
 
 def _lsp_required_actions_for_diagnostic(source: str, diagnostic: dict, *, source_name: str | None = None) -> tuple[dict, ...]:

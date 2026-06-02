@@ -101,6 +101,18 @@ myst-parser = {version = ">=0.16.1"}
 source = ["src", "*/site-packages"]
 tests = ["tests", "*/tests"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests", "src/pyAppGen/pbcs"]
+norecursedirs = [
+    ".git",
+    ".venv",
+    "archive",
+    "build",
+    "dist",
+    "node_modules",
+]
+python_files = ["test_*.py"]
+
 [tool.coverage.run]
 branch = true
 source = ["pyAppGen", "tests"]

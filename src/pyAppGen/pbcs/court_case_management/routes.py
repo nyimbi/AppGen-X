@@ -32,5 +32,29 @@ def dispatch_route(route, payload=None):
     }
     return {'ok': route in ROUTES, 'route': route, 'operation': route_to_operation.get(route), 'payload': dict(payload or {}), 'operation_contract': service_operation_contracts()['operation_contract'], 'side_effects': ()}
 
+def dispatch_standalone_route(method, path, payload=None, *, app=None):
+    from .standalone import build_standalone_app
+
+    payload = dict(payload or {})
+    app = app or build_standalone_app()
+    route = f'{method} {path}'
+    if route == 'POST /court-cases':
+        result = app.create_court_case(payload)
+    elif route == 'POST /filings':
+        result = app.receive_filing(payload)
+    elif route == 'POST /hearings':
+        result = app.schedule_hearing(payload)
+    elif route == 'POST /court-orders':
+        result = app.draft_order(payload)
+    elif route == 'POST /court-orders/enter':
+        result = app.sign_and_enter_order(payload.get('order_id'), payload)
+    elif route == 'POST /partys':
+        result = app.add_party(payload)
+    elif route == 'GET /court-case-management-workbench':
+        result = app.query_workbench(permissions=tuple(payload.get('permissions', ())))
+    else:
+        return {'ok': False, 'route': route, 'reason': 'unknown_route', 'side_effects': ()}
+    return {'ok': result['ok'], 'route': route, 'payload': payload, 'result': result, 'side_effects': ()}
+
 def smoke_test():
     return {'ok': api_route_contracts()['ok'] and validate_api_route_contracts()['ok'] and dispatch_route(ROUTES[0])['ok'], 'side_effects': ()}

@@ -126,6 +126,21 @@ __all__ = (
 # AppGen-X release-audit runtime normalization.
 from . import runtime as _appgen_release_runtime_module
 
+energy_grid_operations_build_schema_contract = _appgen_release_runtime_module.energy_grid_operations_build_schema_contract
+energy_grid_operations_build_service_contract = _appgen_release_runtime_module.energy_grid_operations_build_service_contract
+energy_grid_operations_build_release_evidence = _appgen_release_runtime_module.energy_grid_operations_build_release_evidence
+energy_grid_operations_configure_runtime = _appgen_release_runtime_module.energy_grid_operations_configure_runtime
+energy_grid_operations_empty_state = _appgen_release_runtime_module.energy_grid_operations_empty_state
+energy_grid_operations_receive_event = _appgen_release_runtime_module.energy_grid_operations_receive_event
+energy_grid_operations_register_rule = _appgen_release_runtime_module.energy_grid_operations_register_rule
+energy_grid_operations_set_parameter = _appgen_release_runtime_module.energy_grid_operations_set_parameter
+energy_grid_operations_verify_owned_table_boundary = _appgen_release_runtime_module.energy_grid_operations_verify_owned_table_boundary
+_energy_grid_operations_set_parameter = _appgen_release_runtime_module.energy_grid_operations_set_parameter
+
+
+def energy_grid_operations_set_parameter(state: dict, name: str, value, tenant: str = "tenant_demo") -> dict:
+    return _energy_grid_operations_set_parameter(state, {"name": name, "value": value, "tenant": tenant})
+
 
 def _appgen_release_dedupe(values):
     seen = set()

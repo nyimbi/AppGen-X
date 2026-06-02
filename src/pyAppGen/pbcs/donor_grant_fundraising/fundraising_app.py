@@ -563,7 +563,10 @@ def single_pbc_app_contract() -> dict:
 
 def document_instruction_mutation_plan(document: str, instruction: str) -> dict:
     text = f"{document} {instruction}".lower()
-    if "grant" in text or "proposal" in text or "award" in text:
+    if "briefing" in text or "briefing packet" in text or "leadership packet" in text:
+        operation = "assemble_briefing_packet"
+        table = "donor_grant_fundraising_briefing_packet"
+    elif "grant" in text or "proposal" in text or "award" in text:
         operation = "manage_grant_application"
         table = "donor_grant_fundraising_grant_application"
     elif "pledge" in text or "installment" in text:

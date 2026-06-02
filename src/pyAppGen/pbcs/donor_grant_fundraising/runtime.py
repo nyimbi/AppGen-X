@@ -95,6 +95,15 @@ DONOR_GRANT_FUNDRAISING_BUSINESS_TABLES = ('donor_grant_fundraising_donor',
  'donor_grant_fundraising_donor_grant_fundraising_schema_extension',
  'donor_grant_fundraising_donor_grant_fundraising_control_assertion',
  'donor_grant_fundraising_donor_grant_fundraising_governed_model')
+DONOR_GRANT_FUNDRAISING_ROUTE_CONTRACTS = (
+    {'route': 'POST /donors', 'operation': 'command_donor', 'permission': 'donor_grant_fundraising.create'},
+    {'route': 'POST /campaigns', 'operation': 'command_donor', 'permission': 'donor_grant_fundraising.create'},
+    {'route': 'POST /pledges', 'operation': 'command_donor', 'permission': 'donor_grant_fundraising.create'},
+    {'route': 'POST /gifts', 'operation': 'command_donor', 'permission': 'donor_grant_fundraising.create'},
+    {'route': 'POST /restrictions', 'operation': 'command_donor', 'permission': 'donor_grant_fundraising.update'},
+    {'route': 'POST /grant-applications', 'operation': 'command_donor', 'permission': 'donor_grant_fundraising.create'},
+    {'route': 'GET /donor-grant-fundraising-workbench', 'operation': 'query_workbench', 'permission': 'donor_grant_fundraising.read'},
+)
 
 def donor_grant_fundraising_empty_state():
     return {'records': {}, 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
