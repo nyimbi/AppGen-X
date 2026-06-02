@@ -4,15 +4,15 @@ from .services import EnterprisePimService, service_operation_contracts
 
 
 ROUTES = (
-    {'method': 'POST', 'path': '/api/pbc/enterprise_pim/product-taxonomies', 'handler': 'command_product_taxonomies', 'permission': 'enterprise_pim.command.1'},
-    {'method': 'POST', 'path': '/api/pbc/enterprise_pim/product-attributes', 'handler': 'command_product_attributes', 'permission': 'enterprise_pim.command.2'},
-    {'method': 'POST', 'path': '/api/pbc/enterprise_pim/localized-content', 'handler': 'command_localized_content', 'permission': 'enterprise_pim.command.3'},
-    {'method': 'POST', 'path': '/api/pbc/enterprise_pim/validation-workflows', 'handler': 'command_validation_workflows', 'permission': 'enterprise_pim.command.4'},
-    {'method': 'POST', 'path': '/api/pbc/enterprise_pim/validation-workflows/{id}/approve', 'handler': 'command_validation_workflows_id_approve', 'permission': 'enterprise_pim.command.5'},
-    {'method': 'POST', 'path': '/api/pbc/enterprise_pim/dependency-schemas', 'handler': 'command_dependency_schemas', 'permission': 'enterprise_pim.command.6'},
-    {'method': 'POST', 'path': '/api/pbc/enterprise_pim/pim-events', 'handler': 'command_pim_events', 'permission': 'enterprise_pim.command.7'},
-    {'method': 'POST', 'path': '/api/pbc/enterprise_pim/pim-publications', 'handler': 'command_pim_publications', 'permission': 'enterprise_pim.command.8'},
-    {'method': 'GET', 'path': '/api/pbc/enterprise_pim/pim-workbench', 'handler': 'query_pim_workbench', 'permission': 'enterprise_pim.query.9'},
+    {'method': 'POST', 'path': '/api/pbc/enterprise_pim/product-taxonomies', 'handler': 'command_product_taxonomies', 'permission': 'enterprise_pim.taxonomy'},
+    {'method': 'POST', 'path': '/api/pbc/enterprise_pim/product-attributes', 'handler': 'command_product_attributes', 'permission': 'enterprise_pim.attribute'},
+    {'method': 'POST', 'path': '/api/pbc/enterprise_pim/localized-content', 'handler': 'command_localized_content', 'permission': 'enterprise_pim.localization'},
+    {'method': 'POST', 'path': '/api/pbc/enterprise_pim/validation-workflows', 'handler': 'command_validation_workflows', 'permission': 'enterprise_pim.workflow'},
+    {'method': 'POST', 'path': '/api/pbc/enterprise_pim/validation-workflows/{id}/approve', 'handler': 'command_validation_workflows_id_approve', 'permission': 'enterprise_pim.approve'},
+    {'method': 'POST', 'path': '/api/pbc/enterprise_pim/dependency-schemas', 'handler': 'command_dependency_schemas', 'permission': 'enterprise_pim.integrate'},
+    {'method': 'POST', 'path': '/api/pbc/enterprise_pim/pim-events', 'handler': 'command_pim_events', 'permission': 'enterprise_pim.integrate'},
+    {'method': 'POST', 'path': '/api/pbc/enterprise_pim/pim-publications', 'handler': 'command_pim_publications', 'permission': 'enterprise_pim.workflow'},
+    {'method': 'GET', 'path': '/api/pbc/enterprise_pim/pim-workbench', 'handler': 'query_pim_workbench', 'permission': 'enterprise_pim.audit'},
 )
 
 ROUTES = ROUTES + (
@@ -28,7 +28,7 @@ ROUTES = ROUTES + (
     {'method': 'POST', 'path': '/api/pbc/enterprise_pim/assortments', 'handler': 'command_assortments', 'permission': 'enterprise_pim.workflow'},
     {'method': 'POST', 'path': '/api/pbc/enterprise_pim/data-stewards', 'handler': 'command_data_stewards', 'permission': 'enterprise_pim.workflow'},
     {'method': 'POST', 'path': '/api/pbc/enterprise_pim/pim-exceptions', 'handler': 'command_pim_exceptions', 'permission': 'enterprise_pim.workflow'},
-    {'method': 'POST', 'path': '/api/pbc/enterprise_pim/pim-exceptions/resolve', 'handler': 'command_pim_exception_resolutions', 'permission': 'enterprise_pim.workflow'},
+    {'method': 'POST', 'path': '/api/pbc/enterprise_pim/pim-exceptions/{id}/resolve', 'handler': 'command_pim_exception_resolutions', 'permission': 'enterprise_pim.workflow'},
 )
 
 
@@ -50,6 +50,45 @@ API_ROUTE_CONTRACTS = API_ROUTE_CONTRACTS + tuple(
 def register_routes(app=None):
     """Return route metadata without mutating an application object."""
     return ROUTES
+
+
+def resolve_route(method, path):
+    """Resolve one route template and extract path parameters."""
+    for route in ROUTES:
+        if route['method'] != method:
+            continue
+        path_params = _match_route_path(route['path'], path)
+        if path_params is not None:
+            return {
+                'ok': True,
+                'handled': True,
+                'route': route,
+                'path_params': path_params,
+                'side_effects': (),
+            }
+    return {
+        'ok': False,
+        'handled': False,
+        'reason': 'route_not_found',
+        'route': None,
+        'path_params': {},
+        'side_effects': (),
+    }
+
+
+def _match_route_path(template, path):
+    template_parts = tuple(part for part in template.strip('/').split('/') if part)
+    path_parts = tuple(part for part in path.strip('/').split('/') if part)
+    if len(template_parts) != len(path_parts):
+        return None
+    path_params = {}
+    for expected, actual in zip(template_parts, path_parts):
+        if expected.startswith('{') and expected.endswith('}'):
+            path_params[expected[1:-1]] = actual
+            continue
+        if expected != actual:
+            return None
+    return path_params
 
 
 def api_route_contracts():
@@ -114,21 +153,21 @@ def validate_api_route_contracts():
     }
 
 
-def dispatch_route(method, path, payload=None):
+def dispatch_route(method, path, payload=None, *, service=None, state=None):
     """Dispatch a route contract to its service command without side effects."""
-    route = next(
-        (item for item in ROUTES if item['method'] == method and item['path'] == path),
-        None,
-    )
+    resolved = resolve_route(method, path)
+    route = resolved['route']
     if route is None:
         return {'ok': False, 'handled': False, 'reason': 'route_not_found'}
-    service = EnterprisePimService()
+    service = service or EnterprisePimService(state=state)
     handler = getattr(service, route['handler'])
-    result = handler(payload or {})
+    supplied = {**resolved['path_params'], **dict(payload or {})}
+    result = handler(supplied)
     return {
         'ok': result.get('ok') is True,
         'handled': True,
         'route': route,
+        'path_params': resolved['path_params'],
         'result': result,
         'side_effects': (),
     }

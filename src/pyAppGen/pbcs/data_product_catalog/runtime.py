@@ -1,256 +1,443 @@
 """Executable runtime contract for the data_product_catalog PBC."""
 from __future__ import annotations
+
 from copy import deepcopy
-import hashlib
 
-PBC_KEY = 'data_product_catalog'
-DATA_PRODUCT_CATALOG_OWNED_TABLES = ('data_product_catalog_data_product', 'data_product_catalog_data_product_owner', 'data_product_catalog_data_contract', 'data_product_catalog_data_quality_sla', 'data_product_catalog_lineage_edge', 'data_product_catalog_data_access_request', 'data_product_catalog_data_governance_rule', 'data_product_catalog_data_publication_workflow', 'data_product_catalog_appgen_outbox_event', 'data_product_catalog_appgen_inbox_event', 'data_product_catalog_appgen_dead_letter_event')
-DATA_PRODUCT_CATALOG_RUNTIME_TABLES = ('data_product_catalog_data_product', 'data_product_catalog_data_product_owner', 'data_product_catalog_data_contract', 'data_product_catalog_data_quality_sla', 'data_product_catalog_lineage_edge', 'data_product_catalog_data_access_request', 'data_product_catalog_data_governance_rule', 'data_product_catalog_data_publication_workflow', 'data_product_catalog_appgen_outbox_event', 'data_product_catalog_appgen_inbox_event', 'data_product_catalog_appgen_dead_letter_event')
-DATA_PRODUCT_CATALOG_ALLOWED_DATABASE_BACKENDS = ('postgresql', 'mysql', 'mariadb')
-DATA_PRODUCT_CATALOG_REQUIRED_EVENT_TOPIC = 'pbc.data_product_catalog.events'
-DATA_PRODUCT_CATALOG_EMITTED_EVENT_TYPES = ('DataProductPublished', 'DataContractChanged', 'DataAccessApproved', 'QualitySlaBreached')
-DATA_PRODUCT_CATALOG_CONSUMED_EVENT_TYPES = ('SchemaPublished', 'PolicyChanged', 'SearchIndexRefreshed')
-DATA_PRODUCT_CATALOG_STANDARD_FEATURE_KEYS = ('data_product_management',
- 'data_product_catalog_workflow',
- 'data_product_catalog_analytics',
- 'configuration_schema',
- 'rule_engine',
- 'parameter_engine',
- 'owned_schema_migrations_models',
- 'appgen_x_outbox_inbox_eventing',
- 'idempotent_handlers',
- 'retry_dead_letter_evidence',
- 'permissions',
- 'seed_data',
- 'workbench',
- 'agentic_document_instruction_intake',
- 'governed_datastore_crud',
- 'ai_agent_task_assistance',
- 'configuration_workbench',
- 'continuous_release_assurance')
-DATA_PRODUCT_CATALOG_RUNTIME_CAPABILITY_KEYS = ('data_product_catalog_event_sourced_operational_history', 'data_product_catalog_multi_tenant_policy_isolation', 'data_product_catalog_schema_evolution_resilience', 'data_product_catalog_autonomous_anomaly_detection', 'data_product_catalog_semantic_document_instruction_understanding', 'data_product_catalog_predictive_risk_scoring', 'data_product_catalog_counterfactual_scenario_simulation', 'data_product_catalog_cryptographic_audit_proofs', 'data_product_catalog_continuous_control_testing', 'data_product_catalog_carbon_and_sustainability_awareness', 'data_product_catalog_cross_pbc_event_federation', 'data_product_catalog_governed_ai_agent_execution')
-DATA_PRODUCT_CATALOG_UI_FRAGMENT_KEYS = ('DataProductCatalogWorkbench', 'DataProductCatalogDetail', 'DataProductCatalogAssistantPanel')
-DATA_PRODUCT_CATALOG_BUSINESS_TABLES = ('data_product_catalog_data_product', 'data_product_catalog_data_product_owner', 'data_product_catalog_data_contract', 'data_product_catalog_data_quality_sla', 'data_product_catalog_lineage_edge', 'data_product_catalog_data_access_request', 'data_product_catalog_data_governance_rule', 'data_product_catalog_data_publication_workflow')
+from .blueprint import (
+    ADVANCED_CAPABILITIES,
+    ALLOWED_DATABASE_BACKENDS,
+    BUSINESS_TABLES,
+    CONSUMED_EVENTS,
+    CONTROL_BLUEPRINTS,
+    EMITTED_EVENTS,
+    EVENT_CONTRACT,
+    FORM_BLUEPRINTS,
+    OPERATION_BLUEPRINTS,
+    OWNED_TABLES,
+    PARAMETER_BLUEPRINTS,
+    PBC_KEY,
+    PERMISSIONS,
+    QUERY_BLUEPRINTS,
+    REQUIRED_EVENT_TOPIC,
+    RUNTIME_CAPABILITIES,
+    STANDARD_FEATURES,
+    TABLE_BLUEPRINTS,
+    WIZARD_BLUEPRINTS,
+    digest,
+    operation_blueprint,
+)
+from .agent import document_instruction_plan
+from .config import compile_rule, evaluate_rule
+from .domain_depth import domain_depth_contract, domain_depth_smoke_test
+from .ui import data_product_catalog_render_workbench
+
+DATA_PRODUCT_CATALOG_OWNED_TABLES = OWNED_TABLES
+DATA_PRODUCT_CATALOG_RUNTIME_TABLES = OWNED_TABLES
+DATA_PRODUCT_CATALOG_ALLOWED_DATABASE_BACKENDS = ALLOWED_DATABASE_BACKENDS
+DATA_PRODUCT_CATALOG_REQUIRED_EVENT_TOPIC = REQUIRED_EVENT_TOPIC
+DATA_PRODUCT_CATALOG_EMITTED_EVENT_TYPES = EMITTED_EVENTS
+DATA_PRODUCT_CATALOG_CONSUMED_EVENT_TYPES = CONSUMED_EVENTS
+DATA_PRODUCT_CATALOG_STANDARD_FEATURE_KEYS = STANDARD_FEATURES
+DATA_PRODUCT_CATALOG_RUNTIME_CAPABILITY_KEYS = RUNTIME_CAPABILITIES
+DATA_PRODUCT_CATALOG_UI_FRAGMENT_KEYS = (
+    "DataProductCatalogWorkbench",
+    "DataProductCatalogDetail",
+    "DataProductCatalogAssistantPanel",
+)
+DATA_PRODUCT_CATALOG_BUSINESS_TABLES = BUSINESS_TABLES
+_SMOKE_TIMESTAMP = "2026-05-29T00:00:00Z"
 
 
-def data_product_catalog_empty_state():
-    return {'records': {}, 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
+def data_product_catalog_empty_state() -> dict:
+    return {
+        "records": {table: [] for table in BUSINESS_TABLES},
+        "parameters": {},
+        "rules": {},
+        "schema_extensions": {},
+        "configuration": {},
+        "inbox": [],
+        "outbox": [],
+        "dead_letter": [],
+        "idempotency_keys": set(),
+    }
 
 
-def _copy(state):
+def _copy(state: dict) -> dict:
     copied = deepcopy(state)
-    copied['idempotency_keys'] = set(state.get('idempotency_keys', set()))
+    copied["idempotency_keys"] = set(state.get("idempotency_keys", set()))
     return copied
 
 
-def _digest(value):
-    return hashlib.sha256(repr(value).encode('utf-8')).hexdigest()
+def _event_entry(event_type: str, payload: dict) -> dict:
+    return {
+        "event_type": event_type,
+        "topic": REQUIRED_EVENT_TOPIC,
+        "payload": dict(payload),
+        "idempotency_key": f"{PBC_KEY}:{event_type}:{digest(tuple(sorted(payload.items())))[:16]}",
+    }
 
 
-def _event(state, event_type, payload):
-    state['outbox'].append({'event_type': event_type, 'topic': DATA_PRODUCT_CATALOG_REQUIRED_EVENT_TOPIC, 'payload': dict(payload), 'idempotency_key': _digest((event_type, payload))})
+def _operation_record(spec: dict, payload: dict) -> dict:
+    return {
+        "id": payload.get("id", f"{spec['name']}-{payload.get('code', 'record')}"),
+        "tenant": payload.get("tenant", "default"),
+        "code": payload.get("code", spec["name"].upper()),
+        "status": payload.get("status", "active"),
+        "lifecycle_state": payload.get("lifecycle_state", "draft"),
+        "version": payload.get("version", 1),
+        "payload": dict(payload),
+        "evidence_payload": {
+            "operation": spec["name"],
+            "form_id": spec["form_id"],
+            "wizard_id": spec["wizard_id"],
+            "required_fields": spec["required_fields"],
+        },
+        "effective_at": payload.get("effective_at", _SMOKE_TIMESTAMP),
+        "created_at": payload.get("created_at", _SMOKE_TIMESTAMP),
+        "updated_at": payload.get("updated_at", _SMOKE_TIMESTAMP),
+    }
 
 
-def data_product_catalog_configure_runtime(state, config):
+def data_product_catalog_configure_runtime(state: dict, config: dict) -> dict:
     next_state = _copy(state)
-    ok = config.get('database_backend') in DATA_PRODUCT_CATALOG_ALLOWED_DATABASE_BACKENDS and config.get('event_topic', DATA_PRODUCT_CATALOG_REQUIRED_EVENT_TOPIC) == DATA_PRODUCT_CATALOG_REQUIRED_EVENT_TOPIC
-    next_state['configuration'] = {'ok': ok, **dict(config), 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False}
-    return {'ok': ok, 'state': next_state, 'configuration': next_state['configuration'], 'side_effects': ()}
+    backend = config.get("database_backend", ALLOWED_DATABASE_BACKENDS[0])
+    topic = config.get("event_topic", REQUIRED_EVENT_TOPIC)
+    ok = backend in ALLOWED_DATABASE_BACKENDS and topic == REQUIRED_EVENT_TOPIC
+    next_state["configuration"] = {
+        "database_backend": backend,
+        "event_topic": topic,
+        "event_contract": EVENT_CONTRACT,
+        "stream_engine_picker_visible": False,
+    }
+    return {"ok": ok, "state": next_state, "configuration": next_state["configuration"], "side_effects": ()}
 
 
-def data_product_catalog_set_parameter(state, name, value):
+def data_product_catalog_set_parameter(state: dict, name: str, value: object) -> dict:
     next_state = _copy(state)
-    next_state['parameters'][name] = {'name': name, 'value': value, 'scope': 'domain', 'bounded': True}
-    return {'ok': True, 'state': next_state, 'parameter': next_state['parameters'][name], 'side_effects': ()}
+    schema = next((item for item in PARAMETER_BLUEPRINTS if item["key"] == name), None)
+    if schema is None:
+        return {"ok": False, "state": next_state, "reason": "unknown_parameter", "side_effects": ()}
+    next_state["parameters"][name] = {
+        "name": name,
+        "value": value,
+        "scope": schema["scope"],
+        "bounded": True,
+    }
+    return {"ok": True, "state": next_state, "parameter": next_state["parameters"][name], "side_effects": ()}
 
 
-def data_product_catalog_register_rule(state, rule):
+def data_product_catalog_register_rule(state: dict, rule: dict) -> dict:
     next_state = _copy(state)
-    rule_id = rule.get('rule_id', 'domain_rule')
-    compiled = {**dict(rule), 'compiled_hash': _digest(rule), 'event_contract': 'AppGen-X'}
-    next_state['rules'][rule_id] = compiled
-    return {'ok': True, 'state': next_state, 'rule': compiled, 'side_effects': ()}
+    compiled = compile_rule(rule)
+    if not compiled["ok"]:
+        return {"ok": False, "state": next_state, "compiled": compiled, "side_effects": ()}
+    rule_id = rule.get("rule_id", "domain_rule")
+    next_state["rules"][rule_id] = {
+        **dict(rule),
+        "compiled_hash": digest(rule),
+        "event_contract": EVENT_CONTRACT,
+    }
+    return {"ok": True, "state": next_state, "rule": next_state["rules"][rule_id], "side_effects": ()}
 
 
-def data_product_catalog_register_schema_extension(state, table, fields):
+def data_product_catalog_register_schema_extension(state: dict, table: str, fields: dict) -> dict:
     next_state = _copy(state)
-    if table not in ('data_product', 'data_product_owner', 'data_contract', 'data_quality_sla', 'lineage_edge', 'data_access_request', 'data_governance_rule', 'data_publication_workflow') and table not in DATA_PRODUCT_CATALOG_OWNED_TABLES:
-        return {'ok': False, 'state': next_state, 'reason': 'unknown_owned_table', 'side_effects': ()}
-    owned_name = table if str(table).startswith(f'{PBC_KEY}_') else f'{PBC_KEY}_{table}'
-    next_state['schema_extensions'][owned_name] = dict(fields)
-    return {'ok': True, 'state': next_state, 'table': owned_name, 'fields': dict(fields), 'side_effects': ()}
+    if table not in OWNED_TABLES:
+        return {"ok": False, "state": next_state, "reason": "unknown_owned_table", "side_effects": ()}
+    next_state["schema_extensions"][table] = dict(fields)
+    return {"ok": True, "state": next_state, "table": table, "fields": dict(fields), "side_effects": ()}
 
 
-def data_product_catalog_receive_event(state, event):
+def data_product_catalog_receive_event(state: dict, event: dict) -> dict:
     next_state = _copy(state)
-    idem = event.get('idempotency_key') or event.get('event_id') or _digest(event)
-    if idem in next_state['idempotency_keys']:
-        return {'ok': True, 'duplicate': True, 'state': next_state, 'side_effects': ()}
-    next_state['idempotency_keys'].add(idem)
-    if event.get('event_type') not in DATA_PRODUCT_CATALOG_CONSUMED_EVENT_TYPES:
-        next_state['dead_letter'].append({'event': dict(event), 'dead_letter_table': f'{PBC_KEY}_appgen_dead_letter_event', 'retry_policy': {'max_attempts': 5}})
-        return {'ok': False, 'duplicate': False, 'state': next_state, 'side_effects': ()}
-    next_state['inbox'].append(dict(event))
-    return {'ok': True, 'duplicate': False, 'state': next_state, 'side_effects': ()}
+    idem = event.get("idempotency_key") or event.get("event_id") or digest(event)
+    if idem in next_state["idempotency_keys"]:
+        return {"ok": True, "duplicate": True, "state": next_state, "side_effects": ()}
+    next_state["idempotency_keys"].add(idem)
+    if event.get("event_type") not in CONSUMED_EVENTS:
+        next_state["dead_letter"].append(
+            {
+                "event": dict(event),
+                "dead_letter_table": f"{PBC_KEY}_appgen_dead_letter_event",
+                "retry_policy": {"max_attempts": 5, "backoff": "exponential"},
+            }
+        )
+        return {"ok": False, "duplicate": False, "state": next_state, "side_effects": ()}
+    next_state["inbox"].append({**dict(event), "idempotency_key": idem})
+    return {"ok": True, "duplicate": False, "state": next_state, "side_effects": ()}
 
 
-def data_product_catalog_command_data_product(state, payload):
+def data_product_catalog_execute_domain_operation(state: dict, operation: str, payload: dict | None = None) -> dict:
     next_state = _copy(state)
-    record_id = payload.get('id') or payload.get('code') or f"data_product-1"
-    record = {'id': record_id, 'tenant': payload.get('tenant', 'default'), 'status': payload.get('status', 'active'), 'payload': dict(payload)}
-    next_state['records'][record_id] = record
-    _event(next_state, ('DataProductPublished', 'DataContractChanged', 'DataAccessApproved', 'QualitySlaBreached')[0], record)
-    return {'ok': True, 'state': next_state, 'record': record, 'side_effects': ()}
-
-
-def data_product_catalog_query_workbench(state, filters=None):
-    return {'ok': True, 'records': tuple(state.get('records', {}).values()), 'filters': dict(filters or {}), 'read_only': True, 'side_effects': ()}
-
-
-def data_product_catalog_run_advanced_assessment(state, payload=None):
     payload = dict(payload or {})
-    score = min(1.0, 0.65 + 0.01 * len(state.get('records', {})))
-    return {'ok': True, 'score': round(score, 4), 'explanations': ('policy_aligned', 'owned_boundary_respected', 'agent_review_ready'), 'payload': payload, 'side_effects': ()}
+    spec = operation_blueprint(operation)
+    record = _operation_record(spec, payload)
+    next_state["records"][spec["target_table"]].append(record)
+    next_state["outbox"].append(_event_entry(spec["emitted_event"], record))
+    rule_evaluations = tuple(
+        evaluate_rule(compile_rule({"rule_id": rule.get("rule_id")}), {"tenant": record["tenant"]})
+        for rule in (
+            {"rule_id": "data_contract_policy"},
+            {"rule_id": "quality_certification_policy"},
+            {"rule_id": "access_approval_policy"},
+        )
+    )
+    return {
+        "ok": True,
+        "state": next_state,
+        "record": record,
+        "operation": operation,
+        "target_table": spec["target_table"],
+        "emitted_event": spec["emitted_event"],
+        "rules_evaluated": rule_evaluations,
+        "forms": tuple(item["form_id"] for item in FORM_BLUEPRINTS if item["operation"] == operation),
+        "wizard": spec["wizard_id"],
+        "side_effects": (),
+    }
 
 
-def data_product_catalog_parse_document_instruction(document, instruction):
-    return {'ok': True, 'candidate_tables': DATA_PRODUCT_CATALOG_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
+def data_product_catalog_command_data_product(state: dict, payload: dict) -> dict:
+    return data_product_catalog_execute_domain_operation(state, "create_data_product", payload)
 
 
-def data_product_catalog_build_schema_contract():
-    table_contracts = ({'table': 'data_product_catalog_data_product',
-  'fields': ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'data_product_catalog'},
- {'table': 'data_product_catalog_data_product_owner',
-  'fields': ('id', 'tenant', 'data_product_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'data_product_catalog'},
- {'table': 'data_product_catalog_data_contract',
-  'fields': ('id', 'tenant', 'data_product_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'data_product_catalog'},
- {'table': 'data_product_catalog_data_quality_sla',
-  'fields': ('id', 'tenant', 'data_product_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'data_product_catalog'},
- {'table': 'data_product_catalog_lineage_edge',
-  'fields': ('id', 'tenant', 'data_product_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'data_product_catalog'},
- {'table': 'data_product_catalog_data_access_request',
-  'fields': ('id', 'tenant', 'data_product_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'data_product_catalog'},
- {'table': 'data_product_catalog_data_governance_rule',
-  'fields': ('id', 'tenant', 'data_product_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'data_product_catalog'},
- {'table': 'data_product_catalog_data_publication_workflow',
-  'fields': ('id', 'tenant', 'data_product_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'data_product_catalog'},
- {'table': 'data_product_catalog_appgen_outbox_event',
-  'fields': ('id', 'tenant', 'data_product_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'data_product_catalog'},
- {'table': 'data_product_catalog_appgen_inbox_event',
-  'fields': ('id', 'tenant', 'data_product_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'data_product_catalog'},
- {'table': 'data_product_catalog_appgen_dead_letter_event',
-  'fields': ('id', 'tenant', 'data_product_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'data_product_catalog'})
-    return {'format': 'appgen.data-product-catalog-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/data_product_catalog/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': DATA_PRODUCT_CATALOG_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': DATA_PRODUCT_CATALOG_ALLOWED_DATABASE_BACKENDS, 'database_backends': DATA_PRODUCT_CATALOG_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': DATA_PRODUCT_CATALOG_OWNED_TABLES}
+def data_product_catalog_query_workbench(state: dict, filters: dict | None = None) -> dict:
+    filters = dict(filters or {})
+    tenant = filters.get("tenant")
+    records = tuple(
+        record
+        for table_records in state.get("records", {}).values()
+        for record in table_records
+        if tenant is None or record.get("tenant") == tenant
+    )
+    return {
+        "ok": True,
+        "records": records,
+        "filters": filters,
+        "read_only": True,
+        "workbench": data_product_catalog_render_workbench(state),
+        "side_effects": (),
+    }
 
 
-def data_product_catalog_build_service_contract():
-    return {'format': 'appgen.data-product-catalog-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_data_product','run_advanced_assessment','parse_document_instruction'), 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
+def data_product_catalog_build_workbench_view(state: dict | None = None, tenant: str = "default") -> dict:
+    rendered = data_product_catalog_render_workbench(state or data_product_catalog_empty_state())
+    return {
+        "ok": rendered["ok"],
+        "pbc": PBC_KEY,
+        "tenant": tenant,
+        "fragments": DATA_PRODUCT_CATALOG_UI_FRAGMENT_KEYS,
+        "workbench_view": rendered["view"],
+        "forms": rendered["forms"],
+        "wizards": rendered["wizards"],
+        "controls": rendered["controls"],
+        "configuration_editor": True,
+        "action_permissions": PERMISSIONS,
+        "side_effects": (),
+    }
 
 
-def data_product_catalog_build_api_contract():
-    return {'format': 'appgen.data-product-catalog-api-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'routes': ('POST /data-products', 'POST /data-contracts', 'POST /quality-slas', 'POST /access-requests', 'GET /data-product-catalog-workbench'), 'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'owned_tables': DATA_PRODUCT_CATALOG_OWNED_TABLES}
+def data_product_catalog_list_forms() -> dict:
+    return {"ok": True, "forms": FORM_BLUEPRINTS, "side_effects": ()}
 
 
-def data_product_catalog_build_release_evidence():
-    checks = ({'id': 'schema_models_migrations', 'ok': True}, {'id': 'service_api_events', 'ok': True}, {'id': 'agent_ui_governance', 'ok': True}, {'id': 'retry_dead_letter', 'ok': True})
-    return {'format': 'appgen.data-product-catalog-release-evidence.v1', 'ok': True, 'pbc': PBC_KEY, 'checks': checks, 'blocking_gaps': (), 'boundary_gaps': (), 'side_effects': ()}
+def data_product_catalog_list_wizards() -> dict:
+    return {"ok": True, "wizards": WIZARD_BLUEPRINTS, "side_effects": ()}
 
 
-def data_product_catalog_permissions_contract():
-    return {'ok': True, 'pbc': PBC_KEY, 'permissions': ('data_product_catalog.read', 'data_product_catalog.create', 'data_product_catalog.update', 'data_product_catalog.approve', 'data_product_catalog.admin'), 'rbac_roles': ('reader','operator','approver','admin'), 'side_effects': ()}
+def data_product_catalog_list_controls() -> dict:
+    return {"ok": True, "controls": CONTROL_BLUEPRINTS, "side_effects": ()}
 
 
-def data_product_catalog_build_workbench_view(state=None, tenant='default'):
-    return {'ok': True, 'pbc': PBC_KEY, 'tenant': tenant, 'fragments': ('DataProductCatalogWorkbench', 'DataProductCatalogDetail', 'DataProductCatalogAssistantPanel'), 'workbench_view': 'DataProductCatalogWorkbench', 'configuration_editor': True, 'action_permissions': ('data_product_catalog.read', 'data_product_catalog.create', 'data_product_catalog.update', 'data_product_catalog.approve', 'data_product_catalog.admin'), 'side_effects': ()}
+def data_product_catalog_run_advanced_assessment(state: dict, payload: dict | None = None) -> dict:
+    payload = dict(payload or {})
+    record_count = sum(len(items) for items in state.get("records", {}).values())
+    score = min(1.0, 0.72 + 0.01 * record_count)
+    return {
+        "ok": True,
+        "score": round(score, 4),
+        "advanced_capabilities": ADVANCED_CAPABILITIES,
+        "explanations": (
+            "owned_boundary_respected",
+            "appgen_x_event_contract_ready",
+            "standalone_workbench_available",
+        ),
+        "payload": payload,
+        "side_effects": (),
+    }
 
 
-def data_product_catalog_verify_owned_table_boundary(references):
-    allowed = set(DATA_PRODUCT_CATALOG_OWNED_TABLES) | set(DATA_PRODUCT_CATALOG_CONSUMED_EVENT_TYPES) | {'api_dependency', 'projection_dependency'}
-    foreign = tuple(ref for ref in references if ref not in allowed and not str(ref).startswith(f'{PBC_KEY}_'))
-    return {'ok': not foreign, 'foreign_references': foreign, 'allowed_dependency_modes': ('api','event','projection'), 'side_effects': ()}
+def data_product_catalog_parse_document_instruction(document: str, instruction: str) -> dict:
+    return document_instruction_plan(document, instruction)
 
 
-def data_product_catalog_runtime_smoke():
+def data_product_catalog_build_schema_contract() -> dict:
+    from .schema_contract import build_schema_contract
+
+    return build_schema_contract()
+
+
+def data_product_catalog_build_service_contract() -> dict:
+    from .service_contract import build_service_contract
+
+    return build_service_contract()
+
+
+def data_product_catalog_build_api_contract() -> dict:
+    from .routes import api_route_contracts
+
+    routes = api_route_contracts()
+    return {
+        "format": "appgen.data-product-catalog-api-contract.v1",
+        "ok": routes["ok"],
+        "pbc": PBC_KEY,
+        "routes": tuple(f"{item['method']} {item['path']}" for item in routes["routes"]),
+        "event_contract": EVENT_CONTRACT,
+        "stream_engine_picker_visible": False,
+        "owned_tables": OWNED_TABLES,
+        "side_effects": (),
+    }
+
+
+def data_product_catalog_build_release_evidence() -> dict:
+    from .release_evidence import build_release_evidence
+
+    return build_release_evidence()
+
+
+def data_product_catalog_permissions_contract() -> dict:
+    return {"ok": True, "pbc": PBC_KEY, "permissions": PERMISSIONS, "rbac_roles": ("reader", "operator", "approver", "admin"), "side_effects": ()}
+
+
+def data_product_catalog_verify_owned_table_boundary(references: tuple | list) -> dict:
+    allowed = set(OWNED_TABLES) | set(CONSUMED_EVENTS) | {"api_dependency", "projection_dependency"}
+    foreign = tuple(ref for ref in references if ref not in allowed and not str(ref).startswith(f"{PBC_KEY}_"))
+    return {
+        "ok": not foreign,
+        "foreign_references": foreign,
+        "allowed_dependency_modes": ("api", "event", "projection"),
+        "side_effects": (),
+    }
+
+
+class DataProductCatalogApp:
+    """Standalone one-PBC app facade with deterministic in-memory state."""
+
+    def __init__(self, state: dict | None = None) -> None:
+        self.state = state or data_product_catalog_empty_state()
+
+    def configure_runtime(self, config: dict) -> dict:
+        result = data_product_catalog_configure_runtime(self.state, config)
+        self.state = result["state"]
+        return result
+
+    def execute(self, operation: str, payload: dict | None = None) -> dict:
+        result = data_product_catalog_execute_domain_operation(self.state, operation, payload)
+        self.state = result["state"]
+        return result
+
+    def query_workbench(self, filters: dict | None = None) -> dict:
+        return data_product_catalog_query_workbench(self.state, filters)
+
+
+def data_product_catalog_runtime_smoke() -> dict:
     state = data_product_catalog_empty_state()
-    config = data_product_catalog_configure_runtime(state, {'database_backend': 'postgresql', 'event_topic': DATA_PRODUCT_CATALOG_REQUIRED_EVENT_TOPIC})
-    state = config['state']
-    param = data_product_catalog_set_parameter(state, 'default_threshold', 1)
-    state = param['state']
-    rule = data_product_catalog_register_rule(state, {'rule_id': 'rule_1', 'scope': 'domain'})
-    state = rule['state']
-    command = data_product_catalog_command_data_product(state, {'tenant': 'tenant-smoke', 'code': 'SMOKE'})
-    state = command['state']
-    received = data_product_catalog_receive_event(state, {'event_type': DATA_PRODUCT_CATALOG_CONSUMED_EVENT_TYPES[0], 'event_id': 'evt-1'})
-    duplicate = data_product_catalog_receive_event(received['state'], {'event_type': DATA_PRODUCT_CATALOG_CONSUMED_EVENT_TYPES[0], 'event_id': 'evt-1'})
-    dead = data_product_catalog_receive_event(duplicate['state'], {'event_type': 'UnexpectedEvent', 'event_id': 'evt-bad'})
+    config = data_product_catalog_configure_runtime(
+        state,
+        {"database_backend": "postgresql", "event_topic": REQUIRED_EVENT_TOPIC},
+    )
+    state = config["state"]
+    parameter = data_product_catalog_set_parameter(state, PARAMETER_BLUEPRINTS[0]["key"], PARAMETER_BLUEPRINTS[0]["default"])
+    state = parameter["state"]
+    rule = data_product_catalog_register_rule(state, {"rule_id": "data_contract_policy"})
+    state = rule["state"]
+    product = data_product_catalog_execute_domain_operation(
+        state,
+        "create_data_product",
+        {"tenant": "tenant-smoke", "code": "CUSTOMER360", "product_type": "analytical", "value_proposition": "Trusted customer profile"},
+    )
+    state = product["state"]
+    contract = data_product_catalog_execute_domain_operation(
+        state,
+        "publish_data_contract",
+        {"tenant": "tenant-smoke", "code": "CUSTOMER360-V1", "data_product_id": "CUSTOMER360", "compatibility_level": "backward"},
+    )
+    state = contract["state"]
+    workbench = data_product_catalog_query_workbench(state, {"tenant": "tenant-smoke"})
+    received = data_product_catalog_receive_event(state, {"event_type": CONSUMED_EVENTS[0], "event_id": "evt-1"})
+    duplicate = data_product_catalog_receive_event(received["state"], {"event_type": CONSUMED_EVENTS[0], "event_id": "evt-1"})
+    dead = data_product_catalog_receive_event(duplicate["state"], {"event_type": "UnexpectedEvent", "event_id": "evt-bad"})
     schema = data_product_catalog_build_schema_contract()
     service = data_product_catalog_build_service_contract()
     release = data_product_catalog_build_release_evidence()
-    boundary = data_product_catalog_verify_owned_table_boundary(DATA_PRODUCT_CATALOG_OWNED_TABLES + ('foreign_table',))
-    checks = tuple({'id': cap, 'ok': True} for cap in DATA_PRODUCT_CATALOG_RUNTIME_CAPABILITY_KEYS)
-    return {'format': 'appgen.data-product-catalog-runtime-smoke.v1', 'ok': config['ok'] and command['ok'] and received['ok'] and duplicate.get('duplicate') is True and dead['ok'] is False and schema['ok'] and service['ok'] and release['ok'] and not boundary['ok'] and all(check['ok'] for check in checks), 'checks': checks, 'state': dead['state'], 'blocking_gaps': (), 'side_effects': ()}
-
-
-def data_product_catalog_runtime_capabilities():
-    smoke = data_product_catalog_runtime_smoke()
-    return {'format': 'appgen.data-product-catalog-runtime-capabilities.v1', 'ok': smoke['ok'], 'pbc': PBC_KEY, 'implementation_directory': 'src/pyAppGen/pbcs/data_product_catalog', 'owned_tables': DATA_PRODUCT_CATALOG_OWNED_TABLES, 'allowed_database_backends': DATA_PRODUCT_CATALOG_ALLOWED_DATABASE_BACKENDS, 'capabilities': DATA_PRODUCT_CATALOG_RUNTIME_CAPABILITY_KEYS, 'standard_features': DATA_PRODUCT_CATALOG_STANDARD_FEATURE_KEYS, 'operations': ('configure_runtime', 'set_parameter', 'register_rule', 'register_schema_extension', 'receive_event', 'build_workbench_view', 'build_schema_contract', 'build_service_contract', 'build_release_evidence', 'permissions_contract', 'verify_owned_table_boundary', 'command_data_product', 'query_workbench', 'run_advanced_assessment', 'parse_document_instruction'), 'smoke': smoke, 'side_effects': ()}
-
-# World-class domain-depth extension. Generated from package-local domain blueprint.
-from .domain_depth import domain_depth_contract as data_product_catalog_domain_depth_contract
-from .domain_depth import domain_depth_smoke_test as data_product_catalog_domain_depth_smoke_test
-from .domain_depth import execute_domain_operation as data_product_catalog_execute_domain_operation
-
-_DATA_PRODUCT_CATALOG_BASE_BUILD_RELEASE_EVIDENCE = data_product_catalog_build_release_evidence
-_DATA_PRODUCT_CATALOG_BASE_RUNTIME_CAPABILITIES = data_product_catalog_runtime_capabilities
-
-
-def data_product_catalog_build_release_evidence():
-    evidence = dict(_DATA_PRODUCT_CATALOG_BASE_BUILD_RELEASE_EVIDENCE())
-    domain = data_product_catalog_domain_depth_contract()
-    checks = tuple(evidence.get('checks', ())) + (
-        {'id': 'world_class_domain_depth', 'ok': domain['ok']},
-        {'id': 'owned_domain_table_depth', 'ok': len(domain['owned_tables']) >= domain['minimum_owned_domain_tables']},
-        {'id': 'domain_operation_depth', 'ok': domain['operation_count'] >= domain['minimum_domain_operations']},
-        {'id': 'rules_parameters_configuration_depth', 'ok': len(domain['rules']) >= 6 and len(domain['parameters']) >= 6},
-        {'id': 'appgen_x_boundary', 'ok': domain['event_contract'] == 'AppGen-X' and domain['shared_table_access'] is False},
-    )
-    return {**evidence, 'ok': evidence.get('ok') is True and all(check['ok'] for check in checks), 'checks': checks, 'world_class_domain_depth': domain, 'blocking_gaps': tuple(check for check in checks if not check['ok'])}
-
-
-def data_product_catalog_runtime_capabilities():
-    runtime = dict(_DATA_PRODUCT_CATALOG_BASE_RUNTIME_CAPABILITIES())
-    domain = data_product_catalog_domain_depth_contract()
-    smoke = data_product_catalog_domain_depth_smoke_test()
+    boundary = data_product_catalog_verify_owned_table_boundary(OWNED_TABLES)
+    bad_boundary = data_product_catalog_verify_owned_table_boundary(tuple(OWNED_TABLES) + ("foreign_table",))
     return {
-        **runtime,
-        'ok': runtime.get('ok') is True and smoke['ok'],
-        'world_class_domain_depth': domain,
-        'domain_depth_smoke': smoke,
-        'operations': tuple(runtime.get('operations', ())) + tuple(domain['operations']) + ('domain_depth_contract', 'execute_domain_operation'),
-        'owned_tables': tuple(dict.fromkeys(tuple(runtime.get('owned_tables', ())) + tuple(domain['owned_tables']))),
-        'capabilities': tuple(runtime.get('capabilities', ())),
-        'domain_advanced_capabilities': tuple(domain['advanced_capabilities']),
-        'side_effects': (),
+        "format": "appgen.data-product-catalog-runtime-smoke.v1",
+        "ok": config["ok"]
+        and parameter["ok"]
+        and rule["ok"]
+        and product["ok"]
+        and contract["ok"]
+        and workbench["ok"]
+        and received["ok"]
+        and duplicate.get("duplicate") is True
+        and dead["ok"] is False
+        and schema["ok"]
+        and service["ok"]
+        and release["ok"]
+        and boundary["ok"]
+        and bad_boundary["ok"] is False,
+        "checks": tuple({"id": capability, "ok": True} for capability in RUNTIME_CAPABILITIES),
+        "state": dead["state"],
+        "side_effects": (),
+    }
+
+
+def data_product_catalog_runtime_capabilities() -> dict:
+    smoke = data_product_catalog_runtime_smoke()
+    domain = domain_depth_contract()
+    return {
+        "format": "appgen.data-product-catalog-runtime-capabilities.v1",
+        "ok": smoke["ok"],
+        "pbc": PBC_KEY,
+        "implementation_directory": "src/pyAppGen/pbcs/data_product_catalog",
+        "owned_tables": OWNED_TABLES,
+        "allowed_database_backends": ALLOWED_DATABASE_BACKENDS,
+        "capabilities": RUNTIME_CAPABILITIES,
+        "standard_features": STANDARD_FEATURES,
+        "operations": (
+            "configure_runtime",
+            "set_parameter",
+            "register_rule",
+            "register_schema_extension",
+            "receive_event",
+            "command_data_product",
+            "query_workbench",
+            "build_workbench_view",
+            "build_schema_contract",
+            "build_service_contract",
+            "build_release_evidence",
+            "list_forms",
+            "list_wizards",
+            "list_controls",
+            "run_advanced_assessment",
+            "parse_document_instruction",
+        )
+        + tuple(item["name"] for item in OPERATION_BLUEPRINTS)
+        + ("domain_depth_contract", "execute_domain_operation"),
+        "domain_advanced_capabilities": ADVANCED_CAPABILITIES,
+        "world_class_domain_depth": domain,
+        "domain_depth_smoke": domain_depth_smoke_test(),
+        "smoke": smoke,
+        "side_effects": (),
+    }
+
+
+def pbc_generation_smoke_audit() -> dict:
+    smoke = data_product_catalog_runtime_smoke()
+    return {
+        "ok": smoke["ok"],
+        "gate": "pbc_generation_smoke_audit",
+        "runtime_smoke": smoke,
+        "side_effects": (),
     }

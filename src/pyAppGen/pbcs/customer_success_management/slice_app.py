@@ -1462,7 +1462,14 @@ def build_runtime_capabilities() -> dict[str, Any]:
         "allowed_database_backends": ALLOWED_DATABASE_BACKENDS[:-1],
         "capabilities": _dedupe(tuple(PBC_MANIFEST["advanced_capabilities"])),
         "standard_features": _dedupe(tuple(PBC_MANIFEST["standard_features"])),
-        "operations": _dedupe(tuple(build_service_contract()["command_methods"] + build_service_contract()["query_methods"])),
+        "operations": _dedupe(
+            tuple(build_service_contract()["command_methods"] + build_service_contract()["query_methods"])
+            + (
+                "build_schema_contract",
+                "build_service_contract",
+                "build_release_evidence",
+            )
+        ),
         "smoke": smoke,
         "side_effects": (),
     }

@@ -22,6 +22,105 @@ ENTERPRISE_PIM_UI_FRAGMENT_KEYS = (
     "PimConfigurationPanel",
     "PimAuditEvidencePanel",
 )
+ENTERPRISE_PIM_UI_FORM_KEYS = (
+    "runtime_configuration",
+    "taxonomy_definition",
+    "attribute_definition",
+    "localized_content_entry",
+    "dependency_schema_registration",
+    "publication_readiness",
+)
+ENTERPRISE_PIM_UI_WIZARD_KEYS = (
+    "taxonomy_onboarding",
+    "localization_readiness",
+    "publication_gate",
+    "exception_resolution",
+)
+ENTERPRISE_PIM_UI_CONTROL_KEYS = (
+    "taxonomy_status_board",
+    "attribute_quality_ledger",
+    "workflow_lane_board",
+    "dependency_projection_queue",
+    "outbox_delivery_monitor",
+    "release_evidence_console",
+)
+
+
+def enterprise_pim_ui_forms() -> tuple[dict, ...]:
+    return (
+        {
+            "key": "runtime_configuration",
+            "title": "Runtime Configuration",
+            "action": "configure_runtime",
+            "required_fields": ("database_backend", "event_topic", "retry_limit", "default_locale", "allowed_locales"),
+        },
+        {
+            "key": "taxonomy_definition",
+            "title": "Taxonomy Definition",
+            "action": "create_taxonomy",
+            "required_fields": ("tenant", "taxonomy_id", "code", "name", "localized_names"),
+        },
+        {
+            "key": "attribute_definition",
+            "title": "Attribute Definition",
+            "action": "define_attribute",
+            "required_fields": ("tenant", "attribute_id", "taxonomy_id", "name", "data_type", "required"),
+        },
+        {
+            "key": "localized_content_entry",
+            "title": "Localized Content",
+            "action": "upsert_localized_content",
+            "required_fields": ("tenant", "content_id", "entity_id", "entity_type", "locale", "title", "description"),
+        },
+        {
+            "key": "dependency_schema_registration",
+            "title": "Dependency Schema",
+            "action": "accept_dependency_schema",
+            "required_fields": ("dependency", "contract"),
+        },
+        {
+            "key": "publication_readiness",
+            "title": "Publication Readiness",
+            "action": "publish_master_data",
+            "required_fields": ("taxonomy_id", "channels"),
+        },
+    )
+
+
+def enterprise_pim_ui_wizards() -> tuple[dict, ...]:
+    return (
+        {
+            "key": "taxonomy_onboarding",
+            "title": "Taxonomy Onboarding",
+            "steps": ("configure_runtime", "create_taxonomy", "define_attribute", "create_attribute_group"),
+        },
+        {
+            "key": "localization_readiness",
+            "title": "Localization Readiness",
+            "steps": ("upsert_localized_content", "upsert_translation_memory", "register_locale_fallback_rule"),
+        },
+        {
+            "key": "publication_gate",
+            "title": "Publication Gate",
+            "steps": ("accept_dependency_schema", "receive_event", "start_validation_workflow", "approve_validation_workflow", "publish_master_data"),
+        },
+        {
+            "key": "exception_resolution",
+            "title": "Exception Resolution",
+            "steps": ("open_pim_exception", "resolve_pim_exception"),
+        },
+    )
+
+
+def enterprise_pim_ui_controls() -> tuple[dict, ...]:
+    return (
+        {"key": "taxonomy_status_board", "fragment": "TaxonomyGraphStudio", "binds_to": "product_taxonomy"},
+        {"key": "attribute_quality_ledger", "fragment": "AttributeDefinitionStudio", "binds_to": "attribute_quality_signal"},
+        {"key": "workflow_lane_board", "fragment": "ValidationWorkflowBoard", "binds_to": "validation_workflow"},
+        {"key": "dependency_projection_queue", "fragment": "DependencySchemaConsole", "binds_to": "dependency_projection"},
+        {"key": "outbox_delivery_monitor", "fragment": "PimEventOutbox", "binds_to": "enterprise_pim_appgen_outbox_event"},
+        {"key": "release_evidence_console", "fragment": "PimAuditEvidencePanel", "binds_to": "release_evidence"},
+    )
 
 
 def enterprise_pim_ui_contract() -> dict:
@@ -31,6 +130,9 @@ def enterprise_pim_ui_contract() -> dict:
         "pbc": "enterprise_pim",
         "implementation_directory": "src/pyAppGen/pbcs/enterprise_pim",
         "fragments": ENTERPRISE_PIM_UI_FRAGMENT_KEYS,
+        "forms": enterprise_pim_ui_forms(),
+        "wizards": enterprise_pim_ui_wizards(),
+        "controls": enterprise_pim_ui_controls(),
         "routes": (
             "/workbench/pbcs/enterprise_pim",
             "/workbench/pbcs/enterprise_pim/taxonomies",
@@ -195,6 +297,9 @@ def enterprise_pim_render_workbench(
         "tenant": tenant,
         "route": "/workbench/pbcs/enterprise_pim",
         "fragments": contract["fragments"],
+        "forms": contract["forms"],
+        "wizards": contract["wizards"],
+        "controls": contract["controls"],
         "cards": cards,
         "visible_actions": visible_actions,
         "locked_actions": tuple(action for action in action_permissions if action not in visible_actions),
@@ -265,6 +370,9 @@ def smoke_test():
         "ok": contract.get("ok") is True
         and rendered.get("ok") is True
         and bool(contract.get("fragments"))
+        and bool(contract.get("forms"))
+        and bool(contract.get("wizards"))
+        and bool(contract.get("controls"))
         and bool(contract.get("routes"))
         and bool(cards)
         and bool(contract.get("action_permissions"))

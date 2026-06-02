@@ -826,6 +826,8 @@ def enterprise_search_vector_query(state: dict, command: dict) -> dict:
     for doc in runtime["vector_documents"].values():
         if doc["tenant"] != command["tenant"] or doc["locale"] != command["locale"]:
             continue
+        if doc.get("status", "active") == "deleted":
+            continue
         if policy is not None and doc["source"] not in policy["allowed_sources"]:
             continue
         if not permissions.intersection(doc["acl"]):
@@ -867,6 +869,7 @@ def enterprise_search_vector_query(state: dict, command: dict) -> dict:
     )
     trace = {
         **command,
+        "query_text": command["text"],
         "principal_permissions": tuple(command["principal_permissions"]),
         "ranking_mode": runtime["configuration"]["ranking_mode"],
         "result_count": len(results),
@@ -970,7 +973,11 @@ def enterprise_search_vector_forecast_index_freshness(state: dict, command: dict
     index = state["search_indexes"][command["index_id"]]
     if index["tenant"] != command["tenant"]:
         raise ValueError(f"Enterprise Search Vector tenant mismatch for index: {command['index_id']}")
-    docs = tuple(doc for doc in state["vector_documents"].values() if doc["index_id"] == command["index_id"])
+    docs = tuple(
+        doc
+        for doc in state["vector_documents"].values()
+        if doc["index_id"] == command["index_id"] and doc.get("status", "active") != "deleted"
+    )
     current = round(sum(float(doc.get("freshness_score", 1.0)) for doc in docs) / max(len(docs), 1), 4)
     decay = min(0.8, max(0.0, int(command["horizon_days"]) / 365.0))
     forecast = {
@@ -979,6 +986,8 @@ def enterprise_search_vector_forecast_index_freshness(state: dict, command: dict
         "current_freshness_score": current,
         "projected_freshness_score": round(max(0.0, current - decay), 4),
         "recommended_refresh_before_days": max(1, min(int(command["horizon_days"]), 14 if current < 0.8 else 30)),
+        "forecast_method": "linear_decay",
+        "confidence_score": round(min(0.99, 0.55 + (0.05 * min(len(docs), 5))), 4),
         "audit_proof": _digest(command),
     }
     runtime = _copy_state(state)
@@ -1036,6 +1045,11 @@ def enterprise_search_vector_screen_search_policy(state: dict, command: dict) ->
         "decision": "allowed" if allowed_source and allowed_locale and allowed_acl else "blocked",
         "policy_rule_id": policy.get("rule_id") if policy else None,
         "required_acl": required_acl,
+        "decision_reason": (
+            "principal_has_required_acl_and_scope"
+            if allowed_source and allowed_locale and allowed_acl
+            else "missing_acl_or_scope_violation"
+        ),
         "audit_proof": _digest(command),
     }
     runtime = _copy_state(state)
@@ -1060,6 +1074,8 @@ def enterprise_search_vector_run_relevance_controls(state: dict, command: dict) 
         "top_score": top_score,
         "threshold": threshold,
         "result_count": trace["result_count"],
+        "control_name": "minimum_relevance_threshold",
+        "control_status": "passed" if passed else "failed",
         "status": "passed" if passed else "failed",
         "audit_proof": _digest(command),
     }
@@ -1077,13 +1093,21 @@ def enterprise_search_vector_generate_index_proof(state: dict, command: dict) ->
     if command["index_id"] not in state["search_indexes"]:
         raise ValueError(f"Unknown Enterprise Search Vector index: {command['index_id']}")
     index = state["search_indexes"][command["index_id"]]
-    docs = tuple(doc for doc in state["vector_documents"].values() if doc["index_id"] == command["index_id"])
+    if index["tenant"] != command["tenant"]:
+        raise ValueError(f"Enterprise Search Vector tenant mismatch for index: {command['index_id']}")
+    docs = tuple(
+        doc
+        for doc in state["vector_documents"].values()
+        if doc["index_id"] == command["index_id"] and doc.get("status", "active") != "deleted"
+    )
     proof_payload = {"index": index, "documents": docs, "query_count": index.get("query_count", 0)}
     proof = {
         **command,
         "document_count": len(docs),
         "proof_hash": _digest(proof_payload),
         "verification_status": "verifiable",
+        "proof_algorithm": "sha256-merkleish",
+        "sealed_by": "enterprise_search_vector_runtime",
         "audit_proof": _digest(command),
     }
     runtime = _copy_state(state)
@@ -1099,7 +1123,14 @@ def enterprise_search_vector_federate_search_sources(state: dict, command: dict)
         raise ValueError(f"Missing Enterprise Search Vector federated view fields: {tuple(sorted(missing))}")
     if command["index_id"] not in state["search_indexes"]:
         raise ValueError(f"Unknown Enterprise Search Vector index: {command['index_id']}")
-    docs = tuple(doc for doc in state["vector_documents"].values() if doc["tenant"] == command["tenant"])
+    index = state["search_indexes"][command["index_id"]]
+    if index["tenant"] != command["tenant"]:
+        raise ValueError(f"Enterprise Search Vector tenant mismatch for index: {command['index_id']}")
+    docs = tuple(
+        doc
+        for doc in state["vector_documents"].values()
+        if doc["tenant"] == command["tenant"] and doc.get("status", "active") != "deleted"
+    )
     view = {
         **command,
         "source_counts": {
@@ -1108,6 +1139,11 @@ def enterprise_search_vector_federate_search_sources(state: dict, command: dict)
         },
         "query_count": sum(1 for query in state["query_traces"].values() if query["tenant"] == command["tenant"]),
         "declared_dependencies": enterprise_search_vector_verify_owned_table_boundary()["declared_dependencies"],
+        "view_status": "ready",
+        "federation_policy": {
+            "blend_mode": "hybrid_authority",
+            "scope": tuple(sorted({doc["source"] for doc in docs})),
+        },
         "audit_proof": _digest(command),
     }
     runtime = _copy_state(state)
@@ -1125,12 +1161,15 @@ def enterprise_search_vector_score_query_intent_risk(state: dict, command: dict)
         raise ValueError(f"Unknown Enterprise Search Vector query: {command['query_id']}")
     trace = state["query_traces"][command["query_id"]]
     sensitive_tokens = {"secret", "password", "payroll", "private", "credential"}
-    hits = set(_tokens(trace["text"])).intersection(sensitive_tokens)
+    hits = set(_tokens(trace.get("query_text", trace.get("text", "")))).intersection(sensitive_tokens)
+    review_required = bool(hits)
     risk = {
         **command,
         "risk_score": round(min(1.0, len(hits) * 0.35 + (0.2 if trace["result_count"] == 0 else 0.0)), 4),
         "risk_reasons": tuple(sorted(hits)) or ("normal_discovery_intent",),
         "decision": "allow" if not hits else "review",
+        "policy_action": "allow_search" if not hits else "require_manual_review",
+        "review_required": review_required,
         "audit_proof": _digest(command),
     }
     runtime = _copy_state(state)
@@ -1150,12 +1189,23 @@ def enterprise_search_vector_record_retention_deletion(state: dict, command: dic
     document = runtime["vector_documents"][command["document_id"]]
     if document["tenant"] != command["tenant"]:
         raise ValueError(f"Enterprise Search Vector tenant mismatch for document: {command['document_id']}")
-    record = {**command, "index_id": document["index_id"], "audit_proof": _digest(command)}
+    record = {
+        **command,
+        "index_id": document["index_id"],
+        "disposition_status": command["status"],
+        "retention_basis": command.get("retention_basis", "default_enterprise_retention"),
+        "legal_hold": bool(command.get("legal_hold", False)),
+        "audit_proof": _digest(command),
+    }
     if command["status"] == "deleted":
         document["status"] = "deleted"
         document["body"] = ""
         document["chunks"] = ()
         document["embedding"] = ()
+        document["token_count"] = 0
+        document["chunk_count"] = 0
+        document["quality_review_status"] = "purged"
+        _recompute_index(runtime, document["index_id"])
     runtime["retention_deletion_records"][record["record_id"]] = record
     _record_search_audit(runtime, command["tenant"], "record_retention_deletion", record)
     return {"ok": True, "state": runtime, "record": record}
@@ -1169,7 +1219,11 @@ def enterprise_search_vector_register_governed_model(state: dict, command: dict)
     model = {
         **command,
         "approved": command["status"] in {"approved", "active"},
+        "model_version": command["version"],
+        "approval_status": command["status"],
         "evidence_hash": _digest(command),
+        "validation_dataset": command.get("validation_dataset"),
+        "risk_rating": command.get("risk_rating", "medium"),
         "audit_proof": _digest(command),
     }
     runtime = _copy_state(state)
@@ -1527,7 +1581,11 @@ def _increment_query_counts(state: dict, tenant: str, locale: str) -> None:
 
 def _recompute_index(state: dict, index_id: str) -> None:
     index = state["search_indexes"][index_id]
-    docs = tuple(doc for doc in state["vector_documents"].values() if doc["index_id"] == index_id)
+    docs = tuple(
+        doc
+        for doc in state["vector_documents"].values()
+        if doc["index_id"] == index_id and doc.get("status", "active") != "deleted"
+    )
     index["document_ids"] = tuple(sorted(doc["document_id"] for doc in docs))
     index["document_count"] = len(docs)
     index["ready_document_count"] = sum(1 for doc in docs if doc.get("embedding_job_id"))
@@ -1596,6 +1654,8 @@ def _record_search_audit(state: dict, tenant: str, action: str, payload: dict) -
         "payload_digest": _digest(payload),
         "proof_hash": _digest({"tenant": tenant, "action": action, "payload": payload}),
         "status": "sealed",
+        "channel": "runtime",
+        "audit_proof": _digest({"tenant": tenant, "action": action}),
     }
     state["search_audit_entries"][entry["entry_id"]] = entry
     state["events"].append(_state_event("SearchAuditEntrySealed", entry["entry_id"], entry))

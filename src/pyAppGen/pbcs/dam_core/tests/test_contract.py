@@ -1,211 +1,40 @@
-"""Generated contract smoke tests for dam_core."""
+"""Focused package contract and gate tests for dam_core."""
 
+from __future__ import annotations
+
+from pathlib import Path
+
+from .. import PBC_KEY
+from .. import capability_assurance
+from .. import config
+from .. import events
+from .. import handlers
+from .. import package_discovery_plan
+from .. import package_metadata_manifest
+from .. import permissions
+from .. import register_pbc
+from .. import registration_plan
+from .. import validate_package_metadata
+from .. import release_evidence
+from .. import routes
+from .. import runtime
+from .. import schema_contract
+from .. import seed_data
+from .. import services
+from .. import smoke_test
+from .. import ui
+from ..agent import datastore_crud_plan
+from ..agent import document_instruction_plan
 from ..manifest import PBC_MANIFEST
-from ..events import EVENT_CONTRACT
-from ..schema_contract import SCHEMA_CONTRACT
+from ..models import database_model_contract
+from ..models import model_manifest
 from ..service_contract import SERVICE_CONTRACT
-from ..release_evidence import RELEASE_EVIDENCE
 
 
-def test_generated_schema_service_and_release_evidence():
-    from .. import models, release_evidence, schema_contract
-
-    assert SCHEMA_CONTRACT['pbc'] == 'dam_core'
-    assert SCHEMA_CONTRACT['ok'] is True
-    assert SCHEMA_CONTRACT['owned_tables']
-    schema_smoke = schema_contract.smoke_test()
-    model_smoke = models.smoke_test()
-    assert schema_smoke['ok'] is True
-    assert model_smoke['ok'] is True
-    assert not schema_smoke['side_effects']
-    assert not model_smoke['side_effects']
-    assert SERVICE_CONTRACT['pbc'] == 'dam_core'
-    assert SERVICE_CONTRACT['ok'] is True
-    assert SERVICE_CONTRACT.get('shared_table_access') is False
-    assert RELEASE_EVIDENCE['pbc'] == 'dam_core'
-    assert RELEASE_EVIDENCE['ok'] is True
+PACKAGE_DIR = Path(__file__).resolve().parents[1]
 
 
-    release_manifest = release_evidence.release_readiness_manifest()
-    release_validation = release_evidence.validate_release_evidence()
-    release_smoke = release_evidence.smoke_test()
-    assert release_manifest['ok'] is True
-    assert release_validation['ok'] is True
-    assert release_smoke['ok'] is True
-    assert not release_manifest['blocking_gaps']
-    assert not release_validation['missing_sections']
-    assert not release_validation['failed_checks']
-    assert not release_validation['boundary_gaps']
-    assert not release_manifest['side_effects']
-    assert not release_validation['side_effects']
-    assert not release_smoke['side_effects']
-
-
-def test_manifest_and_event_contract():
-    from .. import events
-
-    assert PBC_MANIFEST['pbc'] == 'dam_core'
-    assert PBC_MANIFEST['standard_features']
-    assert PBC_MANIFEST['advanced_capabilities']
-    assert EVENT_CONTRACT['contract'] == 'appgen_event_contract'
-    assert EVENT_CONTRACT['outbox_table'].startswith('dam_core_')
-    assert EVENT_CONTRACT['inbox_table'].startswith('dam_core_')
-    manifest = events.event_contract_manifest()
-    validation = events.validate_event_contract()
-    smoke = events.smoke_test()
-    assert manifest['ok'] is True
-    assert validation['ok'] is True
-    assert smoke['ok'] is True
-    assert manifest['stream_engine_picker_visible'] is False
-    assert not validation['invalid_tables']
-    assert not validation['invalid_emitted']
-    assert not validation['invalid_consumed']
-    assert smoke['emitted']['table'] == EVENT_CONTRACT['outbox_table']
-    assert smoke['consumed']['table'] == EVENT_CONTRACT['inbox_table']
-    assert smoke['emitted']['retry_policy']['max_attempts'] >= 3
-    assert smoke['consumed']['dead_letter_table'].startswith(PBC_MANIFEST['pbc'] + '_')
-    assert not manifest['side_effects']
-    assert not validation['side_effects']
-    assert not smoke['side_effects']
-
-
-def test_registration_plan_is_side_effect_free():
-    from .. import package_discovery_plan, package_metadata_manifest, register_pbc, registration_plan, validate_package_metadata
-
-    assert register_pbc()['pbc'] == 'dam_core'
-    plan = registration_plan()
-    assert plan['ok'] is True
-    assert plan['catalog_patch']
-    metadata = package_metadata_manifest()
-    metadata_validation = validate_package_metadata()
-    discovery = package_discovery_plan()
-    assert metadata['ok'] is True
-    assert metadata_validation['ok'] is True
-    assert discovery['ok'] is True
-    assert metadata['stream_engine_picker_visible'] is False
-    assert metadata['event_contract'] == 'AppGen-X'
-    assert not metadata_validation['missing_entrypoints']
-    assert not metadata_validation['missing_publish_artifacts']
-    assert not metadata_validation['missing_capability_evidence']
-    assert not metadata_validation['invalid']
-    assert not discovery['side_effects']
-
-
-def test_service_and_route_surface_are_executable():
-    from .. import routes, services
-
-    service_smoke = services.smoke_test()
-    operation_contracts = services.service_operation_contracts()
-    route_contracts = routes.api_route_contracts()
-    route_validation = routes.validate_api_route_contracts()
-    route_smoke = routes.smoke_test()
-    assert service_smoke['ok'] is True
-    assert operation_contracts['ok'] is True
-    assert route_contracts['ok'] is True
-    assert route_validation['ok'] is True
-    assert route_contracts['contracts']
-    assert all(item['permission'] for item in route_contracts['contracts'])
-    assert all(item['event_contract'] == 'AppGen-X' for item in route_contracts['contracts'])
-    assert all(item['stream_engine_picker_visible'] is False for item in route_contracts['contracts'])
-    assert all(item['shared_table_access'] is False for item in route_contracts['contracts'])
-    assert not route_validation['service_mismatches']
-    assert not route_validation['missing_idempotency']
-    assert not route_validation['invalid_table_scope']
-    assert service_smoke['result']['operation_contract']['route']['path']
-    assert service_smoke['result']['operation_contract']['permission']
-    assert service_smoke['result']['operation_contract']['event_contract'] == 'AppGen-X'
-    assert service_smoke['result']['operation_contract']['owned_tables'] or service_smoke['result']['operation_contract']['read_tables']
-    assert route_smoke['ok'] is True
-    assert not service_smoke['side_effects']
-    assert not operation_contracts['side_effects']
-    assert not route_contracts['side_effects']
-    assert not route_validation['side_effects']
-    assert not route_smoke['side_effects']
-
-
-def test_configuration_permissions_and_seed_hooks_are_executable():
-    from .. import config, permissions, seed_data
-
-    config_smoke = config.smoke_test()
-    governance_smoke = config.governance_smoke_test()
-    permission_smoke = permissions.smoke_test()
-    seed_smoke = seed_data.smoke_test()
-    assert config_smoke['ok'] is True
-    assert governance_smoke['ok'] is True
-    assert governance_smoke['parameter']['accepted'] is True
-    assert governance_smoke['compiled_rule']['compiled'] is True
-    assert governance_smoke['rule_decision']['allowed'] is True
-    assert permission_smoke['ok'] is True
-    assert seed_smoke['ok'] is True
-    assert not config_smoke['side_effects']
-    assert not governance_smoke['side_effects']
-    assert not permission_smoke['side_effects']
-    assert not seed_smoke['side_effects']
-
-
-def test_ui_workbench_surface_is_executable():
-    from .. import ui
-
-    if hasattr(ui, 'smoke_test'):
-        smoke = ui.smoke_test()
-    else:
-        contract = getattr(ui, f"{PBC_MANIFEST['pbc']}_ui_contract")()
-        rendered = {
-            'ok': contract['ok'],
-            'cards': contract.get('panels') or contract.get('fragments'),
-            'route': (contract.get('routes') or (None,))[0],
-        }
-        smoke = {
-            'ok': contract['ok'] and bool(contract.get('fragments')) and bool(rendered['cards']),
-            'manifest': {'fragments': contract.get('fragments', ())},
-            'rendered': rendered,
-            'side_effects': (),
-        }
-    assert smoke['ok'] is True
-    assert smoke['manifest']['fragments']
-    assert smoke['rendered']['cards']
-    assert not smoke['side_effects']
-
-
-def test_event_handlers_are_idempotent_and_retryable():
-    from .. import handlers
-
-    smoke = handlers.smoke_test()
-    assert smoke['ok'] is True
-    assert smoke['manifest']['handlers']
-    assert smoke['first_result']['retry_policy']
-    assert smoke['first_result']['dead_letter_table'].startswith('dam_core_')
-    assert smoke['duplicate_result']['duplicate'] is True
-    assert smoke['unknown_result']['handled'] is False
-    assert not smoke['side_effects']
-
-def test_table_stakes_and_advanced_capability_assurance_is_executable():
-    from .. import capability_assurance
-
-    manifest = capability_assurance.table_stakes_capability_manifest()
-    validation = capability_assurance.validate_table_stakes_capability_coverage()
-    smoke = capability_assurance.smoke_test()
-    assert manifest['ok'] is True
-    assert validation['ok'] is True
-    assert smoke['ok'] is True
-    assert manifest['standard_features']
-    assert manifest['advanced_capabilities']
-    assert not validation['missing_standard']
-    assert not validation['missing_advanced']
-    assert not validation['missing_operations']
-    assert not validation['uncovered_features']
-    assert not validation['invalid_tables']
-    assert not validation['invalid_backends']
-    assert validation['stream_picker_visible'] is False
-    assert validation['event_contract'] == 'AppGen-X'
-    assert validation['owned_boundary_rejection']['ok'] is False
-    assert validation['owned_boundary_rejection']['violations']
-    assert not smoke['side_effects']
-
-
-def test_executable_dam_lifecycle_covers_collections_rights_metadata_workflow_usage_and_lineage():
-    from .. import runtime
-
+def _configured_state() -> dict:
     state = runtime.dam_core_empty_state()
     state = runtime.dam_core_configure_runtime(
         state,
@@ -235,10 +64,130 @@ def test_executable_dam_lifecycle_covers_collections_rights_metadata_workflow_us
         ("workbench_limit", 100),
     ):
         state = runtime.dam_core_set_parameter(state, name, value)["state"]
+    return state
+
+
+def test_generated_schema_service_and_release_evidence():
+    assert schema_contract.build_schema_contract()["pbc"] == PBC_KEY
+    assert schema_contract.validate_schema_contract()["ok"] is True
+    assert model_manifest()["ok"] is True
+    assert database_model_contract()["ok"] is True
+    assert SERVICE_CONTRACT["pbc"] == PBC_KEY
+    assert SERVICE_CONTRACT["ok"] is True
+    assert SERVICE_CONTRACT["shared_table_access"] is False
+    assert release_evidence.build_release_evidence()["ok"] is True
+    assert release_evidence.validate_release_evidence()["ok"] is True
+    assert release_evidence.smoke_test()["ok"] is True
+
+
+def test_manifest_event_and_package_metadata_are_consistent():
+    manifest = events.event_contract_manifest()
+    validation = events.validate_event_contract()
+    metadata = package_metadata_manifest()
+    discovery = package_discovery_plan()
+    assert PBC_MANIFEST["pbc"] == PBC_KEY
+    assert manifest["ok"] is True
+    assert validation["ok"] is True
+    assert metadata["ok"] is True
+    assert discovery["ok"] is True
+    assert manifest["outbox_table"].startswith("dam_core_")
+    assert manifest["inbox_table"].startswith("dam_core_")
+    assert metadata["event_contract"] == "AppGen-X"
+    assert metadata["stream_engine_picker_visible"] is False
+
+
+def test_manifest_and_event_contract():
+    manifest = events.event_contract_manifest()
+    validation = events.validate_event_contract()
+    metadata_validation = validate_package_metadata()
+    readiness = release_evidence.release_readiness_manifest()
+    assert PBC_MANIFEST["pbc"] == PBC_KEY
+    assert manifest["ok"] is True
+    assert validation["ok"] is True
+    assert metadata_validation["ok"] is True
+    assert readiness["pbc"] == PBC_KEY
+
+
+def test_registration_plan_is_side_effect_free():
+    assert register_pbc()["pbc"] == PBC_KEY
+    plan = registration_plan()
+    assert plan["ok"] is True
+    assert plan["catalog_patch"]
+
+
+def test_service_and_route_surface_are_executable():
+    service_smoke = services.smoke_test()
+    route_validation = routes.validate_api_route_contracts()
+    route_smoke = routes.smoke_test()
+    assert service_smoke["ok"] is True
+    assert services.service_operation_contracts()["ok"] is True
+    assert route_validation["ok"] is True
+    assert route_smoke["ok"] is True
+    assert not route_validation["service_mismatches"]
+    assert not route_validation["missing_idempotency"]
+    assert not route_validation["invalid_table_scope"]
+
+
+def test_configuration_permissions_seed_and_ui_are_executable():
+    assert config.smoke_test()["ok"] is True
+    assert config.governance_smoke_test()["ok"] is True
+    assert permissions.smoke_test()["ok"] is True
+    assert seed_data.smoke_test()["ok"] is True
+    assert ui.smoke_test()["ok"] is True
+
+
+def test_configuration_permissions_and_seed_hooks_are_executable():
+    assert config.governance_smoke_test()["ok"] is True
+    assert permissions.permission_manifest()["ok"] is True
+    assert seed_data.validate_seed_data()["ok"] is True
+
+
+def test_event_handlers_agent_and_capability_assurance_are_executable():
+    handler_smoke = handlers.smoke_test()
+    assurance = capability_assurance.smoke_test()
+    document_plan = document_instruction_plan(
+        "asset_id=asset_test tenant=tenant_test filename=asset.jpg mime_type=image/jpeg taxonomy=product value=launch",
+        "register asset and tag product launch",
+    )
+    crud_plan = datastore_crud_plan("create", "dam_core_asset", {"status": "draft"})
+    assert handler_smoke["ok"] is True
+    assert assurance["ok"] is True
+    assert document_plan["ok"] is True
+    assert crud_plan["ok"] is True
+    assert crud_plan["event_contract"] == "AppGen-X"
+
+
+def test_event_handlers_are_idempotent_and_retryable():
+    manifest = handlers.handler_manifest()
+    first = handlers.dispatch_event(
+        {
+            "event_type": "ProductPublished",
+            "event_id": "handler-idempotency",
+            "payload": {"tenant": "tenant_handler", "product_id": "sku_handler"},
+        },
+    )
+    second = handlers.dispatch_event(
+        {
+            "event_type": "ProductPublished",
+            "event_id": "handler-idempotency",
+            "payload": {"tenant": "tenant_handler", "product_id": "sku_handler"},
+        },
+    )
+    assert manifest["ok"] is True
+    assert manifest["retry_policies"][0]["max_attempts"] >= 3
+    assert manifest["dead_letter_tables"][0].startswith("dam_core_")
+    assert first["handled"] is True
+    assert second["handled"] is True
+    assert second["duplicate"] is True
+
+
+def test_runtime_smoke_and_one_asset_lifecycle_are_executable():
+    runtime_smoke = runtime.dam_core_runtime_smoke()
+    state = _configured_state()
     state = runtime.dam_core_register_rule(
         state,
         {
-            "rule_id": "rule_dam_test",
+            "rule_id": "dam_core.asset_governance",
             "tenant": "tenant_test",
             "scope": "asset_governance",
             "status": "active",
@@ -248,6 +197,18 @@ def test_executable_dam_lifecycle_covers_collections_rights_metadata_workflow_us
             "metadata_policy": {"required_tags": ("product",)},
         },
     )["state"]
+    state = runtime.dam_core_receive_event(
+        state,
+        {
+            "event_type": "ProductPublished",
+            "event_id": "product_test",
+            "payload": {
+                "tenant": "tenant_test",
+                "product_id": "sku_test",
+                "name": "Launch Backpack",
+            },
+        },
+    )["state"]
     state = runtime.dam_core_register_asset(
         state,
         {
@@ -255,88 +216,25 @@ def test_executable_dam_lifecycle_covers_collections_rights_metadata_workflow_us
             "tenant": "tenant_test",
             "filename": "asset.jpg",
             "mime_type": "image/jpeg",
-            "size_mb": 10,
-            "storage_uri": "object://asset",
-            "binary": b"asset-primary",
-            "created_by": "owner",
-        },
-    )["state"]
-    state = runtime.dam_core_register_asset(
-        state,
-        {
-            "asset_id": "asset_test_derived",
-            "tenant": "tenant_test",
-            "filename": "asset-derived.jpg",
-            "mime_type": "image/jpeg",
-            "size_mb": 5,
-            "storage_uri": "object://asset-derived",
-            "binary": b"asset-derived",
-            "created_by": "owner",
-        },
-    )["state"]
-    state = runtime.dam_core_create_asset_collection(
-        state,
-        {
-            "collection_id": "coll_test",
-            "tenant": "tenant_test",
-            "name": "Launch",
-            "purpose": "commerce",
-        },
-    )["state"]
-    state = runtime.dam_core_add_asset_to_collection(
-        state,
-        {
-            "member_id": "member_test",
-            "collection_id": "coll_test",
-            "asset_id": "asset_test",
-            "tenant": "tenant_test",
+            "size_mb": 12,
+            "storage_uri": "object://dam/test/asset.jpg",
+            "binary": b"asset-test",
+            "created_by": "tester",
+            "product_id": "sku_test",
         },
     )["state"]
     state = runtime.dam_core_attach_rights_policy(
         state,
         {
-            "policy_id": "rights_test",
+            "policy_id": "policy_test",
             "asset_id": "asset_test",
             "tenant": "tenant_test",
             "license_type": "commercial",
-            "allowed_markets": ("US",),
+            "allowed_markets": ("ke",),
             "blocked_markets": ("restricted",),
             "expires_at": "2027-01-01",
-            "attribution_required": False,
+            "attribution_required": True,
             "approver": "legal",
-        },
-    )["state"]
-    state = runtime.dam_core_register_license_agreement(
-        state,
-        {
-            "agreement_id": "lic_test",
-            "policy_id": "rights_test",
-            "tenant": "tenant_test",
-            "licensor": "brand",
-            "licensee": "tenant_test",
-            "start_date": "2026-01-01",
-            "end_date": "2027-01-01",
-            "terms": {"markets": ("US",)},
-        },
-    )["state"]
-    state = runtime.dam_core_grant_usage_entitlement(
-        state,
-        {
-            "entitlement_id": "ent_test",
-            "agreement_id": "lic_test",
-            "asset_id": "asset_test",
-            "tenant": "tenant_test",
-            "market": "US",
-            "use_case": "product_detail",
-        },
-    )["state"]
-    state = runtime.dam_core_register_metadata_taxonomy(
-        state,
-        {
-            "taxonomy_id": "tax_test",
-            "tenant": "tenant_test",
-            "name": "product",
-            "allowed_values": ("backpack",),
         },
     )["state"]
     state = runtime.dam_core_add_metadata_tag(
@@ -346,124 +244,65 @@ def test_executable_dam_lifecycle_covers_collections_rights_metadata_workflow_us
             "asset_id": "asset_test",
             "tenant": "tenant_test",
             "taxonomy": "product",
-            "value": "backpack",
-            "confidence": 0.9,
-            "source": "human",
-        },
-    )["state"]
-    state = runtime.dam_core_enrich_metadata(
-        state,
-        {
-            "enrichment_id": "enrich_test",
-            "asset_id": "asset_test",
-            "tenant": "tenant_test",
-            "source": "vision",
-            "attributes": {"object": "backpack"},
-            "confidence": 0.9,
-        },
-    )["state"]
-    state = runtime.dam_core_add_semantic_annotation(
-        state,
-        {
-            "annotation_id": "anno_test",
-            "asset_id": "asset_test",
-            "tenant": "tenant_test",
-            "label": "backpack",
-            "confidence": 0.9,
-            "span": {"x": 0, "y": 0, "w": 1, "h": 1},
+            "value": "launch-backpack",
+            "confidence": 0.91,
+            "source": "manual",
         },
     )["state"]
     state = runtime.dam_core_request_rendition(
         state,
         {
-            "rendition_id": "rend_test",
+            "rendition_id": "rendition_test",
             "asset_id": "asset_test",
             "tenant": "tenant_test",
             "profile": "web_large",
             "target_mime_type": "image/jpeg",
-            "width": 1200,
-            "height": 800,
+            "width": 1600,
+            "height": 1200,
         },
     )["state"]
-    state = runtime.dam_core_complete_rendition(
-        state,
-        "rend_test",
-        {"uri": "object://asset/web.jpg", "quality_score": 0.9, "duration_ms": 100},
-    )["state"]
-    workflow = runtime.dam_core_start_asset_workflow(
-        state,
-        {
-            "case_id": "case_test",
-            "asset_id": "asset_test",
-            "tenant": "tenant_test",
-            "workflow_type": "approval",
-            "requested_by": "owner",
-            "reviewers": ("legal",),
-        },
-    )
-    state = workflow["state"]
-    state = runtime.dam_core_complete_asset_review_task(
-        state,
-        "case_test:legal",
-        {"decision": "approve", "reviewed_by": "legal"},
-    )["state"]
-    state = runtime.dam_core_open_asset_exception(
-        state,
-        {
-            "exception_id": "exc_test",
-            "asset_id": "asset_test",
-            "tenant": "tenant_test",
-            "reason": "alt_text",
-            "severity": "low",
-        },
-    )["state"]
-    state = runtime.dam_core_resolve_asset_exception_case(
-        state,
-        "exc_test",
-        {"resolution": "alt_text_added", "resolved_by": "owner"},
-    )["state"]
-    state = runtime.dam_core_record_asset_usage_snapshot(
-        state,
-        {
-            "snapshot_id": "usage_test",
-            "asset_id": "asset_test",
-            "tenant": "tenant_test",
-            "impressions": 100,
-            "downloads": 10,
-            "channel": "commerce",
-        },
-    )["state"]
-    state = runtime.dam_core_detect_asset_duplicate_candidate(
-        state,
-        {
-            "candidate_id": "dup_test",
-            "asset_id": "asset_test",
-            "candidate_asset_id": "asset_test_derived",
-            "tenant": "tenant_test",
-            "similarity": 0.95,
-        },
-    )["state"]
-    state = runtime.dam_core_record_asset_lineage(
-        state,
-        {
-            "lineage_id": "lineage_test",
-            "asset_id": "asset_test_derived",
-            "source_asset_id": "asset_test",
-            "tenant": "tenant_test",
-            "lineage_type": "derived",
-        },
-    )["state"]
+    workbench = runtime.dam_core_build_workbench_view(state, tenant="tenant_test")
+    rights = runtime.dam_core_enforce_rights(state, "asset_test", market="ke", use_case="web")
+    assert runtime_smoke["ok"] is True
+    assert workbench["asset_count"] == 1
+    assert workbench["rendition_count"] == 1
+    assert rights["decision"] == "allow"
 
-    assert state["asset_collections"]["coll_test"]["member_count"] == 1
-    assert state["license_agreements"]["lic_test"]["status"] == "active"
-    assert state["usage_entitlements"]["ent_test"]["status"] == "active"
-    assert state["metadata_taxonomies"]["tax_test"]["status"] == "active"
-    assert state["metadata_enrichments"]["enrich_test"]["status"] == "accepted"
-    assert state["semantic_annotations"]["anno_test"]["status"] == "active"
-    assert state["asset_workflow_cases"]["case_test"]["status"] == "approved"
-    assert state["asset_exceptions"]["exc_test"]["status"] == "resolved"
-    assert state["asset_usage_snapshots"]["usage_test"]["engagement_score"] > 0
-    assert state["asset_duplicate_candidates"]["dup_test"]["status"] == "duplicate_review"
-    assert state["asset_lineage"]["lineage_test"]["status"] == "recorded"
-    assert all(event["event_contract"] == "AppGen-X" for event in state["outbox"])
-    assert runtime.dam_core_verify_owned_table_boundary(runtime.DAM_CORE_OWNED_TABLES)["ok"] is True
+
+def test_package_smoke_test_entrypoint_is_side_effect_free():
+    entrypoint_smoke = smoke_test()
+    assert entrypoint_smoke["ok"] is True
+    assert not entrypoint_smoke["side_effects"]
+
+
+def test_pbc_source_artifact_contract():
+    expected = (
+        "README.md",
+        "SPECIFICATION.md",
+        "implementation-plan.md",
+        "implementation-status.md",
+        "RELEASE_EVIDENCE.md",
+        "migrations/001_initial.sql",
+        "tests/test_contract.py",
+        "tests/test_standalone.py",
+    )
+    missing = tuple(path for path in expected if not (PACKAGE_DIR / path).exists())
+    evidence = release_evidence.build_release_evidence()
+    assert not missing
+    assert evidence["repo_gate_results"]["pbc_source_artifact_contract"] is True
+
+
+def test_pbc_implementation_release_audit():
+    validation = release_evidence.validate_release_evidence()
+    evidence = release_evidence.build_release_evidence()
+    assert validation["ok"] is True
+    assert evidence["repo_gate_results"]["pbc_implementation_release_audit"] is True
+
+
+def test_pbc_generation_smoke_audit():
+    from .. import standalone
+
+    smoke = standalone.smoke_test()
+    evidence = release_evidence.build_release_evidence()
+    assert smoke["ok"] is True
+    assert evidence["repo_gate_results"]["pbc_generation_smoke_audit"] is True

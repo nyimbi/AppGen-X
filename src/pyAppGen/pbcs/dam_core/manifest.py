@@ -1,83 +1,97 @@
-PBC_MANIFEST = {'pbc': 'dam_core', 'label': 'Digital Asset Management Core', 'mesh': 'content', 'description': 'Media storage, transformation, transcoding, metadata tagging, and rights controls.', 'datastore_backend': 'postgresql', 'tables': ('asset', 'asset_rendition', 'rights_policy', 'metadata_tag'), 'apis': ('POST /assets', 'POST /renditions', 'GET /rights'), 'emits': ('AssetPublished', 'RightsPolicyChanged'), 'consumes': ('ProductPublished',), 'template': None, 'ui_fragments': ('DamCoreWorkbench', 'DamCoreDetail'), 'permissions': ('dam_core.read', 'dam_core.create', 'dam_core.update', 'dam_core.approve', 'dam_core.admin'), 'configuration': ('DAM_CORE_DATABASE_URL', 'DAM_CORE_EVENT_TOPIC', 'DAM_CORE_RETRY_LIMIT'), 'capabilities': ('dam_core.asset', 'dam_core.asset_rendition', 'dam_core.rights_policy', 'dam_core.metadata_tag'), 'standard_features': ('asset_lifecycle', 'asset_versioning', 'asset_binary_storage', 'asset_binary_fingerprint', 'asset_collections', 'asset_rendition', 'transcoding_job', 'transcode_route_selection', 'rendition_profiles', 'metadata_tag', 'metadata_taxonomy', 'metadata_enrichment', 'semantic_annotation', 'rights_policy', 'rights_decision', 'license_agreement', 'usage_entitlement', 'product_published_dependency', 'campaign_projection', 'channel_asset_projection', 'asset_workflow_case', 'asset_review_task', 'asset_exception', 'asset_quality_score', 'asset_usage_snapshot', 'asset_usage_forecast', 'duplicate_candidate_detection', 'asset_lineage', 'tenant_isolation', 'cryptographic_asset_proofs', 'policy_screening', 'control_assertions', 'federation_views', 'resilience_drills', 'crypto_epoch_rotation', 'carbon_aware_transcoding', 'rendition_cost_simulation', 'route_allocation', 'anomaly_signals', 'exposure_forecasts', 'identity_attestation', 'governed_model_registry', 'appgen_x_outbox', 'appgen_x_inbox', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions', 'configuration_schema', 'rule_engine', 'parameter_engine', 'seed_data', 'workbench', 'immutable_audit', 'release_audit_evidence'), 'workflows': ('command_assets', 'command_renditions', 'query_rights'), 'analytics': ('content_completeness', 'publication_velocity', 'rights_exceptions', 'price_effectiveness', 'asset_published_throughput', 'rights_policy_changed_throughput'), 'advanced_capabilities': ('event_sourced_asset_lifecycle', 'owned_media_schema_boundary', 'multi_tenant_asset_isolation', 'schema_evolution_resilient_asset_metadata', 'content_addressed_binary_fingerprinting', 'rendition_transcoding_pipeline', 'semantic_metadata_tagging', 'rights_policy_enforcement', 'product_published_projection_handling', 'probabilistic_rights_and_quality_scoring', 'counterfactual_rendition_cost_simulation', 'temporal_asset_usage_forecasting', 'autonomous_asset_exception_resolution', 'semantic_asset_instruction_parsing', 'predictive_asset_governance_risk', 'self_healing_transcode_route_selection', 'cryptographic_asset_proof', 'immutable_asset_audit_trail', 'dynamic_policy_screening', 'automated_control_testing', 'appgen_x_outbox_inbox_eventing', 'idempotent_handlers', 'retry_dead_letter_evidence', 'permissions_governance_evidence', 'configuration_schema', 'parameter_engine', 'rule_engine', 'seed_data', 'workbench_ui'), 'migrations': ('migrations/001_initial.sql',), 'seed_data': ('seed_data.py',), 'tests': ('tests/test_contract.py',), 'docs': ('RELEASE_EVIDENCE.md',)}
+"""Package manifest for the dam_core PBC."""
+
+from __future__ import annotations
+
+from .runtime import DAM_CORE_CONSUMED_EVENT_TYPES
+from .runtime import DAM_CORE_EMITTED_EVENT_TYPES
+from .runtime import DAM_CORE_OWNED_TABLES
+from .runtime import DAM_CORE_STANDARD_FEATURE_KEYS
+from .runtime import dam_core_build_api_contract
+from .runtime import dam_core_permissions_contract
+from .runtime import dam_core_runtime_capabilities
+
+
+def _declared_capabilities() -> tuple[str, ...]:
+    priority_tables = (
+        "asset",
+        "asset_rendition",
+        "rights_policy",
+        "metadata_tag",
+        "asset_collection",
+        "license_agreement",
+        "usage_entitlement",
+        "metadata_taxonomy",
+        "asset_workflow_case",
+        "asset_exception",
+        "asset_usage_snapshot",
+        "asset_lineage",
+    )
+    return tuple(f"dam_core.{table}" for table in priority_tables)
+
+
+_RUNTIME_CAPABILITIES = dam_core_runtime_capabilities()
+_API_CONTRACT = dam_core_build_api_contract()
 
 PBC_MANIFEST = {
-    **PBC_MANIFEST,
-    'tables': tuple(dict.fromkeys(PBC_MANIFEST['tables'] + (
-        'asset_collection',
-        'asset_collection_member',
-        'license_agreement',
-        'usage_entitlement',
-        'metadata_taxonomy',
-        'metadata_enrichment',
-        'semantic_annotation',
-        'asset_workflow_case',
-        'asset_review_task',
-        'asset_exception',
-        'asset_usage_snapshot',
-        'asset_duplicate_candidate',
-        'asset_lineage',
-    ))),
-    'apis': PBC_MANIFEST['apis'] + (
-        'POST /collections',
-        'POST /collection-members',
-        'POST /license-agreements',
-        'POST /usage-entitlements',
-        'POST /metadata-taxonomies',
-        'POST /metadata-enrichments',
-        'POST /semantic-annotations',
-        'POST /asset-workflows',
-        'POST /review-tasks',
-        'POST /asset-exceptions',
-        'POST /exception-resolutions',
-        'POST /usage-snapshots',
-        'POST /duplicate-candidates',
-        'POST /asset-lineage',
+    # Source-audit trace key: 'dam_core'
+    "pbc": "dam_core",
+    "label": "Digital Asset Management Core",
+    "mesh": "content",
+    "description": "Standalone DAM package for asset lifecycle, rendition orchestration, metadata governance, rights, and workbench operations.",
+    "datastore_backend": "postgresql",
+    "tables": DAM_CORE_OWNED_TABLES,
+    "apis": _API_CONTRACT["declared_catalog_routes"],
+    "emits": DAM_CORE_EMITTED_EVENT_TYPES,
+    "consumes": DAM_CORE_CONSUMED_EVENT_TYPES,
+    "template": "standalone_one_pbc_app",
+    "ui_fragments": (
+        "DamCoreWorkbench",
+        "DamCoreAssetWorkbench",
+        "DamCoreRightsWorkbench",
+        "DamCoreOperationsWorkbench",
     ),
-    'emits': PBC_MANIFEST['emits'] + (
-        'AssetCollectionCreated',
-        'AssetAddedToCollection',
-        'LicenseAgreementRegistered',
-        'UsageEntitlementGranted',
-        'MetadataTaxonomyRegistered',
-        'MetadataEnriched',
-        'SemanticAnnotationAdded',
-        'AssetWorkflowStarted',
-        'AssetReviewTaskCompleted',
-        'AssetExceptionOpened',
-        'AssetExceptionResolved',
-        'AssetUsageSnapshotRecorded',
-        'AssetDuplicateCandidateDetected',
-        'AssetLineageRecorded',
+    "permissions": tuple(sorted(set(dam_core_permissions_contract().values()))),
+    "configuration": (
+        "database_backend",
+        "event_topic",
+        "retry_limit",
+        "default_storage_tier",
+        "allowed_mime_types",
+        "rendition_profiles",
+        "rights_default_decision",
+        "metadata_taxonomies",
+        "default_locale",
+        "workbench_limit",
     ),
-    'capabilities': PBC_MANIFEST['capabilities'] + (
-        'dam_core.asset_collection',
-        'dam_core.asset_collection_member',
-        'dam_core.license_agreement',
-        'dam_core.usage_entitlement',
-        'dam_core.metadata_taxonomy',
-        'dam_core.metadata_enrichment',
-        'dam_core.semantic_annotation',
-        'dam_core.asset_workflow_case',
-        'dam_core.asset_review_task',
-        'dam_core.asset_exception',
-        'dam_core.asset_usage_snapshot',
-        'dam_core.asset_duplicate_candidate',
-        'dam_core.asset_lineage',
+    "capabilities": _declared_capabilities(),
+    "standard_features": DAM_CORE_STANDARD_FEATURE_KEYS,
+    "workflows": tuple(
+        operation
+        for operation in _RUNTIME_CAPABILITIES["operations"]
+        if operation
+        and not operation.startswith("build_")
+        and operation not in {"permissions_contract", "verify_owned_table_boundary"}
     ),
-    'workflows': PBC_MANIFEST['workflows'] + (
-        'command_collections',
-        'command_collection_members',
-        'command_license_agreements',
-        'command_usage_entitlements',
-        'command_metadata_taxonomies',
-        'command_metadata_enrichments',
-        'command_semantic_annotations',
-        'command_asset_workflows',
-        'command_review_tasks',
-        'command_asset_exceptions',
-        'command_exception_resolutions',
-        'command_usage_snapshots',
-        'command_duplicate_candidates',
-        'command_asset_lineage',
+    "analytics": (
+        "asset_readiness",
+        "rendition_pipeline_latency",
+        "rights_risk_exposure",
+        "metadata_quality",
+        "duplicate_review_backlog",
+        "workflow_clearance_rate",
+    ),
+    "advanced_capabilities": _RUNTIME_CAPABILITIES["capabilities"],
+    "migrations": ("migrations/001_initial.sql",),
+    "seed_data": ("seed_data.py",),
+    "tests": (
+        "tests/test_contract.py",
+        "tests/test_standalone.py",
+    ),
+    "docs": (
+        "SPECIFICATION.md",
+        "README.md",
+        "implementation-plan.md",
+        "implementation-status.md",
+        "RELEASE_EVIDENCE.md",
     ),
 }

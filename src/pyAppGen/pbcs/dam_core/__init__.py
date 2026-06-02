@@ -4,8 +4,10 @@ from .manifest import PBC_MANIFEST
 
 from ..source_contract import source_pbc_package_contract
 from ..source_contract import source_package_metadata
-from ..source_contract import validate_source_package_metadata
 from ..source_contract import source_registration_plan
+from ..source_contract import validate_source_package_metadata
+from .release_evidence import build_release_evidence as dam_core_build_release_evidence
+from .release_evidence import build_release_evidence as package_build_release_evidence
 from .runtime import DAM_CORE_ALLOWED_DATABASE_BACKENDS
 from .runtime import DAM_CORE_OWNED_TABLES
 from .runtime import DAM_CORE_RUNTIME_TABLES
@@ -16,7 +18,6 @@ from .runtime import dam_core_add_metadata_tag
 from .runtime import dam_core_add_semantic_annotation
 from .runtime import dam_core_attach_rights_policy
 from .runtime import dam_core_build_api_contract
-from .runtime import dam_core_build_release_evidence
 from .runtime import dam_core_build_schema_contract
 from .runtime import dam_core_build_service_contract
 from .runtime import dam_core_build_workbench_view
@@ -48,7 +49,11 @@ from .runtime import dam_core_start_asset_workflow
 from .runtime import dam_core_verify_owned_table_boundary
 from .ui import DAM_CORE_UI_FRAGMENT_KEYS
 from .ui import dam_core_render_workbench
+from .ui import dam_core_render_standalone_app
+from .ui import dam_core_standalone_app_contract
 from .ui import dam_core_ui_contract
+from .standalone import DamCoreStandaloneApp
+from .standalone import standalone_app_manifest
 
 PBC_KEY = "dam_core"
 
@@ -64,11 +69,13 @@ def implementation_contract() -> dict:
         "api_contract": dam_core_build_api_contract(),
         "schema_contract": dam_core_build_schema_contract(),
         "service_contract": dam_core_build_service_contract(),
-        "release_evidence_contract": dam_core_build_release_evidence(),
+        "release_evidence_contract": package_build_release_evidence(),
         "permissions_contract": dam_core_permissions_contract(),
         "owned_tables": DAM_CORE_OWNED_TABLES,
         "runtime_tables": DAM_CORE_RUNTIME_TABLES,
         "allowed_database_backends": DAM_CORE_ALLOWED_DATABASE_BACKENDS,
+        "standalone_app_contract": dam_core_standalone_app_contract(),
+        "standalone_app_manifest": standalone_app_manifest(),
     }
 
 

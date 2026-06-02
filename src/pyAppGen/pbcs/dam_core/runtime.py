@@ -196,9 +196,11 @@ DAM_CORE_REQUIRED_RULE_FIELDS = (
 DAM_CORE_CONSUMED_EVENT_TYPES = ("ProductPublished",)
 DAM_CORE_EMITTED_EVENT_TYPES = (
     "AssetRegistered",
+    "AssetRenditionRequested",
     "AssetRenditionReady",
+    "AssetRightsPolicyAttached",
     "AssetRightsBlocked",
-    "AssetTagged",
+    "AssetMetadataTagged",
     "AssetCollectionCreated",
     "AssetAddedToCollection",
     "LicenseAgreementRegistered",
@@ -875,7 +877,9 @@ def dam_core_attach_rights_policy(state: dict, policy: dict) -> dict:
         "compiled_hash": _stable_hash(policy),
     }
     assets = {**state["assets"], policy["asset_id"]: {**asset, "rights_policy_id": policy["policy_id"], "graph_degree": asset["graph_degree"] + 1}}
-    return {"ok": True, "state": {**state, "rights_policies": {**state["rights_policies"], policy["policy_id"]: stored}, "assets": assets}, "policy": stored}
+    next_state = {**state, "rights_policies": {**state["rights_policies"], policy["policy_id"]: stored}, "assets": assets}
+    next_state = _append_event(next_state, "AssetRightsPolicyAttached", policy["tenant"], {"asset_id": policy["asset_id"], "policy_id": policy["policy_id"]})
+    return {"ok": True, "state": next_state, "policy": stored}
 
 
 def dam_core_register_license_agreement(state: dict, agreement: dict) -> dict:
@@ -936,7 +940,7 @@ def dam_core_add_metadata_tag(state: dict, tag: dict) -> dict:
         },
     }
     next_state = {**state, "metadata_tags": {**state["metadata_tags"], tag["tag_id"]: stored}, "assets": assets}
-    next_state = _append_event(next_state, "AssetTagged", tag["tenant"], {"asset_id": tag["asset_id"], "tag_key": stored["tag_key"]})
+    next_state = _append_event(next_state, "AssetMetadataTagged", tag["tenant"], {"asset_id": tag["asset_id"], "tag_key": stored["tag_key"]})
     return {"ok": True, "state": next_state, "tag": stored}
 
 
@@ -1062,7 +1066,14 @@ def dam_core_request_rendition(state: dict, rendition: dict) -> dict:
             "graph_degree": asset["graph_degree"] + 1,
         },
     }
-    return {"ok": True, "state": {**state, "asset_renditions": {**state["asset_renditions"], rendition["rendition_id"]: stored}, "assets": assets}, "rendition": stored}
+    next_state = {**state, "asset_renditions": {**state["asset_renditions"], rendition["rendition_id"]: stored}, "assets": assets}
+    next_state = _append_event(
+        next_state,
+        "AssetRenditionRequested",
+        rendition["tenant"],
+        {"asset_id": rendition["asset_id"], "rendition_id": rendition["rendition_id"], "profile": rendition["profile"]},
+    )
+    return {"ok": True, "state": next_state, "rendition": stored}
 
 
 def dam_core_complete_rendition(state: dict, rendition_id: str, result: dict) -> dict:
@@ -1527,8 +1538,8 @@ def dam_core_build_schema_contract() -> dict:
             "schema": "dam_core",
             "pbc": "dam_core",
             "owned": True,
-            "migration": f"pbcs/dam_core/migrations/{index:03d}_{table}.sql",
-            "model": f"pbcs/dam_core/models/{_class_name(table)}.py",
+            "migration": f"pbcs/dam_core/migrations/001_initial.sql#{table}",
+            "model": f"pbcs/dam_core/models.py::{_class_name(table)}",
             "fields": _dam_table_fields(table),
             "relationships": _dam_table_relationships(table),
         }
