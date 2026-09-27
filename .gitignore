@@ -16,3 +16,6 @@ __pycache__/
 /archive/unused-2026-05-26/**
 /archive/**/runtime-cache*/**
 /archive/**/generated-test-output/**
+
+# zvec-grep local workspace index
+.zvec-grep/
