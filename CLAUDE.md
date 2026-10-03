@@ -54,4 +54,4 @@ and PyPI. See [[project_kits_playbook]].
 ## Gotchas
 
 - Release audits are a shipping feature, not a nice-to-have — every generator run writes evidence to a per-build audit dir. Do NOT skip when adding new templates.
-- The natural-language source path uses LiteLLM at `62.169.25.77:4000`; treat cloud unavailability as a soft failure (fall back to DSL / model sources).
+- The natural-language source path is served by an operator-supplied LiteLLM gateway; no endpoint is hardcoded in this repo. Treat gateway unavailability as a soft failure (fall back to DSL / model sources).
