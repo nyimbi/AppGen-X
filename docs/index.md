@@ -17,6 +17,7 @@ maxdepth: 1
 usage
 platform-guide
 architecture
+architecture-notes
 app-generation-guide
 pbc-catalog
 tooling
