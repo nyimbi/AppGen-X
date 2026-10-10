@@ -272,23 +272,41 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
     frontend = root / "appgen-frontend"
     package_path = frontend / "package.json"
     smoke_script = frontend / "scripts" / "browser-smoke.mjs"
-    semantic_panel = frontend / "src" / "SemanticServicePanel.tsx"
     studio_client = frontend / "src" / "studioApi.ts"
     workflow_path = root / ".github" / "workflows" / "studio-browser-smoke.yml"
+    # Every panel that renders a platform contract names the client and the
+    # loader it calls. A panel that still imports a local catalog is the drift
+    # the backend was built to end, so it is a check rather than a convention.
+    ported_panels = {
+        "ComponentPalette.tsx": "loadComponentPalette",
+        "PackageManager.tsx": "loadComponentPackages",
+        "DeviceApiWorkbench.tsx": "loadTargetCapabilities",
+        "SemanticServicePanel.tsx": "loadSemanticService",
+        "DesignerCanvas.tsx": "loadDesigner",
+        "DataServiceWorkbench.tsx": "loadDataServices",
+        "InspectorPanel.tsx": "loadInspector",
+    }
+    panel_sources = {name: frontend / "src" / name for name in ported_panels}
     package = {}
     if package_path.exists():
         package = json.loads(package_path.read_text(encoding="utf-8"))
     script_text = smoke_script.read_text(encoding="utf-8") if smoke_script.exists() else ""
-    semantic_panel_text = semantic_panel.read_text(encoding="utf-8") if semantic_panel.exists() else ""
     studio_client_text = studio_client.read_text(encoding="utf-8") if studio_client.exists() else ""
     workflow_text = workflow_path.read_text(encoding="utf-8") if workflow_path.exists() else ""
     scenarios = (
         "studio_shell",
         "semantic_service_bridge",
+        "designer_binding_graph",
+        "data_service_lanes",
+        "inspector_editors",
         "device_palette_filter",
         "storage_search_filter",
         "empty_palette_state",
     )
+    panel_text = {
+        name: (path.read_text(encoding="utf-8") if path.exists() else "")
+        for name, path in panel_sources.items()
+    }
     checks = (
         {
             "id": "frontend_package_script",
@@ -326,16 +344,33 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
             and "createStaticServer" not in script_text,
         },
         {
-            "id": "frontend_semantic_service_bridge",
-            # The panel reads the platform's semantic-service report over the
-            # API rather than a TypeScript contract module, so the check is that
-            # the panel names the client and the route, not that a local list
-            # exists. The payload itself is asserted in test_studio_backend.py.
-            "ok": semantic_panel.exists()
-            and "from './studioApi'" in semantic_panel_text
-            and "loadSemanticService" in semantic_panel_text
-            and "Editor And Designer Bridge" in semantic_panel_text
-            and "semanticService" in studio_client_text,
+            # The panels read the platform's contracts over the API rather than
+            # from TypeScript catalogs, so the check is that each panel names
+            # the client and its loader, not that a local list exists. The
+            # payloads themselves are asserted in test_studio_backend.py.
+            "id": "panels_read_the_backend",
+            "ok": all(
+                panel_sources[name].exists()
+                and "from './studioApi'" in panel_text[name]
+                and loader in panel_text[name]
+                and "Catalog'" not in panel_text[name]
+                for name, loader in ported_panels.items()
+            ),
+        },
+        {
+            "id": "client_declares_every_panel_route",
+            "ok": all(
+                route in studio_client_text
+                for route in (
+                    "/api/studio/components",
+                    "/api/studio/packages",
+                    "/api/studio/targets",
+                    "/api/studio/semantic-service",
+                    "/api/studio/designer",
+                    "/api/studio/data-services",
+                    "/api/studio/inspector",
+                )
+            ),
         },
     )
     return {
@@ -346,7 +381,7 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
         "workflow": str(workflow_path),
         "script": str(smoke_script),
         "studio_client": str(studio_client),
-        "semantic_panel": str(semantic_panel),
+        "panels": tuple(str(path) for path in panel_sources.values()),
         "scenarios": scenarios,
         "environment": {
             "browser_binary": "APPGEN_CHROME_BIN",

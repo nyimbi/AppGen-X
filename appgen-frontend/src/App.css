@@ -769,10 +769,8 @@ h2 {
 }
 
 .surface-lane-title,
-.timeline-track,
-.binding-row,
-.token-row,
-.scene-node {
+.lane-row,
+.binding-row {
   display: grid;
   gap: 8px;
   align-items: center;
@@ -780,7 +778,7 @@ h2 {
 }
 
 .surface-lane-title {
-  grid-template-columns: 20px minmax(0, 1fr);
+  grid-template-columns: 20px minmax(0, 1fr) auto;
   border-bottom: 1px solid #e7edf5;
   padding: 8px 10px;
   color: #40566f;
@@ -789,18 +787,14 @@ h2 {
   font-weight: 800;
 }
 
-.timeline-stack,
-.binding-stack,
-.token-stack,
-.scene-node-stack {
+.lane-stack,
+.binding-stack {
   display: grid;
   gap: 1px;
 }
 
-.timeline-track,
-.binding-row,
-.token-row,
-.scene-node {
+.lane-row,
+.binding-row {
   grid-template-columns: 22px minmax(0, 1fr) auto;
   border: 0;
   border-bottom: 1px solid #e7edf5;
@@ -810,36 +804,52 @@ h2 {
   text-align: left;
 }
 
-.timeline-track:last-child,
-.binding-row:last-child,
-.token-row:last-child,
-.scene-node:last-child {
+.lane-row:last-child,
+.binding-row:last-child {
   border-bottom: 0;
 }
 
-.timeline-track:hover,
-.binding-row:hover,
-.token-row:hover,
-.scene-node:hover {
+.lane-row:hover,
+.binding-row:hover {
   background: var(--brand-soft);
 }
 
-.timeline-track span,
-.binding-row span,
-.token-row span,
-.scene-node span {
+.lane-row span,
+.binding-row span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.timeline-track strong,
-.binding-row strong,
-.token-row strong,
-.scene-node strong {
+.lane-row strong,
+.binding-row strong {
   color: #64748b;
   font-size: 11px;
+}
+
+/* The lane's contract name, which is the evidence the lane renders something
+   the platform publishes. It is deliberately quiet: it is proof, not content. */
+.lane-contract {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0;
+  border-top: 1px solid #e7edf5;
+  padding: 6px 10px;
+  overflow: hidden;
+  color: var(--muted);
+  background: #f8fafc;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lane-contract svg {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  color: var(--brand);
 }
 
 .binding-row {
@@ -892,23 +902,41 @@ h2 {
   text-transform: uppercase;
 }
 
-.binding-warning {
-  --binding-state: #b7791f;
+.lane-row span {
+  display: grid;
+  gap: 2px;
 }
 
-.binding-review {
-  --binding-state: #7654b7;
+.lane-row small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.token-row {
-  grid-template-columns: 16px 22px minmax(0, 1fr) auto;
+.lane-row em {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 11px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.token-swatch {
-  width: 14px;
-  height: 14px;
-  border: 1px solid #cfd8e6;
-  border-radius: 50%;
+.canvas-note {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.canvas-note svg {
+  width: 13px;
+  height: 13px;
+  color: var(--brand);
 }
 
 .panel-title-icon {
@@ -1397,6 +1425,135 @@ h2 {
   margin-top: 12px;
 }
 
+/* The data tooling's ordered readiness phases. They are a pipeline, so they
+   read left to right and wrap, not as a grid of equal cards. */
+.readiness-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+  border: 1px solid #d7e0ec;
+  border-radius: 7px;
+  padding: 10px;
+  background: #fbfdff;
+}
+
+.readiness-strip .eyebrow {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0 4px 0 0;
+}
+
+.readiness-strip .eyebrow svg {
+  width: 14px;
+  height: 14px;
+  color: #246b61;
+}
+
+.readiness-phase {
+  display: grid;
+  gap: 2px;
+  border: 1px solid #d7e0ec;
+  border-radius: 999px;
+  padding: 5px 11px;
+  color: #28477d;
+  background: #e7eefb;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.readiness-phase small {
+  color: #5b6b85;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.readiness-phase-blocked {
+  color: #7a3f18;
+  background: #fff0e8;
+  border-color: #f0c9ae;
+}
+
+.inspector-diagnostics {
+  display: grid;
+  gap: 1px;
+  margin-top: 12px;
+  border: 1px solid #d7e0ec;
+  border-radius: 7px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.inspector-diagnostics .eyebrow {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 0;
+  border-bottom: 1px solid #e7edf5;
+  padding: 8px 10px;
+  background: #f8fafc;
+}
+
+.inspector-diagnostics .eyebrow svg {
+  width: 13px;
+  height: 13px;
+  color: #246b61;
+}
+
+.diagnostic-row {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  border: 0;
+  border-bottom: 1px solid #e7edf5;
+  padding: 8px 10px;
+  color: #172033;
+  background: #ffffff;
+  text-align: left;
+}
+
+.diagnostic-row:last-child {
+  border-bottom: 0;
+}
+
+.diagnostic-row:hover {
+  background: var(--brand-soft);
+}
+
+.diagnostic-row span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.diagnostic-row small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diagnostic-row em {
+  color: var(--muted);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.diagnostic-error svg {
+  color: #b42318;
+}
+
+.diagnostic-warning svg {
+  color: #b7791f;
+}
+
 .semantic-service-header {
   display: flex;
   gap: 12px;
@@ -1518,6 +1675,16 @@ h2 {
 
 .status-card strong {
   color: #172033;
+}
+
+/* A card whose audit failed says so in colour as well as in words, because a
+   rail of four identical cards is read by shape, not by reading each value. */
+.status-card-warn svg {
+  color: #b7791f;
+}
+
+.status-card-warn strong {
+  color: #7a3f18;
 }
 
 @media (max-width: 1180px) {

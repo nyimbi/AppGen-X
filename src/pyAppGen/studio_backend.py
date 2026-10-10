@@ -133,6 +133,195 @@ def design_tokens_payload() -> dict:
     }
 
 
+def studio_designer_payload() -> dict:
+    """Return the design surface: the form, its bindings, and the visual lanes.
+
+    The designer canvas drew a hardcoded invoice and a hardcoded binding list,
+    so it showed a form the platform had not projected and links the binding
+    designer had not validated. Everything here comes from the contracts that
+    already describe those surfaces, and each lane carries the `format` of the
+    contract it renders so a lane cannot claim evidence it does not have.
+
+    The form projection is sliced from the cached workspace: it is the same
+    projection, and the workspace is a cached pure function of the sample source.
+    """
+    form = studio_workspace_payload()["workspace"]["form_designer"]
+    graph = form_designer.livebindings_graph_contract()
+    return {
+        "format": STUDIO_API_FORMAT,
+        "ok": True,
+        "form": _jsonable(form),
+        "binding_graph": _jsonable(graph),
+        "binding_families": _jsonable(form_designer.binding_designer_family_contract()),
+        "lanes": _jsonable(_designer_lanes()),
+    }
+
+
+def _designer_lanes() -> tuple[dict, ...]:
+    """Return the visual lanes, each reading its own contract for its format.
+
+    A lane's `format` is taken from the contract rather than written here, so a
+    lane that renders nothing the platform publishes is not expressible.
+    """
+    timeline = form_designer.cross_target_animation_timeline_contract()
+    cascade = form_designer.cross_target_style_cascade_contract()
+    resources = form_designer.cross_target_style_resource_contract()
+    scene = form_designer.cross_target_3d_scene_contract()
+    effects = form_designer.cross_target_effects_pipeline_contract()
+    return (
+        {
+            "lane": "timeline",
+            "label": "Timeline",
+            "icon": "animation",
+            "format": timeline["format"],
+            "items": [
+                {"name": track["id"], "value": track["interpolation"], "detail": track["property"]}
+                for track in timeline["tracks"]
+            ],
+            "operations": tuple(timeline["operations"]),
+        },
+        {
+            "lane": "style",
+            "label": "Style Tokens",
+            "icon": "style",
+            "format": resources["format"],
+            "items": [
+                {"name": layer["layer"], "value": f"order {layer['order']}", "detail": "cascade layer"}
+                for layer in cascade["layers"]
+            ],
+            "operations": tuple(cascade["operations"]),
+            "tokens": tuple(cascade["tokens"]),
+            "states": tuple(resources["states"]),
+            "targets": tuple(resources["targets"]),
+        },
+        {
+            "lane": "scene",
+            "label": "3D Scene",
+            "icon": "viewport3d",
+            "format": scene["format"],
+            "items": [
+                {"name": node["id"], "value": node["kind"], "detail": "scene node"}
+                for node in scene["scene_graph"]
+            ],
+            "operations": tuple(scene["tools"]),
+            "import_formats": tuple(scene["import_formats"]),
+            "effects": tuple(effects["effects"]),
+            "effects_format": effects["format"],
+        },
+    )
+
+
+def studio_data_services_payload() -> dict:
+    """Return the data and service tooling, grouped into its design lanes.
+
+    The workbench listed eight capabilities written in TypeScript, each with a
+    prose description of what it would do. The platform has sixty-odd real data
+    contracts; this serves them grouped by the lane they belong to, and the
+    panel renders the platform's lanes rather than its own list.
+    """
+    tooling = form_designer.rad_data_tooling_workbench()
+    contract = tooling["contract"]
+    readiness = tooling["readiness"]
+    return {
+        "format": STUDIO_API_FORMAT,
+        "ok": tooling["ok"],
+        "decision": tooling["decision"],
+        "blocking_gaps": _jsonable(tooling["blocking_gaps"]),
+        "readiness": {
+            "format": readiness["format"],
+            "ok": readiness["ok"],
+            "phases": tuple(
+                {"phase": phase["phase"], "ok": phase["ok"], "steps": tuple(phase["pipeline"])}
+                for phase in readiness["phases"]
+            ),
+            "blocking_gaps": _jsonable(readiness["blocking_gaps"]),
+        },
+        "lanes": _jsonable(_data_service_lanes(tooling, contract)),
+    }
+
+
+def _data_service_lanes(tooling: dict, contract: dict) -> tuple[dict, ...]:
+    """Return the data tooling grouped by design lane.
+
+    Each entry names the contract it renders and takes its `format` from that
+    contract, so a lane cannot point at a payload the platform does not serve.
+    """
+    def entry(key: str, source: dict) -> dict:
+        value = source[key]
+        return {"key": key, "format": value.get("format", ""), "evidence": value}
+
+    lanes = (
+        ("Source", "database", ("schema_browser", "driver_matrix", "connection_pooling")),
+        (
+            "Query",
+            "query",
+            ("query_designer", "parameter_binding", "query_plan_visualizer", "sql_authoring_safety", "stored_procedures"),
+        ),
+        (
+            "Publish",
+            "api",
+            ("server_methods", "resources", "service_versioning", "service_telemetry", "service_tests"),
+        ),
+        ("Embedded DB", "dataset", ("local_database", "local_maintenance", "dataset_designer", "data_modules")),
+        (
+            "Resilience",
+            "workflow",
+            (
+                "connection_failover",
+                "offline_sync",
+                "offline_replay",
+                "replication_monitor",
+                "change_capture_lineage",
+                "migration_rehearsal",
+            ),
+        ),
+        ("Security", "lock", ("service_security",)),
+    )
+    sources = {**tooling, **contract}
+    return tuple(
+        {
+            "lane": lane,
+            "icon": icon,
+            "capabilities": tuple(entry(key, sources) for key in keys),
+        }
+        for lane, icon, keys in lanes
+    )
+
+
+def studio_inspector_payload() -> dict:
+    """Return the object inspector's editor registries and their readiness.
+
+    The inspector listed nine editors written in TypeScript against a
+    hardcoded grid. The platform registers property, event, component, and
+    custom-designer editors per component; this serves those registrations so
+    the panel shows the editors the platform would actually open.
+    """
+    inspector = form_designer.object_inspector_workbench()
+    readiness = inspector["readiness"]
+    return {
+        "format": STUDIO_API_FORMAT,
+        "ok": inspector["ok"],
+        "decision": inspector["decision"],
+        "blocking_gaps": _jsonable(inspector["blocking_gaps"]),
+        "registries": _jsonable(inspector["editor_registries"]),
+        "grouping": _jsonable(inspector["property_grouping"]),
+        "diagnostics": _jsonable(inspector["diagnostics"]),
+        "action_registry": _jsonable(inspector["action_registry"]),
+        "readiness": {
+            "format": readiness["format"],
+            "ok": readiness["ok"],
+            "components": tuple(readiness["components"]),
+            "final_state": _jsonable(readiness["final_state"]),
+            "phases": tuple(
+                {"phase": phase["phase"], "ok": phase["ok"], "steps": len(phase["pipeline"])}
+                for phase in readiness["phases"]
+            ),
+            "checks": tuple({"id": check["id"], "ok": check["ok"]} for check in readiness["checks"]),
+            "blocking_gaps": _jsonable(readiness["blocking_gaps"]),
+        },
+    }
+
+
 def _jsonable(value: Any) -> Any:
     """Return a JSON-serialisable copy of a contract.
 
@@ -160,6 +349,9 @@ STUDIO_API_ROUTES: dict[str, Callable[[], dict]] = {
     "/api/studio/targets": target_capabilities_payload,
     "/api/studio/tokens": design_tokens_payload,
     "/api/studio/semantic-service": studio_semantic_service_payload,
+    "/api/studio/designer": studio_designer_payload,
+    "/api/studio/data-services": studio_data_services_payload,
+    "/api/studio/inspector": studio_inspector_payload,
 }
 
 

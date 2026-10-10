@@ -16,6 +16,9 @@ export const STUDIO_ROUTES = {
   targets: '/api/studio/targets',
   tokens: '/api/studio/tokens',
   semanticService: '/api/studio/semantic-service',
+  designer: '/api/studio/designer',
+  dataServices: '/api/studio/data-services',
+  inspector: '/api/studio/inspector',
   manifest: '/api/studio/manifest',
 } as const
 
@@ -95,6 +98,141 @@ export type SemanticServicePayload = {
   }
 }
 
+/** One binding graph node, e.g. `field:name` or `control:name`. */
+export type BindingNode = {
+  id: string
+  kind: string
+  table?: string
+  field?: string
+  field_type?: string
+  mode?: string
+}
+
+export type BindingEdge = {
+  from: string
+  to: string
+  kind: string
+  mode?: string
+}
+
+export type BindingGraph = {
+  format: string
+  table: string
+  nodes: readonly BindingNode[]
+  edges: readonly BindingEdge[]
+  converters: readonly string[]
+  validators: readonly string[]
+}
+
+/** One visual lane. `format` is the contract the lane renders. */
+export type DesignerLane = {
+  lane: string
+  label: string
+  icon: string
+  format: string
+  items: readonly { name: string; value: string; detail: string }[]
+  operations: readonly string[]
+  tokens?: readonly string[]
+  states?: readonly string[]
+  targets?: readonly string[]
+  import_formats?: readonly string[]
+  effects?: readonly string[]
+  effects_format?: string
+}
+
+export type DesignerPayload = {
+  format: string
+  ok: boolean
+  form: {
+    format: string
+    views: readonly {
+      view: string
+      table: string
+      sections: readonly { name: string; fields: readonly string[] }[]
+      components: readonly { binding: string; component: string; x: number; y: number; w: number; h: number }[]
+      handlers: readonly string[]
+      valid_bindings: readonly string[]
+    }[]
+  }
+  binding_graph: BindingGraph
+  binding_families: {
+    format: string
+    ok: boolean
+    families: readonly { family: string; surfaces: readonly string[]; guards: readonly string[] }[]
+    guards: readonly string[]
+  }
+  lanes: readonly DesignerLane[]
+}
+
+/** A data tooling lane and the contracts it renders. */
+export type DataServiceLane = {
+  lane: string
+  icon: string
+  capabilities: readonly { key: string; format: string; evidence: Record<string, unknown> }[]
+}
+
+export type DataServicesPayload = {
+  format: string
+  ok: boolean
+  decision: string
+  blocking_gaps: readonly unknown[]
+  readiness: {
+    format: string
+    ok: boolean
+    phases: readonly { phase: string; ok: boolean; steps: readonly string[] }[]
+    blocking_gaps: readonly unknown[]
+  }
+  lanes: readonly DataServiceLane[]
+}
+
+/** One component's registered property, event, component, and custom editors. */
+export type InspectorRegistry = {
+  component: string
+  property_editors: readonly { property: string; editor: string; factory: string }[]
+  event_editors: readonly { event: string; factory: string; lifecycle: readonly string[] }[]
+  component_editors: readonly { verb: string; scope: string; requires_selection: boolean }[]
+  custom_designers: readonly { hook: string; surface: string; supports_multi_select: boolean }[]
+}
+
+export type InspectorPayload = {
+  format: string
+  ok: boolean
+  decision: string
+  blocking_gaps: readonly unknown[]
+  registries: readonly InspectorRegistry[]
+  grouping: readonly {
+    component: string
+    groups: Record<string, readonly string[]>
+    filters: readonly string[]
+  }[]
+  diagnostics: readonly {
+    format: string
+    ok: boolean
+    component: string
+    diagnostics: readonly {
+      code: string
+      property?: string
+      target?: string
+      severity: string
+      surface: string
+      quick_fix: string
+    }[]
+  }[]
+  action_registry: {
+    component: string
+    actions: readonly { action: string; handler: string; signature: string; callers: readonly string[] }[]
+  }
+  readiness: {
+    format: string
+    ok: boolean
+    components: readonly string[]
+    final_state: Record<string, number>
+    phases: readonly { phase: string; ok: boolean; steps: number }[]
+    checks: readonly { id: string; ok: boolean }[]
+    blocking_gaps: readonly unknown[]
+  }
+}
+
 /** Fetch one Studio route. Throws on a non-2xx so a caller never renders `undefined`. */
 export async function studioGet<T>(route: StudioRoute, init?: RequestInit): Promise<T> {
   const path = STUDIO_ROUTES[route]
@@ -116,3 +254,6 @@ export const loadComponentPalette = () => studioGet<ComponentPalettePayload>('co
 export const loadComponentPackages = () => studioGet<ComponentPackagesPayload>('packages')
 export const loadTargetCapabilities = () => studioGet<TargetCapabilityPayload>('targets')
 export const loadSemanticService = () => studioGet<SemanticServicePayload>('semanticService')
+export const loadDesigner = () => studioGet<DesignerPayload>('designer')
+export const loadDataServices = () => studioGet<DataServicesPayload>('dataServices')
+export const loadInspector = () => studioGet<InspectorPayload>('inspector')

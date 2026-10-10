@@ -23,6 +23,9 @@ ROUTES = (
     "/api/studio/targets",
     "/api/studio/tokens",
     "/api/studio/semantic-service",
+    "/api/studio/designer",
+    "/api/studio/data-services",
+    "/api/studio/inspector",
 )
 
 
@@ -169,9 +172,90 @@ def test_the_frontend_reads_the_backend_rather_than_a_local_catalog() -> None:
         "PackageManager.tsx": "loadComponentPackages",
         "DeviceApiWorkbench.tsx": "loadTargetCapabilities",
         "SemanticServicePanel.tsx": "loadSemanticService",
+        "DesignerCanvas.tsx": "loadDesigner",
+        "DataServiceWorkbench.tsx": "loadDataServices",
+        "InspectorPanel.tsx": "loadInspector",
     }
     for name, loader in panels.items():
         text = (source / name).read_text(encoding="utf-8")
         assert "from './studioApi'" in text, f"{name} does not import the client"
         assert loader in text, f"{name} does not call {loader}"
         assert "Catalog'" not in text, f"{name} still imports a local catalog"
+
+
+def test_no_panel_reads_a_local_catalog() -> None:
+    """The catalogs are gone, so a panel cannot quietly grow a new one.
+
+    Seven panels used to render from TypeScript lists the platform knew nothing
+    about. Deleting them is not enough on its own: a `*Catalog.ts` under `src/`
+    is how the drift came back last time, so its return is a failure.
+    """
+    from pathlib import Path
+
+    source = Path(__file__).resolve().parents[2] / "appgen-frontend" / "src"
+    catalogs = sorted(path.name for path in source.glob("*Catalog.ts"))
+    assert catalogs == [], f"local catalogs returned: {catalogs}"
+
+
+def test_the_designer_serves_the_projected_form_and_the_real_graph() -> None:
+    """The canvas drew a hardcoded invoice; it must draw the projected one.
+
+    The form is the designer-sync projection of the sample DSL, and the graph is
+    the livebindings contract's. Both are asserted against their own source so a
+    canvas that renders a fixture again fails here.
+    """
+    from pyAppGen import dsl, form_designer, studio
+
+    payload = studio_backend.studio_designer_payload()
+    projection = studio.designer_sync_report_dsl(studio.SAMPLE_DSL)["projections"]["form_designer"]
+    assert payload["form"]["views"] == studio_backend._jsonable(projection["views"])
+    assert payload["binding_graph"] == studio_backend._jsonable(form_designer.livebindings_graph_contract())
+    assert payload["binding_graph"]["edges"], "the binding graph has no edges"
+    assert dsl.semantic_model_dsl(studio.SAMPLE_DSL)["views"], "the sample DSL projects no views"
+
+
+def test_every_designer_lane_names_the_contract_it_renders() -> None:
+    """A lane's `format` is the evidence it renders something published.
+
+    The lanes used to be hardcoded lists of tracks, tokens, and scene nodes. A
+    lane that renders items must name a contract, and that contract must be one
+    the platform serves, so a lane cannot display invented content.
+    """
+    payload = studio_backend.studio_designer_payload()
+    lanes = payload["lanes"]
+    assert {lane["lane"] for lane in lanes} == {"timeline", "style", "scene"}
+    for lane in lanes:
+        assert lane["format"].startswith("appgen."), lane["lane"]
+        assert lane["items"], f"{lane['lane']} renders no items"
+        assert lane["operations"], f"{lane['lane']} declares no operations"
+
+
+def test_the_data_workbench_serves_the_platforms_lanes() -> None:
+    """The six lanes are the platform's, and each capability carries a contract."""
+    payload = studio_backend.studio_data_services_payload()
+    assert [lane["lane"] for lane in payload["lanes"]] == [
+        "Source",
+        "Query",
+        "Publish",
+        "Embedded DB",
+        "Resilience",
+        "Security",
+    ]
+    assert payload["decision"] == "approved"
+    for lane in payload["lanes"]:
+        assert lane["capabilities"], f"{lane['lane']} has no capabilities"
+        for capability in lane["capabilities"]:
+            assert capability["format"].startswith("appgen."), capability["key"]
+            assert capability["evidence"], capability["key"]
+    assert payload["readiness"]["phases"], "the readiness contract declares no phases"
+
+
+def test_the_inspector_serves_the_registered_editors() -> None:
+    """Every registered component needs all four editor kinds, or a panel is empty."""
+    payload = studio_backend.studio_inspector_payload()
+    assert payload["registries"], "no component registers editors"
+    for registry in payload["registries"]:
+        for kind in ("property_editors", "event_editors", "component_editors", "custom_designers"):
+            assert registry[kind], f"{registry['component']} registers no {kind}"
+    assert payload["grouping"], "no property grouping"
+    assert payload["readiness"]["components"], "the readiness contract lists no components"
