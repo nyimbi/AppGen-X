@@ -53,7 +53,15 @@ def test_dam_core_runtime_executes_standard_and_advanced_capabilities() -> None:
     assert contract["release_evidence_contract"]["ok"] is True
     assert len(contract["schema_contract"]["owned_tables"]) >= 45
     assert contract["permissions_contract"]["register_asset"] == "dam_core.asset.write"
-    assert "DamConfigurationPanel" in contract["ui_contract"]["fragments"]
+    # Every declared panel must name a declared fragment. The previous assertion
+    # pinned the literal `DamConfigurationPanel`, which `ec976c9e` renamed to
+    # `DamCoreWorkbench`, so the test outlived the name it checked. The panel to
+    # fragment binding is the invariant worth holding: a panel pointing at a
+    # fragment the contract does not declare renders nothing.
+    fragments = set(contract["ui_contract"]["fragments"])
+    panels = contract["ui_contract"]["panels"]
+    assert panels, "the UI contract declares no panels"
+    assert {panel["fragment"] for panel in panels} <= fragments
 
 
 def test_dam_core_runtime_applies_rules_parameters_configuration_events_and_ui() -> None:
@@ -161,6 +169,7 @@ def test_dam_core_runtime_applies_rules_parameters_configuration_events_and_ui()
             "dam_core.rights.evaluate",
             "dam_core.metadata.write",
             "dam_core.event.consume",
+            "dam_core.workflow",
             "dam_core.configure",
             "dam_core.audit",
         ),

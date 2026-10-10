@@ -75,6 +75,11 @@ DAM_CORE_RUNTIME_CAPABILITY_KEYS = (
     "content_addressed_binary_fingerprinting",
     "rendition_transcoding_pipeline",
     "semantic_metadata_tagging",
+    "asset_collection_lifecycle",
+    "license_entitlement_lifecycle",
+    "metadata_taxonomy_enrichment_annotation_lifecycle",
+    "asset_workflow_review_exception_lifecycle",
+    "asset_usage_duplicate_lineage_lifecycle",
     "rights_policy_enforcement",
     "product_published_projection_handling",
     "probabilistic_rights_and_quality_scoring",
@@ -1543,7 +1548,7 @@ def dam_core_build_schema_contract() -> dict:
             "fields": _dam_table_fields(table),
             "relationships": _dam_table_relationships(table),
         }
-        for index, table in enumerate(DAM_CORE_OWNED_TABLES, start=1)
+        for table in DAM_CORE_OWNED_TABLES
     )
     return {
         "format": "appgen.dam-core-owned-schema-contract.v1",
