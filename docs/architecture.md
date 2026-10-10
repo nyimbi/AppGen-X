@@ -199,6 +199,18 @@ package, or target capability the platform does not have. Run it with
 drives every route without a browser and asserts the payloads equal the
 contracts they claim to serve.
 
+The palette route carries the strings the toolbox renders, not just the names
+the generator binds: `form_designer.COMPONENT_LABELS` holds each component's
+display name and description, and `palette_category_groups()` returns the
+category tabs in the platform's declared order with their headings and icons.
+The panel renders that grouping rather than recomputing one, and a component
+with no display name raises instead of falling back to its class name.
+
+The browser smoke starts `appgen studio-serve` rather than serving `dist/` from
+a static Node server. A static server answers every `/api/studio/*` request
+with `index.html`, so the panels render their error state and the smoke passes
+against a Studio no one runs.
+
 ## Visual Design Architecture
 
 Visual design is split into two related capabilities:
