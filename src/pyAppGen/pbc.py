@@ -2112,32 +2112,6 @@ PBC_CATALOG: dict[str, dict] = {
         "label": "General Ledger Core",
         "mesh": "finops",
         "description": "Immutable financial truth, journal orchestration, chart of accounts, and balances.",
-        "tables": (
-            "ledger_event_log",
-            "journal_entry",
-            "journal_line",
-            "ledger_account",
-            "accounting_period",
-            "ledger_projection",
-            "consensus_replica",
-            "schema_extension",
-            "tenant_ledger_partition",
-            "probabilistic_posting",
-            "close_snapshot",
-            "causal_scenario",
-            "reconciliation_case",
-            "semantic_source_document",
-            "regulatory_rule_version",
-            "predictive_validation_run",
-            "audit_proof",
-            "policy_decision",
-            "control_assertion",
-            "ledger_federation_link",
-            "identity_credential",
-            "resilience_drill",
-            "crypto_key_epoch",
-            "carbon_execution_window",
-        ),
         "apis": (
             "POST /journals",
             "GET /trial-balance",
@@ -2160,20 +2134,6 @@ PBC_CATALOG: dict[str, dict] = {
             "POST /resilience-drills",
             "POST /carbon-execution-windows",
         ),
-        "emits": (
-            "JournalPosted",
-            "PeriodClosed",
-            "TrialBalanceCalculated",
-            "LedgerEventAppended",
-            "ConsensusCommitted",
-            "LedgerProjectionRebuilt",
-            "ContinuousCloseSnapshotCreated",
-            "ReconciliationSuggested",
-            "AuditProofGenerated",
-            "RegulatoryRuleCompiled",
-            "PostingValidationPredicted",
-        ),
-        "consumes": ("InvoiceApproved", "PaymentCaptured", "DepreciationCalculated", "OrderShipped"),
         "template": "general_ledger",
     },
     "ap_automation": {
@@ -2255,45 +2215,6 @@ PBC_CATALOG: dict[str, dict] = {
         "label": "Accounts Receivable and Credit",
         "mesh": "finops",
         "description": "Customer credit, receivables, invoicing, cash application, collections, revenue schedules, and AR controls.",
-        "tables": (
-            "customer",
-            "customer_site",
-            "customer_graph",
-            "customer_credit_profile",
-            "customer_payment_terms",
-            "customer_risk_signal",
-            "invoice",
-            "invoice_line",
-            "invoice_tax",
-            "invoice_performance_obligation",
-            "delivery_confirmation",
-            "cash_receipt",
-            "remittance_advice",
-            "cash_application",
-            "unapplied_cash",
-            "credit_memo",
-            "write_off",
-            "refund",
-            "dispute_case",
-            "collection_action",
-            "dunning_notice",
-            "statement",
-            "revenue_schedule",
-            "revenue_schedule_line",
-            "cash_pool",
-            "credit_decision",
-            "e_invoice_submission",
-            "cross_border_receivable",
-            "invoice_finance_program",
-            "policy_rule",
-            "runtime_parameter",
-            "schema_extension",
-            "control_assertion",
-            "governed_model",
-            "appgen_outbox_event",
-            "appgen_inbox_event",
-            "dead_letter_event",
-        ),
         "apis": (
             "POST /ar/customers",
             "POST /ar/invoices",
@@ -2311,25 +2232,6 @@ PBC_CATALOG: dict[str, dict] = {
             "GET /ar/statements/{customer_id}",
             "GET /ar/revenue-schedules/{invoice_id}",
             "GET /ar/workbench",
-        ),
-        "emits": (
-            "CustomerOnboarded",
-            "InvoiceIssued",
-            "DeliveryConfirmed",
-            "PaymentReceived",
-            "UnappliedCashRecorded",
-            "CreditMemoIssued",
-            "ReceivableWrittenOff",
-            "CustomerRefundScheduled",
-            "CollectionActionScheduled",
-        ),
-        "consumes": (
-            "CustomerIdentityVerified",
-            "DeliveryConfirmed",
-            "TaxPolicyChanged",
-            "CashForecastUpdated",
-            "AccessPolicyChanged",
-            "CollectionPolicyChanged",
         ),
         "template": "accounts_receivable",
     },
@@ -4065,10 +3967,7 @@ PBC_CATALOG.update(
             "label": "Digital Asset Management Core",
             "mesh": "content",
             "description": "Media storage, transformation, transcoding, metadata tagging, and rights controls.",
-            "tables": ("asset", "asset_rendition", "rights_policy", "metadata_tag"),
             "apis": ("POST /assets", "POST /renditions", "GET /rights"),
-            "emits": ("AssetPublished", "RightsPolicyChanged"),
-            "consumes": ("ProductPublished",),
             "template": None,
         },
         "price_promotion_engine": {
@@ -14693,9 +14592,9 @@ def _package_manifest(key: str) -> dict:
 
 def _pbc_descriptor(key: str, pbc: dict) -> dict:
     manifest = _package_manifest(key)
-    tables = tuple(manifest.get("tables", ()) or pbc["tables"])
-    emits = tuple(manifest.get("emits", ()) or pbc["emits"])
-    consumes = tuple(manifest.get("consumes", ()) or pbc["consumes"])
+    tables = tuple(manifest.get("tables", ()) or pbc.get("tables", ()))
+    emits = tuple(manifest.get("emits", ()) or pbc.get("emits", ()))
+    consumes = tuple(manifest.get("consumes", ()) or pbc.get("consumes", ()))
     return {
         "pbc": key,
         "label": pbc["label"],
@@ -15574,7 +15473,12 @@ def _migration_sql(key: str, table_contracts: tuple[dict, ...], event_contract: 
 def _selection_terms(key: str, pbc: dict) -> tuple[str, ...]:
     terms = set(key.split("_"))
     terms.update(word.lower() for word in re.findall(r"[A-Za-z]+", pbc["label"]) if len(word) > 2)
-    terms.update(word.lower() for table in pbc["tables"] for word in table.split("_") if len(word) > 2)
+    terms.update(
+        word.lower()
+        for table in _pbc_descriptor(key, pbc)["tables"]
+        for word in table.split("_")
+        if len(word) > 2
+    )
     aliases = {
         "gl_core": ("gl", "ledger"),
         "ap_automation": ("ap", "payable", "vendor"),
