@@ -1,0 +1,71 @@
+name: Generated UI Render
+
+# Renders a generated app's workbench in a real browser and asserts on the DOM.
+#
+# The rest of the UI suite reads contract dicts: that a key exists, that a
+# colour string is `44px`, that a template mentions a class. None of it has ever
+# seen a pixel, which is why a declared-but-unmounted workbench route survived
+# as long as it did. This job is the one that would have caught it.
+
+on:
+  push:
+    paths:
+      - "src/pyAppGen/gen.py"
+      - "src/pyAppGen/ui_kit/**"
+      - "src/pyAppGen/spa_templates/**"
+      - "src/pyAppGen/design/**"
+      - "src/pyAppGen/pbc.py"
+      - "src/pyAppGen/pbcs/**"
+      - "tests/ci/test_workbench_renders.py"
+      - "tests/ci/test_generated_spa.py"
+      - ".github/workflows/generated-ui-render.yml"
+  pull_request:
+    paths:
+      - "src/pyAppGen/gen.py"
+      - "src/pyAppGen/ui_kit/**"
+      - "src/pyAppGen/spa_templates/**"
+      - "src/pyAppGen/design/**"
+      - "src/pyAppGen/pbc.py"
+      - "src/pyAppGen/pbcs/**"
+      - "tests/ci/test_workbench_renders.py"
+      - "tests/ci/test_generated_spa.py"
+      - ".github/workflows/generated-ui-render.yml"
+  workflow_dispatch:
+
+jobs:
+  generated-ui-render:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: appgen-frontend/package-lock.json
+
+      - name: Install the frontend toolchain
+        working-directory: appgen-frontend
+        run: npm ci
+
+      - name: Install Playwright and its browser
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . pytest playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Render the generated workbench
+        env:
+          PYTHONPATH: src
+          PYTHONHASHSEED: "0"
+        run: |
+          python -m pytest tests/ci/test_workbench_renders.py tests/ci/test_generated_spa.py \
+            -v --continue-on-collection-errors

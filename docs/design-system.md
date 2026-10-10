@@ -107,7 +107,20 @@ them.
   resolves the shared kit, its contract lists the composition's workbenches and
   the served table routes, its client hardcodes nothing, and the tree type-checks
   and builds with the real toolchain.
+- `tests/ci/test_workbench_renders.py` — the only gate that sees a pixel. It
+  builds the SPA, serves it with a stub API returning the real workbench
+  payload, renders it in headless Chromium, and asserts the DOM: the PBC's owned
+  tables as real rows, its API routes with their methods, the kit's class names,
+  and navigation between workbenches. Runs in CI as
+  `.github/workflows/generated-ui-render.yml`.
 
 Every gate was canaried: the colour check fails when a literal hex is added to
 the stylesheet, the sync check fails when the Studio stylesheet is edited by
-hand, and the SPA gate fails when a route is hardcoded into the client.
+hand, the SPA gate fails when a route is hardcoded into the client, and the
+render gate fails when the workbench renders an empty table instead of the PBC's
+own.
+
+The render gate earned its place on the first run: it caught `API_BASE = "/"`
+in the generated contract, which made `${API_BASE}${route}` a protocol-relative
+URL (`//api/v1/...`) that the browser resolved against the host named `api`.
+Every dict-level check had passed on it.
