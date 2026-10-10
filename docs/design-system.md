@@ -44,9 +44,9 @@ becomes a CSS variable.
 
 - The Studio aliases it in `appgen-frontend/vite.config.ts` and includes it in
   `tsconfig.json`, so the Studio type-checks and bundles the canonical copy.
-- `pyAppGen.gen.write_ui_kit` copies it into every generated app under
-  `ui_kit/`. A generated app can then build its own SPA against the same
-  components.
+- `pyAppGen.gen.write_ui_kit` copies it into every generated app at
+  `app/ui_kit/`. The generated SPA resolves it through a sibling path, so both
+  consumers render the same markup.
 
 Components: `Button`, `Input`, `Select`, `Field`, `Card`, `Table`, `Badge`,
 `Tabs`, `Dialog`, `Toast`, `Tooltip`, `EmptyState`, and the shell primitives
@@ -72,6 +72,30 @@ The kit is presentation only. It carries no data fetching, no routing, and no
 application state, which is what lets the Studio and a generated app share it
 without sharing an architecture.
 
+## Generated SPA
+
+A generated app ships a Vite + React + TypeScript frontend at its project root,
+built from `src/pyAppGen/spa_templates/`:
+
+```bash
+npm install
+npm run build   # tsc && vite build, writing dist/ for Flask to serve
+```
+
+`src/appgen.generated.ts` is the only generated file in the tree. It carries
+`TABLES` from the app's schema and `WORKBENCHES` from the same composition plan
+the Flask views are built from, so the shell cannot offer a screen the backend
+does not serve. `src/api.ts` is the typed client and reads every route from that
+module, which is why a hardcoded route fails the gate.
+
+`Workbench.tsx` renders a PBC workbench from the payload the backend returns:
+the package's owned tables, its command and query routes, its outbox and
+dead-letter tables. A workbench that shows a placeholder instead of its own
+contract is the defect that component exists to avoid.
+
+The SPA is additive. The Flask cockpit templates remain until the SPA covers
+them.
+
 ## Tests
 
 - `tests/ci/test_design_tokens.py` — the token file is reachable, every theme is
@@ -79,7 +103,11 @@ without sharing an architecture.
   reaches CSS, and the Studio stylesheet is in sync with the source.
 - `tests/ci/test_ui_kit.py` — the barrel and the files agree, the stylesheet
   carries no literal colour, and the kit copies into a generated app intact.
+- `tests/ci/test_generated_spa.py` — a generated app's SPA tree is emitted, it
+  resolves the shared kit, its contract lists the composition's workbenches and
+  the served table routes, its client hardcodes nothing, and the tree type-checks
+  and builds with the real toolchain.
 
-Both gates were canaried: the colour check fails when a literal hex is added to
-the stylesheet, and the sync check fails when the Studio stylesheet is edited by
-hand.
+Every gate was canaried: the colour check fails when a literal hex is added to
+the stylesheet, the sync check fails when the Studio stylesheet is edited by
+hand, and the SPA gate fails when a route is hardcoded into the client.

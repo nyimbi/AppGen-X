@@ -1,0 +1,49 @@
+/* Layout glue for the generated shell.
+ *
+ * Every value is a token. A literal colour here would be a second palette, so
+ * the kit's own gate applies: this file carries none.
+ */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--appgen-surface);
+  color: var(--appgen-text);
+  font-family: var(--appgen-font-body);
+  font-size: var(--appgen-font-size-md);
+  line-height: var(--appgen-line-height);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.appgen-kpi-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--appgen-space-3);
+  margin: 0;
+  padding: var(--appgen-space-4);
+  list-style: none;
+}
+
+.appgen-kpi-row li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--appgen-space-1);
+}
+
+.appgen-kpi-row span {
+  color: var(--appgen-muted);
+  font-size: var(--appgen-font-size-sm);
+}
+
+.appgen-kpi-row strong {
+  font-size: var(--appgen-font-size-lg);
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--appgen-font-size-sm);
+}
