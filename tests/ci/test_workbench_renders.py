@@ -187,6 +187,9 @@ def test_owned_tables_appear_as_real_rows(rendered):
     page, payload = rendered
     first = payload[COMPOSITION[0]]
     body = page.locator("#root").inner_text()
+    # Without this the loop below and the count comparison both hold on an
+    # empty list, so the test passed on a workbench that rendered no tables.
+    assert first["owned_tables"], "the payload carries no owned tables to assert on"
     for table in first["owned_tables"][:5]:
         assert table in body, table
     rows = page.locator("table.appgen-table tbody tr")
@@ -197,6 +200,7 @@ def test_api_routes_appear_with_their_methods(rendered):
     page, payload = rendered
     first = payload[COMPOSITION[0]]
     body = page.locator("#root").inner_text()
+    assert first["apis"], "the payload carries no API routes to assert on"
     for api in first["apis"][:3]:
         assert api["route"] in body, api["route"]
     assert page.locator("table.appgen-table").count() >= 2
