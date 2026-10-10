@@ -107,6 +107,12 @@ them.
   resolves the shared kit, its contract lists the composition's workbenches and
   the served table routes, its client hardcodes nothing, and the tree type-checks
   and builds with the real toolchain.
+- `tests/ci/test_pbc_descriptor_matches_package.py` — the catalog descriptor for
+  the three reference PBCs equals the package runtime: same owned tables, same
+  emitted and consumed events. The manifest's declared `tables` is a logical view
+  and is asserted to resolve one-to-one into the owned inventory, which is the
+  property that holds across all 147 packages. Canaried by dropping one owned
+  table from the descriptor, which fails four of its cases.
 - `tests/ci/test_workbench_renders.py` — the only gate that sees a pixel. It
   builds the SPA, serves it with a stub API returning the real workbench
   payload, renders it in headless Chromium, and asserts the DOM: the PBC's owned

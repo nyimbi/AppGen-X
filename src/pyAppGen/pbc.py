@@ -14603,6 +14603,14 @@ def _pbc_descriptor(key: str, pbc: dict) -> dict:
     tables = tuple(manifest.get("tables", ()) or pbc.get("tables", ()))
     emits = tuple(manifest.get("emits", ()) or pbc.get("emits", ()))
     consumes = tuple(manifest.get("consumes", ()) or pbc.get("consumes", ()))
+    # `tables` is the manifest's declared inventory in logical spelling, which
+    # `_table_contract` consumes. It is not the whole story: a package's
+    # `*_OWNED_TABLES` names every physical table it owns, and for `gl_core` and
+    # `ar_credit` that set is larger than the manifest's (event plumbing, plus
+    # domain tables the manifest never declared). The package is authoritative,
+    # so its inventory is carried alongside rather than overwriting the
+    # declared view, and a test asserts the two agree so drift fails CI.
+    owned = _owned_tables(key)
     return {
         "pbc": key,
         "label": pbc["label"],
@@ -14619,6 +14627,7 @@ def _pbc_descriptor(key: str, pbc: dict) -> dict:
             or pbc.get("stream_exception_evidence", {})
         ),
         "tables": tables,
+        "owned_tables": owned,
         "apis": pbc["apis"],
         "emits": emits,
         "consumes": consumes,
