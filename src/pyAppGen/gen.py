@@ -25702,6 +25702,8 @@ def _pbc_runtime_text(schema: AppSchema) -> str:
             "pbcs": (),
             "services": (),
             "dependencies": (),
+            "external_event_contracts": (),
+            "internal_event_loops": (),
             "shared_datastores": (),
             "missing_pbcs": (),
         }

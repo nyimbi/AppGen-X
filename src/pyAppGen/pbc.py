@@ -14053,25 +14053,42 @@ def pbc_composition_plan(
     app_name: str = "ComposableEnterprise",
     targets: tuple[str, ...] = ("web", "pwa", "mobile", "desktop"),
 ) -> dict:
-    """Return a bounded-context composition plan for selected PBCs."""
+    """Return a bounded-context composition plan for selected PBCs.
+
+    Three buckets, and the distinction between them is the point. A dependency
+    is an event one selected PBC consumes and a *different* selected PBC emits,
+    so it resolves inside the composition. An external event contract is one no
+    selected PBC emits, so it is an integration obligation the app must satisfy
+    from outside. An internal event loop is one a PBC consumes and emits itself:
+    the outbox-to-own-inbox projection pattern, which is neither.
+
+    The provider list is a tuple rather than a single key. `emitted` was a dict
+    built by comprehension, so an event two selected PBCs both emit silently
+    kept whichever came last in selection order and the plan asserted one
+    provider as fact. Thirteen events are emitted by more than one package in
+    the catalog and 46 consumer rows depend on one of them, so the choice was
+    arbitrary wherever it was made.
+    """
     selected = tuple(dict.fromkeys(selected_pbcs))
     missing = tuple(key for key in selected if key not in PBC_CATALOG)
     services = tuple(_service_contract(key) for key in selected if key in PBC_CATALOG)
-    emitted = {
-        event: service["pbc"]
-        for service in services
-        for event in service["emits"]
-    }
+    emitted: dict[str, list[str]] = {}
+    for service in services:
+        for event in service["emits"]:
+            providers = emitted.setdefault(event, [])
+            if service["pbc"] not in providers:
+                providers.append(service["pbc"])
     dependencies = tuple(
         {
             "from": service["pbc"],
             "event": event,
-            "provider": emitted.get(event),
-            "resolved": emitted.get(event) is not None,
+            "provider": others[0],
+            "providers": tuple(others),
+            "resolved": True,
         }
         for service in services
         for event in service["consumes"]
-        if emitted.get(event) is not None
+        if (others := _external_providers(emitted, event, service["pbc"]))
     )
     unresolved_external_events = tuple(
         {
@@ -14081,7 +14098,17 @@ def pbc_composition_plan(
         }
         for service in services
         for event in service["consumes"]
-        if emitted.get(event) is None
+        if event not in emitted
+    )
+    internal_event_loops = tuple(
+        {
+            "pbc": service["pbc"],
+            "event": event,
+            "policy": "outbox-to-own-inbox-projection",
+        }
+        for service in services
+        for event in service["consumes"]
+        if emitted.get(event) == [service["pbc"]]
     )
     datastores = tuple(service["datastore"] for service in services)
     shared_datastores = tuple(
@@ -14097,6 +14124,7 @@ def pbc_composition_plan(
         "services": services,
         "dependencies": dependencies,
         "external_event_contracts": unresolved_external_events,
+        "internal_event_loops": internal_event_loops,
         "missing_pbcs": missing,
         "shared_datastores": tuple(dict.fromkeys(shared_datastores)),
         "shared_tables": shared_tables,
@@ -14104,6 +14132,19 @@ def pbc_composition_plan(
         "deployment_units": tuple(f"services/{service['pbc']}" for service in services),
         "stop_condition": "do-not-compose-pbcs-unless-each-selected-capability-has-an-owned-datastore",
     }
+
+
+def _external_providers(emitted: dict[str, list[str]], event: str, consumer: str) -> list[str]:
+    """Return the selected PBCs that emit `event` other than the consumer.
+
+    A PBC that consumes an event it also emits is projecting its own outbox into
+    its own inbox, which is the platform's normal pattern and not a dependency
+    on anyone. Excluding the consumer is what separates a real interlock from
+    that loop: `ar_credit` emits `DeliveryConfirmed` when it records a delivery
+    and subscribes to it to build its delivery projection, and the plan reported
+    `ar_credit` as its own provider.
+    """
+    return [provider for provider in emitted.get(event, ()) if provider != consumer]
 
 
 def _composition_shared_tables(services: tuple[dict, ...]) -> tuple[dict, ...]:
