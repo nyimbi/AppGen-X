@@ -1,0 +1,32 @@
+/* Generated from design/tokens.json by pyAppGen.design_tokens.
+   Do not edit by hand: run `python -m pyAppGen.design_tokens_export` after
+   changing the token file. A test fails if this drifts from the source. */
+
+
+:root {
+  --appgen-primary: #0f766e;
+  --appgen-accent: #b45309;
+  --appgen-surface: #f8fafc;
+  --appgen-text: #14213d;
+  --appgen-muted: #52616b;
+  --appgen-focus-ring: 0 0 0 3px rgba(15, 118, 110, 0.28);
+  --appgen-radius-sm: 4px;
+  --appgen-radius-md: 8px;
+  --appgen-space-1: 4px;
+  --appgen-space-2: 8px;
+  --appgen-space-3: 12px;
+  --appgen-space-4: 16px;
+  --appgen-space-5: 24px;
+  --appgen-shadow-panel: 0 10px 24px rgba(15, 23, 42, 0.08);
+  --appgen-state-hover: rgba(47, 111, 94, 0.08);
+  --appgen-state-selected: rgba(154, 107, 47, 0.14);
+  --appgen-state-invalid: #b42318;
+  --appgen-touch-target: 44px;
+  --appgen-font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --appgen-font-size-sm: 0.875rem;
+  --appgen-font-size-md: 1rem;
+  --appgen-font-size-lg: 1.125rem;
+  --appgen-font-size-xl: 1.5rem;
+  --appgen-content-max: 1180px;
+  --appgen-density-row: 48px;
+}

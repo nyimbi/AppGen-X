@@ -24,6 +24,7 @@ from sqlalchemy.schema import ForeignKeyConstraint
 
 from .capabilities import DEFAULT_CAPABILITIES
 from .capabilities import write_manifest
+from . import design_tokens
 from .headers import CHART_VIEW_BODY
 from .headers import VIEW_BODY
 from .headers import VIEW_MASTER_DETAIL
@@ -35437,47 +35438,21 @@ def _pwa_icon_text(app_name: str, branding: dict) -> str:
 
 
 def _focus_ring_value(primary: str) -> str:
-    color = primary.lstrip("#")
-    if len(color) == 6:
-        try:
-            red = int(color[0:2], 16)
-            green = int(color[2:4], 16)
-            blue = int(color[4:6], 16)
-            return f"0 0 0 3px rgba({red}, {green}, {blue}, 0.28)"
-        except ValueError:
-            pass
-    return "0 0 0 3px rgba(47, 111, 94, 0.28)"
+    """Return the focus-ring box-shadow for a primary colour.
+
+    Delegates to the token source so the ring is defined once, alongside every
+    other design value, rather than as a literal here.
+    """
+    return design_tokens.focus_ring_value(primary)
 
 
 def _theme_css_text(branding: dict) -> str:
     palette = branding["palette"]
-    focus_ring = _focus_ring_value(palette["primary"])
+    variables = "\n".join(
+        f"  {name}: {value};" for name, value in design_tokens.token_css_variables(palette)
+    )
     return f""":root {{
-  --appgen-primary: {palette["primary"]};
-  --appgen-accent: {palette["accent"]};
-  --appgen-surface: {palette["surface"]};
-  --appgen-text: {palette["text"]};
-  --appgen-muted: {palette["muted"]};
-  --appgen-focus-ring: {focus_ring};
-  --appgen-radius-sm: 4px;
-  --appgen-radius-md: 8px;
-  --appgen-space-1: 4px;
-  --appgen-space-2: 8px;
-  --appgen-space-3: 12px;
-  --appgen-space-4: 16px;
-  --appgen-space-5: 24px;
-  --appgen-shadow-panel: 0 10px 24px rgba(15, 23, 42, 0.08);
-  --appgen-state-hover: rgba(47, 111, 94, 0.08);
-  --appgen-state-selected: rgba(154, 107, 47, 0.14);
-  --appgen-state-invalid: #b42318;
-  --appgen-touch-target: 44px;
-  --appgen-font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --appgen-font-size-sm: 0.875rem;
-  --appgen-font-size-md: 1rem;
-  --appgen-font-size-lg: 1.125rem;
-  --appgen-font-size-xl: 1.5rem;
-  --appgen-content-max: 1180px;
-  --appgen-density-row: 48px;
+{variables}
 }}
 
 body {{
