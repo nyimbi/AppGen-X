@@ -3,7 +3,9 @@ import pytest
 from pyAppGen.pbcs.dam_core import DAM_CORE_ALLOWED_DATABASE_BACKENDS
 from pyAppGen.pbcs.dam_core import DAM_CORE_OWNED_TABLES
 from pyAppGen.pbcs.dam_core import DAM_CORE_RUNTIME_CAPABILITY_KEYS
+from pyAppGen.pbcs.dam_core import DAM_CORE_ASSET_LIFECYCLE_TRANSITIONS
 from pyAppGen.pbcs.dam_core import dam_core_add_metadata_tag
+from pyAppGen.pbcs.dam_core import dam_core_assess_intake_readiness
 from pyAppGen.pbcs.dam_core import dam_core_attach_rights_policy
 from pyAppGen.pbcs.dam_core import dam_core_build_api_contract
 from pyAppGen.pbcs.dam_core import dam_core_build_release_evidence
@@ -23,6 +25,7 @@ from pyAppGen.pbcs.dam_core import dam_core_request_rendition
 from pyAppGen.pbcs.dam_core import dam_core_runtime_capabilities
 from pyAppGen.pbcs.dam_core import dam_core_runtime_smoke
 from pyAppGen.pbcs.dam_core import dam_core_set_parameter
+from pyAppGen.pbcs.dam_core import dam_core_transition_asset_state
 from pyAppGen.pbcs.dam_core import dam_core_ui_contract
 from pyAppGen.pbcs.dam_core import dam_core_verify_owned_table_boundary
 from pyAppGen.pbcs.dam_core import implementation_contract
@@ -207,6 +210,149 @@ def test_dam_core_runtime_applies_rules_parameters_configuration_events_and_ui()
     assert "generate_asset_proof" in service["command_methods"]
     assert release["ok"] is True
     assert not release["blocking_gaps"]
+
+
+def test_dam_core_intake_readiness_gates_and_lifecycle_state_machine() -> None:
+    state = _configured_state()
+    asset = {
+        "asset_id": "asset_life",
+        "tenant": "tenant_ops",
+        "filename": "lifecycle.png",
+        "mime_type": "image/png",
+        "size_mb": 4,
+        "storage_uri": "object://dam/tenant_ops/asset_life",
+        "binary": b"lifecycle-binary",
+        "locale": "en-US",
+        "created_by": "ops",
+    }
+
+    # Intake readiness: the fingerprint and audit hash are derived, so a payload
+    # that supplies every caller-owned field is ready even though it names neither.
+    readiness = dam_core_assess_intake_readiness(state, asset)
+    assert readiness["ok"] is True
+    assert readiness["ready"] is True
+    assert readiness["blocking"] == ()
+    assert readiness["fingerprint"].startswith("sha256:")
+    assert readiness["audit_hash"]
+    assert readiness["resolved_locale"] == "en-US"
+
+    # Locale falls back to the configured default, so omitting it is not a blocker.
+    without_locale = {key: value for key, value in asset.items() if key != "locale"}
+    assert dam_core_assess_intake_readiness(state, without_locale)["ready"] is True
+
+    # A missing binary cannot be fingerprinted, so it blocks and says why.
+    not_ready = dam_core_assess_intake_readiness(state, {key: value for key, value in asset.items() if key != "binary"})
+    assert not_ready["ready"] is False
+    assert "binary" in not_ready["blocking"]
+    assert "fingerprint" in not_ready["blocking"]
+    assert "audit_hash" in not_ready["blocking"]
+
+    # Rights and metadata are advisories at intake: they are properties a published
+    # asset must have, not a precondition for accepting the bytes. An asset with no
+    # rights reference and no tags is not ready to publish, but it is ready to store.
+    assert readiness["advisory"] == ("rights_reference", "metadata_minimum")
+    assert not_ready["advisory"] == ("rights_reference", "metadata_minimum")
+    assert readiness["advisory_checks"] == ("product_projection", "rights_reference", "metadata_minimum")
+
+    state = dam_core_register_asset(state, asset)["state"]
+    assert state["assets"]["asset_life"]["status"] == "uploaded"
+
+    # Publishing is gated on rights, a ready rendition, and at least one tag.
+    blocked = dam_core_transition_asset_state(
+        state, "asset_life", {"to_state": "published", "actor": "ops", "reason": "channel_release"}
+    )
+    assert blocked["ok"] is False
+    assert blocked["reason"] == "invalid_transition"
+
+    for target in ("processing", "review", "approved"):
+        state = dam_core_transition_asset_state(
+            state, "asset_life", {"to_state": target, "actor": "ops", "reason": f"advance_to_{target}"}
+        )["state"]
+    assert state["assets"]["asset_life"]["status"] == "approved"
+
+    # The publish edge is legal from `approved`, so the refusal here is evidence
+    # rather than the graph: the three requirements are named individually.
+    missing = dam_core_transition_asset_state(
+        state, "asset_life", {"to_state": "published", "actor": "ops", "reason": "channel_release"}
+    )
+    assert missing["ok"] is False
+    assert missing["reason"] == "missing_evidence"
+    assert set(missing["missing_evidence"]) == {"rights_policy", "metadata_minimum", "ready_rendition"}
+
+    state = dam_core_attach_rights_policy(
+        state,
+        {
+            "policy_id": "rights_life",
+            "asset_id": "asset_life",
+            "tenant": "tenant_ops",
+            "license_type": "commercial",
+            "allowed_markets": ("US",),
+            "blocked_markets": (),
+            "expires_at": "2027-01-01",
+            "attribution_required": False,
+            "approver": "legal",
+        },
+    )["state"]
+    state = dam_core_add_metadata_tag(
+        state,
+        {
+            "tag_id": "tag_life",
+            "asset_id": "asset_life",
+            "tenant": "tenant_ops",
+            "taxonomy": "product",
+            "value": "hero",
+            "confidence": 0.95,
+            "source": "human",
+        },
+    )["state"]
+    state = dam_core_request_rendition(
+        state,
+        {
+            "rendition_id": "rend_life",
+            "asset_id": "asset_life",
+            "tenant": "tenant_ops",
+            "profile": "web_large",
+            "target_mime_type": "image/png",
+            "width": 1400,
+            "height": 900,
+        },
+    )["state"]
+    state = dam_core_complete_rendition(
+        state,
+        "rend_life",
+        {"uri": "object://dam/tenant_ops/asset_life/web_large.png", "quality_score": 0.95, "duration_ms": 500},
+    )["state"]
+
+    moved = dam_core_transition_asset_state(
+        state, "asset_life", {"to_state": "published", "actor": "ops", "reason": "channel_release"}
+    )
+    assert moved["ok"] is True, moved
+    state = moved["state"]
+    assert state["assets"]["asset_life"]["status"] == "published"
+    assert len(state["assets"]["asset_life"]["lifecycle_history"]) == 4
+    assert state["outbox"][-1]["event_type"] == "AssetLifecycleTransitioned"
+
+    # `deleted` is terminal: nothing leaves it, and the refusal names the graph.
+    state = dam_core_transition_asset_state(
+        state, "asset_life", {"to_state": "deleted", "actor": "ops", "reason": "retired"}
+    )["state"]
+    terminal = dam_core_transition_asset_state(
+        state, "asset_life", {"to_state": "published", "actor": "ops", "reason": "resurrect"}
+    )
+    assert terminal["ok"] is False
+    assert terminal["allowed_transitions"] == ()
+
+    workbench = dam_core_build_workbench_view(state, tenant="tenant_ops")
+    assert workbench["published_asset_count"] == 0
+    assert workbench["lifecycle_transition_count"] == 5
+    assert dict(workbench["asset_lifecycle_state_counts"])["deleted"] == 1
+
+    contract = dam_core_ui_contract()
+    assert contract["lifecycle"]["states"] == tuple(DAM_CORE_ASSET_LIFECYCLE_TRANSITIONS)
+    assert contract["lifecycle"]["terminal_states"] == ("deleted",)
+    lifecycle_panels = tuple(panel for panel in contract["panels"] if panel["fragment"] == "DamCoreLifecycleConsole")
+    assert len(lifecycle_panels) == 1
+    assert "DamCoreLifecycleConsole" in contract["fragments"]
 
 
 def test_dam_core_rejects_invalid_inputs_and_proves_boundary_and_dead_letters() -> None:

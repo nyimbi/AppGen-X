@@ -49,6 +49,8 @@ PBC_MANIFEST = {
         "DamCoreAssetWorkbench",
         "DamCoreRightsWorkbench",
         "DamCoreOperationsWorkbench",
+        "DamCoreLifecycleConsole",
+        "DamCoreReleaseWorkbench",
     ),
     "permissions": tuple(sorted(set(dam_core_permissions_contract().values()))),
     "configuration": (

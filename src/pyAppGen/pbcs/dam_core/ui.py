@@ -9,6 +9,7 @@ from .runtime import DAM_CORE_OWNED_TABLES
 from .runtime import DAM_CORE_REQUIRED_EVENT_TOPIC
 from .runtime import DAM_CORE_RUNTIME_TABLES
 from .runtime import dam_core_build_workbench_view
+from .runtime import dam_core_lifecycle_contract
 from .runtime import dam_core_permissions_contract
 
 
@@ -17,6 +18,7 @@ DAM_CORE_UI_FRAGMENT_KEYS = (
     "DamCoreAssetWorkbench",
     "DamCoreRightsWorkbench",
     "DamCoreOperationsWorkbench",
+    "DamCoreLifecycleConsole",
     "DamCoreReleaseWorkbench",
 )
 DAM_CORE_FORM_KEYS = (
@@ -118,6 +120,7 @@ def dam_core_standalone_app_contract() -> dict:
             {"key": "rights", "route": "/workbench/pbcs/dam_core/rights"},
             {"key": "metadata", "route": "/workbench/pbcs/dam_core/metadata"},
             {"key": "operations", "route": "/workbench/pbcs/dam_core/operations"},
+            {"key": "lifecycle", "route": "/workbench/pbcs/dam_core/lifecycle"},
             {"key": "release", "route": "/workbench/pbcs/dam_core/release"},
         ),
         "forms": DAM_CORE_FORM_KEYS,
@@ -142,11 +145,13 @@ def dam_core_ui_contract() -> dict:
             {"key": "assets", "fragment": "DamCoreAssetWorkbench", "binds_to": ("asset", "asset_collection", "asset_rendition"), "commands": ("register_asset", "create_asset_collection", "request_rendition")},
             {"key": "rights", "fragment": "DamCoreRightsWorkbench", "binds_to": ("rights_policy", "license_agreement", "usage_entitlement"), "commands": ("attach_rights_policy", "register_license_agreement", "grant_usage_entitlement", "enforce_rights")},
             {"key": "operations", "fragment": "DamCoreOperationsWorkbench", "binds_to": ("metadata_tag", "metadata_taxonomy", "asset_workflow_case", "asset_exception"), "commands": ("add_metadata_tag", "register_metadata_taxonomy", "start_asset_workflow", "open_asset_exception")},
+            {"key": "lifecycle", "fragment": "DamCoreLifecycleConsole", "binds_to": ("asset", "asset_rendition", "rights_policy"), "commands": ("assess_intake_readiness", "transition_asset_state")},
             {"key": "release", "fragment": "DamCoreReleaseWorkbench", "binds_to": DAM_CORE_RUNTIME_TABLES, "commands": ("build_schema_contract", "build_service_contract", "build_release_evidence")},
         ),
         "forms": dam_core_form_catalog(),
         "wizards": dam_core_wizard_catalog(),
         "controls": dam_core_control_catalog(),
+        "lifecycle": dam_core_lifecycle_contract(),
         "standalone_app": dam_core_standalone_app_contract(),
         "action_permissions": dam_core_permissions_contract(),
         "configuration_editor": {
@@ -246,6 +251,8 @@ def dam_core_render_workbench(
             {"key": "metadata", "value": snapshot["metadata_tag_count"], "fragment": "DamCoreOperationsWorkbench"},
             {"key": "workflow", "value": snapshot["approved_workflow_count"], "fragment": "DamCoreOperationsWorkbench"},
             {"key": "exceptions", "value": snapshot["resolved_exception_count"], "fragment": "DamCoreOperationsWorkbench"},
+            {"key": "published", "value": snapshot["published_asset_count"], "fragment": "DamCoreLifecycleConsole"},
+            {"key": "transitions", "value": snapshot["lifecycle_transition_count"], "fragment": "DamCoreLifecycleConsole"},
             {"key": "events", "value": snapshot["outbox_count"] + snapshot["inbox_count"], "fragment": "DamCoreReleaseWorkbench"},
         ),
         "visible_actions": visible_actions,

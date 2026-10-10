@@ -12,6 +12,7 @@ _COMMAND_OPERATION_SPECS = (
     {"operation": "command_register_rule", "method": "POST", "path": "/api/pbc/dam_core/runtime/rules", "permission": "dam_core.configure", "owned_tables": ("dam_core_dam_rule",), "emitted_event": None},
     {"operation": "command_receive_event", "method": "POST", "path": "/api/pbc/dam_core/events/inbox", "permission": "dam_core.event.consume", "owned_tables": ("dam_core_appgen_inbox_event", "dam_core_dead_letter_event", "dam_core_product_projection"), "emitted_event": None},
     {"operation": "command_register_asset", "method": "POST", "path": "/api/pbc/dam_core/assets", "permission": "dam_core.asset.write", "owned_tables": ("dam_core_asset", "dam_core_asset_binary", "dam_core_asset_fingerprint", "dam_core_appgen_outbox_event"), "emitted_event": "AssetRegistered"},
+    {"operation": "command_transition_asset_state", "method": "POST", "path": "/api/pbc/dam_core/assets/lifecycle-transitions", "permission": "dam_core.workflow", "owned_tables": ("dam_core_asset", "dam_core_asset_audit_entry", "dam_core_appgen_outbox_event"), "emitted_event": "AssetLifecycleTransitioned"},
     {"operation": "command_create_asset_collection", "method": "POST", "path": "/api/pbc/dam_core/collections", "permission": "dam_core.asset.write", "owned_tables": ("dam_core_asset_collection", "dam_core_appgen_outbox_event"), "emitted_event": "AssetCollectionCreated"},
     {"operation": "command_add_asset_to_collection", "method": "POST", "path": "/api/pbc/dam_core/collection-members", "permission": "dam_core.asset.write", "owned_tables": ("dam_core_asset_collection_member", "dam_core_asset_collection", "dam_core_appgen_outbox_event"), "emitted_event": "AssetAddedToCollection"},
     {"operation": "command_attach_rights_policy", "method": "POST", "path": "/api/pbc/dam_core/rights-policies", "permission": "dam_core.rights.manage", "owned_tables": ("dam_core_rights_policy", "dam_core_appgen_outbox_event"), "emitted_event": "AssetRightsPolicyAttached"},
@@ -34,6 +35,8 @@ _COMMAND_OPERATION_SPECS = (
 
 _QUERY_OPERATION_SPECS = (
     {"operation": "query_rights", "method": "GET", "path": "/api/pbc/dam_core/rights/decision", "permission": "dam_core.rights.evaluate", "read_tables": ("dam_core_asset", "dam_core_rights_policy")},
+    {"operation": "query_intake_readiness", "method": "GET", "path": "/api/pbc/dam_core/assets/intake-readiness", "permission": "dam_core.asset.write", "read_tables": ("dam_core_asset", "dam_core_asset_fingerprint")},
+    {"operation": "query_lifecycle_contract", "method": "GET", "path": "/api/pbc/dam_core/lifecycle-contract", "permission": "dam_core.audit", "read_tables": ("dam_core_asset",)},
     {"operation": "query_workbench", "method": "GET", "path": "/api/pbc/dam_core/workbench", "permission": "dam_core.audit", "read_tables": tuple(f"dam_core_{table}" for table in runtime.DAM_CORE_OWNED_TABLES)},
     {"operation": "query_api_contract", "method": "GET", "path": "/api/pbc/dam_core/api-contract", "permission": "dam_core.audit", "read_tables": tuple(f"dam_core_{table}" for table in runtime.DAM_CORE_OWNED_TABLES)},
     {"operation": "query_schema_contract", "method": "GET", "path": "/api/pbc/dam_core/schema-contract", "permission": "dam_core.audit", "read_tables": tuple(f"dam_core_{table}" for table in runtime.DAM_CORE_OWNED_TABLES)},
@@ -170,6 +173,8 @@ class DamCoreService:
             return runtime.dam_core_receive_event(self.state, payload["envelope"], simulate_failure=payload.get("simulate_failure", False))
         if operation_name == "command_register_asset":
             return runtime.dam_core_register_asset(self.state, payload["asset"])
+        if operation_name == "command_transition_asset_state":
+            return runtime.dam_core_transition_asset_state(self.state, payload["asset_id"], payload["transition"])
         if operation_name == "command_create_asset_collection":
             return runtime.dam_core_create_asset_collection(self.state, payload["collection"])
         if operation_name == "command_add_asset_to_collection":
@@ -211,6 +216,10 @@ class DamCoreService:
     def _apply_query(self, operation_name: str, payload: dict) -> dict:
         if operation_name == "query_rights":
             return runtime.dam_core_enforce_rights(self.state, payload["asset_id"], market=payload["market"], use_case=payload.get("use_case", "workbench"))
+        if operation_name == "query_intake_readiness":
+            return runtime.dam_core_assess_intake_readiness(self.state, payload["asset"])
+        if operation_name == "query_lifecycle_contract":
+            return runtime.dam_core_lifecycle_contract()
         if operation_name == "query_workbench":
             return runtime.dam_core_build_workbench_view(self.state, tenant=payload["tenant"])
         if operation_name == "query_api_contract":
@@ -245,6 +254,9 @@ class DamCoreService:
 
     def command_register_asset(self, payload: dict | None = None) -> dict:
         return self._command("command_register_asset", payload)
+
+    def command_transition_asset_state(self, payload: dict | None = None) -> dict:
+        return self._command("command_transition_asset_state", payload)
 
     def command_create_asset_collection(self, payload: dict | None = None) -> dict:
         return self._command("command_create_asset_collection", payload)
@@ -302,6 +314,12 @@ class DamCoreService:
 
     def query_rights(self, payload: dict | None = None) -> dict:
         return self._query("query_rights", payload)
+
+    def query_intake_readiness(self, payload: dict | None = None) -> dict:
+        return self._query("query_intake_readiness", payload)
+
+    def query_lifecycle_contract(self, payload: dict | None = None) -> dict:
+        return self._query("query_lifecycle_contract", payload)
 
     def query_workbench(self, payload: dict | None = None) -> dict:
         return self._query("query_workbench", payload)

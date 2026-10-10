@@ -80,6 +80,8 @@ DAM_CORE_RUNTIME_CAPABILITY_KEYS = (
     "metadata_taxonomy_enrichment_annotation_lifecycle",
     "asset_workflow_review_exception_lifecycle",
     "asset_usage_duplicate_lineage_lifecycle",
+    "intake_readiness_gate",
+    "asset_lifecycle_state_machine",
     "rights_policy_enforcement",
     "product_published_projection_handling",
     "probabilistic_rights_and_quality_scoring",
@@ -220,7 +222,62 @@ DAM_CORE_EMITTED_EVENT_TYPES = (
     "AssetUsageSnapshotRecorded",
     "AssetDuplicateCandidateDetected",
     "AssetLineageRecorded",
+    "AssetLifecycleTransitioned",
 )
+
+# Intake readiness, split into what blocks registration and what is advisory.
+#
+# The split is the whole design. An asset whose identity, binary, storage, or
+# creator is missing cannot be stored at all, so those block. Rights, product
+# projection, and metadata minimums are properties of a *published* asset, not
+# of a stored one: a record that arrives before its rights policy is the normal
+# intake order, and the platform's own `rights_default_decision: "review"`
+# config field exists to route exactly that case. Blocking on them would refuse
+# the intake the configuration anticipates. They are enforced where they belong,
+# by the lifecycle transition into `published`.
+DAM_CORE_INTAKE_BLOCKING_CHECKS = (
+    "tenant",
+    "filename",
+    "mime_type",
+    "size_mb",
+    "storage_uri",
+    "binary",
+    "fingerprint",
+    "locale",
+    "created_by",
+    "audit_hash",
+)
+DAM_CORE_INTAKE_ADVISORY_CHECKS = (
+    "product_projection",
+    "rights_reference",
+    "metadata_minimum",
+)
+
+# Asset lifecycle. The proposal names ten states; this is the transition graph
+# between them, and every target is reachable from `uploaded` without a special
+# case. `deleted` is terminal: an asset that has left the platform does not come
+# back, and resurrecting one would leave its renditions, rights, and lineage
+# rows pointing at a record whose binary is gone.
+DAM_CORE_ASSET_LIFECYCLE_TRANSITIONS = {
+    "uploaded": ("quarantined", "processing", "deleted"),
+    "quarantined": ("processing", "deleted"),
+    "processing": ("review", "approved", "deleted"),
+    "review": ("approved", "quarantined", "deleted"),
+    "approved": ("published", "deprecated", "deleted"),
+    "published": ("deprecated", "expired", "archived", "deleted"),
+    "deprecated": ("archived", "expired", "deleted"),
+    "archived": ("expired", "deleted"),
+    "expired": ("deleted",),
+    "deleted": (),
+}
+
+# Evidence a target state demands beyond a legal edge. Publishing is the gate
+# that the intake advisories were deferred to, so it is the one that carries
+# requirements: an asset reaches a channel only with a rights decision, the
+# metadata its active rules demand, and at least one ready rendition.
+DAM_CORE_LIFECYCLE_EVIDENCE_REQUIREMENTS = {
+    "published": ("rights_policy", "metadata_minimum", "ready_rendition"),
+}
 
 _CONFIG_SEQUENCE_FIELDS = {
     "allowed_mime_types",
@@ -266,7 +323,10 @@ def dam_core_runtime_capabilities() -> dict:
             "register_rule",
             "register_schema_extension",
             "receive_event",
+            "assess_intake_readiness",
             "register_asset",
+            "transition_asset_state",
+            "lifecycle_contract",
             "attach_rights_policy",
             "register_license_agreement",
             "grant_usage_entitlement",
@@ -562,6 +622,32 @@ def dam_core_runtime_smoke() -> dict:
         {"decision": "approve", "reviewed_by": "creative_ops"},
     )
     state = review["state"]
+    # The asset has cleared review, so it walks its lifecycle into publication.
+    # Every hop is a real edge in `DAM_CORE_ASSET_LIFECYCLE_TRANSITIONS` and the
+    # last one exercises the evidence gate: `published` demands the rights
+    # policy, a metadata tag, and a ready rendition, all of which the sequence
+    # above supplied through their own commands rather than through this call.
+    lifecycle = []
+    for target, reason in (
+        ("processing", "transcode_queued"),
+        ("review", "quality_and_rights_review"),
+        ("approved", "reviewers_approved"),
+        ("published", "channel_release"),
+    ):
+        moved = dam_core_transition_asset_state(
+            state,
+            "asset_100",
+            {"to_state": target, "actor": "user_ops", "reason": reason},
+        )
+        state = moved["state"]
+        lifecycle.append(moved)
+    lifecycle_transition = lifecycle[-1]
+    # And a refused one, so the check below has a real refusal to report.
+    refused_transition = dam_core_transition_asset_state(
+        state,
+        "asset_100",
+        {"to_state": "quarantined", "actor": "user_ops", "reason": "not_a_legal_edge_from_published"},
+    )
     exception_case = dam_core_open_asset_exception(
         state,
         {
@@ -635,6 +721,12 @@ def dam_core_runtime_smoke() -> dict:
     )
     proof = dam_core_generate_asset_proof(state, "asset_100", disclosure=("asset_id", "fingerprint", "rights_decision"))
     controls = dam_core_run_control_tests(state)
+    # Reassess the registered asset rather than a hand-built payload: the gate
+    # must read the record the command actually stored. `asset_100` has since
+    # gained its rights policy and tags, so it reports no advisory; `asset_101`
+    # is the bare sibling, and it is the case advisories exist for.
+    readiness = dam_core_assess_intake_readiness(state, {**state["assets"]["asset_100"], "binary": b"launch-backpack-primary-image"})
+    bare_readiness = dam_core_assess_intake_readiness(state, {**state["assets"]["asset_101"], "binary": b"launch-backpack-primary-image-v2"})
     api = dam_core_build_api_contract()
     schema = dam_core_build_schema_contract()
     service = dam_core_build_service_contract()
@@ -650,6 +742,8 @@ def dam_core_runtime_smoke() -> dict:
         {"id": "content_addressed_binary_fingerprinting", "ok": asset["asset"]["fingerprint"].startswith("sha256:")},
         {"id": "rendition_transcoding_pipeline", "ok": completed["rendition"]["status"] == "ready" and completed["rendition"]["quality_score"] >= 0.9},
         {"id": "semantic_metadata_tagging", "ok": "product:backpack" in state["assets"]["asset_100"]["tag_index"]},
+        {"id": "intake_readiness_gate", "ok": readiness["ready"] and not readiness["blocking"] and bool(readiness["audit_hash"]) and bare_readiness["ready"] and bool(bare_readiness["advisory"])},
+        {"id": "asset_lifecycle_state_machine", "ok": lifecycle_transition["ok"] and state["assets"]["asset_100"]["status"] == "published" and refused_transition["ok"] is False and refused_transition["reason"] == "invalid_transition" and refused_transition["allowed_transitions"]},
         {"id": "asset_collection_lifecycle", "ok": state["asset_collections"]["coll_launch"]["member_count"] == 1 and state["asset_collection_members"]["member_100"]["status"] == "active"},
         {"id": "license_entitlement_lifecycle", "ok": state["license_agreements"]["lic_100"]["status"] == "active" and state["usage_entitlements"]["ent_100"]["status"] == "active"},
         {"id": "metadata_taxonomy_enrichment_annotation_lifecycle", "ok": state["metadata_taxonomies"]["tax_product"]["status"] == "active" and state["metadata_enrichments"]["enrich_100"]["status"] == "accepted" and state["semantic_annotations"]["anno_100"]["status"] == "active"},
@@ -690,6 +784,7 @@ def dam_core_empty_state() -> dict:
         "dead_letter": (),
         "processed_event_keys": (),
         "assets": {},
+        "asset_lifecycle_transitions": (),
         "asset_collections": {},
         "asset_collection_members": {},
         "asset_renditions": {},
@@ -839,6 +934,194 @@ def dam_core_receive_event(state: dict, envelope: dict, *, simulate_failure: boo
     return {"ok": True, "state": next_state, "duplicate": False, "handler": {"status": "accepted"}, "event": inbox_record}
 
 
+def dam_core_assess_intake_readiness(state: dict, asset: dict) -> dict:
+    """Report whether an asset carries what intake requires.
+
+    Blocking checks are the ones without which the record cannot be stored:
+    identity, tenant, filename, MIME, size, storage URI, the binary itself, its
+    fingerprint, a locale, a creator, and the audit hash the event chain will
+    carry. Advisory checks are properties of a published asset rather than a
+    stored one, and are reported here so an operator sees the gap at intake
+    instead of at publish time.
+
+    `fingerprint` and `audit_hash` are derived rather than supplied: the caller
+    passes the binary, and the check confirms the derivation succeeded. A
+    readiness gate that trusted a caller-supplied fingerprint would certify
+    whatever the caller claimed.
+    """
+    missing = tuple(
+        field
+        for field in DAM_CORE_INTAKE_BLOCKING_CHECKS
+        if field not in ("fingerprint", "audit_hash", "locale") and not asset.get(field)
+    )
+    # A locale is a rendering property with a configured default, so an asset
+    # that omits one is resolvable rather than blocked: the configuration's
+    # `default_locale` is the answer, and the gate reports which one it used.
+    locale = asset.get("locale") or state.get("configuration", {}).get("default_locale")
+    if not locale:
+        missing = (*missing, "locale")
+    fingerprint = "sha256:" + hashlib.sha256(asset["binary"]).hexdigest() if asset.get("binary") else None
+    audit_hash = (
+        _stable_hash(
+            {
+                "asset_id": asset.get("asset_id"),
+                "tenant": asset.get("tenant"),
+                "filename": asset.get("filename"),
+                "fingerprint": fingerprint,
+            }
+        )
+        if fingerprint and asset.get("asset_id")
+        else None
+    )
+    if not fingerprint:
+        missing = (*missing, "fingerprint")
+    if not audit_hash:
+        missing = (*missing, "audit_hash")
+
+    advisories = []
+    if asset.get("product_id") and asset["product_id"] not in state["product_projection"]:
+        advisories.append("product_projection")
+    if not asset.get("rights_policy_id") and not asset.get("license_type"):
+        advisories.append("rights_reference")
+    if len(asset.get("tags") or ()) < 1:
+        advisories.append("metadata_minimum")
+
+    return {
+        "format": "appgen.dam-core-intake-readiness.v1",
+        "ok": True,
+        "asset_id": asset.get("asset_id"),
+        "tenant": asset.get("tenant"),
+        "ready": not missing,
+        "blocking": missing,
+        "advisory": tuple(advisories),
+        "checks": DAM_CORE_INTAKE_BLOCKING_CHECKS,
+        "advisory_checks": DAM_CORE_INTAKE_ADVISORY_CHECKS,
+        "resolved_locale": locale,
+        "fingerprint": fingerprint,
+        "audit_hash": audit_hash,
+        "side_effects": (),
+    }
+
+
+def dam_core_transition_asset_state(state: dict, asset_id: str, transition: dict) -> dict:
+    """Move an asset through its lifecycle, or explain why it cannot move.
+
+    An illegal edge returns `ok: False` with `allowed` naming the legal targets
+    rather than raising. The proposal asks for invalid-transition explanations,
+    and an explanation is data a workbench renders: raising would put the
+    refusal in a log where the operator deciding the next move cannot see it.
+
+    A transition whose target demands evidence checks that evidence against the
+    asset's own rows. `published` is the demanding target: the rights policy,
+    the active rules' metadata minimums, and a ready rendition. The check reads
+    the same state the commands wrote, so a caller cannot assert the evidence.
+    """
+    required = ("to_state", "actor", "reason")
+    missing = tuple(field for field in required if not transition.get(field))
+    if missing:
+        raise ValueError(f"Missing DAM Core transition fields: {missing}")
+    if transition["to_state"] not in DAM_CORE_ASSET_LIFECYCLE_TRANSITIONS:
+        raise ValueError(f"Unknown DAM Core asset state: {transition['to_state']}")
+    asset = _asset(state, asset_id)
+    from_state = asset["status"]
+    allowed = DAM_CORE_ASSET_LIFECYCLE_TRANSITIONS.get(from_state, ())
+    idempotency_key = transition.get("idempotency_key") or f"dam_core:AssetLifecycleTransitioned:{asset_id}:{from_state}:{transition['to_state']}"
+
+    if transition["to_state"] not in allowed:
+        return {
+            "format": "appgen.dam-core-asset-transition.v1",
+            "ok": False,
+            "asset_id": asset_id,
+            "tenant": asset["tenant"],
+            "from_state": from_state,
+            "to_state": transition["to_state"],
+            "reason": "invalid_transition",
+            "allowed_transitions": allowed,
+            "missing_evidence": (),
+            "idempotency_key": idempotency_key,
+            "side_effects": (),
+        }
+
+    missing_evidence = _transition_evidence_gaps(state, asset, transition["to_state"])
+    if missing_evidence:
+        return {
+            "format": "appgen.dam-core-asset-transition.v1",
+            "ok": False,
+            "asset_id": asset_id,
+            "tenant": asset["tenant"],
+            "from_state": from_state,
+            "to_state": transition["to_state"],
+            "reason": "missing_evidence",
+            "allowed_transitions": allowed,
+            "missing_evidence": missing_evidence,
+            "idempotency_key": idempotency_key,
+            "side_effects": (),
+        }
+
+    record = {
+        "asset_id": asset_id,
+        "tenant": asset["tenant"],
+        "from_state": from_state,
+        "to_state": transition["to_state"],
+        "actor": transition["actor"],
+        "reason": transition["reason"],
+        "idempotency_key": idempotency_key,
+    }
+    updated = {
+        **asset,
+        "status": transition["to_state"],
+        "lifecycle_history": (*asset.get("lifecycle_history", ()), record),
+    }
+    next_state = {
+        **state,
+        "assets": {**state["assets"], asset_id: updated},
+        "asset_lifecycle_transitions": (*state.get("asset_lifecycle_transitions", ()), record),
+    }
+    next_state = _append_event(next_state, "AssetLifecycleTransitioned", asset["tenant"], record)
+    return {
+        "format": "appgen.dam-core-asset-transition.v1",
+        "ok": True,
+        "state": next_state,
+        "asset": updated,
+        "transition": record,
+        "allowed_transitions": DAM_CORE_ASSET_LIFECYCLE_TRANSITIONS[transition["to_state"]],
+        "missing_evidence": (),
+        "idempotency_key": idempotency_key,
+        "side_effects": (),
+    }
+
+
+def _transition_evidence_gaps(state: dict, asset: dict, to_state: str) -> tuple[str, ...]:
+    """Return the evidence `to_state` demands that the asset does not yet have."""
+    gaps = []
+    for requirement in DAM_CORE_LIFECYCLE_EVIDENCE_REQUIREMENTS.get(to_state, ()):
+        if requirement == "rights_policy" and not asset.get("rights_policy_id"):
+            gaps.append("rights_policy")
+        elif requirement == "ready_rendition" and not any(
+            rendition["asset_id"] == asset["asset_id"] and rendition["status"] == "ready"
+            for rendition in state["asset_renditions"].values()
+        ):
+            gaps.append("ready_rendition")
+        elif requirement == "metadata_minimum" and not asset.get("tag_index"):
+            gaps.append("metadata_minimum")
+    return tuple(gaps)
+
+
+def dam_core_lifecycle_contract() -> dict:
+    """Return the lifecycle graph, the evidence rules, and the intake checks."""
+    return {
+        "format": "appgen.dam-core-lifecycle-contract.v1",
+        "ok": True,
+        "states": tuple(DAM_CORE_ASSET_LIFECYCLE_TRANSITIONS),
+        "transitions": {state: targets for state, targets in DAM_CORE_ASSET_LIFECYCLE_TRANSITIONS.items()},
+        "terminal_states": tuple(state for state, targets in DAM_CORE_ASSET_LIFECYCLE_TRANSITIONS.items() if not targets),
+        "evidence_requirements": {state: tuple(items) for state, items in DAM_CORE_LIFECYCLE_EVIDENCE_REQUIREMENTS.items()},
+        "intake_blocking_checks": DAM_CORE_INTAKE_BLOCKING_CHECKS,
+        "intake_advisory_checks": DAM_CORE_INTAKE_ADVISORY_CHECKS,
+        "side_effects": (),
+    }
+
+
 def dam_core_register_asset(state: dict, asset: dict) -> dict:
     required = ("asset_id", "tenant", "filename", "mime_type", "size_mb", "storage_uri", "binary", "created_by")
     missing = tuple(field for field in required if field not in asset)
@@ -849,10 +1132,13 @@ def dam_core_register_asset(state: dict, asset: dict) -> dict:
         raise ValueError(f"Unsupported DAM Core mime type: {asset['mime_type']}")
     if float(asset["size_mb"]) > float(state["parameters"].get("max_asset_size_mb", 1000)):
         raise ValueError("DAM Core asset exceeds configured max_asset_size_mb")
+    readiness = dam_core_assess_intake_readiness(state, asset)
+    if not readiness["ready"]:
+        raise ValueError(f"DAM Core asset failed intake readiness: {readiness['blocking']}")
     fingerprint = "sha256:" + hashlib.sha256(asset["binary"]).hexdigest()
     stored = {
         **{key: value for key, value in asset.items() if key != "binary"},
-        "status": "registered",
+        "status": "uploaded",
         "fingerprint": fingerprint,
         "storage_tier": state["configuration"]["default_storage_tier"],
         "product_dependency": asset.get("product_id") in state["product_projection"],
@@ -1273,11 +1559,18 @@ def dam_core_build_workbench_view(state: dict, *, tenant: str) -> dict:
     tags = tuple(tag for tag in state["metadata_tags"].values() if tag["tenant"] == tenant)
     workflows = tuple(case for case in state["asset_workflow_cases"].values() if case["tenant"] == tenant)
     exceptions = tuple(case for case in state["asset_exceptions"].values() if case["tenant"] == tenant)
+    state_counts = {name: 0 for name in DAM_CORE_ASSET_LIFECYCLE_TRANSITIONS}
+    for asset in assets:
+        state_counts[asset.get("status", "uploaded")] = state_counts.get(asset.get("status", "uploaded"), 0) + 1
+    transitions = tuple(item for item in state.get("asset_lifecycle_transitions", ()) if item["tenant"] == tenant)
     return {
         "format": "appgen.dam-core-workbench-view.v1",
         "ok": True,
         "tenant": tenant,
         "asset_count": len(assets),
+        "asset_lifecycle_state_counts": tuple(sorted(state_counts.items())),
+        "published_asset_count": state_counts.get("published", 0),
+        "lifecycle_transition_count": len(transitions),
         "rendition_count": len(renditions),
         "ready_rendition_count": len(tuple(item for item in renditions if item["status"] == "ready")),
         "rights_policy_count": len(policies),
@@ -1331,6 +1624,8 @@ def dam_core_permissions_contract() -> dict:
         "detect_asset_duplicate_candidate": "dam_core.audit",
         "record_asset_lineage": "dam_core.audit",
         "receive_event": "dam_core.event.consume",
+        "assess_intake_readiness": "dam_core.asset.write",
+        "transition_asset_state": "dam_core.workflow",
         "register_rule": "dam_core.configure",
         "set_parameter": "dam_core.configure",
         "configure_runtime": "dam_core.configure",
@@ -1491,6 +1786,20 @@ def dam_core_build_api_contract() -> dict:
                 "idempotency_key": "lineage_id",
             },
             {
+                "route": "POST /dam/assets/{asset_id}/lifecycle-transitions",
+                "command": "transition_asset_state",
+                "owned_tables": ("asset", "asset_audit_entry"),
+                "emits": ("AssetLifecycleTransitioned",),
+                "requires_permission": "dam_core.workflow",
+                "idempotency_key": "asset_id:to_state:reason",
+            },
+            {
+                "route": "GET /dam/assets/{asset_id}/intake-readiness",
+                "query": "assess_intake_readiness",
+                "owned_tables": ("asset", "asset_fingerprint"),
+                "requires_permission": "dam_core.asset.write",
+            },
+            {
                 "route": "POST /dam/events/inbox",
                 "command": "receive_event",
                 "owned_tables": (),
@@ -1575,6 +1884,7 @@ def dam_core_build_service_contract() -> dict:
         "register_schema_extension",
         "receive_event",
         "register_asset",
+        "transition_asset_state",
         "attach_rights_policy",
         "register_license_agreement",
         "grant_usage_entitlement",
@@ -1613,6 +1923,8 @@ def dam_core_build_service_contract() -> dict:
     query_methods = (
         "build_api_contract",
         "permissions_contract",
+        "assess_intake_readiness",
+        "lifecycle_contract",
         "build_workbench_view",
         "build_schema_contract",
         "build_service_contract",
