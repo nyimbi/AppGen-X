@@ -80,6 +80,74 @@ _GL_CORE_FORBIDDEN_EVENTING_FIELDS = {
 }
 
 
+# The double-entry invariants a journal must satisfy before it becomes a ledger
+# event. Each is a named check with a reason, because a rejection an operator
+# cannot act on is the same as no check at all.
+GL_CORE_JOURNAL_INVARIANT_KEYS = (
+    "balanced",
+    "accounts_valid",
+    "period_admissible",
+    "entity_isolation",
+    "currency_consistency",
+    "source_lineage",
+)
+
+# A journal is not the ledger event it produces. The journal is a mutable record
+# with an approval state; the event is the immutable fact posting created.
+# Keeping them apart is what lets a posted journal be sealed rather than edited:
+# a correction appends a new journal linked to the original instead of rewriting
+# a fact that downstream projections have already consumed.
+GL_CORE_JOURNAL_LIFECYCLE_TRANSITIONS = {
+    "draft": ("validated", "rejected", "superseded"),
+    "validated": ("pending_approval", "posted", "rejected"),
+    "pending_approval": ("posted", "rejected", "draft"),
+    "rejected": ("draft", "superseded"),
+    "posted": ("reversed", "correcting"),
+    "correcting": ("superseded",),
+    "reversed": (),
+    "superseded": (),
+}
+GL_CORE_JOURNAL_TERMINAL_STATES = ("reversed", "superseded")
+GL_CORE_JOURNAL_SEALED_STATES = ("posted", "reversed", "correcting", "superseded")
+
+# The normal balance an account type carries. A revenue account credited is
+# ordinary; a revenue account debited is a contra entry, which is legal but is
+# the shape most chart mistakes take, so the registry records the expectation
+# and the invariant engine compares against it.
+GL_CORE_ACCOUNT_NORMAL_BALANCE = {
+    "asset": "debit",
+    "expense": "debit",
+    "liability": "credit",
+    "equity": "credit",
+    "revenue": "credit",
+}
+
+# Account lifecycle. `posting_blocked` is the state an operator reaches for when
+# an account must stay on the chart for historical reporting but must not take
+# new activity. `retired` is terminal, so a retired account can never take
+# activity again; it is reachable from every live state because an account that
+# was never activated still has to be removable from the chart.
+GL_CORE_ACCOUNT_LIFECYCLE_TRANSITIONS = {
+    "proposed": ("active", "retired"),
+    "active": ("posting_blocked", "mapped_only", "retired"),
+    "posting_blocked": ("active", "mapped_only", "retired"),
+    "mapped_only": ("posting_blocked", "retired"),
+    "retired": (),
+}
+GL_CORE_ACCOUNT_POSTABLE_STATES = ("active",)
+
+# Accounting period lifecycle. A journal is admissible only into an `open`
+# period, so `locked` is the state a controller uses to freeze a period while
+# the close is prepared: activity stops, but the period is not yet a closed
+# fact. `closed` is terminal.
+GL_CORE_PERIOD_LIFECYCLE_TRANSITIONS = {
+    "open": ("locked", "closed"),
+    "locked": ("open", "closed"),
+    "closed": (),
+}
+GL_CORE_PERIOD_TERMINAL_STATES = ("closed",)
+GL_CORE_PERIOD_ADMISSIBLE_STATES = ("open",)
+
 GL_CORE_RUNTIME_CAPABILITY_KEYS = (
     "event_sourced_ledger_core",
     "distributed_consensus_protocol",
@@ -171,6 +239,14 @@ def gl_core_runtime_capabilities() -> dict:
             "configure_runtime",
             "set_parameter",
             "register_rule",
+            "register_account",
+            "transition_account_state",
+            "chart_governance_contract",
+            "open_accounting_period",
+            "transition_period_state",
+            "register_journal",
+            "transition_journal_state",
+            "verify_journal_invariants",
             "append_ledger_event",
             "receive_event",
             "replicate_consensus",
@@ -347,6 +423,138 @@ def gl_core_runtime_smoke() -> dict:
         "posting_risk",
         {"features": ("amount", "account", "tenant"), "auc": 0.91, "drift_score": 0.03},
     )
+    # The chart, period, and journal walk runs on its own state so the ledger
+    # assertions above keep measuring exactly one appended event.
+    governed = gl_core_empty_state()
+    governed = gl_core_configure_runtime(
+        governed,
+        {
+            "database_backend": "postgresql",
+            "event_topic": GL_CORE_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 3,
+            "default_currency": "USD",
+            "default_timezone": "UTC",
+            "allowed_account_types": ("asset", "liability", "equity", "revenue", "expense"),
+            "workbench_limit": 100,
+        },
+    )["state"]
+    governed = gl_core_register_account(
+        governed,
+        {
+            "account_id": "acct_cash",
+            "tenant": "tenant_alpha",
+            "account_code": "1000",
+            "account_type": "asset",
+            "statement_mapping": "balance_sheet",
+        },
+    )["state"]
+    governed = gl_core_register_account(
+        governed,
+        {
+            "account_id": "acct_revenue",
+            "tenant": "tenant_alpha",
+            "account_code": "4000",
+            "account_type": "revenue",
+        },
+    )["state"]
+    governed = gl_core_register_account(
+        governed,
+        {
+            "account_id": "acct_deferred",
+            "tenant": "tenant_alpha",
+            "account_code": "2100",
+            "account_type": "liability",
+        },
+    )["state"]
+    proposed_guard = gl_core_transition_account_state(governed, "acct_deferred", {"to_state": "posting_blocked"})
+    governed = gl_core_transition_account_state(governed, "acct_cash", {"to_state": "active", "actor": "controller"})["state"]
+    governed = gl_core_transition_account_state(governed, "acct_revenue", {"to_state": "active", "actor": "controller"})["state"]
+    governed = gl_core_open_accounting_period(
+        governed,
+        {
+            "period_id": "period_2026_05",
+            "tenant": "tenant_alpha",
+            "fiscal_year": 2026,
+            "starts_at": "2026-05-01T00:00:00Z",
+            "ends_at": "2026-05-31T23:59:59Z",
+        },
+    )["state"]
+    balanced_journal = gl_core_register_journal(
+        governed,
+        {
+            "journal_id": "jrn_1000",
+            "tenant": "tenant_alpha",
+            "period_id": "period_2026_05",
+            "valid_at": "2026-05-25T00:00:00Z",
+            "lines": (
+                {"account": "acct_cash", "debit": 1200, "credit": 0},
+                {"account": "acct_revenue", "debit": 0, "credit": 1200},
+            ),
+            "source_document_hash": "sha3:invoice-100",
+        },
+    )
+    governed = balanced_journal["state"]
+    unbalanced_journal = gl_core_register_journal(
+        governed,
+        {
+            "journal_id": "jrn_unbalanced",
+            "tenant": "tenant_alpha",
+            "period_id": "period_2026_05",
+            "lines": (
+                {"account": "acct_cash", "debit": 500, "credit": 0},
+                {"account": "acct_revenue", "debit": 0, "credit": 400},
+            ),
+            "source_document_hash": "sha3:invoice-101",
+        },
+    )
+    governed = unbalanced_journal["state"]
+    unpostable_journal = gl_core_register_journal(
+        governed,
+        {
+            "journal_id": "jrn_blocked_account",
+            "tenant": "tenant_alpha",
+            "period_id": "period_2026_05",
+            "lines": (
+                {"account": "acct_cash", "debit": 10, "credit": 0},
+                {"account": "acct_deferred", "debit": 0, "credit": 10},
+            ),
+            "source_document_hash": "sha3:invoice-102",
+        },
+    )
+    governed = unpostable_journal["state"]
+    governed = gl_core_transition_journal_state(governed, "jrn_1000", {"to_state": "validated", "actor": "preparer"})["state"]
+    governed = gl_core_transition_journal_state(
+        governed, "jrn_1000", {"to_state": "pending_approval", "actor": "preparer"}
+    )["state"]
+    posting = gl_core_transition_journal_state(
+        governed, "jrn_1000", {"to_state": "posted", "actor": "controller", "reason": "month-end close"}
+    )
+    governed = posting["state"]
+    # Verified while the period is still open: the same journal fails
+    # `period_admissible` once the period is locked, which is the point.
+    invariants = gl_core_verify_journal_invariants(governed, balanced_journal["journal"])
+    governed = gl_core_transition_journal_state(governed, "jrn_unbalanced", {"to_state": "validated", "actor": "preparer"})["state"]
+    unbalanced_posting = gl_core_transition_journal_state(
+        governed, "jrn_unbalanced", {"to_state": "posted", "actor": "controller"}
+    )
+    governed = gl_core_transition_journal_state(governed, "jrn_blocked_account", {"to_state": "validated", "actor": "preparer"})["state"]
+    unpostable_posting = gl_core_transition_journal_state(
+        governed, "jrn_blocked_account", {"to_state": "posted", "actor": "controller"}
+    )
+    sealed_edit = gl_core_transition_journal_state(governed, "jrn_1000", {"to_state": "draft", "actor": "preparer"})
+    correction = gl_core_transition_journal_state(
+        governed, "jrn_1000", {"to_state": "correcting", "actor": "controller", "reason": "restate revenue"}
+    )
+    governed = correction["state"]
+    period_close_blocked = gl_core_transition_period_state(
+        governed, "period_2026_05", {"to_state": "closed", "actor": "controller"}
+    )
+    governed = gl_core_transition_period_state(
+        governed, "period_2026_05", {"to_state": "locked", "actor": "controller", "reason": "prepare close"}
+    )["state"]
+    locked_period_invariants = gl_core_verify_journal_invariants(governed, balanced_journal["journal"])
+    governed_workbench = gl_core_build_workbench_view(governed, tenant="tenant_alpha")
+    chart = gl_core_chart_governance_contract()
     checks = (
         {"id": "event_sourced_ledger_core", "ok": append["ok"] and len(state["events"]) == 1},
         {"id": "distributed_consensus_protocol", "ok": consensus["ok"] and consensus["committed"]},
@@ -362,8 +570,8 @@ def gl_core_runtime_smoke() -> dict:
         {"id": "predictive_posting_validation", "ok": prediction["ok"] and prediction["decision"] == "requires_approval"},
         {"id": "zero_knowledge_audit_proofs", "ok": proof["ok"] and "lines" not in proof["public_claims"]},
         {"id": "dynamic_policy_enforcement", "ok": policy["ok"] and policy["decision"] == "allow"},
-        {"id": "immutable_regulatory_trail", "ok": controls["hash_chain_valid"]},
-        {"id": "automated_control_testing", "ok": controls["ok"]},
+        {"id": "immutable_regulatory_trail", "ok": controls["hash_chain_valid"] and sealed_edit["ok"] is False and sealed_edit["remediation"] == "post a correcting journal rather than editing a sealed one" and correction["journal"]["correction_of"] == "jrn_1000"},
+        {"id": "automated_control_testing", "ok": controls["ok"] and proposed_guard["ok"] is False and proposed_guard["allowed_transitions"] == ("active", "retired") and chart["postable_states"] == ("active",) and chart["period_admissible_states"] == ("open",) and chart["journal_sealed_states"] == ("posted", "reversed", "correcting", "superseded") and period_close_blocked["ok"] is False and period_close_blocked["reason"] == "unposted_journals" and set(period_close_blocked["unposted_journals"]) == {"jrn_unbalanced", "jrn_blocked_account"}},
         {"id": "universal_api_contract", "ok": api["ok"] and schema["ok"] and service["ok"] and release["ok"] and api["event_contract"] == "AppGen-X" and all(key in proof for key in ("proof", "public_claims"))},
         {"id": "cross_system_ledger_federation", "ok": federation["ok"] and federation["balances"]["cash"] == 1225.0},
         {"id": "event_driven_subledger_synchronization", "ok": append["outbox_event"]["idempotency_key"].startswith("gl_core:") and received["handler"]["status"] == "processed" and duplicate["duplicate"]},
@@ -375,8 +583,8 @@ def gl_core_runtime_smoke() -> dict:
         {"id": "homomorphic_encryption_for_consolidation", "ok": private_consolidation["ok"] and private_consolidation["clear_total"] is None},
         {"id": "game_theoretic_reconciliation", "ok": game["ok"] and game["equilibrium_amount"] == 98.13},
         {"id": "information_theoretic_auditability", "ok": auditability["ok"] and auditability["entropy"] == 0.0},
-        {"id": "formal_methods_ledger_invariants", "ok": invariants["ok"]},
-        {"id": "distributed_systems_runtime", "ok": consensus["quorum"] == 3 and resilience["remaining_quorum"] >= 3 and workbench["inbox_count"] == 1 and boundary["ok"] and permissions["action_permissions"]["receive_event"] == "gl_core.event"},
+        {"id": "formal_methods_ledger_invariants", "ok": invariants["ok"] and len(invariants["invariants"]) == 6 and set(unbalanced_posting["failed_invariants"]) == {"balanced"} and set(unpostable_posting["failed_invariants"]) == {"accounts_valid"} and unbalanced_posting["reason"] == "invariant_violation" and locked_period_invariants["failed_invariants"] == ("period_admissible",) and len(governed["events"]) == 1},
+        {"id": "distributed_systems_runtime", "ok": consensus["quorum"] == 3 and resilience["remaining_quorum"] >= 3 and workbench["inbox_count"] == 1 and boundary["ok"] and permissions["action_permissions"]["receive_event"] == "gl_core.event" and governed_workbench["journal_count"] == 3 and governed_workbench["journal_lifecycle_state_counts"] == (("correcting", 1), ("draft", 0), ("pending_approval", 0), ("posted", 0), ("rejected", 0), ("reversed", 0), ("superseded", 0), ("validated", 2)) and governed_workbench["unposted_journal_count"] == 2 and governed_workbench["postable_account_count"] == 2 and governed_workbench["open_period_count"] == 0 and permissions["action_permissions"]["transition_journal_state"] == "gl_core.post"},
         {"id": "cryptographic_engineering", "ok": proof["proof"].startswith("zkp_") and crypto["key_epoch"] == 2},
         {"id": "financial_mlops", "ok": model["ok"] and model["governance"]["regulated"]},
     )
@@ -410,6 +618,12 @@ def gl_core_empty_state() -> dict:
         },
         "tenant_keys": {},
         "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"},
+        "accounts": {},
+        "account_lifecycle_transitions": (),
+        "journals": {},
+        "journal_lifecycle_transitions": (),
+        "periods": {},
+        "period_lifecycle_transitions": (),
     }
 
 
@@ -523,6 +737,455 @@ def gl_core_append_ledger_event(state: dict, event_type: str, payload: dict) -> 
             "events": tuple(state.get("events", ())) + (event,),
             "outbox": tuple(state.get("outbox", ())) + (outbox_event,),
         },
+    }
+
+
+def gl_core_verify_journal_invariants(state: dict, journal: dict) -> dict:
+    """Prove the double-entry invariants a journal must satisfy before posting.
+
+    The ledger's promise is that every posted entry balances by entity, currency,
+    and period, and that its accounts exist and may take activity. A ledger that
+    only stores debit and credit columns has not made that promise, so the
+    invariants are checked here and their proof hash travels with the event.
+
+    Every invariant is reported, not just the first failure: a posting rejected
+    for one reason at a time teaches an operator to resubmit until the error
+    changes, which is a worse interface than naming all of them at once.
+    """
+    lines = tuple(journal.get("lines", ()))
+    tenant = journal.get("tenant")
+    currency = journal.get("currency") or state.get("configuration", {}).get("default_currency", "USD")
+    accounts = state.get("accounts", {})
+    periods = state.get("periods", {})
+    period_id = journal.get("period_id")
+
+    debit_total = round(sum(float(line.get("debit", 0)) for line in lines), 6)
+    credit_total = round(sum(float(line.get("credit", 0)) for line in lines), 6)
+    invalid_accounts = tuple(
+        sorted({line.get("account", "") for line in lines if line.get("account") not in accounts})
+    )
+    blocked_accounts = tuple(
+        sorted(
+            {
+                line["account"]
+                for line in lines
+                if line.get("account") in accounts
+                and accounts[line["account"]].get("lifecycle_state", "active") not in GL_CORE_ACCOUNT_POSTABLE_STATES
+            }
+        )
+    )
+    foreign_lines = tuple(
+        sorted({line.get("tenant", tenant) for line in lines if line.get("tenant", tenant) != tenant})
+    )
+    mixed_currency = tuple(
+        sorted({line.get("currency", currency) for line in lines if line.get("currency", currency) != currency})
+    )
+    period = periods.get(period_id) if period_id else None
+    period_state = period.get("status") if period else "open"
+    invariants = (
+        {
+            "invariant": "balanced",
+            "ok": debit_total == credit_total and bool(lines),
+            "detail": {"debit_total": debit_total, "credit_total": credit_total},
+        },
+        {
+            "invariant": "accounts_valid",
+            "ok": not invalid_accounts and not blocked_accounts,
+            "detail": {"unknown_accounts": invalid_accounts, "not_postable": blocked_accounts},
+        },
+        {
+            "invariant": "period_admissible",
+            "ok": period is not None and period_state in GL_CORE_PERIOD_ADMISSIBLE_STATES,
+            "detail": {"period_id": period_id, "period_status": period_state},
+        },
+        {
+            "invariant": "entity_isolation",
+            "ok": not foreign_lines,
+            "detail": {"foreign_tenants": foreign_lines},
+        },
+        {
+            "invariant": "currency_consistency",
+            "ok": not mixed_currency,
+            "detail": {"mixed_currencies": mixed_currency, "journal_currency": currency},
+        },
+        {
+            "invariant": "source_lineage",
+            "ok": bool(journal.get("source_document_hash") or journal.get("source_text")),
+            "detail": {"source_document_hash": journal.get("source_document_hash")},
+        },
+    )
+    failed = tuple(item["invariant"] for item in invariants if not item["ok"])
+    proof = _digest(
+        json.dumps(
+            {
+                "tenant": tenant,
+                "period_id": period_id,
+                "debit_total": debit_total,
+                "credit_total": credit_total,
+                "lines": tuple(sorted(str(line.get("account")) for line in lines)),
+            },
+            sort_keys=True,
+            default=str,
+        )
+    )
+    return {
+        "format": "appgen.gl-core-journal-invariants.v1",
+        "ok": not failed,
+        "tenant": tenant,
+        "invariants": invariants,
+        "failed_invariants": failed,
+        "proof_hash": proof,
+        "side_effects": (),
+    }
+
+
+def gl_core_register_account(state: dict, account: dict) -> dict:
+    """Add an account to the chart in its proposed state.
+
+    A new account is proposed, not active. Activating one is a separate act by a
+    different permission, which is what stops a chart change from silently
+    becoming a posting target the moment someone creates it.
+    """
+    required = ("account_id", "tenant", "account_code", "account_type")
+    missing = tuple(field for field in required if not account.get(field))
+    if missing:
+        raise ValueError(f"Missing GL account fields: {missing}")
+    if account["account_type"] not in GL_CORE_ACCOUNT_NORMAL_BALANCE:
+        raise ValueError(f"Unsupported GL account type: {account['account_type']}")
+    existing = state.get("accounts", {})
+    if account["account_id"] in existing:
+        raise ValueError(f"GL account already exists: {account['account_id']}")
+    duplicate_code = tuple(
+        item["account_id"]
+        for item in existing.values()
+        if item["tenant"] == account["tenant"] and item["account_code"] == account["account_code"]
+    )
+    if duplicate_code:
+        raise ValueError(f"GL account code {account['account_code']} is already in use: {duplicate_code}")
+    parent_id = account.get("parent_account_id")
+    if parent_id and parent_id not in existing:
+        raise ValueError(f"GL account parent does not exist: {parent_id}")
+    stored = {
+        **account,
+        "normal_balance": GL_CORE_ACCOUNT_NORMAL_BALANCE[account["account_type"]],
+        "lifecycle_state": "proposed",
+        "hierarchy_depth": (existing[parent_id]["hierarchy_depth"] + 1) if parent_id else 0,
+        "statement_mapping": account.get("statement_mapping") or account["account_type"],
+    }
+    next_state = {**state, "accounts": {**existing, account["account_id"]: stored}}
+    return {
+        "format": "appgen.gl-core-account-registration.v1",
+        "ok": True,
+        "state": next_state,
+        "account": stored,
+        "side_effects": (),
+    }
+
+
+def gl_core_transition_account_state(state: dict, account_id: str, transition: dict) -> dict:
+    """Move an account through its governance lifecycle, or explain why it cannot."""
+    account = state.get("accounts", {}).get(account_id)
+    if account is None:
+        return {
+            "ok": False,
+            "reason": "unknown_account",
+            "account_id": account_id,
+            "side_effects": (),
+        }
+    from_state = account.get("lifecycle_state", "proposed")
+    to_state = transition.get("to_state")
+    allowed = GL_CORE_ACCOUNT_LIFECYCLE_TRANSITIONS.get(from_state, ())
+    if to_state not in allowed:
+        return {
+            "format": "appgen.gl-core-account-transition.v1",
+            "ok": False,
+            "reason": "invalid_transition",
+            "account_id": account_id,
+            "from_state": from_state,
+            "to_state": to_state,
+            "allowed_transitions": allowed,
+            "side_effects": (),
+        }
+    record = {
+        "account_id": account_id,
+        "tenant": account["tenant"],
+        "from_state": from_state,
+        "to_state": to_state,
+        "actor": transition.get("actor"),
+        "reason": transition.get("reason"),
+    }
+    updated = {
+        **account,
+        "lifecycle_state": to_state,
+        "lifecycle_history": (*account.get("lifecycle_history", ()), record),
+    }
+    next_state = {
+        **state,
+        "accounts": {**state["accounts"], account_id: updated},
+        "account_lifecycle_transitions": (*state.get("account_lifecycle_transitions", ()), record),
+    }
+    return {
+        "format": "appgen.gl-core-account-transition.v1",
+        "ok": True,
+        "state": next_state,
+        "transition": record,
+        "side_effects": (),
+    }
+
+
+def gl_core_chart_governance_contract() -> dict:
+    """Return the chart lifecycle, the period lifecycle, and the journal invariants."""
+    return {
+        "format": "appgen.gl-core-chart-governance-contract.v1",
+        "ok": True,
+        "account_states": tuple(GL_CORE_ACCOUNT_LIFECYCLE_TRANSITIONS),
+        "account_transitions": {state: targets for state, targets in GL_CORE_ACCOUNT_LIFECYCLE_TRANSITIONS.items()},
+        "postable_states": GL_CORE_ACCOUNT_POSTABLE_STATES,
+        "normal_balances": dict(GL_CORE_ACCOUNT_NORMAL_BALANCE),
+        "period_states": tuple(GL_CORE_PERIOD_LIFECYCLE_TRANSITIONS),
+        "period_transitions": {state: targets for state, targets in GL_CORE_PERIOD_LIFECYCLE_TRANSITIONS.items()},
+        "period_admissible_states": GL_CORE_PERIOD_ADMISSIBLE_STATES,
+        "period_terminal_states": GL_CORE_PERIOD_TERMINAL_STATES,
+        "journal_invariants": GL_CORE_JOURNAL_INVARIANT_KEYS,
+        "journal_states": tuple(GL_CORE_JOURNAL_LIFECYCLE_TRANSITIONS),
+        "journal_transitions": {state: targets for state, targets in GL_CORE_JOURNAL_LIFECYCLE_TRANSITIONS.items()},
+        "journal_terminal_states": GL_CORE_JOURNAL_TERMINAL_STATES,
+        "journal_sealed_states": GL_CORE_JOURNAL_SEALED_STATES,
+        "side_effects": (),
+    }
+
+
+def gl_core_register_journal(state: dict, journal: dict) -> dict:
+    """Record a journal in draft, where it may still be edited.
+
+    The journal is not the event. Drafting is mutable; posting is not, and the
+    split is what lets a posted journal be sealed rather than rewritten.
+    """
+    required = ("journal_id", "tenant", "period_id", "lines")
+    missing = tuple(field for field in required if not journal.get(field))
+    if missing:
+        raise ValueError(f"Missing GL journal fields: {missing}")
+    existing = state.get("journals", {})
+    if journal["journal_id"] in existing:
+        raise ValueError(f"GL journal already exists: {journal['journal_id']}")
+    stored = {
+        **journal,
+        "currency": journal.get("currency") or state.get("configuration", {}).get("default_currency", "USD"),
+        "lifecycle_state": "draft",
+        "revision": 1,
+        "invariant_proof": None,
+    }
+    next_state = {**state, "journals": {**existing, journal["journal_id"]: stored}}
+    return {
+        "format": "appgen.gl-core-journal-registration.v1",
+        "ok": True,
+        "state": next_state,
+        "journal": stored,
+        "side_effects": (),
+    }
+
+
+def gl_core_transition_journal_state(state: dict, journal_id: str, transition: dict) -> dict:
+    """Advance a journal through validation, approval, posting, and correction.
+
+    Posting runs the invariant engine and refuses on any failure, because a
+    ledger event that does not satisfy the ledger's own promise is worse than no
+    event: it is a fact downstream projections will trust. A sealed journal
+    cannot be edited, so the only way to change a posted figure is a correction,
+    which appends a new journal linked to the original.
+    """
+    journal = state.get("journals", {}).get(journal_id)
+    if journal is None:
+        return {"ok": False, "reason": "unknown_journal", "journal_id": journal_id, "side_effects": ()}
+    from_state = journal.get("lifecycle_state", "draft")
+    to_state = transition.get("to_state")
+    allowed = GL_CORE_JOURNAL_LIFECYCLE_TRANSITIONS.get(from_state, ())
+    if to_state not in allowed:
+        response = {
+            "format": "appgen.gl-core-journal-transition.v1",
+            "ok": False,
+            "reason": "invalid_transition",
+            "journal_id": journal_id,
+            "from_state": from_state,
+            "to_state": to_state,
+            "allowed_transitions": allowed,
+            "side_effects": (),
+        }
+        if from_state in GL_CORE_JOURNAL_SEALED_STATES:
+            response["remediation"] = "post a correcting journal rather than editing a sealed one"
+        return response
+
+    proof = journal.get("invariant_proof")
+    posted_event = None
+    if to_state == "posted":
+        verification = gl_core_verify_journal_invariants(state, journal)
+        if not verification["ok"]:
+            return {
+                "format": "appgen.gl-core-journal-transition.v1",
+                "ok": False,
+                "reason": "invariant_violation",
+                "journal_id": journal_id,
+                "failed_invariants": verification["failed_invariants"],
+                "invariants": verification["invariants"],
+                "side_effects": (),
+            }
+        proof = verification["proof_hash"]
+        append = gl_core_append_ledger_event(
+            state,
+            "JournalPosted",
+            {
+                "tenant": journal["tenant"],
+                "valid_at": journal.get("valid_at", "1970-01-01T00:00:00Z"),
+                "period_id": journal["period_id"],
+                "lines": journal["lines"],
+                "source_text": journal.get("source_text"),
+                "source_document_hash": journal.get("source_document_hash"),
+                "journal_id": journal_id,
+                "invariant_proof": proof,
+            },
+        )
+        if not append["ok"]:
+            return {
+                "format": "appgen.gl-core-journal-transition.v1",
+                "ok": False,
+                "reason": "append_rejected",
+                "journal_id": journal_id,
+                "detail": append.get("error"),
+                "side_effects": (),
+            }
+        state = append["state"]
+        posted_event = append["event"]
+
+    record = {
+        "journal_id": journal_id,
+        "tenant": journal["tenant"],
+        "from_state": from_state,
+        "to_state": to_state,
+        "actor": transition.get("actor"),
+        "reason": transition.get("reason"),
+        "invariant_proof": proof,
+    }
+    updated = {
+        **journal,
+        "lifecycle_state": to_state,
+        "invariant_proof": proof,
+        "lifecycle_history": (*journal.get("lifecycle_history", ()), record),
+    }
+    if to_state == "correcting":
+        updated["correction_of"] = transition.get("correction_of", journal_id)
+    next_state = {
+        **state,
+        "journals": {**state["journals"], journal_id: updated},
+        "journal_lifecycle_transitions": (*state.get("journal_lifecycle_transitions", ()), record),
+    }
+    return {
+        "format": "appgen.gl-core-journal-transition.v1",
+        "ok": True,
+        "state": next_state,
+        "journal": updated,
+        "transition": record,
+        "ledger_event": posted_event,
+        "side_effects": (),
+    }
+
+
+def gl_core_open_accounting_period(state: dict, period: dict) -> dict:
+    """Open an accounting period, the window a journal must land inside.
+
+    A period opens explicitly rather than being created by the first journal
+    that mentions it. If posting could mint its own period, the `period_admissible`
+    invariant would be true by construction and would prove nothing.
+    """
+    required = ("period_id", "tenant", "fiscal_year", "starts_at", "ends_at")
+    missing = tuple(field for field in required if not period.get(field))
+    if missing:
+        raise ValueError(f"Missing GL period fields: {missing}")
+    existing = state.get("periods", {})
+    if period["period_id"] in existing:
+        raise ValueError(f"GL period already exists: {period['period_id']}")
+    if period["starts_at"] >= period["ends_at"]:
+        raise ValueError("GL period start must precede its end")
+    overlap = tuple(
+        item["period_id"]
+        for item in existing.values()
+        if item["tenant"] == period["tenant"]
+        and item["starts_at"] <= period["ends_at"]
+        and period["starts_at"] <= item["ends_at"]
+    )
+    if overlap:
+        raise ValueError(f"GL period overlaps an existing period for this tenant: {overlap}")
+    stored = {**period, "status": "open", "closed_at": None}
+    next_state = {**state, "periods": {**existing, period["period_id"]: stored}}
+    return {
+        "format": "appgen.gl-core-period-open.v1",
+        "ok": True,
+        "state": next_state,
+        "period": stored,
+        "side_effects": (),
+    }
+
+
+def gl_core_transition_period_state(state: dict, period_id: str, transition: dict) -> dict:
+    """Lock, reopen, or close an accounting period, or explain why it cannot."""
+    period = state.get("periods", {}).get(period_id)
+    if period is None:
+        return {"ok": False, "reason": "unknown_period", "period_id": period_id, "side_effects": ()}
+    from_state = period.get("status", "open")
+    to_state = transition.get("to_state")
+    allowed = GL_CORE_PERIOD_LIFECYCLE_TRANSITIONS.get(from_state, ())
+    if to_state not in allowed:
+        return {
+            "format": "appgen.gl-core-period-transition.v1",
+            "ok": False,
+            "reason": "invalid_transition",
+            "period_id": period_id,
+            "from_state": from_state,
+            "to_state": to_state,
+            "allowed_transitions": allowed,
+            "side_effects": (),
+        }
+    unposted = tuple(
+        journal_id
+        for journal_id, journal in state.get("journals", {}).items()
+        if journal["period_id"] == period_id
+        and journal.get("lifecycle_state") not in GL_CORE_JOURNAL_SEALED_STATES
+    )
+    if to_state == "closed" and unposted:
+        return {
+            "format": "appgen.gl-core-period-transition.v1",
+            "ok": False,
+            "reason": "unposted_journals",
+            "period_id": period_id,
+            "unposted_journals": unposted,
+            "remediation": "post or reject every journal in the period before closing it",
+            "side_effects": (),
+        }
+    record = {
+        "period_id": period_id,
+        "tenant": period["tenant"],
+        "from_state": from_state,
+        "to_state": to_state,
+        "actor": transition.get("actor"),
+        "reason": transition.get("reason"),
+    }
+    updated = {
+        **period,
+        "status": to_state,
+        "closed_at": transition.get("closed_at") if to_state == "closed" else period.get("closed_at"),
+        "lifecycle_history": (*period.get("lifecycle_history", ()), record),
+    }
+    next_state = {
+        **state,
+        "periods": {**state["periods"], period_id: updated},
+        "period_lifecycle_transitions": (*state.get("period_lifecycle_transitions", ()), record),
+    }
+    return {
+        "format": "appgen.gl-core-period-transition.v1",
+        "ok": True,
+        "state": next_state,
+        "period": updated,
+        "transition": record,
+        "side_effects": (),
     }
 
 
@@ -651,6 +1314,25 @@ def gl_core_build_workbench_view(state: dict, *, tenant: str | None = None) -> d
     close = gl_core_create_continuous_close_snapshot(state, tenant=tenant)
     tenant_events = tuple(event for event in state.get("events", ()) if not tenant or event["tenant"] == tenant)
     outbox = tuple(event for event in state.get("outbox", ()) if event["idempotency_key"].startswith("gl_core:"))
+    accounts = tuple(
+        account for account in state.get("accounts", {}).values() if not tenant or account["tenant"] == tenant
+    )
+    journals = tuple(
+        journal for journal in state.get("journals", {}).values() if not tenant or journal["tenant"] == tenant
+    )
+    periods = tuple(
+        period for period in state.get("periods", {}).values() if not tenant or period["tenant"] == tenant
+    )
+    account_state_counts = {state_name: 0 for state_name in GL_CORE_ACCOUNT_LIFECYCLE_TRANSITIONS}
+    for account in accounts:
+        account_state_counts[account.get("lifecycle_state", "proposed")] = (
+            account_state_counts.get(account.get("lifecycle_state", "proposed"), 0) + 1
+        )
+    journal_state_counts = {state_name: 0 for state_name in GL_CORE_JOURNAL_LIFECYCLE_TRANSITIONS}
+    for journal in journals:
+        journal_state_counts[journal.get("lifecycle_state", "draft")] = (
+            journal_state_counts.get(journal.get("lifecycle_state", "draft"), 0) + 1
+        )
     return {
         "format": "appgen.gl-core-workbench-view.v1",
         "tenant": tenant or "all",
@@ -666,6 +1348,21 @@ def gl_core_build_workbench_view(state: dict, *, tenant: str | None = None) -> d
         "inbox_count": len(state.get("inbox", ())),
         "dead_letter_count": len(state.get("dead_letter", state.get("dead_letters", ()))),
         "retry_evidence_count": len(state.get("retry_evidence", ())),
+        "chart_account_count": len(accounts),
+        "postable_account_count": account_state_counts.get("active", 0),
+        "account_lifecycle_state_counts": tuple(sorted(account_state_counts.items())),
+        "journal_count": len(journals),
+        "posted_journal_count": journal_state_counts.get("posted", 0),
+        "unposted_journal_count": sum(
+            count
+            for state_name, count in journal_state_counts.items()
+            if state_name not in GL_CORE_JOURNAL_SEALED_STATES
+        ),
+        "journal_lifecycle_state_counts": tuple(sorted(journal_state_counts.items())),
+        "period_count": len(periods),
+        "open_period_count": sum(
+            1 for period in periods if period.get("status") in GL_CORE_PERIOD_ADMISSIBLE_STATES
+        ),
         "binding_evidence": {
             "owned_tables": GL_CORE_OWNED_TABLES,
             "outbox_table": "gl_core_appgen_outbox_event",
@@ -836,6 +1533,14 @@ def gl_core_build_api_contract() -> dict:
             {"route": "POST /gl/close-snapshots", "command": "create_continuous_close_snapshot", "owned_tables": ("gl_core_close_snapshot", "gl_core_account_projection"), "emits": ("CloseSnapshotCreated",), "requires_permission": "gl_core.close", "idempotency_key": "tenant:period"},
             {"route": "POST /gl/reconciliations", "command": "suggest_reconciliation", "owned_tables": ("gl_core_reconciliation_case",), "emits": ("ReconciliationSuggested",), "requires_permission": "gl_core.reconcile", "idempotency_key": "source_id"},
             {"route": "POST /gl/policy-rules", "command": "register_rule", "owned_tables": ("gl_core_policy_rule",), "emits": ("PostingPolicyChanged",), "requires_permission": "gl_core.configure", "idempotency_key": "rule_id"},
+            {"route": "POST /gl/accounts", "command": "register_account", "owned_tables": ("gl_core_ledger_account",), "emits": (), "requires_permission": "gl_core.configure", "idempotency_key": "tenant:account_code"},
+            {"route": "POST /gl/accounts/{account_id}/lifecycle-transitions", "command": "transition_account_state", "owned_tables": ("gl_core_ledger_account",), "emits": (), "requires_permission": "gl_core.configure", "idempotency_key": "account_id:to_state"},
+            {"route": "GET /gl/chart-governance", "query": "chart_governance_contract", "owned_tables": ("gl_core_ledger_account", "gl_core_accounting_period"), "requires_permission": "gl_core.configure"},
+            {"route": "POST /gl/periods", "command": "open_accounting_period", "owned_tables": ("gl_core_accounting_period",), "emits": (), "requires_permission": "gl_core.close", "idempotency_key": "tenant:period_id"},
+            {"route": "POST /gl/periods/{period_id}/lifecycle-transitions", "command": "transition_period_state", "owned_tables": ("gl_core_accounting_period",), "emits": ("PeriodClosed",), "requires_permission": "gl_core.close", "idempotency_key": "period_id:to_state"},
+            {"route": "POST /gl/journals", "command": "register_journal", "owned_tables": ("gl_core_journal_entry", "gl_core_journal_line"), "emits": (), "requires_permission": "gl_core.post", "idempotency_key": "journal_id"},
+            {"route": "POST /gl/journals/{journal_id}/lifecycle-transitions", "command": "transition_journal_state", "owned_tables": ("gl_core_journal_entry", "gl_core_journal_line"), "emits": ("JournalPosted",), "requires_permission": "gl_core.post", "idempotency_key": "journal_id:to_state:reason"},
+            {"route": "POST /gl/journals/{journal_id}/invariant-proof", "query": "verify_journal_invariants", "owned_tables": ("gl_core_journal_entry", "gl_core_journal_line", "gl_core_ledger_account"), "requires_permission": "gl_core.post"},
             {"route": "POST /gl/events/inbox", "command": "receive_event", "owned_tables": (), "consumes": GL_CORE_CONSUMED_EVENT_TYPES, "requires_permission": "gl_core.event", "idempotency_key": "event_id"},
             {"route": "GET /gl/audit-proof", "query": "generate_audit_proof", "owned_tables": ("gl_core_journal_event", "gl_core_close_snapshot"), "requires_permission": "gl_core.audit"},
             {"route": "GET /gl/workbench", "query": "build_workbench_view", "owned_tables": GL_CORE_OWNED_TABLES, "requires_permission": "gl_core.audit"},
@@ -848,6 +1553,14 @@ def gl_core_build_api_contract() -> dict:
             "POST /gl/close-snapshots",
             "POST /gl/reconciliations",
             "POST /gl/policy-rules",
+            "POST /gl/accounts",
+            "POST /gl/accounts/{account_id}/lifecycle-transitions",
+            "GET /gl/chart-governance",
+            "POST /gl/periods",
+            "POST /gl/periods/{period_id}/lifecycle-transitions",
+            "POST /gl/journals",
+            "POST /gl/journals/{journal_id}/lifecycle-transitions",
+            "POST /gl/journals/{journal_id}/invariant-proof",
             "POST /gl/events/inbox",
             "GET /gl/audit-proof",
             "GET /gl/workbench",
@@ -935,9 +1648,12 @@ def gl_core_build_schema_contract() -> dict:
     )
     return {
         "format": "appgen.gl-core-owned-schema-contract.v1",
+        # `tables` is built by walking GL_CORE_OWNED_TABLES, so the prefix check
+        # reads the same names the table list does. Reading it off the dict rows
+        # instead makes the value a union of every column type in the row.
         "ok": len(tables) == len(GL_CORE_OWNED_TABLES)
         and all(set(item["fields"]) for item in tables)
-        and all(item["table"].startswith("gl_core_") for item in tables),
+        and all(table.startswith("gl_core_") for table in GL_CORE_OWNED_TABLES),
         "tables": tables,
         "relationships": relationships,
         "migrations": migrations,
@@ -960,8 +1676,14 @@ def gl_core_build_service_contract() -> dict:
         "configure_runtime",
         "set_parameter",
         "register_rule",
-        "register_chart_account",
+        "register_account",
+        "transition_account_state",
+        "chart_governance_contract",
         "open_accounting_period",
+        "transition_period_state",
+        "register_journal",
+        "transition_journal_state",
+        "verify_journal_invariants",
         "append_ledger_event",
         "post_recurring_journal",
         "post_reversal_entry",
@@ -988,6 +1710,8 @@ def gl_core_build_service_contract() -> dict:
             "query_temporal_ledger",
             "build_federated_view",
             "measure_information_auditability",
+            "chart_governance_contract",
+            "verify_journal_invariants",
             "build_workbench_view",
         ),
         "mutates_only": GL_CORE_OWNED_TABLES,
@@ -1042,6 +1766,14 @@ def gl_core_permissions_contract() -> dict:
         "action_permissions": {
             "append_ledger_event": "gl_core.post",
             "predict_posting_validation": "gl_core.post",
+            "register_journal": "gl_core.post",
+            "transition_journal_state": "gl_core.post",
+            "verify_journal_invariants": "gl_core.post",
+            "register_account": "gl_core.configure",
+            "transition_account_state": "gl_core.configure",
+            "chart_governance_contract": "gl_core.configure",
+            "open_accounting_period": "gl_core.close",
+            "transition_period_state": "gl_core.close",
             "build_projection": "gl_core.read",
             "create_continuous_close_snapshot": "gl_core.close",
             "suggest_reconciliation": "gl_core.reconcile",

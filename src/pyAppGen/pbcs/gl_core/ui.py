@@ -3,16 +3,22 @@
 from __future__ import annotations
 
 from .runtime import GL_CORE_ALLOWED_DATABASE_BACKENDS
+from .runtime import GL_CORE_ACCOUNT_POSTABLE_STATES
 from .runtime import GL_CORE_CONSUMED_EVENT_TYPES
 from .runtime import GL_CORE_EMITTED_EVENT_TYPES
+from .runtime import GL_CORE_JOURNAL_SEALED_STATES
 from .runtime import GL_CORE_OWNED_TABLES
+from .runtime import GL_CORE_PERIOD_ADMISSIBLE_STATES
 from .runtime import GL_CORE_REQUIRED_EVENT_TOPIC
+from .runtime import gl_core_chart_governance_contract
 from .runtime import gl_core_permissions_contract
 
 
 GL_CORE_UI_FRAGMENT_KEYS = (
     "GeneralLedgerWorkbench",
     "JournalEntryConsole",
+    "JournalLifecycleConsole",
+    "ChartOfAccountsConsole",
     "TrialBalanceView",
     "AccountProjectionExplorer",
     "CloseCommandCenter",
@@ -35,6 +41,9 @@ def gl_core_ui_contract() -> dict:
         "routes": (
             "/workbench/pbcs/gl_core",
             "/workbench/pbcs/gl_core/journals",
+            "/workbench/pbcs/gl_core/journals/lifecycle",
+            "/workbench/pbcs/gl_core/chart-of-accounts",
+            "/workbench/pbcs/gl_core/periods",
             "/workbench/pbcs/gl_core/trial-balance",
             "/workbench/pbcs/gl_core/projections",
             "/workbench/pbcs/gl_core/close",
@@ -51,6 +60,28 @@ def gl_core_ui_contract() -> dict:
                 "fragment": "JournalEntryConsole",
                 "binds_to": ("journal_event", "journal_line", "outbox"),
                 "commands": ("append_ledger_event", "predict_posting_validation"),
+            },
+            {
+                "key": "journal_lifecycle",
+                "fragment": "JournalLifecycleConsole",
+                "binds_to": ("journal_entry", "journal_line", "accounting_period"),
+                "commands": (
+                    "register_journal",
+                    "transition_journal_state",
+                    "verify_journal_invariants",
+                    "chart_governance_contract",
+                ),
+            },
+            {
+                "key": "chart_governance",
+                "fragment": "ChartOfAccountsConsole",
+                "binds_to": ("ledger_account", "accounting_period"),
+                "commands": (
+                    "register_account",
+                    "transition_account_state",
+                    "open_accounting_period",
+                    "transition_period_state",
+                ),
             },
             {
                 "key": "close",
@@ -72,6 +103,7 @@ def gl_core_ui_contract() -> dict:
             },
         ),
         "action_permissions": gl_core_permissions_contract()["action_permissions"],
+        "chart_governance": gl_core_chart_governance_contract(),
         "configuration_editor": {
             "required_fields": ("database_backend", "event_topic", "retry_limit", "default_currency", "default_timezone"),
             "allowed_database_backends": GL_CORE_ALLOWED_DATABASE_BACKENDS,
@@ -116,6 +148,10 @@ def gl_core_render_workbench(
     visible_actions = tuple(action for action, required in contract["action_permissions"].items() if required in permissions)
     events = tuple(event for event in state.get("events", ()) if event["tenant"] == tenant)
     projection = _projection_summary(state, tenant)
+    accounts = tuple(account for account in state.get("accounts", {}).values() if account["tenant"] == tenant)
+    journals = tuple(journal for journal in state.get("journals", {}).values() if journal["tenant"] == tenant)
+    periods = tuple(period for period in state.get("periods", {}).values() if period["tenant"] == tenant)
+    sealed = set(GL_CORE_JOURNAL_SEALED_STATES)
     cards = (
         {"key": "journal_events", "value": len(events), "fragment": "JournalEntryConsole"},
         {"key": "accounts", "value": projection["account_count"], "fragment": "AccountProjectionExplorer"},
@@ -124,6 +160,12 @@ def gl_core_render_workbench(
         {"key": "outbox_events", "value": len(state.get("outbox", ())), "fragment": "AuditProofViewer"},
         {"key": "inbox_events", "value": len(state.get("inbox", ())), "fragment": "ControlsDashboard"},
         {"key": "dead_letter_events", "value": len(state.get("dead_letter", state.get("dead_letters", ()))), "fragment": "ControlsDashboard"},
+        {"key": "chart_accounts", "value": len(accounts), "fragment": "ChartOfAccountsConsole"},
+        {"key": "postable_accounts", "value": sum(1 for account in accounts if account.get("lifecycle_state") in GL_CORE_ACCOUNT_POSTABLE_STATES), "fragment": "ChartOfAccountsConsole"},
+        {"key": "open_periods", "value": sum(1 for period in periods if period.get("status") in GL_CORE_PERIOD_ADMISSIBLE_STATES), "fragment": "ChartOfAccountsConsole"},
+        {"key": "journals", "value": len(journals), "fragment": "JournalLifecycleConsole"},
+        {"key": "posted_journals", "value": sum(1 for journal in journals if journal.get("lifecycle_state") == "posted"), "fragment": "JournalLifecycleConsole"},
+        {"key": "unposted_journals", "value": sum(1 for journal in journals if journal.get("lifecycle_state") not in sealed), "fragment": "JournalLifecycleConsole"},
     )
     return {
         "format": "appgen.gl-core-workbench-render.v1",
@@ -179,6 +221,12 @@ def _appgen_smoke_state():
         "dead_letter": (),
         "dead_letters": (),
         "events": (),
+        "accounts": {},
+        "account_lifecycle_transitions": (),
+        "journals": {},
+        "journal_lifecycle_transitions": (),
+        "periods": {},
+        "period_lifecycle_transitions": (),
     })
 
 
