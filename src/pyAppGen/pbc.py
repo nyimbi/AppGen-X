@@ -15,6 +15,7 @@ import py_compile
 import re
 import sys
 import tempfile
+from functools import lru_cache
 from pathlib import Path
 
 from . import pbc_schema
@@ -11566,8 +11567,16 @@ def pbc_mesh_catalog() -> tuple[dict, ...]:
     )
 
 
+@lru_cache(maxsize=None)
 def pbc_catalog(mesh: str | None = None) -> tuple[dict, ...]:
-    """Return selectable PBC descriptors for the IDE catalog."""
+    """Return selectable PBC descriptors for the IDE catalog.
+
+    The catalog is built once per mesh and reused. Every descriptor folds in its
+    package's runtime capabilities, and the LSP calls this by key on the order of
+    fifty times per request, so rebuilding it each time cost 27s for a result
+    that is a pure function of a module-level dict. `pbc_catalog.cache_clear()`
+    is the one way to force a rebuild after a runtime mutation.
+    """
     selected = tuple(
         (key, value)
         for key, value in PBC_CATALOG.items()

@@ -211,6 +211,20 @@ a static Node server. A static server answers every `/api/studio/*` request
 with `index.html`, so the panels render their error state and the smoke passes
 against a Studio no one runs.
 
+The smoke reads a *complete* document rather than a clean exit. `--dump-dom`
+writes the whole DOM and then hangs on some Chrome builds instead of exiting,
+so a harness that waits for the process rejects a page that rendered correctly.
+It accepts the dump once `</html>` has arrived and still fails on a truncated
+document, which is the case worth catching.
+
+`pbc_catalog()` is cached. Every descriptor folds in its package's
+`*_runtime_capabilities()`, and the language service looks the catalog up by key
+about fifty times per request, so rebuilding it each time cost 27 seconds for a
+result that is a pure function of a module-level dict. With the cache the whole
+Studio workspace is 0.6s instead of 36s, and the designer route is 0.09s.
+`pbc_catalog.cache_clear()` is the one way to force a rebuild after a runtime
+mutation of `PBC_CATALOG`.
+
 ## Visual Design Architecture
 
 Visual design is split into two related capabilities:

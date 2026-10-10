@@ -92,31 +92,40 @@ function dumpDomWithHeadlessMode(chrome, url, headlessMode) {
     })
     let stdout = ''
     let stderr = ''
-    const timeout = setTimeout(() => {
+    let settled = false
+    const finish = (error) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timeout)
       browser.kill('SIGKILL')
       rmSync(userDataDir, { force: true, recursive: true })
-      rejectDump(new Error(`Timed out loading ${url}`))
-    }, 15000)
+      if (error) rejectDump(error)
+      else resolveDump(stdout)
+    }
+    const timeout = setTimeout(() => {
+      // `--dump-dom` writes the document and then hangs instead of exiting on
+      // some Chrome builds. A complete document is the evidence the caller
+      // wants, so it is accepted; a truncated one is still a failure.
+      if (stdout.includes('</html>')) finish()
+      else finish(new Error(`Timed out loading ${url} with an incomplete document`))
+    }, 20000)
 
     browser.stdout.on('data', (chunk) => {
       stdout += chunk.toString()
+      if (stdout.includes('</html>')) finish()
     })
     browser.stderr.on('data', (chunk) => {
       stderr += chunk.toString()
     })
     browser.once('error', (error) => {
-      clearTimeout(timeout)
-      rmSync(userDataDir, { force: true, recursive: true })
-      rejectDump(error)
+      finish(error)
     })
     browser.once('close', (code) => {
-      clearTimeout(timeout)
-      rmSync(userDataDir, { force: true, recursive: true })
       if (code !== 0) {
-        rejectDump(new Error(`Chrome exited with ${code} for ${url}\n${stderr}`))
+        finish(new Error(`Chrome exited with ${code} for ${url}\n${stderr}`))
         return
       }
-      resolveDump(stdout)
+      finish()
     })
   })
 }
@@ -155,7 +164,7 @@ async function main() {
       includes: [
         'AppGen Studio',
         'Toolbox',
-        'Invoice Workspace',
+        'InvoiceForm',
         'Object Inspector',
         'Component Installation',
         'Native Capability Coverage',
@@ -166,8 +175,23 @@ async function main() {
     },
     {
       id: 'semantic_service_bridge',
-      path: '/',
+      path: '/#database',
       includes: ['Language service', 'Designer sync', 'Graph suite', 'Change planner'],
+    },
+    {
+      id: 'designer_binding_graph',
+      path: '/#forms',
+      includes: ['Bindings', 'field:name', 'control:name', 'field_to_control'],
+    },
+    {
+      id: 'data_service_lanes',
+      path: '/#database',
+      includes: ['Sources, Queries, Publishing', 'Embedded DB', 'Resilience', 'Readiness'],
+    },
+    {
+      id: 'inspector_editors',
+      path: '/#forms',
+      includes: ['Object Inspector', 'Property', 'Event', 'Custom Designer'],
     },
     {
       // `mobile` is the platform's category key; its display heading is Device.
