@@ -25889,6 +25889,8 @@ def _pbc_workbench_payload(schema: AppSchema) -> dict:
                 "mesh": contract["mesh"],
                 "route": ui.get("route") or f"/workbench/pbcs/{contract['pbc']}",
                 "fragments": tuple(ui.get("fragments", ())),
+                "panels": tuple(ui.get("panels", ())),
+                "routes": tuple(ui.get("routes", ())),
                 "workbench_view": ui.get("workbench_view"),
                 "binds_to": ui.get("binds_to"),
                 "owned_tables": tuple(
@@ -25963,6 +25965,7 @@ def render_workbench(pbc, *, tenant="default", principal_permissions=()):
     cards = (
         {{"key": "owned_tables", "label": "Owned tables", "value": len(entry["owned_tables"])}},
         {{"key": "api_routes", "label": "Command and query APIs", "value": len(entry["apis"])}},
+        {{"key": "panels", "label": "Workbench panels", "value": len(entry["panels"])}},
         {{"key": "permissions", "label": "Bound permissions", "value": len(entry["permissions"])}},
         {{"key": "outbox", "label": "Event outbox", "value": entry["outbox_table"]}},
         {{"key": "dead_letter", "label": "Dead-letter queue", "value": entry["dead_letter_table"]}},
@@ -25976,6 +25979,7 @@ def render_workbench(pbc, *, tenant="default", principal_permissions=()):
         "tenant": tenant,
         "route": entry["route"],
         "fragments": entry["fragments"],
+        "panels": entry["panels"],
         "workbench_view": entry["workbench_view"],
         "binds_to": entry["binds_to"],
         "owned_tables": entry["owned_tables"],
@@ -26154,6 +26158,25 @@ _PBC_WORKBENCH_DETAIL_TEMPLATE = """{% extends "appbuilder/base.html" %}
     <li><code>{{ api }}</code></li>
     {% endfor %}
   </ul>
+
+  {% if workbench.panels %}
+  <h2 class="appgen-section-title">Panels</h2>
+  <table class="appgen-table">
+    <thead>
+      <tr><th>Panel</th><th>Fragment</th><th>Binds to</th><th>Commands</th></tr>
+    </thead>
+    <tbody>
+      {% for panel in workbench.panels %}
+      <tr>
+        <td>{{ panel.key }}</td>
+        <td><code>{{ panel.fragment }}</code></td>
+        <td>{{ panel.binds_to | join(", ") }}</td>
+        <td>{{ panel.commands | join(", ") }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
 </section>
 {% endblock %}
 """
@@ -32083,9 +32106,13 @@ def _spa_contract_text(schema: AppSchema) -> str:
         "  name: string\n  label: string\n  route: string\n  primaryKey: string\n  columns: readonly string[]\n}\n\n"
         "export type WorkbenchSpec = {\n  pbc: string\n  label: string\n  mesh: string\n  route: string\n}\n\n"
         "export type WorkbenchCard = { key: string; label: string; value: string | number }\n\n"
+        "export type WorkbenchPanel = {\n"
+        "  key: string\n  fragment: string\n"
+        "  binds_to: readonly string[]\n  commands: readonly string[]\n}\n\n"
         "export type WorkbenchRender = {\n"
         "  ok: boolean\n  pbc: string\n  label: string\n  mesh: string\n  tenant: string\n  route: string\n"
         "  fragments: readonly string[]\n  owned_tables: readonly string[]\n"
+        "  panels: readonly WorkbenchPanel[]\n"
         "  apis: readonly Record<string, string>[]\n  cards: readonly WorkbenchCard[]\n}\n\n"
         f"export const TABLES: readonly TableSpec[] = {_ts_literal(tables)}\n\n"
         f"export const WORKBENCHES: readonly WorkbenchSpec[] = {_ts_literal(workbenches)}\n"

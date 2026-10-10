@@ -190,6 +190,7 @@ def _workbench_payloads(project: Path) -> dict:
             "tenant": "test",
             "route": entry["route"],
             "fragments": list(entry["fragments"]),
+            "panels": [dict(panel) for panel in entry["panels"]],
             "workbench_view": entry["workbench_view"],
             "binds_to": entry["binds_to"],
             "owned_tables": list(entry["owned_tables"]),
@@ -198,6 +199,7 @@ def _workbench_payloads(project: Path) -> dict:
             "cards": [
                 {"key": "owned_tables", "label": "Owned tables", "value": len(entry["owned_tables"])},
                 {"key": "api_routes", "label": "Command and query APIs", "value": len(entry["apis"])},
+                {"key": "panels", "label": "Workbench panels", "value": len(entry["panels"])},
                 {"key": "permissions", "label": "Bound permissions", "value": len(entry["permissions"])},
                 {"key": "outbox", "label": "Event outbox", "value": entry["outbox_table"]},
                 {"key": "dead_letter", "label": "Dead-letter queue", "value": entry["dead_letter_table"]},
@@ -284,6 +286,25 @@ def test_the_shared_kit_classes_are_on_the_page(rendered):
     _select(page, payload, COMPOSITION[0])
     for selector in (".appgen-workbench", ".appgen-table", ".appgen-card", ".appgen-nav-rail"):
         assert page.locator(selector).count() > 0, selector
+
+
+def test_declared_panels_appear_as_real_rows(rendered):
+    """The package's own panels must render, not just its fragments.
+
+    A PBC declares panels in its package `ui_contract`; the generated contract
+    used to collapse them to a two-name placeholder, so the workbench rendered
+    a stub for a block that carries six real panels. This is the assertion that
+    would have caught it: the panel keys the payload carries must appear in the
+    rendered DOM.
+    """
+    page, payload = rendered
+    first = payload[COMPOSITION[0]]
+    assert first["panels"], "the payload carries no panels to assert on"
+    _select(page, payload, COMPOSITION[0])
+    body = page.locator(".appgen-workbench").inner_text()
+    for panel in first["panels"]:
+        assert panel["key"] in body, panel["key"]
+        assert panel["fragment"] in body, panel["fragment"]
 
 
 def test_the_shell_navigates_to_another_workbench(rendered):
@@ -379,6 +400,7 @@ def test_the_render_gate_fails_on_a_workbench_that_renders_nothing(rendered_brok
         test_owned_tables_appear_as_real_rows,
         test_api_routes_appear_with_their_methods,
         test_the_shared_kit_classes_are_on_the_page,
+        test_declared_panels_appear_as_real_rows,
         test_every_workbench_renders_without_error,
     )
     survived = []

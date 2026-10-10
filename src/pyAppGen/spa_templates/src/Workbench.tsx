@@ -19,6 +19,13 @@ type ApiRow = {
   permission?: string
 }
 
+type PanelRow = {
+  key: string
+  fragment: string
+  binds_to: readonly string[]
+  commands: readonly string[]
+}
+
 const apiColumns: readonly TableColumn<ApiRow>[] = [
   {
     key: 'method',
@@ -28,6 +35,13 @@ const apiColumns: readonly TableColumn<ApiRow>[] = [
   },
   { key: 'route', header: 'Route', render: (row) => <code>{row.route}</code> },
   { key: 'handler', header: 'Handler', render: (row) => row.handler },
+]
+
+const panelColumns: readonly TableColumn<PanelRow>[] = [
+  { key: 'key', header: 'Panel', render: (row) => row.key },
+  { key: 'fragment', header: 'Fragment', render: (row) => <code>{row.fragment}</code> },
+  { key: 'binds_to', header: 'Binds to', render: (row) => row.binds_to.join(', ') },
+  { key: 'commands', header: 'Commands', render: (row) => row.commands.join(', ') },
 ]
 
 export function Workbench({ workbench }: { workbench: WorkbenchRender }) {
@@ -76,6 +90,17 @@ export function Workbench({ workbench }: { workbench: WorkbenchRender }) {
           rowKey={(row) => `${row.method} ${row.route}`}
         />
       </Card>
+
+      {workbench.panels.length > 0 && (
+        <Card title="Panels" subtitle={`${workbench.panels.length} panels`} flush>
+          <Table
+            caption={`Panels declared by ${workbench.pbc}`}
+            columns={panelColumns}
+            rows={workbench.panels as readonly PanelRow[]}
+            rowKey={(row) => row.key}
+          />
+        </Card>
+      )}
 
       {workbench.fragments.length > 0 && (
         <Card title="Declared fragments">

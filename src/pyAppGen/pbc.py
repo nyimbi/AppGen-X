@@ -13279,8 +13279,16 @@ def pbc_implementation_contract(key: str) -> dict:
         _api_contract(key, api, position)
         for position, api in enumerate(service["apis"])
     )
+    # The package's own UI contract is the authority for its fragments and
+    # panels. The catalog literal and the `ClassWorkbench`/`ClassDetail`
+    # fallback both under-report: for `dam_core` they yield two fragment names
+    # against a package that declares six, and `ar_credit` sixteen. Reading the
+    # package here is what makes the generated workbench render the capability
+    # the block actually carries rather than a placeholder pair.
+    package_ui = _pbc_source_package_contract(key).get("ui_contract") or {}
     ui_fragments = tuple(
-        service.get("ui_fragments", ())
+        package_ui.get("fragments", ())
+        or service.get("ui_fragments", ())
         or (
             f"{service['class_name']}Workbench",
             f"{service['class_name']}Detail",
@@ -13424,9 +13432,15 @@ def pbc_implementation_contract(key: str) -> dict:
         ),
         "ui": {
             "fragments": ui_fragments,
+            "panels": tuple(package_ui.get("panels", ())),
+            "routes": tuple(package_ui.get("routes", ())) or (f"/workbench/pbcs/{key}",),
             "workbench_view": f"{service['class_name']}Workbench",
             "route": f"/workbench/pbcs/{key}",
-            "binds_to": event_contract["outbox_table"],
+            # The package declares what each panel binds to; the outbox table is
+            # only the fallback when a package declares no binding at all.
+            "binds_to": tuple(package_ui.get("panels", ())[0].get("binds_to", ()))
+            if package_ui.get("panels")
+            else event_contract["outbox_table"],
         },
         "permissions": permissions,
         "configuration": tuple(

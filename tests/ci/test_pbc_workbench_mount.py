@@ -133,9 +133,28 @@ def test_render_exposes_the_pbcs_own_owned_tables(generated_app):
         assert {card["key"] for card in rendered["cards"]} >= {
             "owned_tables",
             "api_routes",
+            "panels",
             "outbox",
             "dead_letter",
         }
+
+
+def test_render_exposes_the_pbcs_own_panels(generated_app):
+    """The panels must be the package's, not a two-name placeholder.
+
+    The generated contract collapsed every PBC's panel list to
+    `ClassWorkbench`/`ClassDetail`, so a workbench for a block carrying six real
+    panels rendered a stub pair. The panels now come from the package's own
+    `ui_contract`, and this asserts the count the packages actually declare.
+    """
+    module = _load_workbench_module(generated_app / "pbc_workbench.py")
+
+    for key in COMPOSITION:
+        rendered = module.render_workbench(key, tenant="test")
+        assert len(rendered["panels"]) >= 5, (key, len(rendered["panels"]))
+        assert set(rendered["fragments"]) >= {panel["fragment"] for panel in rendered["panels"]}, key
+        for panel in rendered["panels"]:
+            assert panel["key"] and panel["fragment"], (key, panel)
 
 
 def test_render_rejects_a_pbc_that_is_not_in_the_composition(generated_app):
