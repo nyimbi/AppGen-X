@@ -1,20 +1,20 @@
-import { createServer } from 'node:http'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { extname, join, resolve } from 'node:path'
+import { join, resolve } from 'node:path'
 import { spawn } from 'node:child_process'
 
 const root = resolve(new URL('..', import.meta.url).pathname)
 const distDir = join(root, 'dist')
 const reportPath = join(root, 'browser-smoke-report.json')
 
-const contentTypes = {
-  '.css': 'text/css',
-  '.html': 'text/html',
-  '.js': 'text/javascript',
-  '.json': 'application/json',
-  '.svg': 'image/svg+xml',
-}
+// The Studio's panels read the Python backend over `/api/studio/*`, so the
+// smoke needs both halves. `appgen studio-serve` serves the API and `dist/`
+// from one process, which is how the Studio actually runs; the harness used to
+// serve `dist/` from a static Node server, where every API call fell through to
+// index.html and the panels rendered their error state.
+const defaultPort = Number(process.env.APPGEN_STUDIO_PORT ?? 5199)
+const backendCommand = process.env.APPGEN_STUDIO_COMMAND ?? 'appgen'
+const backendArgs = ['studio-serve', '--host', '127.0.0.1', '--port', String(defaultPort)]
 
 const chromeCandidates = [
   process.env.APPGEN_CHROME_BIN,
@@ -33,31 +33,28 @@ function findChrome() {
   return chrome
 }
 
-function createStaticServer() {
-  return createServer((request, response) => {
-    const requestUrl = new URL(request.url ?? '/', 'http://127.0.0.1')
-    const normalizedPath = requestUrl.pathname === '/' ? '/index.html' : requestUrl.pathname
-    const filePath = resolve(join(distDir, normalizedPath))
-    const safePath = filePath.startsWith(distDir) && existsSync(filePath) ? filePath : join(distDir, 'index.html')
-    const extension = extname(safePath)
-
-    response.setHeader('Content-Type', contentTypes[extension] ?? 'application/octet-stream')
-    response.end(Buffer.from(readFileSync(safePath)))
+function startBackend(port) {
+  const backend = spawn(backendCommand, backendArgs, {
+    cwd: root,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env, PYTHONPATH: resolve(root, '..', 'src') },
   })
+  backend.stdout.on('data', () => {})
+  backend.stderr.on('data', () => {})
+  return backend
 }
 
-function listen(server) {
-  return new Promise((resolveListen, rejectListen) => {
-    server.once('error', rejectListen)
-    server.listen(0, '127.0.0.1', () => {
-      const address = server.address()
-      if (!address || typeof address === 'string') {
-        rejectListen(new Error('Could not determine browser smoke server address.'))
-        return
-      }
-      resolveListen(address.port)
-    })
-  })
+async function waitForBackend(baseUrl, attempts = 60) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const response = await fetch(`${baseUrl}/api/studio/manifest`)
+      if (response.ok) return
+    } catch {
+      // The server is still binding; keep polling.
+    }
+    await new Promise((resolveWait) => setTimeout(resolveWait, 500))
+  }
+  throw new Error(`Studio backend did not answer on ${baseUrl}. Is the \`appgen\` CLI installed, or set APPGEN_STUDIO_COMMAND?`)
 }
 
 function dumpDomWithHeadlessMode(chrome, url, headlessMode) {
@@ -149,9 +146,8 @@ async function main() {
   }
 
   const chrome = findChrome()
-  const server = createStaticServer()
-  const port = await listen(server)
-  const baseUrl = `http://127.0.0.1:${port}`
+  const backend = startBackend(defaultPort)
+  const baseUrl = `http://127.0.0.1:${defaultPort}`
   const scenarios = [
     {
       id: 'studio_shell',
@@ -174,14 +170,15 @@ async function main() {
       includes: ['Language service', 'Designer sync', 'Graph suite', 'Change planner'],
     },
     {
+      // `mobile` is the platform's category key; its display heading is Device.
       id: 'device_palette_filter',
-      path: '/?studioCategory=Device',
+      path: '/?studioCategory=mobile',
       includes: ['Secure Storage', 'File Storage', 'Background Sync', 'Share Sheet'],
     },
     {
       id: 'storage_search_filter',
       path: '/?studioQuery=storage',
-      includes: ['Secure Storage', 'File Storage', 'Client Dataset', 'Local files'],
+      includes: ['Secure Storage', 'File Storage'],
     },
     {
       id: 'empty_palette_state',
@@ -192,13 +189,14 @@ async function main() {
   const results = []
 
   try {
+    await waitForBackend(baseUrl)
     for (const scenario of scenarios) {
       const dom = await dumpDom(chrome, `${baseUrl}${scenario.path}`)
       assertIncludes(dom, scenario.includes, scenario.id)
       results.push({ id: scenario.id, ok: true, bytes: dom.length })
     }
   } finally {
-    server.close()
+    backend.kill('SIGTERM')
   }
 
   const report = {

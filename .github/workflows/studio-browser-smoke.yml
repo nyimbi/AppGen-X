@@ -4,19 +4,20 @@ on:
   push:
     paths:
       - "appgen-frontend/**"
+      - "src/pyAppGen/studio_backend.py"
+      - "src/pyAppGen/form_designer.py"
       - ".github/workflows/studio-browser-smoke.yml"
   pull_request:
     paths:
       - "appgen-frontend/**"
+      - "src/pyAppGen/studio_backend.py"
+      - "src/pyAppGen/form_designer.py"
       - ".github/workflows/studio-browser-smoke.yml"
   workflow_dispatch:
 
 jobs:
   studio-browser-smoke:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: appgen-frontend
 
     steps:
       - name: Check out repository
@@ -29,22 +30,43 @@ jobs:
           cache: npm
           cache-dependency-path: appgen-frontend/package-lock.json
 
-      - name: Configure browser binary
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # The Studio's panels read the Python backend over `/api/studio/*`, so the
+      # smoke runs both halves: `appgen studio-serve` serves the API and the
+      # built frontend from one process, which is how the Studio actually runs.
+      - name: Install the backend
+        run: pip install -e .
+
+      - name: Install frontend dependencies
+        working-directory: appgen-frontend
+        run: npm ci
+
+      - name: Install the browser
         run: |
-          BROWSER_BIN="$(command -v google-chrome || command -v chromium-browser || command -v chromium)"
-          if [ -z "$BROWSER_BIN" ]; then
-            echo "No Chrome-compatible browser found on runner." >&2
+          python -m playwright install --with-deps chromium
+          BROWSER_BIN="$(python - <<'PY'
+          from playwright.sync_api import sync_playwright
+
+          with sync_playwright() as playwright:
+              print(playwright.chromium.executable_path)
+          PY
+          )"
+          if [ ! -x "$BROWSER_BIN" ]; then
+            echo "Playwright did not report a usable Chromium at '$BROWSER_BIN'." >&2
             exit 1
           fi
           echo "APPGEN_CHROME_BIN=$BROWSER_BIN" >> "$GITHUB_ENV"
 
-      - name: Install frontend dependencies
-        run: npm ci
-
       - name: Build Studio frontend
+        working-directory: appgen-frontend
         run: npm run build
 
       - name: Run Studio browser smoke
+        working-directory: appgen-frontend
         run: node scripts/browser-smoke.mjs
 
       - name: Upload Studio browser smoke report

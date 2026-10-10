@@ -4,8 +4,6 @@ import { studioCatalogAudit } from './catalogAudit'
 const catalogAudit = studioCatalogAudit()
 const bindingAudit = catalogAudit.bindingAudit
 const dataAudit = catalogAudit.dataAudit
-const deviceAudit = catalogAudit.deviceAudit
-const iconAudit = catalogAudit.componentAudit
 const inspectorAudit = catalogAudit.inspectorAudit
 const interactionAudit = catalogAudit.interactionAudit
 const packageAudit = catalogAudit.packageAudit
@@ -24,11 +22,6 @@ const statuses = [
     icon: 'package' as const,
   },
   {
-    label: 'Device APIs',
-    value: deviceAudit.ok ? `${deviceAudit.totalCapabilities} ready` : 'Review',
-    icon: 'mobile' as const,
-  },
-  {
     label: 'Data Services',
     value: dataAudit.ok ? `${dataAudit.totalCapabilities} ready` : 'Review',
     icon: 'database' as const,
@@ -44,7 +37,6 @@ const statuses = [
     value: interactionAudit.ok ? `${interactionAudit.totalScenarios} checks` : 'Review',
     icon: 'workflow' as const,
   },
-  { label: 'Icons', value: iconAudit.ok ? `${iconAudit.totalComponents} mapped` : 'Review', icon: 'shape' as const },
 ]
 
 export function StatusRail() {

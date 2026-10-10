@@ -9,32 +9,34 @@ import { PackageManager } from './PackageManager'
 import { SemanticServicePanel } from './SemanticServicePanel'
 import { StatusRail } from './StatusRail'
 import { StudioChrome } from './StudioChrome'
-import { paletteCategories } from './componentCatalog'
-import type { ComponentCategory } from './componentCatalog'
 import { readSection } from './studioSections'
 
 type StudioInitialState = {
-  category: ComponentCategory | 'All'
+  /** A palette category key, or `All`. */
+  category: string | 'All'
   query: string
 }
 
-export function readStudioInitialState(search = typeof window === 'undefined' ? '' : window.location.search): StudioInitialState {
+/**
+ * Read the toolbox's starting filter from the query string.
+ *
+ * The category is whatever the backend's palette declares; the Studio cannot
+ * validate it here without fetching, and an unknown category simply selects
+ * nothing, which is the same empty state a mistyped filter gives.
+ */
+export function readStudioInitialState(
+  search = typeof window === 'undefined' ? '' : window.location.search,
+): StudioInitialState {
   const params = new URLSearchParams(search)
-  const requestedCategory = params.get('studioCategory')
-  const category =
-    requestedCategory && paletteCategories.includes(requestedCategory as ComponentCategory)
-      ? (requestedCategory as ComponentCategory)
-      : 'All'
-
   return {
-    category,
+    category: params.get('studioCategory') ?? 'All',
     query: params.get('studioQuery') ?? '',
   }
 }
 
 function App() {
   const initialState = readStudioInitialState()
-  const [activeCategory, setActiveCategory] = useState<ComponentCategory | 'All'>(initialState.category)
+  const [activeCategory, setActiveCategory] = useState<string | 'All'>(initialState.category)
   const [query, setQuery] = useState(initialState.query)
   const [section, setSection] = useState(() => readSection())
 

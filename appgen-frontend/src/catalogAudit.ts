@@ -1,33 +1,28 @@
 import { visualBindingAudit } from './bindingCatalog'
-import { componentIconAudit } from './componentCatalog'
 import { dataServiceAudit } from './dataServiceCatalog'
-import { deviceApiAudit } from './deviceApiCatalog'
-import { studioInteractionAudit } from './interactionAudit'
 import { inspectorEditorAudit } from './inspectorCatalog'
+import { studioInteractionAudit } from './interactionAudit'
 import { packageInstallAudit } from './packageCatalog'
 
+/**
+ * The Studio's own catalog consistency check.
+ *
+ * The component-icon and device-API audits used to be members. Both panels now
+ * read the platform's contracts over the API, so the local catalogs they
+ * checked are gone; a payload the backend cannot produce is the failure that
+ * matters now, and Python tests it there.
+ */
 export function studioCatalogAudit() {
   const bindingAudit = visualBindingAudit()
-  const componentAudit = componentIconAudit()
   const dataAudit = dataServiceAudit()
-  const deviceAudit = deviceApiAudit()
   const inspectorAudit = inspectorEditorAudit()
   const interactionAudit = studioInteractionAudit()
   const packageAudit = packageInstallAudit()
 
   return {
-    ok:
-      bindingAudit.ok &&
-      componentAudit.ok &&
-      dataAudit.ok &&
-      deviceAudit.ok &&
-      inspectorAudit.ok &&
-      interactionAudit.ok &&
-      packageAudit.ok,
+    ok: bindingAudit.ok && dataAudit.ok && inspectorAudit.ok && interactionAudit.ok && packageAudit.ok,
     bindingAudit,
-    componentAudit,
     dataAudit,
-    deviceAudit,
     inspectorAudit,
     interactionAudit,
     packageAudit,

@@ -58,6 +58,35 @@ def test_the_component_panel_reads_the_generators_own_palette() -> None:
     assert served, "the palette is empty"
 
 
+def test_the_palette_carries_the_strings_the_toolbox_renders() -> None:
+    """The toolbox renders what the panel shows, so every tile needs a label.
+
+    A component without a display name renders as a bare class name, and a
+    component missing from a group renders nowhere at all. Both are holes in
+    the toolbox, so both are asserted here rather than discovered in a browser.
+    """
+    payload = studio_backend.component_palette_payload()
+    components = payload["components"]
+    assert all(component["label"] for component in components), "a component has no display label"
+    assert all(component["description"] for component in components), "a component has no description"
+    assert all(component["size"].count(" x ") == 1 for component in components), "a component has no W x H size"
+    assert all(component["icon"].startswith("fa-") for component in components)
+
+    grouped = [name for group in payload["groups"] for name in group["components"]]
+    assert sorted(grouped) == sorted(component["component"] for component in components), (
+        "the groups do not cover the palette exactly once"
+    )
+    assert all(group["label"] and group["icon"] for group in payload["groups"])
+
+
+def test_the_palette_groups_follow_the_platforms_order() -> None:
+    """The toolbox's ordering is the platform's, not a dict's iteration order."""
+    groups = form_designer.palette_category_groups()
+    declared = [group["category"] for group in groups]
+    assert declared[: len(form_designer.PALETTE_CATEGORY_ORDER)] == list(form_designer.PALETTE_CATEGORY_ORDER)
+    assert all(group["components"] for group in groups), "a group with no components would render an empty heading"
+
+
 def test_the_package_panel_reads_real_suites() -> None:
     payload = studio_backend.component_packages_payload()
     served = {package["id"] for package in payload["packages"]}

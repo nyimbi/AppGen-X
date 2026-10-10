@@ -606,6 +606,148 @@ CATEGORY_ICON_DEFAULTS = dict(
     three_d="fa-cube",
 )
 
+# The palette's display strings. `COMPONENTS` names what a component *is* (its
+# category, field types, size, properties); these name what a designer *reads*.
+# They live here rather than in the Studio so the toolbox a designer drags from
+# and the palette the generator binds against are the same list, spelled the
+# same way. The Studio's TypeScript catalog was a second, unrelated list of 87
+# invented names, so it could offer a component the generator did not have.
+COMPONENT_LABELS = {
+    "Label": ("Label", "Static captions, field labels, and headings."),
+    "TextBox": ("Text Box", "Single-line text and numeric entry."),
+    "EmailInput": ("Email Input", "Validated email address entry."),
+    "TextArea": ("Text Area", "Multi-line notes, comments, and rich descriptions."),
+    "DatePicker": ("Date Picker", "Date, time, and timestamp entry."),
+    "Lookup": ("Lookup", "Foreign-key search picker with generated display fields."),
+    "Select": ("Combo Box", "Lookup and enumerated value picker."),
+    "Checkbox": ("Check Box", "Boolean fields and toggle options."),
+    "FileUpload": ("File Upload", "Documents, images, and attachment capture."),
+    "Button": ("Button", "Commands, workflow actions, and submits."),
+    "Panel": ("Panel", "Grouped visual region for related fields."),
+    "GroupBox": ("Group Box", "Titled frame that groups related controls."),
+    "RadioGroup": ("Radio Group", "Exclusive option selection across a field set."),
+    "RadioButton": ("Radio Button", "Exclusive option selection."),
+    "ListBox": ("List Box", "Single or multi-select list control."),
+    "ListView": ("List View", "Virtualized record list with icons and actions."),
+    "TreeView": ("Tree View", "Hierarchical navigation and master records."),
+    "Grid": ("Data Grid", "Editable tabular data with sort and filter."),
+    "StringGrid": ("String Grid", "Spreadsheet-like matrix for structured values."),
+    "PageControl": ("Tab Control", "Tabbed pages for complex master records."),
+    "Layout": ("Layout", "Responsive container with spacing rules."),
+    "ScrollBox": ("Scroll Box", "Scrollable region for long forms and nested panels."),
+    "FlowLayout": ("Flow Layout", "Wrap-aware component flow for adaptive screens."),
+    "GridLayout": ("Grid Layout", "Column and row layout with snap alignment."),
+    "VerticalBoxLayout": ("Vertical Stack", "Top-to-bottom field group with shared spacing."),
+    "HorizontalBoxLayout": ("Horizontal Stack", "Left-to-right command or field grouping."),
+    "MainMenu": ("Main Menu", "Application-level menus and shortcuts."),
+    "PopupMenu": ("Popup Menu", "Right-click and long-press contextual commands."),
+    "ToolBar": ("Toolbar", "Icon command strip with overflow behavior."),
+    "ActionList": ("Action List", "Named command set shared across screens."),
+    "SplashScreen": ("Splash Screen", "Startup screen shown while the app loads."),
+    "Image": ("Image", "Pictures, documents, and generated assets."),
+    "Shape": ("Shape", "Generic vector primitive for diagrams and adorners."),
+    "PathShape": ("Path", "Freeform vector path with editable points."),
+    "Rectangle": ("Rectangle", "Box, border, and filled visual block."),
+    "Ellipse": ("Ellipse", "Circular and oval visual elements."),
+    "Line": ("Line", "Connector, divider, and annotation line."),
+    "Bitmap": ("Bitmap", "Pixel asset with density and target variants."),
+    "Chart": ("Chart", "Operational metrics and dashboard visuals."),
+    "ReportViewer": ("Report Viewer", "Invoices, statutory reports, and exports."),
+    "WebBrowser": ("Web Browser", "Embedded browser surface for external content."),
+    "Timer": ("Timer", "Timed jobs, reminders, and background triggers."),
+    "DataSource": ("Database Source", "Dataset, query, and binding source."),
+    "BindingSource": ("Binding Source", "Live binding graph between fields and datasets."),
+    "RESTClient": ("REST Client", "Generated API client and retry policy surface."),
+    "CameraView": ("Camera View", "Camera preview, capture, and permission workflow."),
+    "LocationSensor": ("Location Sensor", "GPS, geofence, and map coordinate capture."),
+    "MotionSensor": ("Motion Sensor", "Accelerometer and movement stream binding."),
+    "OrientationSensor": ("Orientation Sensor", "Device rotation and heading changes."),
+    "NotificationCenter": ("Push Notification", "User notification channel and permission contract."),
+    "PhotoPicker": ("Photo Picker", "Gallery access with a consent-aware picker."),
+    "BiometricAuth": ("Biometrics", "Face, fingerprint, and platform authentication."),
+    "ContactsPicker": ("Contacts Picker", "Address book access behind a permission gate."),
+    "CalendarEvents": ("Calendar Events", "Device calendar reads, writes, and reminders."),
+    "SecureStore": ("Secure Storage", "Encrypted secrets, tokens, and offline credentials."),
+    "PushClient": ("Push Client", "Device token registration and push delivery."),
+    "BluetoothClient": ("Bluetooth", "Peripheral discovery, pairing, and device data exchange."),
+    "NfcReader": ("NFC", "Near-field tag reads, writes, and tap-to-identify workflows."),
+    "FilePicker": ("File Storage", "Local files, sandbox documents, and sync-ready cache data."),
+    "ShareSheet": ("Share Sheet", "Platform sharing and document handoff workflows."),
+    "BackgroundTask": ("Background Sync", "Deferred uploads, retries, and offline replay tasks."),
+    "Animation": ("Animation Timeline", "Reusable timeline for coordinated UI transitions."),
+    "FloatAnimation": ("Float Animation", "Numeric property tween with easing and preview scrubber."),
+    "ColorAnimation": ("Color Animation", "Theme and fill color transition with keyframes."),
+    "PathAnimation": ("Path Animation", "Motion path animation for shapes and components."),
+    "Effect": ("Effect", "Reusable visual effect applied to a component."),
+    "StyleBook": ("Style Book", "Theme tokens, component states, and target styles."),
+    "StyleManager": ("Style Manager", "Density, typography, and target style controls."),
+    "GestureManager": ("Gesture Manager", "Gesture recognizer registry with conflict handling."),
+    "Gesture": ("Tap Gesture", "Tap, double-tap, and long-press recognizer."),
+    "Viewport3D": ("3D Viewport", "Scene viewport with camera, lighting, and transforms."),
+    "Dummy3D": ("3D Anchor", "Invisible transform node for grouping scene objects."),
+    "Camera3D": ("3D Camera", "Perspective or orthographic camera control."),
+    "Light3D": ("3D Light", "Directional, point, or ambient scene light."),
+    "Mesh3D": ("3D Mesh", "Mesh primitive or imported model with material binding."),
+    "DatabaseConnection": ("Database Connection", "Pooled connection to a configured database."),
+    "TableAdapter": ("Table Adapter", "Table-scoped read, write, and schema contract."),
+    "ClientDataSet": ("Client Dataset", "Offline-capable dataset with local change tracking."),
+}
+
+# The categories in the order the toolbox lists them, so the panel's grouping is
+# the platform's ordering rather than whatever order a dict happens to iterate.
+PALETTE_CATEGORY_ORDER = (
+    "input",
+    "display",
+    "choice",
+    "calendar",
+    "relationship",
+    "action",
+    "container",
+    "data",
+    "data_access",
+    "navigation",
+    "menu",
+    "media",
+    "graphics",
+    "analytics",
+    "reports",
+    "integration",
+    "mobile",
+    "effects",
+    "gesture",
+    "three_d",
+    "theme",
+    "app_shell",
+    "nonvisual",
+)
+
+PALETTE_CATEGORY_LABELS = {
+    "input": "Inputs",
+    "display": "Display",
+    "choice": "Choice",
+    "calendar": "Calendar",
+    "relationship": "Relationships",
+    "action": "Actions",
+    "container": "Layouts",
+    "data": "Data",
+    "data_access": "Data Access",
+    "navigation": "Navigation",
+    "menu": "Menus",
+    "media": "Media",
+    "graphics": "Graphics",
+    "analytics": "Analytics",
+    "reports": "Reports",
+    "integration": "Integration",
+    "mobile": "Device",
+    "effects": "Effects",
+    "gesture": "Gestures",
+    "three_d": "3D",
+    "theme": "Theme",
+    "app_shell": "App Shell",
+    "nonvisual": "Non-visual",
+}
+
+
 
 def component_icon(component_type: str) -> str:
     """Return the icon class used by generated IDE palettes."""
@@ -771,14 +913,46 @@ RAD_PARITY_REQUIREMENTS = (
 
 
 def component_palette() -> tuple[dict, ...]:
-    """Return draggable visual drag-and-drop form components."""
+    """Return draggable visual drag-and-drop form components.
+
+    The palette carries what the toolbox renders, not just what the generator
+    binds: `label` and `description` are the display strings, `category_label`
+    is the group heading, and `size` is the drag footprint as `W x H`. A
+    component without a label is a hole in the toolbox, so the absence is a
+    KeyError rather than a silent fallback to the class name.
+    """
     return tuple(
         {
             "component": name,
             "icon": component_icon(name),
+            "label": COMPONENT_LABELS[name][0],
+            "description": COMPONENT_LABELS[name][1],
+            "category_label": PALETTE_CATEGORY_LABELS.get(spec["category"], spec["category"]),
+            "size": f"{spec['default_size']['w']} x {spec['default_size']['h']}",
             **spec,
         }
         for name, spec in COMPONENTS.items()
+    )
+
+
+def palette_category_groups() -> tuple[dict, ...]:
+    """Return the toolbox's category tabs, in listing order.
+
+    Each group carries its label, its icon, and the components in it, so the
+    Studio renders the same grouping and ordering the platform declares rather
+    than recomputing them from a flat list.
+    """
+    components = component_palette()
+    ordered = [category for category in PALETTE_CATEGORY_ORDER if any(item["category"] == category for item in components)]
+    extra = sorted({item["category"] for item in components} - set(PALETTE_CATEGORY_ORDER))
+    return tuple(
+        {
+            "category": category,
+            "label": PALETTE_CATEGORY_LABELS.get(category, category),
+            "icon": CATEGORY_ICON_DEFAULTS.get(category, "fa-puzzle-piece"),
+            "components": tuple(item["component"] for item in components if item["category"] == category),
+        }
+        for category in (*ordered, *extra)
     )
 
 

@@ -1,87 +1,31 @@
-import {
-  componentDragPayload,
-  filterPaletteComponents,
-  groupPaletteComponents,
-  paletteCategoryCounts,
-} from './ComponentPalette'
 import { visualBindingAudit } from './bindingCatalog'
-import { componentIconAudit, paletteComponents } from './componentCatalog'
 import { dataServiceAudit, dataServiceCapabilities } from './dataServiceCatalog'
 import type { DataServiceLane } from './dataServiceCatalog'
-import { deviceApiAudit, deviceApiCapabilities } from './deviceApiCatalog'
-import type { DeviceApiGroup } from './deviceApiCatalog'
 import { inspectorEditorAudit } from './inspectorCatalog'
 import { packageInstallAudit } from './packageCatalog'
 import { semanticServiceAudit } from './semanticServiceContract'
 
-const requiredDeviceGroups: DeviceApiGroup[] = [
-  'Sensors',
-  'Media',
-  'Permissions',
-  'Connectivity',
-  'Storage',
-  'Notifications',
-  'Background',
-  'Security',
-]
-
 const requiredDataLanes: DataServiceLane[] = ['Source', 'Query', 'Publish', 'Embedded DB', 'Resilience', 'Security']
 
+/**
+ * The scenarios the Studio's own panels depend on.
+ *
+ * The palette, component-icon, and device scenarios used to live here, asserted
+ * against `componentCatalog.ts` and `deviceApiCatalog.ts`. Both panels now read
+ * the platform's contracts over the API, so those scenarios were checking a
+ * fabricated list the app no longer rendered. Their real check is the backend's
+ * own payload contract, tested in Python. What remains here covers the panels
+ * that still render from a local catalog.
+ */
 export function studioInteractionAudit() {
-  const categoryCounts = paletteCategoryCounts()
-  const deviceComponents = filterPaletteComponents('Device', '')
-  const storageSearch = filterPaletteComponents('All', 'storage')
-  const emptySearch = filterPaletteComponents('All', 'definitely-not-a-component')
-  const groupedStorage = groupPaletteComponents(storageSearch)
-  const button = paletteComponents.find((component) => component.name === 'Button')
-  const dragPayload = button ? componentDragPayload(button) : null
-  const deviceGroups = new Set(deviceApiCapabilities.map((capability) => capability.group))
   const dataLanes = new Set(dataServiceCapabilities.map((capability) => capability.lane))
   const bindingAudit = visualBindingAudit()
-  const componentAudit = componentIconAudit()
   const dataAudit = dataServiceAudit()
-  const deviceAudit = deviceApiAudit()
   const inspectorAudit = inspectorEditorAudit()
   const packageAudit = packageInstallAudit()
   const semanticAudit = semanticServiceAudit()
 
   const scenarios = [
-    {
-      id: 'palette_category_filter',
-      ok:
-        deviceComponents.length === categoryCounts.Device &&
-        deviceComponents.length > 0 &&
-        deviceComponents.every((component) => component.category === 'Device'),
-      evidence: { count: deviceComponents.length, expected: categoryCounts.Device },
-    },
-    {
-      id: 'palette_search_filter',
-      ok:
-        storageSearch.some((component) => component.name === 'Secure Storage') &&
-        storageSearch.some((component) => component.name === 'File Storage') &&
-        groupedStorage.length > 0,
-      evidence: { matches: storageSearch.map((component) => component.name), groups: groupedStorage.map((group) => group.category) },
-    },
-    {
-      id: 'palette_empty_state',
-      ok: emptySearch.length === 0,
-      evidence: { count: emptySearch.length },
-    },
-    {
-      id: 'component_drag_payload',
-      ok:
-        dragPayload !== null &&
-        dragPayload.component === 'Button' &&
-        dragPayload.category === 'Inputs' &&
-        dragPayload.icon === 'button' &&
-        dragPayload.draggable,
-      evidence: dragPayload,
-    },
-    {
-      id: 'device_workbench_render_inputs',
-      ok: requiredDeviceGroups.every((group) => deviceGroups.has(group)) && deviceAudit.ok,
-      evidence: { groups: Array.from(deviceGroups), total: deviceAudit.totalCapabilities },
-    },
     {
       id: 'data_workbench_render_inputs',
       ok: requiredDataLanes.every((lane) => dataLanes.has(lane)) && dataAudit.ok,
@@ -89,19 +33,10 @@ export function studioInteractionAudit() {
     },
     {
       id: 'status_rail_audit_inputs',
-      ok:
-        bindingAudit.ok &&
-        componentAudit.ok &&
-        dataAudit.ok &&
-        deviceAudit.ok &&
-        inspectorAudit.ok &&
-        packageAudit.ok &&
-        semanticAudit.ok,
+      ok: bindingAudit.ok && dataAudit.ok && inspectorAudit.ok && packageAudit.ok && semanticAudit.ok,
       evidence: {
         bindings: bindingAudit.totalBindings,
-        components: componentAudit.totalComponents,
         data: dataAudit.totalCapabilities,
-        devices: deviceAudit.totalCapabilities,
         editors: inspectorAudit.totalEditors,
         packages: packageAudit.totalPackages,
         semanticSurfaces: semanticAudit.surfaceCount,

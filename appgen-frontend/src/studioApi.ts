@@ -29,10 +29,24 @@ export class StudioApiError extends Error {
 
 export type PaletteComponent = {
   component: string
+  /** Display name, e.g. "Secure Storage" for `SecureStore`. */
+  label: string
+  description: string
   icon: string
   category: string
+  category_label: string
+  /** Drag footprint, e.g. "4 x 1". */
+  size: string
   field_types: readonly string[]
   properties?: readonly string[]
+}
+
+export type PaletteGroup = {
+  category: string
+  label: string
+  icon: string
+  /** Component names in this category, in listing order. */
+  components: readonly string[]
 }
 
 export type ComponentPalettePayload = {
@@ -40,6 +54,7 @@ export type ComponentPalettePayload = {
   ok: boolean
   components: readonly PaletteComponent[]
   categories: readonly string[]
+  groups: readonly PaletteGroup[]
 }
 
 export type ComponentPackage = {

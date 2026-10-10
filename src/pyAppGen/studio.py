@@ -308,13 +308,22 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
                 "npm run test:browser" in workflow_text
                 or ("npm run build" in workflow_text and "node scripts/browser-smoke.mjs" in workflow_text)
             )
-            and "APPGEN_CHROME_BIN" in workflow_text,
+            and "APPGEN_CHROME_BIN" in workflow_text
+            and "pip install -e ." in workflow_text,
         },
         {
             "id": "prepared_host_contract",
-            "ok": "Set APPGEN_CHROME_BIN" in script_text
+            "ok": "APPGEN_CHROME_BIN" in script_text
             and "--disable-crash-reporter" in script_text
             and "--user-data-dir=" in script_text,
+        },
+        {
+            # The smoke drives the Python backend rather than a static server,
+            # because the panels fetch their catalogs over the API.
+            "id": "backend_driven",
+            "ok": "studio-serve" in script_text
+            and "waitForBackend" in script_text
+            and "createStaticServer" not in script_text,
         },
         {
             "id": "frontend_semantic_service_bridge",

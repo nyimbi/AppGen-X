@@ -72,7 +72,9 @@ def component_palette_payload() -> dict:
     """Return the component palette the designer offers.
 
     The Python palette is the one the generator binds against; the Studio's
-    TypeScript catalog was a second, unrelated list.
+    TypeScript catalog was a second, unrelated list of invented names. The
+    groups carry the toolbox's ordering and headings, so the panel renders the
+    platform's grouping rather than recomputing one from a flat list.
     """
     palette = form_designer.component_palette()
     return {
@@ -80,6 +82,7 @@ def component_palette_payload() -> dict:
         "ok": True,
         "components": _jsonable(palette),
         "categories": _jsonable(form_designer.palette_categories()),
+        "groups": _jsonable(form_designer.palette_category_groups()),
     }
 
 
