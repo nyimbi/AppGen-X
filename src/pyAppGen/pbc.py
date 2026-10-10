@@ -13284,8 +13284,11 @@ def pbc_implementation_contract(key: str) -> dict:
     # fallback both under-report: for `dam_core` they yield two fragment names
     # against a package that declares six, and `ar_credit` sixteen. Reading the
     # package here is what makes the generated workbench render the capability
-    # the block actually carries rather than a placeholder pair.
-    package_ui = _pbc_source_package_contract(key).get("ui_contract") or {}
+    # the block actually carries rather than a placeholder pair. It is read
+    # once and reused below, since building it re-executes the package's
+    # contract surface.
+    source_package = _pbc_source_package_contract(key)
+    package_ui = source_package.get("ui_contract") or {}
     ui_fragments = tuple(
         package_ui.get("fragments", ())
         or service.get("ui_fragments", ())
@@ -13319,7 +13322,6 @@ def pbc_implementation_contract(key: str) -> dict:
     )
     advanced_blueprint = _advanced_domain_blueprint(key, service, table_contracts, event_contract, service_methods)
     advanced_runtime = _pbc_runtime_capabilities(key)
-    source_package = _pbc_source_package_contract(key)
     release_checks = (
         "stable_manifest",
         "source_package_directory",
