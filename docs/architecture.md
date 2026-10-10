@@ -190,6 +190,15 @@ on a prepared CI host. `studio_browser_smoke_ci_contract()` is included in the
 package Studio release audit so the browser smoke command, workflow, scenarios,
 and prepared-host browser contract remain part of the required evidence.
 
+`studio_backend.py` serves the Studio's panels from the Python contracts. The
+panels read it through the typed client in `appgen-frontend/src/studioApi.ts`
+rather than a local TypeScript catalog, so a panel cannot offer a component,
+package, or target capability the platform does not have. Run it with
+`appgen studio-serve`; it serves the API and, when the frontend is built,
+`appgen-frontend/dist` from one process. `tests/ci/test_studio_backend.py`
+drives every route without a browser and asserts the payloads equal the
+contracts they claim to serve.
+
 ## Visual Design Architecture
 
 Visual design is split into two related capabilities:

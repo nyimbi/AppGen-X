@@ -27,6 +27,7 @@ _TOOLING_SUBCOMMANDS = {
     "drift",
     "doctor",
     "tooling-audit",
+    "studio-serve",
 }
 _legacy_click_main = main.main
 

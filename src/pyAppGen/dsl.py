@@ -1297,6 +1297,11 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
     tooling_audit_parser = subparsers.add_parser("tooling-audit")
     tooling_audit_parser.add_argument("--json", action="store_true")
 
+    studio_serve_parser = subparsers.add_parser("studio-serve")
+    studio_serve_parser.add_argument("--host", default="127.0.0.1")
+    studio_serve_parser.add_argument("--port", type=int, default=5000)
+    studio_serve_parser.add_argument("--json", action="store_true")
+
     args = parser.parse_args(tuple(argv or ()))
     _validate_tooling_cli_paths(parser, args)
     if args.command == "lsp" and args.stdio:
@@ -1469,6 +1474,22 @@ def _dsl_tooling_cli_impl(argv: Iterable[str] | None = None) -> int:
         report = tooling_audit_report_dsl()
         _emit_tooling_payload(report, as_json=args.json)
         return 0 if report["ok"] else 1
+    if args.command == "studio-serve":
+        from .studio_backend import studio_api_app, studio_api_manifest
+
+        manifest = studio_api_manifest()
+        _emit_tooling_payload(
+            {
+                "format": manifest["format"],
+                "ok": True,
+                "host": args.host,
+                "port": args.port,
+                "routes": manifest["paths"],
+            },
+            as_json=args.json,
+        )
+        studio_api_app().run(host=args.host, port=args.port)
+        return 0
     return 2
 
 

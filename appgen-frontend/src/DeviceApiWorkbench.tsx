@@ -1,59 +1,66 @@
-import { Icon } from './Icon'
-import { deviceApiCapabilities } from './deviceApiCatalog'
-import type { DeviceApiGroup } from './deviceApiCatalog'
+import { Badge, Card, EmptyState, PageHeader } from '@appgen/ui-kit'
+import { loadTargetCapabilities } from './studioApi'
+import { useStudioData } from './useStudioData'
 
-const groupOrder: DeviceApiGroup[] = [
-  'Sensors',
-  'Media',
-  'Connectivity',
-  'Storage',
-  'Security',
-  'Notifications',
-  'Background',
-  'Permissions',
-]
-
+/**
+ * The device panel reads the platform's own target contracts.
+ *
+ * The platform states each target's capabilities and permissions; the panel
+ * used to keep a TypeScript list of its own, so it could show a capability no
+ * target declares. Each target is a card, its permissions are the evidence.
+ */
 export function DeviceApiWorkbench() {
+  const capabilities = useStudioData(loadTargetCapabilities)
+
   return (
     <section className="panel device-api-workbench" aria-label="Device API workbench">
-      <div className="panel-title-row">
-        <div>
-          <p className="eyebrow">Device APIs</p>
-          <h2>Native Capability Coverage</h2>
-        </div>
-        <Icon name="mobile" className="panel-title-icon" />
-      </div>
+      <PageHeader
+        description="Capabilities and permissions each generated target can use."
+        title="Native Capability Coverage"
+      />
 
-      <div className="device-api-grid">
-        {groupOrder.map((group) => {
-          const capabilities = deviceApiCapabilities.filter((capability) => capability.group === group)
+      {capabilities.state === 'loading' && (
+        <EmptyState description="Reading the target contracts from the backend." title="Loading capabilities" />
+      )}
 
-          return (
-            <article className="device-api-group" key={group}>
-              <header>
-                <strong>{group}</strong>
-                <span>{capabilities.length}</span>
-              </header>
+      {capabilities.state === 'error' && (
+        <EmptyState description={capabilities.error.message} title="Could not load capabilities" />
+      )}
+
+      {capabilities.state === 'ready' && (
+        <div className="device-api-grid">
+          {(
+            [
+              ['mobile', capabilities.data.mobile],
+              ['desktop', capabilities.data.desktop],
+            ] as const
+          ).map(([name, contract]) => (
+            <Card
+              actions={<Badge tone="info">{name}</Badge>}
+              as="article"
+              key={name}
+              subtitle={String((contract.target as { runtime?: string }).runtime ?? '')}
+              title={name}
+            >
               <div className="device-api-list">
-                {capabilities.map((capability) => (
-                  <div className="device-api-card" key={capability.name}>
-                    <span className="component-icon category-device">
-                      <Icon name={capability.icon} />
-                    </span>
-                    <div>
-                      <strong>{capability.name}</strong>
-                      <small>{capability.permission}</small>
-                    </div>
-                    <em>{capability.adapters.join(' + ')}</em>
-                    <p>{capability.privacy}</p>
-                    <span className="device-api-fallback">{capability.fallback}</span>
+                {('permissions' in contract ? contract.permissions : []).map((permission) => (
+                  <div className="device-api-card" key={permission}>
+                    <strong>{permission}</strong>
                   </div>
                 ))}
+                {('capabilities' in (contract.target as object)
+                  ? ((contract.target as { capabilities?: readonly string[] }).capabilities ?? [])
+                  : []
+                ).map((capability) => (
+                  <span className="device-api-fallback" key={capability}>
+                    {capability}
+                  </span>
+                ))}
               </div>
-            </article>
-          )
-        })}
-      </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </section>
   )
 }

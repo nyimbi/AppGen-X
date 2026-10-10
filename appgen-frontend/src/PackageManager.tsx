@@ -1,50 +1,65 @@
+import { Badge, Card, EmptyState, PageHeader } from '@appgen/ui-kit'
 import { Icon } from './Icon'
-import { designPackages } from './packageCatalog'
+import { loadComponentPackages } from './studioApi'
+import { useStudioData } from './useStudioData'
 
+/**
+ * The package panel reads the platform's own component suites.
+ *
+ * The suites are what the generator can install; the panel used to list a
+ * TypeScript catalog of its own, so it could offer a package that did not
+ * exist. Each suite is a card, its components are the evidence it is real.
+ */
 export function PackageManager() {
+  const packages = useStudioData(loadComponentPackages)
+
   return (
     <section className="panel package-manager" aria-label="Design-time package manager">
-      <div className="panel-title-row">
-        <div>
-          <p className="eyebrow">Packages</p>
-          <h2>Component Installation</h2>
-        </div>
-        <Icon name="package" className="panel-title-icon" />
-      </div>
+      <PageHeader
+        description="Third-party component suites the generator can install into a design."
+        title="Component Installation"
+      />
 
-      <div className="package-grid">
-        {designPackages.map((item) => (
-          <article className={`package-card package-${item.state}`} key={item.name}>
-            <div className="package-card-title">
-              <span className="component-icon category-layouts">
-                <Icon name={item.icon} />
-              </span>
-              <span>
-                <strong>{item.name}</strong>
-                <small>
-                  {item.vendor} {item.version}
-                </small>
-              </span>
-              <em>{item.state}</em>
-            </div>
-            <div className="package-components">
-              {item.components.map((component) => (
-                <span key={`${item.name}-${component}`}>{component}</span>
-              ))}
-            </div>
-            <div className="package-footer">
-              <span>
-                <Icon name={item.trust === 'signed' ? 'lock' : 'check'} />
-                {item.trust}
-              </span>
-              <button type="button">
-                <Icon name={item.state === 'installed' ? 'check' : 'upload'} />
-                {item.state === 'installed' ? 'Installed' : item.state === 'update' ? 'Update' : 'Install'}
-              </button>
-            </div>
-          </article>
-        ))}
-      </div>
+      {packages.state === 'loading' && (
+        <EmptyState description="Reading the component suites from the backend." title="Loading packages" />
+      )}
+
+      {packages.state === 'error' && (
+        <EmptyState
+          description={packages.error.message}
+          title="Could not load packages"
+        />
+      )}
+
+      {packages.state === 'ready' && packages.data.packages.length === 0 && (
+        <EmptyState title="No component suites are installed" />
+      )}
+
+      {packages.state === 'ready' && packages.data.packages.length > 0 && (
+        <div className="package-grid">
+          {packages.data.packages.map((item) => (
+            <Card
+              actions={<Badge tone={item.license === 'commercial' ? 'warning' : 'success'}>{item.license}</Badge>}
+              as="article"
+              key={item.id}
+              subtitle={`${item.vendor} · ${item.frameworks.join(', ')}`}
+              title={item.id}
+            >
+              <div className="package-components">
+                {item.components.map((component) => (
+                  <span key={`${item.id}-${component}`}>{component}</span>
+                ))}
+              </div>
+              {item.use_cases && item.use_cases.length > 0 && (
+                <p className="package-use-cases">
+                  <Icon name="check" />
+                  {item.use_cases.join(' · ')}
+                </p>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
     </section>
   )
 }
