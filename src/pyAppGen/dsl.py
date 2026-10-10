@@ -10685,8 +10685,24 @@ def _dedupe_columns(table_name: str, columns: list[ColumnSchema]) -> list[Column
     return ordered
 
 
+def _field_name(ctx) -> str:
+    """Return a field name's text, whether it was spelled as a keyword or not.
+
+    The lexer emits a keyword token ahead of `IDENT`, so a column named
+    `version` arrives as `VERSION` rather than as an identifier. `fieldName`
+    matches a single terminal either way, and the spelling is the same in both
+    cases, so the subtree text is the name.
+    """
+    return ctx.getText()
+
+
+def _name_path(ctx) -> str:
+    """Return a dotted field path with the same keyword tolerance as a name."""
+    return ".".join(_field_name(part) for part in ctx.fieldName())
+
+
 def _field(table_name: str, ctx, *, source_group: str | None = None) -> tuple[ColumnSchema, RelationSchema | None]:
-    column_name = ctx.IDENT().getText()
+    column_name = _field_name(ctx.fieldName())
     type_name = ctx.typeRef().getText()
     nullable = True
     primary_key = False
@@ -10816,11 +10832,11 @@ def _view(ctx) -> ViewSchema:
             components.append(_component_placement(item.componentPlacement()))
             continue
         if item.COLON():
-            section_fields = tuple(field.getText() for field in item.qualifiedName())
-            sections.append(ViewSectionSchema(item.IDENT().getText(), section_fields))
+            section_fields = tuple(_name_path(field) for field in item.namePath())
+            sections.append(ViewSectionSchema(_field_name(item.fieldName()), section_fields))
             fields.extend(section_fields)
         else:
-            fields.extend(field.getText() for field in item.qualifiedName())
+            fields.extend(_name_path(field) for field in item.namePath())
     view_name = ctx.IDENT(0).getText()
     return ViewSchema(
         view_name,
@@ -10833,8 +10849,8 @@ def _view(ctx) -> ViewSchema:
 
 
 def _component_placement(ctx) -> FormComponentSchema:
-    field_name = ctx.qualifiedName().getText()
-    component = ctx.IDENT().getText()
+    field_name = _name_path(ctx.namePath())
+    component = _field_name(ctx.fieldName())
     numbers = [int(token.getText()) for token in ctx.INT()]
     return FormComponentSchema(
         name=field_name,

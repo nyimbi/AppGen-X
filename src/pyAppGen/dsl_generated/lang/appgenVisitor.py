@@ -1,4 +1,4 @@
-# Generated from lang/appgen.g4 by ANTLR 4.13.2
+# Generated from appgen.g4 by ANTLR 4.13.2
 from antlr4 import *
 if "." in __name__:
     from .appgenParser import appgenParser
@@ -51,6 +51,11 @@ class appgenVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by appgenParser#fieldDecl.
     def visitFieldDecl(self, ctx:appgenParser.FieldDeclContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#fieldName.
+    def visitFieldName(self, ctx:appgenParser.FieldNameContext):
         return self.visitChildren(ctx)
 
 
@@ -396,6 +401,11 @@ class appgenVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by appgenParser#qualifiedName.
     def visitQualifiedName(self, ctx:appgenParser.QualifiedNameContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by appgenParser#namePath.
+    def visitNamePath(self, ctx:appgenParser.NamePathContext):
         return self.visitChildren(ctx)
 
 

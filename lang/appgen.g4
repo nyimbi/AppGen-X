@@ -64,7 +64,70 @@ tableItem
   ;
 
 fieldDecl
-  : IDENT COLON typeRef derivedExpr? modifier* SEMI?
+  : fieldName COLON typeRef derivedExpr? modifier* SEMI?
+  ;
+
+// A column name may be spelled like a keyword. The lexer emits keywords ahead
+// of IDENT, so `version` never reaches the parser as an identifier and a
+// declaration of it fails to parse, even though the platform's own migrations
+// name 738 columns `version` and the DSL already accepts every keyword as a
+// *value* (`valueAtom`). Keyword tokens stay contextual: they are keywords only
+// where a modifier or a declaration is expected, and names everywhere else.
+fieldName
+  : IDENT
+  | APP
+  | TABLE
+  | REF
+  | ENUM
+  | VIEW
+  | FOR
+  | FLOW
+  | ROLE
+  | RULE
+  | PBC
+  | COMPOSITION
+  | AUDIT
+  | DEPLOY
+  | VERSION
+  | OPERATION
+  | SECURITY
+  | API
+  | EVENT
+  | JOB
+  | REPORT
+  | MENU
+  | COMPONENT
+  | PACKAGE
+  | TEST
+  | INCLUDE
+  | REQUIRE
+  | EXPOSE
+  | CONNECT
+  | LLM
+  | AGENT
+  | PK
+  | REQUIRED
+  | UNIQUE
+  | HIDE
+  | SEARCH
+  | DEFAULT
+  | IN
+  | ON
+  | AND
+  | OR
+  | NOT
+  | EXISTS
+  | IS
+  | NULL
+  | UNIT
+  | AS
+  | SCALE
+  | MIN
+  | MAX
+  | HEALTH
+  | CHECK
+  | RESOURCE
+  | ENV
   ;
 
 spreadDecl
@@ -121,12 +184,12 @@ viewDecl
 viewItem
   : handlerDecl
   | componentPlacement
-  | IDENT COLON qualifiedName (COMMA qualifiedName)* SEMI?
-  | qualifiedName (COMMA qualifiedName)* SEMI?
+  | fieldName COLON namePath (COMMA namePath)* SEMI?
+  | namePath (COMMA namePath)* SEMI?
   ;
 
 componentPlacement
-  : AT qualifiedName IDENT INT INT INT INT SEMI?
+  : AT namePath fieldName INT INT INT INT SEMI?
   ;
 
 flowDecl
@@ -439,6 +502,14 @@ literal
 
 qualifiedName
   : IDENT (DOT IDENT)*
+  ;
+
+// The same name-with-keywords allowance as `fieldName`, for the positions that
+// reference a field by name (view sections, component placements, expressions
+// over column names). Kept separate from `qualifiedName` because `and`, `or`,
+// and `not` are operators inside an expression and must stay operators there.
+namePath
+  : fieldName (DOT fieldName)*
   ;
 
 expression

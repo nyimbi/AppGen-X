@@ -132,12 +132,22 @@ live under `src/pyAppGen/dsl_generated/lang/`.
 tableDecl : TABLE IDENT tableBody ;
 tableBody : LBRACE tableItem* RBRACE ;
 tableItem : fieldDecl | spreadDecl | relationDecl | tableDirective ;
-fieldDecl : IDENT COLON typeRef derivedExpr? modifier* SEMI? ;
+fieldDecl : fieldName COLON typeRef derivedExpr? modifier* SEMI? ;
+fieldName : IDENT | <every keyword token> ;
 typeRef   : IDENT (LPAREN INT RPAREN)? (LBRACK RBRACK)? ;
 tableDirective
   : (IDENT | UNIQUE) IDENT? LPAREN directiveValue (COMMA directiveValue)*
     RPAREN (ARROW directiveValue (COMMA directiveValue)*)? SEMI? ;
 ```
+
+A column name may be spelled like a keyword. The lexer emits keyword tokens
+ahead of `IDENT`, so without `fieldName` a declaration of `version` would not
+parse, even though the platform's own migrations name 738 columns `version` and
+the DSL already accepts every keyword as a *value* (`valueAtom`). Keyword tokens
+stay contextual: they are keywords where a modifier or a declaration is
+expected, and names everywhere else. `namePath` extends the same allowance to
+the positions that reference a field by name (view sections, component
+placements, rule expressions).
 
 ```appgen
 table Book {
@@ -240,9 +250,9 @@ enumDecl : ENUM IDENT LBRACE IDENT* RBRACE ;
 ```antlr
 viewDecl           : VIEW IDENT FOR IDENT LBRACE viewItem* RBRACE ;
 viewItem           : componentPlacement
-                   | IDENT COLON qualifiedName (COMMA qualifiedName)* SEMI?
-                   | qualifiedName (COMMA qualifiedName)* SEMI? ;
-componentPlacement : AT qualifiedName IDENT INT INT INT INT SEMI? ;
+                   | fieldName COLON namePath (COMMA namePath)* SEMI?
+                   | namePath (COMMA namePath)* SEMI? ;
+componentPlacement : AT namePath fieldName INT INT INT INT SEMI? ;
 ```
 
 ```appgen
@@ -509,6 +519,12 @@ Canonical reserved words are: `app`, `table`, `enum`, `view`, `for`, `flow`,
 `operation`, `security`, `api`, `event`, `job`, `report`, `menu`, `component`,
 `package`, `test`, `llm`, `agent`, `pk`, `required`, `unique`, `hidden`,
 `search`, `default`, and `in`.
+
+Reserved means reserved in the position that reads them, not everywhere. A
+keyword token is still a legal column name and a legal value, so a table may
+declare a column called `version` and a view may bind it. Only the structural
+positions (a declaration's kind, a field's modifier, an operator) read the
+keyword as syntax.
 
 Legacy compatibility token: `ref`. It remains parse-compatible so older DSL
 files can be upgraded in place, but `dsl_language_quality_contract()` excludes

@@ -21995,7 +21995,9 @@ def test_appgen_dsl_prefers_arrow_references_and_keeps_keyword_budget(tmp_path) 
     assert "| ARROW target relationCardinality?" in grammar
     assert "relationCardinality" in grammar
     assert "componentPlacement" in grammar
-    assert "AT qualifiedName IDENT INT INT INT INT" in grammar
+    # A placement names a field and a control, either of which may be spelled
+    # like a keyword, so both use the keyword-tolerant rules rather than IDENT.
+    assert "AT namePath fieldName INT INT INT INT" in grammar
     assert "agenticOption" in grammar
     assert "IDENT COLON agenticValue" in grammar
     assert "agenticValue" in grammar

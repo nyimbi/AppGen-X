@@ -1,4 +1,4 @@
-# Generated from lang/appgen.g4 by ANTLR 4.13.2
+# Generated from appgen.g4 by ANTLR 4.13.2
 from antlr4 import *
 if "." in __name__:
     from .appgenParser import appgenParser
@@ -86,6 +86,15 @@ class appgenListener(ParseTreeListener):
 
     # Exit a parse tree produced by appgenParser#fieldDecl.
     def exitFieldDecl(self, ctx:appgenParser.FieldDeclContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#fieldName.
+    def enterFieldName(self, ctx:appgenParser.FieldNameContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#fieldName.
+    def exitFieldName(self, ctx:appgenParser.FieldNameContext):
         pass
 
 
@@ -707,6 +716,15 @@ class appgenListener(ParseTreeListener):
 
     # Exit a parse tree produced by appgenParser#qualifiedName.
     def exitQualifiedName(self, ctx:appgenParser.QualifiedNameContext):
+        pass
+
+
+    # Enter a parse tree produced by appgenParser#namePath.
+    def enterNamePath(self, ctx:appgenParser.NamePathContext):
+        pass
+
+    # Exit a parse tree produced by appgenParser#namePath.
+    def exitNamePath(self, ctx:appgenParser.NamePathContext):
         pass
 
 
