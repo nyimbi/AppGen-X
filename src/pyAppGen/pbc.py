@@ -18,6 +18,9 @@ import tempfile
 from pathlib import Path
 
 
+_MUTATING_CRUD_ACTIONS = frozenset({"create", "update", "delete"})
+
+
 PBC_MANIFEST_REQUIRED_FIELDS = (
     "pbc",
     "label",
@@ -12542,6 +12545,28 @@ def pbc_source_runtime_test_coverage_audit(
     }
 
 
+def _pbc_runtime_capabilities(key: str) -> dict:
+    """Return the package's advanced runtime capabilities, or raise.
+
+    The package is the only source of truth for advanced capabilities. A
+    missing entrypoint or an empty payload is a package defect, not an absent
+    feature, so it must not degrade into an empty dict that silently passes
+    the implementation contract.
+    """
+    package = importlib.import_module(f"pyAppGen.pbcs.{key}")
+    entrypoint = getattr(package, f"{key}_runtime_capabilities", None)
+    if not callable(entrypoint):
+        raise AttributeError(
+            f"PBC package {key!r} must export {key}_runtime_capabilities()"
+        )
+    capabilities = entrypoint()
+    if not isinstance(capabilities, dict) or not capabilities:
+        raise ValueError(
+            f"PBC package {key!r} returned empty or non-dict runtime capabilities"
+        )
+    return capabilities
+
+
 def _pbc_source_package_contract(key: str) -> dict:
     try:
         module = importlib.import_module(f"pyAppGen.pbcs.{key}")
@@ -13233,14 +13258,21 @@ def pbc_agent_capability_contract(key: str) -> dict:
         }
     skill_rows = tuple(skills.get("skills", ()))
     namespace = f"{key}_skills"
-    owned_table_prefix = f"{key}_"
     checks = (
         {
             "id": "agent_skill_manifest",
             "ok": skills.get("ok") is True
             and bool(skill_rows)
             and all(row.get("scope") == key for row in skill_rows)
-            and all(row.get("requires_confirmation_for_mutation") is True for row in skill_rows)
+            and all(
+                isinstance(row.get("requires_confirmation_for_mutation"), bool)
+                for row in skill_rows
+            )
+            and all(
+                row.get("requires_confirmation_for_mutation") is True
+                for row in skill_rows
+                if set(row.get("allowed_crud_actions") or ()) & _MUTATING_CRUD_ACTIONS
+            )
             and all(row.get("uses_appgen_event_contract") is True for row in skill_rows),
         },
         {
@@ -13254,7 +13286,11 @@ def pbc_agent_capability_contract(key: str) -> dict:
             "id": "document_instruction_intake",
             "ok": document.get("ok") is True
             and document.get("requires_human_confirmation") is True
-            and all(str(table).startswith(owned_table_prefix) for table in document.get("candidate_tables", ())),
+            and bool(_document_candidate_tables(document))
+            and all(
+                _is_owned_table_reference(key, str(table))
+                for table in _document_candidate_tables(document)
+            ),
         },
         {
             "id": "governed_crud_plans",
@@ -13358,107 +13394,7 @@ def pbc_implementation_contract(key: str) -> dict:
         service_methods,
     )
     advanced_blueprint = _advanced_domain_blueprint(key, service, table_contracts, event_contract, service_methods)
-    if key == "gl_core":
-        advanced_runtime = gl_core_runtime_capabilities()
-    elif key == "ap_automation":
-        advanced_runtime = ap_automation_runtime_capabilities()
-    elif key == "ar_credit":
-        advanced_runtime = ar_credit_runtime_capabilities()
-    elif key == "treasury_cash":
-        advanced_runtime = treasury_cash_runtime_capabilities()
-    elif key == "asset_lifecycle":
-        advanced_runtime = asset_lifecycle_runtime_capabilities()
-    elif key == "tax_localization":
-        advanced_runtime = tax_localization_runtime_capabilities()
-    elif key == "inventory_positioning":
-        advanced_runtime = inventory_positioning_runtime_capabilities()
-    elif key == "wms_core":
-        advanced_runtime = wms_core_runtime_capabilities()
-    elif key == "procurement_sourcing":
-        advanced_runtime = procurement_sourcing_runtime_capabilities()
-    elif key == "transportation_management":
-        advanced_runtime = transportation_management_runtime_capabilities()
-    elif key == "dom":
-        advanced_runtime = dom_runtime_capabilities()
-    elif key == "personnel_identity":
-        advanced_runtime = personnel_identity_runtime_capabilities()
-    elif key == "time_labor":
-        advanced_runtime = time_labor_runtime_capabilities()
-    elif key == "payroll_engine":
-        advanced_runtime = payroll_engine_runtime_capabilities()
-    elif key == "talent_onboarding":
-        advanced_runtime = talent_onboarding_runtime_capabilities()
-    elif key == "mrp_engine":
-        advanced_runtime = mrp_engine_runtime_capabilities()
-    elif key == "production_control":
-        advanced_runtime = production_control_runtime_capabilities()
-    elif key == "quality_assurance":
-        advanced_runtime = quality_assurance_runtime_capabilities()
-    elif key == "eam":
-        advanced_runtime = eam_runtime_capabilities()
-    elif key == "product_catalog_pim":
-        advanced_runtime = product_catalog_pim_runtime_capabilities()
-    elif key == "customer_360":
-        advanced_runtime = customer_360_runtime_capabilities()
-    elif key == "enterprise_pim":
-        advanced_runtime = enterprise_pim_runtime_capabilities()
-    elif key == "global_inventory_visibility":
-        advanced_runtime = global_inventory_visibility_runtime_capabilities()
-    elif key == "order_routing_optimization":
-        advanced_runtime = order_routing_optimization_runtime_capabilities()
-    elif key == "checkout_processing":
-        advanced_runtime = checkout_processing_runtime_capabilities()
-    elif key == "payment_orchestration":
-        advanced_runtime = payment_orchestration_runtime_capabilities()
-    elif key == "subscription_billing":
-        advanced_runtime = subscription_billing_runtime_capabilities()
-    elif key == "returns_reverse_logistics":
-        advanced_runtime = returns_reverse_logistics_runtime_capabilities()
-    elif key == "cross_border_trade":
-        advanced_runtime = cross_border_trade_runtime_capabilities()
-    elif key == "multi_sided_market":
-        advanced_runtime = multi_sided_market_runtime_capabilities()
-    elif key == "dam_core":
-        advanced_runtime = dam_core_runtime_capabilities()
-    elif key == "price_promotion_engine":
-        advanced_runtime = price_promotion_engine_runtime_capabilities()
-    elif key == "lead_opportunity":
-        advanced_runtime = lead_opportunity_runtime_capabilities()
-    elif key == "service_ticketing":
-        advanced_runtime = service_ticketing_runtime_capabilities()
-    elif key == "notifications":
-        advanced_runtime = notifications_runtime_capabilities()
-    elif key == "cdp_segmentation":
-        advanced_runtime = cdp_segmentation_runtime_capabilities()
-    elif key == "loyalty_rewards":
-        advanced_runtime = loyalty_rewards_runtime_capabilities()
-    elif key == "streaming_analytics":
-        advanced_runtime = streaming_analytics_runtime_capabilities()
-    elif key == "enterprise_search_vector":
-        advanced_runtime = enterprise_search_vector_runtime_capabilities()
-    elif key == "predictive_demand":
-        advanced_runtime = predictive_demand_runtime_capabilities()
-    elif key == "fraud_anomaly_detection":
-        advanced_runtime = fraud_anomaly_detection_runtime_capabilities()
-    elif key == "federated_iam":
-        advanced_runtime = federated_iam_runtime_capabilities()
-    elif key == "api_gateway_mesh":
-        advanced_runtime = api_gateway_mesh_runtime_capabilities()
-    elif key == "schema_registry":
-        advanced_runtime = schema_registry_runtime_capabilities()
-    elif key == "workflow_orchestration":
-        advanced_runtime = workflow_orchestration_runtime_capabilities()
-    elif key == "audit_ledger":
-        advanced_runtime = audit_ledger_runtime_capabilities()
-    elif key == "composition_engine":
-        advanced_runtime = composition_engine_runtime_capabilities()
-    else:
-        try:
-            package = importlib.import_module(f"pyAppGen.pbcs.{key}")
-            runtime_capabilities = getattr(package, f"{key}_runtime_capabilities")
-            advanced_runtime = runtime_capabilities()
-        except (AttributeError, ImportError):
-            advanced_runtime = {}
+    advanced_runtime = _pbc_runtime_capabilities(key)
     source_package = _pbc_source_package_contract(key)
     release_checks = (
         "stable_manifest",
@@ -13529,6 +13465,7 @@ def pbc_implementation_contract(key: str) -> dict:
                 for relationship in table["relationships"]
             ),
             "allowed_external_access": "apis_events_or_projections_only",
+            "unresolved_tables": _unresolved_manifest_tables(key),
         },
         "migrations": (
             {
@@ -14716,7 +14653,26 @@ def pbc_generation_smoke_audit(selected_pbcs: tuple[str, ...] | list[str] | None
     }
 
 
+def _package_manifest(key: str) -> dict:
+    """Return the package's declared manifest, or an empty dict.
+
+    The package is the single source of truth for a PBC's tables, events, and
+    datastore. The catalog literal is a fallback for entries whose package
+    cannot be imported; when it can, the package wins so the two cannot drift.
+    """
+    try:
+        module = importlib.import_module(f"pyAppGen.pbcs.{key}.manifest")
+    except ImportError:
+        return {}
+    manifest = getattr(module, "PBC_MANIFEST", None)
+    return manifest if isinstance(manifest, dict) else {}
+
+
 def _pbc_descriptor(key: str, pbc: dict) -> dict:
+    manifest = _package_manifest(key)
+    tables = tuple(manifest.get("tables", ()) or pbc["tables"])
+    emits = tuple(manifest.get("emits", ()) or pbc["emits"])
+    consumes = tuple(manifest.get("consumes", ()) or pbc["consumes"])
     return {
         "pbc": key,
         "label": pbc["label"],
@@ -14724,13 +14680,18 @@ def _pbc_descriptor(key: str, pbc: dict) -> dict:
         "mesh_label": PBC_MESHES[pbc["mesh"]]["label"],
         "description": pbc["description"],
         "datastore": f"{key}_store",
-        "datastore_backend": pbc.get("datastore_backend", "postgresql"),
-        "stream_processor": pbc.get("stream_processor", "faust_streaming"),
-        "stream_exception_evidence": dict(pbc.get("stream_exception_evidence", {})),
-        "tables": pbc["tables"],
+        "datastore_backend": manifest.get("datastore_backend")
+        or pbc.get("datastore_backend", "postgresql"),
+        "stream_processor": manifest.get("stream_processor")
+        or pbc.get("stream_processor"),
+        "stream_exception_evidence": dict(
+            manifest.get("stream_exception_evidence")
+            or pbc.get("stream_exception_evidence", {})
+        ),
+        "tables": tables,
         "apis": pbc["apis"],
-        "emits": pbc["emits"],
-        "consumes": pbc["consumes"],
+        "emits": emits,
+        "consumes": consumes,
         "template": pbc["template"],
         "package_directory": f"pbcs/{key}",
         "selectable": True,
@@ -14782,6 +14743,96 @@ def _service_contract(key: str) -> dict:
 def _snake(value: str) -> str:
     words = re.findall(r"[A-Z]?[a-z0-9]+|[A-Z]+(?=[A-Z]|$)", value)
     return "_".join(word.lower() for word in words) or value.lower()
+
+
+def _owned_tables(key: str) -> tuple[str, ...]:
+    """Return the physical tables a PBC package owns.
+
+    Three surfaces describe the same inventory and none is complete on its own.
+    ``*_OWNED_TABLES`` is the base declaration; ``*_RUNTIME_TABLES`` adds the
+    outbox, inbox, and dead-letter tables that live in the PBC's schema; and
+    ``*_runtime_capabilities()`` is where a package that extends itself past the
+    base declaration (a ``domain_depth`` or ``slice_app`` layer) reports the
+    union. Reading only the constant under-reports those extended packages, so
+    all three are folded together and the package's own capability surface wins.
+    """
+    try:
+        module = importlib.import_module(f"pyAppGen.pbcs.{key}")
+    except ImportError:
+        return ()
+    owned = getattr(module, f"{key.upper()}_OWNED_TABLES", None) or ()
+    runtime = getattr(module, f"{key.upper()}_RUNTIME_TABLES", None) or ()
+    try:
+        capabilities = tuple(_pbc_runtime_capabilities(key).get("owned_tables") or ())
+    except (AttributeError, ValueError, ImportError):
+        capabilities = ()
+    return tuple(dict.fromkeys((*owned, *runtime, *capabilities)))
+
+
+def _unresolved_manifest_tables(key: str) -> tuple[str, ...]:
+    """Return manifest-declared tables that the package does not own.
+
+    The manifest is the package's public table contract and the owned-table
+    constants are its physical inventory; a name that appears in the first and
+    not the second is drift. Either spelling counts as owned, because some
+    manifests declare the physical name and others the generated key-prefixed
+    one.
+    """
+    manifest = _package_manifest(key)
+    owned = _owned_tables(key)
+    return tuple(
+        table
+        for table in manifest.get("tables", ()) or ()
+        if _owned_table_name(key, str(table), owned) not in owned
+    )
+
+
+def _document_candidate_tables(document: dict) -> tuple[str, ...]:
+    """Return the tables a document-instruction plan proposes to touch.
+
+    Packages publish the plural ``candidate_tables``; two older packages publish
+    a singular ``candidate_table`` instead. Both describe the same obligation, so
+    the plan is read from whichever key is present.
+    """
+    plural = tuple(document.get("candidate_tables") or ())
+    if plural:
+        return plural
+    singular = document.get("candidate_table")
+    return (singular,) if singular else ()
+
+
+def _is_owned_table_reference(key: str, table: str) -> bool:
+    """Return whether a table reference names a table the package owns.
+
+    Packages expose candidate tables under either the physical name (``asset``
+    for ``dam_core``) or the generated key-prefixed name
+    (``api_gateway_mesh_service_registration`` for an owned
+    ``service_registration``). Both name the package's own tables, so the check
+    accepts either rather than assuming one prefix.
+    """
+    owned = _owned_tables(key)
+    if table in owned:
+        return True
+    prefix = f"{key}_"
+    return table.startswith(prefix) and table[len(prefix) :] in owned
+
+
+def _owned_table_name(key: str, logical: str, owned: tuple[str, ...]) -> str:
+    """Resolve a logical table to its physical name in the package.
+
+    Packages name owned tables with a domain prefix that is not always the PBC
+    key: ``ar_credit`` owns ``ar_customer``, ``gl_core`` owns
+    ``gl_core_ledger_event_log``, and ``dam_core`` owns ``asset`` unprefixed.
+    The package is authoritative, so the physical name is looked up rather than
+    reconstructed. A logical name that resolves to nothing falls back to the
+    key-prefixed form, which the owned-table check then rejects.
+    """
+    if logical in owned:
+        return logical
+    suffixed = tuple(name for name in owned if name.endswith(f"_{logical}"))
+    if len(suffixed) == 1:
+        return suffixed[0]
+    return f"{key}_{logical}"
 
 
 def _table_contract(key: str, table: str, primary_table: str, position: int) -> dict:

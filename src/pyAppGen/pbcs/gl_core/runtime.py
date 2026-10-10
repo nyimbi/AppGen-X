@@ -8,6 +8,8 @@ import json
 import math
 import re
 
+from .events import EVENT_CONTRACT
+
 
 GL_CORE_REQUIRED_EVENT_TOPIC = "appgen.gl.events"
 GL_CORE_ALLOWED_DATABASE_BACKENDS = ("postgresql", "mysql", "mariadb")
@@ -44,19 +46,11 @@ GL_CORE_OWNED_TABLES = (
     "gl_core_appgen_inbox_event",
     "gl_core_dead_letter_event",
 )
-GL_CORE_EMITTED_EVENT_TYPES = (
-    "JournalPosted",
-    "CloseSnapshotCreated",
-    "ReconciliationSuggested",
-    "PostingPolicyChanged",
-    "LedgerProjectionBuilt",
+GL_CORE_EMITTED_EVENT_TYPES = tuple(
+    event["event_type"] for event in EVENT_CONTRACT["emitted"]
 )
-GL_CORE_CONSUMED_EVENT_TYPES = (
-    "InvoiceApproved",
-    "PaymentCaptured",
-    "PayrollPosted",
-    "AssetDepreciated",
-    "TaxCalculated",
+GL_CORE_CONSUMED_EVENT_TYPES = tuple(
+    event["event_type"] for event in EVENT_CONTRACT["consumed"]
 )
 _GL_CORE_RUNTIME_TABLES = (
     "gl_core_appgen_outbox_event",

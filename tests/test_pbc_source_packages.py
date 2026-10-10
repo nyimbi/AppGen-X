@@ -2,6 +2,8 @@ from importlib import import_module
 
 from pyAppGen.pbc import (
     PBC_CATALOG,
+    _owned_tables,
+    pbc_catalog,
     pbc_implementation_release_audit,
     pbc_source_artifact_release_audit,
     pbc_source_runtime_test_coverage_audit,
@@ -233,3 +235,63 @@ def test_each_builtin_pbc_passes_release_audit_independently():
         assert f"{key}:source_package_schema_service_release" in {
             check["id"] for check in audit["checks"]
         }
+
+
+def _package_event_types(key):
+    """Return the package's declared emitted and consumed event types.
+
+    Packages publish these either at the package root or in an ``events``
+    submodule; both are the package's own declaration, so the test reads
+    whichever the package exposes rather than assuming one location.
+    """
+    package = import_module(f"pyAppGen.pbcs.{key}")
+    emitted = getattr(package, f"{key.upper()}_EMITTED_EVENT_TYPES", None)
+    consumed = getattr(package, f"{key.upper()}_CONSUMED_EVENT_TYPES", None)
+    if emitted is not None and consumed is not None:
+        return tuple(emitted), tuple(consumed)
+    events = import_module(f"pyAppGen.pbcs.{key}.events")
+    return (
+        tuple(getattr(events, f"{key.upper()}_EMITTED_EVENT_TYPES")),
+        tuple(getattr(events, f"{key.upper()}_CONSUMED_EVENT_TYPES")),
+    )
+
+
+def test_catalog_descriptor_matches_package_for_reference_pbcs():
+    """The catalog descriptor must equal the package it describes.
+
+    The catalog is computed from the package, so a mismatch means one of the
+    two hand-maintained surfaces has drifted. These three PBCs cover the hard
+    cases (richest runtime, flagship advanced ledger, non-key table prefix) and
+    are the reference set the rest migrate behind.
+    """
+    descriptors = {descriptor["pbc"]: descriptor for descriptor in pbc_catalog()}
+
+    for key in ("dam_core", "gl_core", "ar_credit"):
+        descriptor = descriptors[key]
+        manifest = import_module(f"pyAppGen.pbcs.{key}.manifest").PBC_MANIFEST
+        emitted, consumed = _package_event_types(key)
+
+        assert tuple(descriptor["tables"]) == tuple(manifest["tables"]), key
+        assert set(descriptor["emits"]) == set(emitted), key
+        assert set(descriptor["consumes"]) == set(consumed), key
+
+
+def test_manifest_tables_resolve_to_owned_tables_for_every_pbc():
+    """Every manifest table must resolve to a table the package owns.
+
+    A manifest table with no owned-table counterpart is a name the package
+    never creates, so generation would emit a table nothing migrates. Packages
+    prefix owned tables with their own domain prefix (``ar_credit`` owns
+    ``ar_customer`` for a manifest table ``customer``), so resolution is by
+    suffix as well as by exact name.
+    """
+    for key in PBC_CATALOG:
+        manifest = import_module(f"pyAppGen.pbcs.{key}.manifest").PBC_MANIFEST
+        owned = _owned_tables(key)
+
+        for table in manifest.get("tables", ()) or ():
+            resolved = table in owned or any(
+                name.endswith(f"_{table}") for name in owned
+            )
+            assert resolved, f"{key}: manifest table {table!r} is not owned"
+

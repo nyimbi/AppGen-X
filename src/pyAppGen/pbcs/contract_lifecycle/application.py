@@ -1297,6 +1297,7 @@ def service_contract() -> dict:
         "ok": True,
         "pbc": PBC_KEY,
         "command_methods": tuple(OPERATION_SPECS) + (
+            "command_contract_record",
             "configure_runtime",
             "set_parameter",
             "register_rule",
@@ -1410,7 +1411,7 @@ def agent_skill_manifest() -> dict:
                 "scope": PBC_KEY,
                 "description": "Read owned contract lifecycle records",
                 "requires_confirmation_for_mutation": False,
-                "uses_appgen_event_contract": False,
+                "uses_appgen_event_contract": True,
                 "target_table": "contract_lifecycle_contract_record",
             },
             {
@@ -2694,6 +2695,7 @@ def runtime_capabilities() -> dict:
         "emits": tuple(dict.fromkeys(EMITTED_EVENTS + LEGACY_PUBLIC_EVENTS)),
         "consumes": CONSUMED_EVENTS,
         "operations": tuple(OPERATION_SPECS) + (
+            "command_contract_record",
             "configure_runtime",
             "set_parameter",
             "register_rule",

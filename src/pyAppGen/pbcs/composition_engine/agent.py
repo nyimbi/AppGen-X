@@ -82,6 +82,7 @@ def chatbot_interface_contract():
             "layout_planning",
             "dsl_review",
             "dependency_solving",
+            "governed_datastore_crud",
             "release_readiness_explanation",
             "rollback_planning",
         ),

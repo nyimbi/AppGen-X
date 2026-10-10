@@ -46,4 +46,5 @@ def smoke_test():
         and datastore_crud_plan("create")["ok"]
         and datastore_crud_plan("update", table="foreign_table")["ok"] is False
         and composed_agent_contribution()["ok"],
+        "side_effects": (),
     }
