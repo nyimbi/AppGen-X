@@ -272,15 +272,15 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
     frontend = root / "appgen-frontend"
     package_path = frontend / "package.json"
     smoke_script = frontend / "scripts" / "browser-smoke.mjs"
-    semantic_contract = frontend / "src" / "semanticServiceContract.ts"
     semantic_panel = frontend / "src" / "SemanticServicePanel.tsx"
+    studio_client = frontend / "src" / "studioApi.ts"
     workflow_path = root / ".github" / "workflows" / "studio-browser-smoke.yml"
     package = {}
     if package_path.exists():
         package = json.loads(package_path.read_text(encoding="utf-8"))
     script_text = smoke_script.read_text(encoding="utf-8") if smoke_script.exists() else ""
-    semantic_contract_text = semantic_contract.read_text(encoding="utf-8") if semantic_contract.exists() else ""
     semantic_panel_text = semantic_panel.read_text(encoding="utf-8") if semantic_panel.exists() else ""
+    studio_client_text = studio_client.read_text(encoding="utf-8") if studio_client.exists() else ""
     workflow_text = workflow_path.read_text(encoding="utf-8") if workflow_path.exists() else ""
     scenarios = (
         "studio_shell",
@@ -327,12 +327,15 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
         },
         {
             "id": "frontend_semantic_service_bridge",
-            "ok": semantic_contract.exists()
-            and semantic_panel.exists()
-            and "appgen.frontend-semantic-service-audit.v1" in semantic_contract_text
-            and "appgen.lsp-service.v1" in semantic_contract_text
-            and "appgen.designer-sync-report.v1" in semantic_contract_text
-            and "Editor And Designer Bridge" in semantic_panel_text,
+            # The panel reads the platform's semantic-service report over the
+            # API rather than a TypeScript contract module, so the check is that
+            # the panel names the client and the route, not that a local list
+            # exists. The payload itself is asserted in test_studio_backend.py.
+            "ok": semantic_panel.exists()
+            and "from './studioApi'" in semantic_panel_text
+            and "loadSemanticService" in semantic_panel_text
+            and "Editor And Designer Bridge" in semantic_panel_text
+            and "semanticService" in studio_client_text,
         },
     )
     return {
@@ -342,7 +345,7 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
         "command": "npm run test:browser",
         "workflow": str(workflow_path),
         "script": str(smoke_script),
-        "semantic_contract": str(semantic_contract),
+        "studio_client": str(studio_client),
         "semantic_panel": str(semantic_panel),
         "scenarios": scenarios,
         "environment": {

@@ -15,6 +15,7 @@ export const STUDIO_ROUTES = {
   packages: '/api/studio/packages',
   targets: '/api/studio/targets',
   tokens: '/api/studio/tokens',
+  semanticService: '/api/studio/semantic-service',
   manifest: '/api/studio/manifest',
 } as const
 
@@ -81,6 +82,19 @@ export type TargetCapabilityPayload = {
   desktop: { target: Record<string, unknown> }
 }
 
+export type SemanticServicePayload = {
+  format: string
+  ok: boolean
+  semantic_service: {
+    format: string
+    ok: boolean
+    services: Record<string, string>
+    designer_surfaces: Record<string, { format?: string }>
+    checks: readonly { id: string; ok: boolean }[]
+    blocking_gaps: readonly unknown[]
+  }
+}
+
 /** Fetch one Studio route. Throws on a non-2xx so a caller never renders `undefined`. */
 export async function studioGet<T>(route: StudioRoute, init?: RequestInit): Promise<T> {
   const path = STUDIO_ROUTES[route]
@@ -101,3 +115,4 @@ export async function studioGet<T>(route: StudioRoute, init?: RequestInit): Prom
 export const loadComponentPalette = () => studioGet<ComponentPalettePayload>('components')
 export const loadComponentPackages = () => studioGet<ComponentPackagesPayload>('packages')
 export const loadTargetCapabilities = () => studioGet<TargetCapabilityPayload>('targets')
+export const loadSemanticService = () => studioGet<SemanticServicePayload>('semanticService')

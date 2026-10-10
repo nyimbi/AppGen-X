@@ -32,15 +32,11 @@ def studio_api_manifest() -> dict:
 
     A single source for the route table means the frontend's client and the
     server cannot disagree about what exists, and the smoke test can iterate it
-    rather than hardcoding a list.
+    rather than hardcoding a list. `STUDIO_API_ROUTES` is that source; the WSGI
+    app and the framework-free responder both read it, so adding a route is one
+    edit rather than three.
     """
-    routes = {
-        "/api/studio/workspace": studio_workspace_payload,
-        "/api/studio/components": component_palette_payload,
-        "/api/studio/packages": component_packages_payload,
-        "/api/studio/targets": target_capabilities_payload,
-        "/api/studio/tokens": design_tokens_payload,
-    }
+    routes = STUDIO_API_ROUTES
     return {
         "format": STUDIO_API_FORMAT,
         "routes": tuple(
@@ -65,6 +61,22 @@ def studio_workspace_payload() -> dict:
         "format": STUDIO_API_FORMAT,
         "ok": True,
         "workspace": _jsonable(workspace),
+    }
+
+
+def studio_semantic_service_payload() -> dict:
+    """Return the shared-semantics bridge the editor and designers sit on.
+
+    The panel showed a TypeScript list of service names and designer surfaces.
+    The workspace already computes the real ones (its `semantic_service`
+    section), so this slices that cached result rather than recomputing a
+    contract that costs a minute.
+    """
+    workspace = studio_workspace_payload()["workspace"]
+    return {
+        "format": STUDIO_API_FORMAT,
+        "ok": True,
+        "semantic_service": workspace["semantic_service"],
     }
 
 
@@ -141,6 +153,16 @@ def _jsonable(value: Any) -> Any:
     return value
 
 
+STUDIO_API_ROUTES: dict[str, Callable[[], dict]] = {
+    "/api/studio/workspace": studio_workspace_payload,
+    "/api/studio/components": component_palette_payload,
+    "/api/studio/packages": component_packages_payload,
+    "/api/studio/targets": target_capabilities_payload,
+    "/api/studio/tokens": design_tokens_payload,
+    "/api/studio/semantic-service": studio_semantic_service_payload,
+}
+
+
 def studio_api_app() -> Callable:
     """Return a WSGI application serving the Studio API and the built frontend.
 
@@ -156,13 +178,7 @@ def studio_api_app() -> Callable:
     app = Flask(__name__)
     dist = Path(__file__).resolve().parents[2] / "appgen-frontend" / "dist"
 
-    for path, handler in (
-        ("/api/studio/workspace", studio_workspace_payload),
-        ("/api/studio/components", component_palette_payload),
-        ("/api/studio/packages", component_packages_payload),
-        ("/api/studio/targets", target_capabilities_payload),
-        ("/api/studio/tokens", design_tokens_payload),
-    ):
+    for path, handler in STUDIO_API_ROUTES.items():
 
         def _view(_handler=handler):
             return jsonify(_handler())
@@ -208,14 +224,7 @@ def studio_api_response(path: str) -> tuple[int, str]:
     and their serialisation in an environment where Flask is absent, and a
     static host can prerender them.
     """
-    routes = {
-        "/api/studio/workspace": studio_workspace_payload,
-        "/api/studio/components": component_palette_payload,
-        "/api/studio/packages": component_packages_payload,
-        "/api/studio/targets": target_capabilities_payload,
-        "/api/studio/tokens": design_tokens_payload,
-        "/api/studio/manifest": studio_api_manifest,
-    }
+    routes = {**STUDIO_API_ROUTES, "/api/studio/manifest": studio_api_manifest}
     handler = routes.get(path)
     if handler is None:
         return 404, json.dumps({"format": STUDIO_API_FORMAT, "ok": False, "reason": "unknown_route"})

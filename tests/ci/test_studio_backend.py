@@ -22,6 +22,7 @@ ROUTES = (
     "/api/studio/packages",
     "/api/studio/targets",
     "/api/studio/tokens",
+    "/api/studio/semantic-service",
 )
 
 
@@ -118,6 +119,15 @@ def test_the_workspace_panel_serves_the_studio_contract() -> None:
     assert payload["workspace"]["format"] == studio.studio_workspace()["format"]
 
 
+def test_the_semantic_panel_serves_the_workspaces_own_report() -> None:
+    """The bridge is a slice of the workspace, not a second list to keep in sync."""
+    payload = studio_backend.studio_semantic_service_payload()
+    workspace = studio_backend.studio_workspace_payload()["workspace"]
+    assert payload["semantic_service"] == workspace["semantic_service"]
+    assert payload["semantic_service"]["services"], "the bridge declares no services"
+    assert payload["semantic_service"]["designer_surfaces"], "the bridge declares no surfaces"
+
+
 def test_every_payload_serialises() -> None:
     """A contract that cannot be JSON-encoded is a 500 the client cannot read."""
     for path in ROUTES:
@@ -144,12 +154,6 @@ def test_the_frontend_reads_the_backend_rather_than_a_local_catalog() -> None:
     frontend's text for a string it hoped to find, the frontend is asserted to
     reach the backend that exists. A panel that keeps its own catalog is the
     drift the backend was built to end.
-
-    The package and device panels are ported here. The component palette still
-    reads its local catalog, because the browser smoke harness drives it through
-    a `Device` category and a storage search that the Python palette does not
-    carry; porting it means porting those fixtures first, which is its own
-    change.
     """
     from pathlib import Path
 
@@ -161,8 +165,10 @@ def test_the_frontend_reads_the_backend_rather_than_a_local_catalog() -> None:
         assert route in client_text, f"the client does not call {route}"
 
     panels = {
+        "ComponentPalette.tsx": "loadComponentPalette",
         "PackageManager.tsx": "loadComponentPackages",
         "DeviceApiWorkbench.tsx": "loadTargetCapabilities",
+        "SemanticServicePanel.tsx": "loadSemanticService",
     }
     for name, loader in panels.items():
         text = (source / name).read_text(encoding="utf-8")
