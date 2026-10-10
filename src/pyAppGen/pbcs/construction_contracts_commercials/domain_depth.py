@@ -1,7 +1,7 @@
 """Domain depth contract for the construction_contracts_commercials PBC."""
 from __future__ import annotations
 
-from .core import (
+from .runtime import (
     CONSTRUCTION_CONTRACTS_COMMERCIALS_ALLOWED_DATABASE_BACKENDS,
     CONSTRUCTION_CONTRACTS_COMMERCIALS_CONSUMED_EVENT_TYPES,
     CONSTRUCTION_CONTRACTS_COMMERCIALS_RUNTIME_CAPABILITY_KEYS,
@@ -18,7 +18,7 @@ from .core import (
     construction_contracts_commercials_build_workbench_view,
     construction_contracts_commercials_runtime_smoke,
 )
-from .core import CONSTRUCTION_CONTRACTS_COMMERCIALS_OWNED_TABLES as DOMAIN_OWNED_TABLES
+from .runtime import CONSTRUCTION_CONTRACTS_COMMERCIALS_OWNED_TABLES as DOMAIN_OWNED_TABLES
 
 DOMAIN_ENTITY = "construction_contract"
 DOMAIN_PURPOSE = (

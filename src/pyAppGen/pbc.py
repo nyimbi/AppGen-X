@@ -14171,9 +14171,10 @@ def pbc_composition_plan(
     shared_datastores = tuple(
         datastore for datastore in datastores if datastores.count(datastore) > 1
     )
+    shared_tables = _composition_shared_tables(services)
     return {
         "format": "appgen.pbc-composition-plan.v1",
-        "ok": not missing and not shared_datastores and bool(services),
+        "ok": not missing and not shared_datastores and not shared_tables and bool(services),
         "app_name": app_name,
         "targets": targets,
         "pbcs": selected,
@@ -14182,10 +14183,31 @@ def pbc_composition_plan(
         "external_event_contracts": unresolved_external_events,
         "missing_pbcs": missing,
         "shared_datastores": tuple(dict.fromkeys(shared_datastores)),
+        "shared_tables": shared_tables,
         "integration_style": "event-first-with-api-command-surface",
         "deployment_units": tuple(f"services/{service['pbc']}" for service in services),
         "stop_condition": "do-not-compose-pbcs-unless-each-selected-capability-has-an-owned-datastore",
     }
+
+
+def _composition_shared_tables(services: tuple[dict, ...]) -> tuple[dict, ...]:
+    """Return physical tables claimed by more than one selected PBC.
+
+    Generated apps name every owned table ``{pbc}_{logical}``, so two PBCs
+    collide only if one PBC's key prefixes another's table name. Keys are
+    unique today and no key prefixes another, so this is empty for every
+    current composition; it is checked rather than assumed because a future
+    key that does prefix another would silently merge two owned datastores.
+    """
+    owners: dict[str, list[str]] = {}
+    for service in services:
+        for table in service["tables"]:
+            owners.setdefault(f"{service['pbc']}_{table}", []).append(service["pbc"])
+    return tuple(
+        {"table": table, "owners": tuple(sorted(set(table_owners)))}
+        for table, table_owners in sorted(owners.items())
+        if len(set(table_owners)) > 1
+    )
 
 
 def pbc_composition_dsl(
@@ -14441,6 +14463,7 @@ def pbc_release_audit() -> dict:
             "id": "composition_plan",
             "ok": composition["ok"]
             and not composition["shared_datastores"]
+            and not composition["shared_tables"]
             and len(composition["services"]) == len(sample),
         },
         {

@@ -18,7 +18,7 @@ from pyAppGen.pbcs.construction_contracts_commercials.agent import (
     document_instruction_plan,
 )
 from pyAppGen.pbcs.construction_contracts_commercials.config import governance_smoke_test
-from pyAppGen.pbcs.construction_contracts_commercials.core import (
+from pyAppGen.pbcs.construction_contracts_commercials.runtime import (
     CONSTRUCTION_CONTRACTS_COMMERCIALS_EMITTED_EVENT_TYPES,
     construction_contracts_commercials_build_workbench_view,
 )

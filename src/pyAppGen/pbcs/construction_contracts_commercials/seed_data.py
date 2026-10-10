@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from .core import seed_plan as _seed_plan
-from .core import validate_seed_data as _validate_seed_data
+from .runtime import seed_plan as _seed_plan
+from .runtime import validate_seed_data as _validate_seed_data
 
 
 def seed_plan():

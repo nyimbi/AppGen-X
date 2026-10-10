@@ -2,7 +2,7 @@
 
 # Audit trace key: 'construction_contracts_commercials'
 
-from .core import (
+from .runtime import (
     CONSTRUCTION_CONTRACTS_COMMERCIALS_CONSUMED_EVENT_TYPES,
     CONSTRUCTION_CONTRACTS_COMMERCIALS_EMITTED_EVENT_TYPES,
     CONSTRUCTION_CONTRACTS_COMMERCIALS_ROUTES,

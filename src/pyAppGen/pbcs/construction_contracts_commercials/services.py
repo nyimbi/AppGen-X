@@ -1,7 +1,7 @@
 """Service layer for the construction_contracts_commercials PBC."""
 from __future__ import annotations
 
-from .core import (
+from .runtime import (
     EVENT_CONTRACT,
     PBC_KEY,
     SERVICE_COMMAND_OPERATIONS as COMMAND_OPERATIONS,

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .core import (
+from .runtime import (
     agent_skill_manifest as _agent_skill_manifest,
     chatbot_interface_contract as _chatbot_interface_contract,
     composed_agent_contribution as _composed_agent_contribution,

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .core import (
+from .runtime import (
     compile_rule as _compile_rule,
     configuration_manifest as _configuration_manifest,
     evaluate_rule as _evaluate_rule,

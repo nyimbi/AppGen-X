@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from .core import CONSTRUCTION_CONTRACTS_COMMERCIALS_ROUTES as ROUTES
-from .core import PBC_KEY, construction_contracts_commercials_build_api_contract
+from .runtime import CONSTRUCTION_CONTRACTS_COMMERCIALS_ROUTES as ROUTES
+from .runtime import PBC_KEY, construction_contracts_commercials_build_api_contract
 from .services import ConstructionContractsCommercialsService
 
 _ROUTE_TO_OPERATION = {

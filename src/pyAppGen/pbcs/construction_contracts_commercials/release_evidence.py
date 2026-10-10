@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .core import construction_contracts_commercials_build_release_evidence
+from .runtime import construction_contracts_commercials_build_release_evidence
 
 
 def build_release_evidence():

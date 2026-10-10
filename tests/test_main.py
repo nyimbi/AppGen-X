@@ -1381,6 +1381,7 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert plan["format"] == "appgen.pbc-composition-plan.v1"
     assert plan["ok"] is True
     assert not plan["shared_datastores"]
+    assert not plan["shared_tables"]
     assert len({service["datastore"] for service in plan["services"]}) == len(plan["services"])
     assert {service["pbc"] for service in plan["services"]} == set(plan["pbcs"])
     assert any(item["provider"] == "inventory_positioning" for item in plan["dependencies"])

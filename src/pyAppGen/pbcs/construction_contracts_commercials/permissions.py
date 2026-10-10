@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .core import PERMISSIONS, PBC_KEY, construction_contracts_commercials_authorize, construction_contracts_commercials_permissions_contract
+from .runtime import PERMISSIONS, PBC_KEY, construction_contracts_commercials_authorize, construction_contracts_commercials_permissions_contract
 
 
 def permission_manifest():

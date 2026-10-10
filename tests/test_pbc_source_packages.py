@@ -2,8 +2,10 @@ from importlib import import_module
 
 from pyAppGen.pbc import (
     PBC_CATALOG,
+    _composition_shared_tables,
     _owned_tables,
     pbc_catalog,
+    pbc_composition_plan,
     pbc_implementation_release_audit,
     pbc_source_artifact_release_audit,
     pbc_source_runtime_test_coverage_audit,
@@ -294,4 +296,42 @@ def test_manifest_tables_resolve_to_owned_tables_for_every_pbc():
                 name.endswith(f"_{table}") for name in owned
             )
             assert resolved, f"{key}: manifest table {table!r} is not owned"
+
+
+def test_no_two_pbcs_claim_the_same_generated_table():
+    """No composition of built-in PBCs may share a generated table.
+
+    Generated apps name every owned table ``{pbc}_{logical}``, so two PBCs
+    collide only when one key prefixes the other's table name. Every pair is
+    checked, because a collision silently merges two owned datastores and
+    breaks the platform's one-datastore-per-PBC promise.
+    """
+    keys = tuple(PBC_CATALOG)
+    plan = pbc_composition_plan(keys)
+
+    assert plan["shared_tables"] == ()
+
+
+def test_shared_table_detector_fires_on_a_prefix_collision():
+    """The collision detector must fail on a deliberate prefix collision.
+
+    A gate that has never been watched fail is not evidence. Two synthetic
+    services are chosen so that one PBC's key prefixes the other's table name,
+    which is the only way generated table names can collide.
+    """
+    colliding = (
+        {"pbc": "gl_core", "tables": ("ledger", "journal_entry")},
+        {"pbc": "gl", "tables": ("core_ledger",)},
+    )
+
+    assert _composition_shared_tables(colliding) == (
+        {"table": "gl_core_ledger", "owners": ("gl", "gl_core")},
+    )
+
+    distinct = (
+        {"pbc": "gl_core", "tables": ("ledger",)},
+        {"pbc": "ar_credit", "tables": ("ledger",)},
+    )
+
+    assert _composition_shared_tables(distinct) == ()
 

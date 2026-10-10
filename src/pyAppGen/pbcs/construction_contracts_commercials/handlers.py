@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from .core import CONSTRUCTION_CONTRACTS_COMMERCIALS_CONSUMED_EVENT_TYPES as CONSUMED
-from .core import dispatch_event as _dispatch_event
-from .core import handler_manifest as _handler_manifest
+from .runtime import CONSTRUCTION_CONTRACTS_COMMERCIALS_CONSUMED_EVENT_TYPES as CONSUMED
+from .runtime import dispatch_event as _dispatch_event
+from .runtime import handler_manifest as _handler_manifest
 
 retry_policy = {"max_attempts": 5, "backoff": "exponential"}
 dead_letter_table = "construction_contracts_commercials_appgen_dead_letter_event"

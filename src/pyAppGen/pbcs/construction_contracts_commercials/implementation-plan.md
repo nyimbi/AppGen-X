@@ -16,12 +16,10 @@ Implement this PBC as a package-local, executable construction contracts and com
 
 ## File-Level Plan
 
-- `core.py`
-  - Add the package-local executable domain core, schema contracts, route metadata, UI/forms/wizards/controls, RBAC, rules, parameters, event helpers, release simulation, and smoke checks.
 - `runtime.py`
-  - Re-export the executable core through the existing runtime entrypoints expected by the package.
+  - Hold the package-local executable domain core: schema contracts, route metadata, UI/forms/wizards/controls, RBAC, rules, parameters, event helpers, release simulation, and smoke checks.
 - `services.py`, `routes.py`, `ui.py`, `agent.py`, `config.py`, `permissions.py`, `events.py`, `handlers.py`, `seed_data.py`, `domain_depth.py`
-  - Convert wrappers to domain-specific behavior backed by the shared package-local core.
+  - Convert wrappers to domain-specific behavior backed by the shared package-local runtime.
 - `manifest.py`, `migrations/001_initial.sql`, `README.md`, `RELEASE_EVIDENCE.md`, `implementation-status.md`
   - Update package metadata and documentation to match the implemented slice.
 - `tests/test_contract.py`

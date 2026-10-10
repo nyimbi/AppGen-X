@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .core import (
+from .runtime import (
     CONSTRUCTION_CONTRACTS_COMMERCIALS_CONSUMED_EVENT_TYPES as CONSUMED,
     CONSTRUCTION_CONTRACTS_COMMERCIALS_EMITTED_EVENT_TYPES as EMITTED,
     build_event_envelope as _build_event_envelope,

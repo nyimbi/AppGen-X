@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .core import (
+from .runtime import (
     PBC_KEY,
     construction_contracts_commercials_build_workbench_view,
     construction_contracts_commercials_render_workbench as _construction_contracts_commercials_render_workbench,
