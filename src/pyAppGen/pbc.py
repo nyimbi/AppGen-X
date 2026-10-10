@@ -17,6 +17,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from . import pbc_schema
+
 
 _MUTATING_CRUD_ACTIONS = frozenset({"create", "update", "delete"})
 
@@ -13253,8 +13255,14 @@ def pbc_implementation_contract(key: str) -> dict:
         }
     service = _service_contract(key)
     primary_table = service["tables"][0]
+    # Packages disagree on whether `_owned_tables` reports logical or physical
+    # names (`dam_core` reports `asset`, `gl_core` reports
+    # `gl_core_ledger_event_log`). It is passed on its own so the suffix match
+    # in `_owned_table_name` stays unambiguous; the migration's own names are
+    # matched separately in `_table_fields`.
+    owned = _owned_tables(key)
     table_contracts = tuple(
-        _table_contract(key, table, primary_table, position)
+        _table_contract(key, table, primary_table, position, owned)
         for position, table in enumerate(service["tables"])
     )
     event_contract = _event_contract(key, service)
@@ -14757,29 +14765,45 @@ def _owned_table_name(key: str, logical: str, owned: tuple[str, ...]) -> str:
     return f"{key}_{logical}"
 
 
-def _table_contract(key: str, table: str, primary_table: str, position: int) -> dict:
+def _table_contract(
+    key: str,
+    table: str,
+    primary_table: str,
+    position: int,
+    owned: tuple[str, ...] = (),
+) -> dict:
+    """Return the owned-table contract for one logical table.
+
+    Columns come from the package's own migration, which is the one place a
+    PBC states its real columns and their types and is uniform across all 147
+    packages. Before this, every table in every PBC was given the same
+    `code`/`status`/`version` stub, so a `dam_core` app declared 49 tables and
+    described none of them.
+
+    The owned-table name and the relationship set are left as they were. A
+    package's migration does not always name a table the way its runtime does
+    (`ar_credit` migrates `ar_credit_ar_customer` but declares `ar_customer`),
+    and 126 of 147 packages list fewer tables in their service contract than
+    their migration creates, so adopting the migration's names wholesale moves
+    real foreign keys outside the contract and fails the owned-table check.
+    Reconciling that is its own change; this one only stops the fields lying.
+    """
     owned_table = f"{key}_{table}"
-    fields = [
-        {"name": "id", "type": "integer", "primary_key": True, "nullable": False},
-        {"name": "code", "type": "string", "required": True, "searchable": True},
-        {"name": "status", "type": "string", "required": True, "default": "draft"},
-        {"name": "version", "type": "integer", "required": True, "default": 1},
-        {"name": "created_at", "type": "datetime", "required": True},
-        {"name": "updated_at", "type": "datetime", "required": True},
-    ]
+    fields = _table_fields(key, table, owned, primary_table, position)
     relationships = []
     if position > 0:
         target_table = f"{key}_{primary_table}"
         field_name = f"{primary_table}_id"
-        fields.insert(
-            1,
-            {
-                "name": field_name,
-                "type": "integer",
-                "required": True,
-                "references": f"{target_table}.id",
-            },
-        )
+        if not any(field["name"] == field_name for field in fields):
+            fields.insert(
+                1,
+                {
+                    "name": field_name,
+                    "type": "integer",
+                    "required": True,
+                    "references": f"{target_table}.id",
+                },
+            )
         relationships.append(
             {
                 "field": field_name,
@@ -14795,6 +14819,58 @@ def _table_contract(key: str, table: str, primary_table: str, position: int) -> 
         "fields": tuple(fields),
         "relationships": tuple(relationships),
     }
+
+
+def _table_fields(
+    key: str,
+    table: str,
+    owned: tuple[str, ...],
+    primary_table: str,
+    position: int,
+) -> list[dict]:
+    """Return the columns for one table, from the migration when it matches.
+
+    A package names a table with a prefix that is not always the PBC key, and
+    its runtime and its migration do not always agree on the name (`ar_credit`
+    migrates `ar_credit_ar_customer` but declares `ar_customer`). Each of the
+    two known names is therefore offered both bare and key-prefixed, and the
+    first that the migration declares wins.
+    """
+    migration_names = tuple(pbc_schema.owned_schema(key))
+    resolved = _owned_table_name(key, table, owned or migration_names)
+    candidates = (
+        table,
+        resolved,
+        f"{key}_{table}",
+        f"{key}_{resolved}",
+    )
+    parsed = pbc_schema.fields_for(key, candidates)
+    if parsed:
+        return [dict(field) for field in parsed]
+    return _fallback_table_fields(key, primary_table, position)
+
+
+def _fallback_table_fields(key: str, primary_table: str, position: int) -> list[dict]:
+    """Generic column set for a table whose migration could not be matched."""
+    fields = [
+        {"name": "id", "type": "integer", "primary_key": True, "nullable": False},
+        {"name": "code", "type": "string", "required": True, "searchable": True},
+        {"name": "status", "type": "string", "required": True, "default": "draft"},
+        {"name": "version", "type": "integer", "required": True, "default": 1},
+        {"name": "created_at", "type": "datetime", "required": True},
+        {"name": "updated_at", "type": "datetime", "required": True},
+    ]
+    if position > 0:
+        fields.insert(
+            1,
+            {
+                "name": f"{primary_table}_id",
+                "type": "integer",
+                "required": True,
+                "references": f"{key}_{primary_table}.id",
+            },
+        )
+    return fields
 
 
 def _api_contract(key: str, api: str, position: int) -> dict:
