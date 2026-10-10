@@ -14880,10 +14880,18 @@ def _table_contract(
     Reconciling that is its own change; this one only stops the fields lying.
     """
     owned_table = table if table.startswith(f"{key}_") else f"{key}_{table}"
+    # `primary_table` is already key-prefixed in the packages that spell their
+    # service tables physically (`procurement_sourcing_purchase_requisition`),
+    # so prefixing it unconditionally produced
+    # `procurement_sourcing_procurement_sourcing_purchase_requisition` and put
+    # every relationship target outside the owned set. The owned-table check
+    # caught it only once the table name itself stopped doubling, because until
+    # then both sides were wrong in the same direction.
+    primary_owned = primary_table if primary_table.startswith(f"{key}_") else f"{key}_{primary_table}"
     fields = _table_fields(key, table, owned, primary_table, position)
     relationships = []
     if position > 0:
-        target_table = f"{key}_{primary_table}"
+        target_table = primary_owned
         field_name = f"{primary_table}_id"
         if not any(field["name"] == field_name for field in fields):
             fields.insert(
