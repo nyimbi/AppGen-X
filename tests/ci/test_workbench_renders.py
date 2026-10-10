@@ -100,8 +100,8 @@ def rendered(built_spa):
                 return
             return super().do_GET()
 
-        def log_message(self, *args):  # noqa: D102 - silence the test server
-            pass
+        def log_message(self, format: str, *args: object) -> None:
+            """Silence the test server; the base class writes to stderr."""
 
     server = ThreadingHTTPServer(
         ("127.0.0.1", 0),
@@ -129,7 +129,6 @@ def _workbench_payloads(project: Path) -> dict:
     means the browser is served exactly what the backend would serve.
     """
     import ast
-    import re
 
     source = (project / "app" / "pbc_workbench.py").read_text(encoding="utf-8")
     marker = "WORKBENCHES = "
@@ -169,7 +168,7 @@ def _workbench_payloads(project: Path) -> dict:
 
 def test_the_workbench_actually_renders(rendered):
     """A blank page must fail. This is the assertion the dict gates cannot make."""
-    page, payload = rendered
+    page = rendered[0]
     root = page.locator("#root")
     assert root.count() == 1
     assert root.inner_text().strip(), "the SPA rendered nothing"
@@ -228,3 +227,47 @@ def test_every_workbench_renders_without_error(rendered):
         body = page.locator("#root").inner_text()
         assert entry["owned_tables"][0] in body, key
         assert "Could not load" not in body, key
+
+
+def _axe_source() -> Path | None:
+    """Return the installed axe-core bundle, or None when it is absent."""
+    candidate = REPO_ROOT / "appgen-frontend" / "node_modules" / "axe-core" / "axe.min.js"
+    return candidate if candidate.exists() else None
+
+
+def test_the_rendered_workbench_has_no_serious_accessibility_violations(rendered):
+    """A workbench a screen reader cannot use is not world class.
+
+    The kit is built on accessible primitives, but the claim only holds if
+    something checks the assembled page. axe runs against the DOM the browser
+    actually built, at the two impact levels that block a user rather than the
+    two that merely annoy.
+
+    Skipped when axe-core is not installed, since that is a checkout condition
+    rather than a defect.
+    """
+    axe = _axe_source()
+    if axe is None:
+        pytest.skip("axe-core is not installed")
+
+    page, payload = rendered
+    page.add_script_tag(path=str(axe))
+    for key in COMPOSITION:
+        entry = payload[key]
+        page.get_by_role("button", name=entry["label"]).first.click()
+        page.wait_for_timeout(250)
+        result = page.evaluate(
+            "async () => await axe.run(document, "
+            "{ resultTypes: ['violations'] })"
+        )
+        blocking = [
+            violation
+            for violation in result["violations"]
+            if violation["impact"] in ("serious", "critical")
+        ]
+        assert not blocking, (
+            f"{key}: " + "; ".join(
+                f"{violation['id']} ({violation['impact']}) on "
+                f"{len(violation['nodes'])} node(s)" for violation in blocking
+            )
+        )

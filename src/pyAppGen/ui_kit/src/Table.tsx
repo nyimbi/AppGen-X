@@ -42,7 +42,16 @@ export function Table<Row>({
     return <div className={cx('appgen-table-empty', className)}>{empty}</div>
   }
   return (
-    <div className={cx('appgen-table-wrap', className)}>
+    // The wrapper scrolls horizontally when a table is wider than its column,
+    // and a scroll container with no focusable child cannot be scrolled from
+    // the keyboard. It is therefore focusable and named, so the tab stop
+    // announces the table it scrolls rather than appearing as an unnamed region.
+    <div
+      aria-label={caption}
+      className={cx('appgen-table-wrap', className)}
+      role="group"
+      tabIndex={0}
+    >
       <table className="appgen-table">
         <caption className="appgen-visually-hidden">{caption}</caption>
         <thead>

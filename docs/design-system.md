@@ -61,7 +61,8 @@ Conventions the kit holds to:
 - `Field` wires `aria-describedby` and the invalid state, so a control inside it
   needs no knowledge of its own validation.
 - `Table` requires a `caption`; a table without an accessible name is announced
-  as an unlabelled grid.
+  as an unlabelled grid. Its scroll wrapper is a focusable, named group, so a
+  table wider than its column can be scrolled from the keyboard.
 - `Dialog` uses the native `<dialog>` element, which supplies the top layer, the
   backdrop, and Escape-to-close without a focus-trap library. Focus moves in on
   open, stays inside while open, and returns to the opener on close.
@@ -117,7 +118,8 @@ them.
   builds the SPA, serves it with a stub API returning the real workbench
   payload, renders it in headless Chromium, and asserts the DOM: the PBC's owned
   tables as real rows, its API routes with their methods, the kit's class names,
-  and navigation between workbenches. Runs in CI as
+  and navigation between workbenches. It then runs axe-core against each rendered
+  workbench and fails on any serious or critical violation. Runs in CI as
   `.github/workflows/generated-ui-render.yml`.
 
 Every gate was canaried: the colour check fails when a literal hex is added to
@@ -130,3 +132,9 @@ The render gate earned its place on the first run: it caught `API_BASE = "/"`
 in the generated contract, which made `${API_BASE}${route}` a protocol-relative
 URL (`//api/v1/...`) that the browser resolved against the host named `api`.
 Every dict-level check had passed on it.
+
+The axe assertion earned its place the same way. Its first run reported
+`scrollable-region-focusable` on the table wrapper: `overflow-x: auto` makes the
+wrapper scrollable, and with no focusable child a keyboard user cannot scroll
+it. The kit's `Table` now makes the wrapper a focusable, named group, which is
+why the check passes.
