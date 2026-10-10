@@ -85,7 +85,11 @@
 
 .workspace-nav {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  /* One column per section, however many the Studio declares. The count was
+     hardcoded at six while the nav listed two sections with no panel behind
+     them; the list is the panels now, so the grid follows it. */
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 4px;
   min-height: 58px;
   padding: 6px;
@@ -1534,6 +1538,8 @@ h2 {
 
   .workspace-nav,
   .status-rail {
+    /* Narrow screens stack the nav, so the columns become rows. */
+    grid-auto-flow: row;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

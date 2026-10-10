@@ -1,16 +1,15 @@
 import { Button } from '@appgen/ui-kit'
 import { Icon } from './Icon'
+import { studioSections } from './studioSections'
 
-const navItems = [
-  { label: 'Forms', icon: 'form' as const, active: true },
-  { label: 'Database', icon: 'database' as const },
-  { label: 'Agents', icon: 'agent' as const },
-  { label: 'Reports', icon: 'report' as const },
-  { label: 'Packages', icon: 'package' as const },
-  { label: 'Targets', icon: 'mobile' as const },
-]
+export type StudioChromeProps = {
+  /** The section the nav should mark active. */
+  activeSection: string
+  /** Called with a section id when the user picks one. */
+  onSectionChange: (id: string) => void
+}
 
-export function StudioChrome() {
+export function StudioChrome({ activeSection, onSectionChange }: StudioChromeProps) {
   return (
     <header className="studio-chrome">
       <div className="brand-block">
@@ -24,8 +23,14 @@ export function StudioChrome() {
       </div>
 
       <nav className="workspace-nav" aria-label="Workspace navigation">
-        {navItems.map((item) => (
-          <button className={item.active ? 'active' : ''} key={item.label} type="button">
+        {studioSections.map((item) => (
+          <button
+            aria-current={item.id === activeSection ? 'page' : undefined}
+            className={item.id === activeSection ? 'active' : ''}
+            key={item.id}
+            onClick={() => onSectionChange(item.id)}
+            type="button"
+          >
             <Icon name={item.icon} />
             <span>{item.label}</span>
           </button>
