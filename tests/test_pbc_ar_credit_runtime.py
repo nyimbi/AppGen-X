@@ -1,8 +1,13 @@
 import pytest
 
 from pyAppGen.pbcs.ar_credit import AR_CREDIT_ALLOWED_DATABASE_BACKENDS
+from pyAppGen.pbcs.ar_credit import AR_CREDIT_APPROVER_AUTHORITY
 from pyAppGen.pbcs.ar_credit import AR_CREDIT_CONSUMED_EVENT_TYPES
 from pyAppGen.pbcs.ar_credit import AR_CREDIT_EMITTED_EVENT_TYPES
+from pyAppGen.pbcs.ar_credit import AR_CREDIT_INVOICE_LIFECYCLE_TRANSITIONS
+from pyAppGen.pbcs.ar_credit import AR_CREDIT_INVOICE_SEALED_STATES
+from pyAppGen.pbcs.ar_credit import AR_CREDIT_INVOICE_TERMINAL_STATES
+from pyAppGen.pbcs.ar_credit import AR_CREDIT_UI_FRAGMENT_KEYS
 from pyAppGen.pbcs.ar_credit import AR_CREDIT_OWNED_TABLES
 from pyAppGen.pbcs.ar_credit import AR_CREDIT_REQUIRED_EVENT_TOPIC
 from pyAppGen.pbcs.ar_credit import AR_CREDIT_RUNTIME_CAPABILITY_KEYS
@@ -16,18 +21,21 @@ from pyAppGen.pbcs.ar_credit import ar_credit_calculate_aging
 from pyAppGen.pbcs.ar_credit import ar_credit_configure_runtime
 from pyAppGen.pbcs.ar_credit import ar_credit_create_credit_memo
 from pyAppGen.pbcs.ar_credit import ar_credit_create_dunning_plan
+from pyAppGen.pbcs.ar_credit import ar_credit_customer_exposure
 from pyAppGen.pbcs.ar_credit import ar_credit_empty_state
 from pyAppGen.pbcs.ar_credit import ar_credit_extend_credit
 from pyAppGen.pbcs.ar_credit import ar_credit_forecast_revenue_to_cash
 from pyAppGen.pbcs.ar_credit import ar_credit_generate_customer_statement
 from pyAppGen.pbcs.ar_credit import ar_credit_issue_invoice
 from pyAppGen.pbcs.ar_credit import ar_credit_issue_refund
+from pyAppGen.pbcs.ar_credit import ar_credit_invoice_correction_contract
 from pyAppGen.pbcs.ar_credit import ar_credit_onboard_customer
 from pyAppGen.pbcs.ar_credit import ar_credit_optimize_collection_strategy
 from pyAppGen.pbcs.ar_credit import ar_credit_parse_remittance
 from pyAppGen.pbcs.ar_credit import ar_credit_permissions_contract
 from pyAppGen.pbcs.ar_credit import ar_credit_receive_event
 from pyAppGen.pbcs.ar_credit import ar_credit_record_delivery_confirmation
+from pyAppGen.pbcs.ar_credit import ar_credit_record_credit_decision
 from pyAppGen.pbcs.ar_credit import ar_credit_record_unapplied_cash
 from pyAppGen.pbcs.ar_credit import ar_credit_recognize_revenue_schedule
 from pyAppGen.pbcs.ar_credit import ar_credit_register_rule
@@ -43,6 +51,7 @@ from pyAppGen.pbcs.ar_credit import ar_credit_score_customer_default
 from pyAppGen.pbcs.ar_credit import ar_credit_screen_customer_network
 from pyAppGen.pbcs.ar_credit import ar_credit_set_parameter
 from pyAppGen.pbcs.ar_credit import ar_credit_submit_e_invoice
+from pyAppGen.pbcs.ar_credit import ar_credit_transition_invoice_state
 from pyAppGen.pbcs.ar_credit import ar_credit_ui_contract
 from pyAppGen.pbcs.ar_credit import ar_credit_verify_owned_table_boundary
 from pyAppGen.pbcs.ar_credit import ar_credit_verify_revenue_proof
@@ -492,6 +501,281 @@ def test_ar_credit_runtime_enforces_boundaries_and_idempotent_event_failures() -
     ui_contract = ar_credit_ui_contract()
     assert api["shared_table_access"] is False
     assert ui_contract["binding_evidence"]["shared_table_access"] is False
+
+
+def _governed_state() -> dict:
+    """A configured state with one customer, two issued invoices, and one credit decision.
+
+    `ar_inv_governed_dup` exists so a `replaced` transition has something to point
+    at; the walk itself is in the tests, not here.
+    """
+    state = _configured_state()
+    state = ar_credit_onboard_customer(
+        state,
+        {
+            "customer_id": "customer_governed",
+            "tenant": "tenant_ops",
+            "name": "Governed Buyer",
+            "terms": {"net_days": 30},
+            "risk_signals": {"sanction_hits": 0, "payment_latency": 0.05, "industry_stress": 0.05},
+            "identity": {"did": "did:appgen:customer-governed", "issuer": "trusted_registry", "status": "active"},
+        },
+    )["state"]
+    for invoice_id in ("ar_inv_governed", "ar_inv_governed_dup"):
+        state = ar_credit_issue_invoice(
+            state,
+            {
+                "invoice_id": invoice_id,
+                "tenant": "tenant_ops",
+                "customer_id": "customer_governed",
+                "currency": "USD",
+                "invoice_date": "2026-05-25",
+                "due_date": "2026-06-24",
+                "tax": {"jurisdiction": "US-NY", "amount": 80, "rate": 0.08},
+                "performance_obligations": ({"obligation": "deliver_widgets", "satisfied": True, "allocation": 1000},),
+                "lines": ({"sku": "widget", "quantity": 10, "unit_price": 100, "account": "revenue"},),
+            },
+        )["state"]
+    return state
+
+
+def test_ar_credit_invoice_correction_and_credit_authority_gate_the_lifecycle() -> None:
+    state = _governed_state()
+    invoice = state["invoices"]["ar_inv_governed"]
+    assert invoice["lifecycle_state"] == "issued"
+    assert invoice["status"] == "issued"
+    assert invoice["total"] == 1080.0
+    assert invoice["open_amount"] == 1080.0
+    assert invoice["credited_amount"] == 0.0
+    assert invoice["lifecycle_history"][0]["from_state"] == "draft"
+    assert invoice["lifecycle_history"][0]["to_state"] == "issued"
+
+    # An approver whose ceiling is below the request is refused with the ceiling
+    # named, so the decision is escalated rather than silently clamped.
+    refused = ar_credit_record_credit_decision(
+        state,
+        {
+            "decision_id": "cd_refused",
+            "tenant": "tenant_ops",
+            "customer_id": "customer_governed",
+            "requested_limit": 50000,
+            "approver": "analyst_1",
+            "approver_role": "analyst",
+            "decision": "approve",
+        },
+    )
+    assert refused["ok"] is False
+    assert refused["reason"] == "insufficient_authority"
+    assert refused["authority_limit"] == 1000.0
+    assert refused["requested_limit"] == 50000.0
+    assert refused["remediation"] == "escalate to a role whose authority covers 50000.0"
+    assert "customer_governed" not in {key for key in state.get("credit_decisions", {})}
+
+    with pytest.raises(ValueError, match="Missing AR credit decision fields"):
+        ar_credit_record_credit_decision(state, {"decision_id": "cd_bad", "tenant": "tenant_ops"})
+    with pytest.raises(ValueError, match="Unsupported AR credit decision"):
+        ar_credit_record_credit_decision(
+            state,
+            {
+                "decision_id": "cd_bad",
+                "tenant": "tenant_ops",
+                "customer_id": "customer_governed",
+                "requested_limit": 500,
+                "approver": "manager_1",
+                "approver_role": "manager",
+                "decision": "rubber_stamp",
+            },
+        )
+    with pytest.raises(ValueError, match="Unsupported AR credit approver role"):
+        ar_credit_record_credit_decision(
+            state,
+            {
+                "decision_id": "cd_bad",
+                "tenant": "tenant_ops",
+                "customer_id": "customer_governed",
+                "requested_limit": 500,
+                "approver": "intern_1",
+                "approver_role": "intern",
+                "decision": "approve",
+            },
+        )
+    assert (
+        ar_credit_record_credit_decision(
+            state,
+            {
+                "decision_id": "cd_ghost",
+                "tenant": "tenant_ops",
+                "customer_id": "customer_missing",
+                "requested_limit": 500,
+                "approver": "manager_1",
+                "approver_role": "manager",
+                "decision": "approve",
+            },
+        )["reason"]
+        == "unknown_customer"
+    )
+
+    approved = ar_credit_record_credit_decision(
+        state,
+        {
+            "decision_id": "cd_manager",
+            "tenant": "tenant_ops",
+            "customer_id": "customer_governed",
+            "requested_limit": 5000,
+            "approver": "manager_1",
+            "approver_role": "manager",
+            "decision": "approve",
+            "risk_grade": "B",
+        },
+    )
+    state = approved["state"]
+    assert approved["decision"]["exposure_at_decision"] == 2160.0
+    assert approved["decision"]["approved_limit"] == 5000.0
+    assert approved["decision"]["expected_exposure_impact"] == 2840.0
+    assert approved["decision"]["policy_version"] == "ar-credit-policy.v1"
+    assert approved["customer"]["credit_limit"] == 5000.0
+    assert approved["customer"]["risk_grade"] == "B"
+
+    with pytest.raises(ValueError, match="AR credit decision already exists"):
+        ar_credit_record_credit_decision(
+            state,
+            {
+                "decision_id": "cd_manager",
+                "tenant": "tenant_ops",
+                "customer_id": "customer_governed",
+                "requested_limit": 5000,
+                "approver": "manager_1",
+                "approver_role": "manager",
+                "decision": "approve",
+            },
+        )
+
+    # Exposure counts every claim against the limit, and reports unapplied cash
+    # separately because cash in hand is not a claim.
+    exposure = ar_credit_customer_exposure(state, tenant="tenant_ops", customer_id="customer_governed")
+    assert exposure["ok"] is True
+    assert exposure["open_invoice_count"] == 2
+    assert exposure["open_balance"] == 2160.0
+    assert exposure["total_exposure"] == 2160.0
+    assert exposure["credit_limit"] == 5000.0
+    assert exposure["available_credit"] == 2840.0
+    assert exposure["utilisation"] == 0.432
+    assert exposure["buckets"] == (("open_balance", 2160.0), ("disputed_amount", 0.0), ("scheduled_refunds", 0.0))
+    assert ar_credit_customer_exposure(state, tenant="tenant_ops", customer_id="customer_missing")["credit_limit"] == 0.0
+
+
+def test_ar_credit_invoice_lifecycle_refuses_a_sealed_invoice_and_an_orphan_replacement() -> None:
+    state = _governed_state()
+
+    assert (
+        ar_credit_transition_invoice_state(state, "ar_inv_missing", {"to_state": "cancelled"})["reason"] == "unknown_invoice"
+    )
+    # `issued` cannot jump straight back to `draft`; the state machine names what
+    # it will accept instead.
+    rejected = ar_credit_transition_invoice_state(state, "ar_inv_governed", {"to_state": "draft", "actor": "preparer"})
+    assert rejected["ok"] is False
+    assert rejected["reason"] == "invalid_transition"
+    assert rejected["allowed_transitions"] == ("cancelled", "replaced")
+
+    # A replacement must name what replaces it, or the terminal invoice is orphaned.
+    orphan = ar_credit_transition_invoice_state(
+        state, "ar_inv_governed", {"to_state": "replaced", "actor": "controller", "reason": "rebill"}
+    )
+    assert orphan["ok"] is False
+    assert orphan["reason"] == "replacement_required"
+    assert orphan["remediation"] == "name the replacement invoice, or cancel the original instead of replacing it"
+
+    cancelled = ar_credit_transition_invoice_state(
+        state, "ar_inv_governed_dup", {"to_state": "cancelled", "actor": "controller", "reason": "duplicate_issue"}
+    )
+    state = cancelled["state"]
+    assert cancelled["ok"] is True
+    assert state["invoices"]["ar_inv_governed_dup"]["lifecycle_state"] == "cancelled"
+    assert state["events"][-1]["event_type"] == "InvoiceCancelled"
+    assert len(state["invoice_lifecycle_transitions"]) == 1
+
+    # A cancelled invoice is sealed: crediting it would move cash against a
+    # document that no longer exists.
+    sealed_memo = ar_credit_create_credit_memo(
+        state,
+        {
+            "credit_memo_id": "cm_sealed",
+            "invoice_id": "ar_inv_governed_dup",
+            "customer_id": "customer_governed",
+            "amount": 50,
+            "reason": "duplicate",
+        },
+    )
+    assert sealed_memo["ok"] is False
+    assert sealed_memo["reason"] == "invoice_sealed"
+    assert sealed_memo["remediation"] == "issue a replacement invoice rather than crediting a cancelled one"
+    assert sealed_memo["side_effects"] == ()
+
+    replaced = ar_credit_transition_invoice_state(
+        state,
+        "ar_inv_governed",
+        {
+            "to_state": "replaced",
+            "actor": "controller",
+            "reason": "rebill",
+            "replacement_invoice_id": "ar_inv_governed_dup",
+        },
+    )
+    state = replaced["state"]
+    assert replaced["ok"] is True
+    assert state["invoices"]["ar_inv_governed"]["lifecycle_state"] == "replaced"
+    assert state["invoices"]["ar_inv_governed"]["replacement_invoice_id"] == "ar_inv_governed_dup"
+    assert len(state["invoices"]["ar_inv_governed"]["lifecycle_history"]) == 2
+    assert state["events"][-1]["event_type"] == "InvoiceReplaced"
+
+    # `cancelled` and `replaced` are terminal, so nothing leaves them.
+    terminal = ar_credit_transition_invoice_state(
+        state, "ar_inv_governed", {"to_state": "issued", "actor": "controller", "reason": "resurrect"}
+    )
+    assert terminal["ok"] is False
+    assert terminal["allowed_transitions"] == ()
+    assert AR_CREDIT_INVOICE_LIFECYCLE_TRANSITIONS["cancelled"] == ()
+    assert AR_CREDIT_INVOICE_LIFECYCLE_TRANSITIONS["replaced"] == ()
+    assert AR_CREDIT_INVOICE_TERMINAL_STATES == ("cancelled", "replaced")
+    assert AR_CREDIT_INVOICE_SEALED_STATES == ("cancelled", "replaced")
+
+    contract = ar_credit_invoice_correction_contract()
+    assert contract["invoice_states"] == ("draft", "issued", "cancelled", "replaced")
+    assert contract["invoice_terminal_states"] == AR_CREDIT_INVOICE_TERMINAL_STATES
+    assert contract["invoice_sealed_states"] == AR_CREDIT_INVOICE_SEALED_STATES
+    assert contract["credit_decisions"] == ("approve", "decline", "review")
+    assert contract["approver_authority"] == {"analyst": 1000.0, "manager": 10000.0, "controller": 100000.0}
+    assert AR_CREDIT_APPROVER_AUTHORITY["board"] == float("inf")
+    assert contract["exposure_buckets"] == ("open_balance", "disputed_amount", "scheduled_refunds")
+
+    workbench = ar_credit_build_workbench_view(state, tenant="tenant_ops", as_of="2026-07-30")
+    assert workbench["invoice_count"] == 2
+    assert workbench["sealed_invoice_count"] == 2
+    assert workbench["invoice_lifecycle_state_counts"] == (("cancelled", 1), ("replaced", 1))
+    assert workbench["credit_decision_count"] == 0
+    assert workbench["approved_decision_count"] == 0
+
+    ui = ar_credit_ui_contract()
+    assert ui["invoice_governance"] == contract
+    assert "CreditAuthorityConsole" in ui["fragments"]
+    assert "/workbench/pbcs/ar_credit/invoice-governance" in ui["routes"]
+    assert ui["action_permissions"]["transition_invoice_state"] == "ar_credit.invoice"
+    assert ui["action_permissions"]["record_credit_decision"] == "ar_credit.credit"
+    assert ui["action_permissions"]["customer_exposure"] == "ar_credit.read"
+    assert {panel["key"] for panel in ui["panels"]} >= {"invoice", "invoice_governance"}
+    # A panel whose fragment is not declared renders nothing while the route
+    # still answers, so the alignment is asserted rather than assumed.
+    assert {panel["fragment"] for panel in ui["panels"]} <= set(ui["fragments"])
+    assert ui["fragments"] == AR_CREDIT_UI_FRAGMENT_KEYS
+
+    rendered = ar_credit_render_workbench(
+        state,
+        tenant="tenant_ops",
+        principal_permissions=("ar_credit.invoice", "ar_credit.credit", "ar_credit.read"),
+    )
+    card_keys = {card["key"] for card in rendered["cards"]}
+    assert {"sealed_invoices", "credit_decisions"} <= card_keys
+    assert rendered["ok"] is True
 
 
 def _configured_state() -> dict:

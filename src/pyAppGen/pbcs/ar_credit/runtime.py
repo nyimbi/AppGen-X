@@ -60,6 +60,9 @@ AR_CREDIT_CONSUMED_EVENT_TYPES = (
 AR_CREDIT_EMITTED_EVENT_TYPES = (
     "CustomerOnboarded",
     "InvoiceIssued",
+    "InvoiceCancelled",
+    "InvoiceReplaced",
+    "CreditDecisionRecorded",
     "DeliveryConfirmed",
     "PaymentReceived",
     "UnappliedCashRecorded",
@@ -90,6 +93,36 @@ _AR_CREDIT_ALLOWED_DEPENDENCIES = (
     "cash_forecast_projection",
     "access_policy_projection",
 )
+
+
+# Invoice lifecycle. `status` on an invoice is a *derived* cash fact: it says how
+# much of the invoice is still owed. `lifecycle_state` is the governance fact: it
+# says whether the document is allowed to exist at all. Keeping them apart is what
+# lets a fully-paid invoice be corrected without pretending the cash never arrived.
+# `cancelled` and `replaced` are terminal, so an invoice cannot be resurrected; a
+# mistake is fixed by issuing a replacement, which leaves both documents in the
+# audit trail.
+AR_CREDIT_INVOICE_LIFECYCLE_TRANSITIONS = {
+    "draft": ("issued", "cancelled"),
+    "issued": ("cancelled", "replaced"),
+    "cancelled": (),
+    "replaced": (),
+}
+AR_CREDIT_INVOICE_TERMINAL_STATES = ("cancelled", "replaced")
+AR_CREDIT_INVOICE_SEALED_STATES = ("cancelled", "replaced")
+
+# Credit authority. A limit is not a number a caller may write; it is the outcome
+# of a decision by someone whose authority covers the amount. The ladder is
+# ordered, and the gate refuses rather than clamps, so an under-authorised
+# approver learns that the decision needs escalation instead of silently getting
+# a smaller limit than they asked for.
+AR_CREDIT_APPROVER_AUTHORITY = {
+    "analyst": 1000.0,
+    "manager": 10000.0,
+    "controller": 100000.0,
+    "board": float("inf"),
+}
+AR_CREDIT_CREDIT_DECISIONS = ("approve", "decline", "review")
 
 
 AR_CREDIT_RUNTIME_CAPABILITY_KEYS = (
@@ -190,6 +223,10 @@ def ar_credit_runtime_capabilities() -> dict:
             "receive_event",
             "onboard_customer",
             "issue_invoice",
+            "transition_invoice_state",
+            "record_credit_decision",
+            "customer_exposure",
+            "invoice_correction_contract",
             "record_delivery_confirmation",
             "parse_remittance",
             "apply_cash",
@@ -396,13 +433,123 @@ def ar_credit_runtime_smoke() -> dict:
         "customer_default_graph",
         {"features": ("payment_latency", "customer_topology", "macro_risk"), "auc": 0.92, "drift_score": 0.03},
     )
+    # The invoice-correction and credit-authority walk runs on its own state so the
+    # cash, anomaly, and event-count assertions above keep measuring one ledger.
+    governed = ar_credit_empty_state()
+    governed = ar_credit_configure_runtime(
+        governed,
+        {
+            "database_backend": "postgresql",
+            "event_topic": AR_CREDIT_REQUIRED_EVENT_TOPIC,
+            "retry_limit": 3,
+            "default_currency": "USD",
+            "default_timezone": "UTC",
+            "allowed_collection_channels": ("portal", "api", "email"),
+            "workbench_limit": 100,
+        },
+    )["state"]
+    governed = ar_credit_onboard_customer(
+        governed,
+        {
+            "customer_id": "customer_governed",
+            "tenant": "tenant_alpha",
+            "name": "Governed Buyer",
+            "terms": {"net_days": 30},
+            "risk_signals": {"sanction_hits": 0, "payment_latency": 0.05, "industry_stress": 0.05},
+            "identity": {"did": "did:appgen:customer-governed", "issuer": "trusted_registry", "status": "active"},
+        },
+    )["state"]
+    governed = ar_credit_issue_invoice(
+        governed,
+        {
+            "invoice_id": "ar_inv_governed",
+            "tenant": "tenant_alpha",
+            "customer_id": "customer_governed",
+            "currency": "USD",
+            "invoice_date": "2026-05-25",
+            "due_date": "2026-06-24",
+            "tax": {"jurisdiction": "US-NY", "amount": 80, "rate": 0.08},
+            "performance_obligations": ({"obligation": "deliver_widgets", "satisfied": True, "allocation": 1000},),
+            "lines": ({"sku": "widget", "quantity": 10, "unit_price": 100, "account": "revenue"},),
+        },
+    )["state"]
+    governed = ar_credit_issue_invoice(
+        governed,
+        {
+            "invoice_id": "ar_inv_governed_dup",
+            "tenant": "tenant_alpha",
+            "customer_id": "customer_governed",
+            "currency": "USD",
+            "invoice_date": "2026-05-25",
+            "due_date": "2026-06-24",
+            "tax": {"jurisdiction": "US-NY", "amount": 80, "rate": 0.08},
+            "performance_obligations": ({"obligation": "deliver_widgets", "satisfied": True, "allocation": 1000},),
+            "lines": ({"sku": "widget", "quantity": 10, "unit_price": 100, "account": "revenue"},),
+        },
+    )["state"]
+    # Authority is checked before the limit is written, so an analyst asking for a
+    # limit above their ceiling is refused with the ceiling named rather than
+    # silently granted a smaller one.
+    authority_refused = ar_credit_record_credit_decision(
+        governed,
+        {
+            "decision_id": "cd_refused",
+            "tenant": "tenant_alpha",
+            "customer_id": "customer_governed",
+            "requested_limit": 50000,
+            "approver": "analyst_1",
+            "approver_role": "analyst",
+            "decision": "approve",
+        },
+    )
+    governed = ar_credit_record_credit_decision(
+        governed,
+        {
+            "decision_id": "cd_manager",
+            "tenant": "tenant_alpha",
+            "customer_id": "customer_governed",
+            "requested_limit": 5000,
+            "approver": "manager_1",
+            "approver_role": "manager",
+            "decision": "approve",
+            "risk_grade": "B",
+        },
+    )["state"]
+    # The exposure view aggregates every claim against the limit, not just open
+    # invoices: an unapplied receipt is cash in hand, not a claim, so it is
+    # reported but excluded from the total.
+    exposure = ar_credit_customer_exposure(governed, tenant="tenant_alpha", customer_id="customer_governed")
+    sealed_memo = ar_credit_transition_invoice_state(
+        governed, "ar_inv_governed_dup", {"to_state": "cancelled", "actor": "controller", "reason": "duplicate_issue"}
+    )
+    governed = sealed_memo["state"]
+    memo_on_sealed = ar_credit_create_credit_memo(
+        governed,
+        {"credit_memo_id": "cm_sealed", "invoice_id": "ar_inv_governed_dup", "customer_id": "customer_governed", "amount": 50, "reason": "duplicate"},
+    )
+    # `replaced` requires a replacement to point at, so a replacement that names
+    # nothing is refused rather than leaving an orphaned terminal invoice.
+    orphan_replacement = ar_credit_transition_invoice_state(
+        governed, "ar_inv_governed", {"to_state": "replaced", "actor": "controller", "reason": "rebill"}
+    )
+    replaced = ar_credit_transition_invoice_state(
+        governed,
+        "ar_inv_governed",
+        {"to_state": "replaced", "actor": "controller", "reason": "rebill", "replacement_invoice_id": "ar_inv_governed_dup"},
+    )
+    governed = replaced["state"]
+    terminal_move = ar_credit_transition_invoice_state(
+        governed, "ar_inv_governed", {"to_state": "issued", "actor": "controller", "reason": "resurrect"}
+    )
+    governed_workbench = ar_credit_build_workbench_view(governed, tenant="tenant_alpha", as_of="2026-07-30")
+    invoice_governance = ar_credit_invoice_correction_contract()
     checks = (
-        {"id": "event_sourced_receivable_lifecycle", "ok": len(state["events"]) >= 4 and state["events"][-1]["hash"]},
+        {"id": "event_sourced_receivable_lifecycle", "ok": len(state["events"]) >= 4 and state["events"][-1]["hash"] and len(governed["events"]) == 6 and governed["invoices"]["ar_inv_governed"]["lifecycle_state"] == "replaced" and governed["invoices"]["ar_inv_governed"]["replacement_invoice_id"] == "ar_inv_governed_dup" and len(governed["invoices"]["ar_inv_governed"]["lifecycle_history"]) == 2},
         {"id": "graph_relational_customer_topology", "ok": customer_result["customer"]["graph_degree"] == 3},
         {"id": "multi_tenant_cash_application_isolation", "ok": cash["cash_pool"]["tenant"] == "tenant_alpha"},
         {"id": "schema_evolution_resilient_receivable_schema", "ok": state["schema_extensions"]["ar_invoice"]["contract_obligations"] == "jsonb"},
         {"id": "probabilistic_cash_application", "ok": cash["ok"] and cash["decision"] == "auto_clear" and cash["confidence"] >= 0.98},
-        {"id": "real_time_liquidity_aware_credit_extension", "ok": credit["ok"] and credit["recommended_limit"] > 1000},
+        {"id": "real_time_liquidity_aware_credit_extension", "ok": credit["ok"] and credit["recommended_limit"] > 1000 and authority_refused["ok"] is False and authority_refused["reason"] == "insufficient_authority" and authority_refused["authority_limit"] == 1000.0 and governed["customers"]["customer_governed"]["credit_limit"] == 5000.0 and exposure["total_exposure"] == 2160.0 and exposure["credit_limit"] == 5000.0 and exposure["available_credit"] == 2840.0 and exposure["buckets"] == (("open_balance", 2160.0), ("disputed_amount", 0.0), ("scheduled_refunds", 0.0))},
         {"id": "counterfactual_collection_strategy_optimization", "ok": collection["ok"] and collection["expected_dso_delta"] > 0},
         {"id": "temporal_revenue_to_cash_forecasting", "ok": forecast["ok"] and forecast["forecast"][0]["amount"] > 0},
         {"id": "autonomous_dispute_resolution", "ok": dispute["ok"] and dispute["decision"] == "credit_memo_suggested"},
@@ -412,7 +559,7 @@ def ar_credit_runtime_smoke() -> dict:
         {"id": "zero_knowledge_revenue_verification", "ok": revenue_proof["ok"] and "lines" not in revenue_proof["public_claims"]},
         {"id": "immutable_e_invoicing_tax_audit", "ok": e_invoice["ok"] and e_invoice["submission_hash"].startswith("ar_einvoice_")},
         {"id": "dynamic_sanction_fraud_screening", "ok": sanctions["ok"] and sanctions["decision"] == "clear"},
-        {"id": "automated_control_testing", "ok": controls["ok"] and controls["write_off_authorization"]},
+        {"id": "automated_control_testing", "ok": controls["ok"] and controls["write_off_authorization"] and memo_on_sealed["ok"] is False and memo_on_sealed["reason"] == "invoice_sealed" and memo_on_sealed["remediation"] == "issue a replacement invoice rather than crediting a cancelled one" and orphan_replacement["ok"] is False and orphan_replacement["reason"] == "replacement_required" and terminal_move["ok"] is False and terminal_move["reason"] == "invalid_transition" and terminal_move["allowed_transitions"] == () and invoice_governance["invoice_terminal_states"] == AR_CREDIT_INVOICE_TERMINAL_STATES and invoice_governance["approver_authority"] == {"analyst": 1000.0, "manager": 10000.0, "controller": 100000.0}},
         {
             "id": "universal_api_async_streaming",
             "ok": api["ok"]
@@ -439,7 +586,15 @@ def ar_credit_runtime_smoke() -> dict:
             and received["handler"]["status"] == "processed"
             and duplicate["duplicate"]
             and boundary["ok"]
-            and permissions["action_permissions"]["receive_event"] == "ar_credit.event",
+            and permissions["action_permissions"]["receive_event"] == "ar_credit.event"
+            and governed_workbench["invoice_count"] == 2
+            and governed_workbench["sealed_invoice_count"] == 2
+            and governed_workbench["invoice_lifecycle_state_counts"] == (("cancelled", 1), ("replaced", 1))
+            and governed_workbench["credit_decision_count"] == 1
+            and governed_workbench["approved_decision_count"] == 1
+            and governed_workbench["escalated_decision_count"] == 0
+            and permissions["action_permissions"]["transition_invoice_state"] == "ar_credit.invoice"
+            and permissions["action_permissions"]["record_credit_decision"] == "ar_credit.credit",
         },
         {"id": "probabilistic_ml_customer_risk", "ok": risk["model"] == "customer_topology_risk" and cash["confidence"] >= 0.98},
         {"id": "cryptographic_engineering", "ok": revenue_proof["proof"].startswith("zk_revenue_") and crypto["key_epoch"] == 2},
@@ -481,6 +636,7 @@ def ar_credit_empty_state() -> dict:
         "cash_applications": {},
         "unapplied_cash": {},
         "credit_memos": {},
+        "credit_decisions": {},
         "write_offs": {},
         "refunds": {},
         "collection_actions": {},
@@ -488,6 +644,7 @@ def ar_credit_empty_state() -> dict:
         "revenue_schedules": {},
         "cash_pools": {},
         "schema_extensions": {},
+        "invoice_lifecycle_transitions": (),
         "crypto_epoch": {"epoch": 1, "algorithm": "sha3_256"},
     }
 
@@ -633,10 +790,248 @@ def ar_credit_issue_invoice(state: dict, invoice: dict) -> dict:
         return {"ok": False, "error": "unknown_customer", "state": state}
     subtotal = _line_total(invoice["lines"])
     tax_amount = float(invoice.get("tax", {}).get("amount", 0))
-    issued = {**invoice, "subtotal": subtotal, "total": round(subtotal + tax_amount, 2), "status": "issued", "open_amount": round(subtotal + tax_amount, 2)}
+    total = round(subtotal + tax_amount, 2)
+    issued = {
+        **invoice,
+        "subtotal": subtotal,
+        "total": total,
+        "status": "issued",
+        "lifecycle_state": "issued",
+        "open_amount": total,
+        "credited_amount": 0.0,
+        "written_off_amount": 0.0,
+        "lifecycle_history": (
+            {
+                "invoice_id": invoice["invoice_id"],
+                "tenant": invoice["tenant"],
+                "from_state": "draft",
+                "to_state": "issued",
+                "actor": invoice.get("issued_by"),
+                "reason": "invoice_issued",
+            },
+        ),
+    }
     next_state = {**state, "invoices": {**state["invoices"], issued["invoice_id"]: issued}}
     next_state = _append_event(next_state, "InvoiceIssued", {"tenant": issued["tenant"], "invoice_id": issued["invoice_id"], "total": issued["total"]})
     return {"ok": True, "state": next_state, "invoice": issued}
+
+
+def ar_credit_transition_invoice_state(state: dict, invoice_id: str, transition: dict) -> dict:
+    """Cancel or replace an invoice, or explain why it cannot move.
+
+    An invoice is a legal document, so it is never edited and never deleted. A
+    mistake is corrected by moving the original to a terminal state and issuing a
+    replacement that points at it. The open balance travels with the cancellation
+    rather than vanishing, because the receivable did not stop existing when the
+    paperwork did.
+    """
+    invoice = state.get("invoices", {}).get(invoice_id)
+    if invoice is None:
+        return {"ok": False, "reason": "unknown_invoice", "invoice_id": invoice_id, "side_effects": ()}
+    from_state = invoice.get("lifecycle_state", "issued")
+    to_state = transition.get("to_state")
+    allowed = AR_CREDIT_INVOICE_LIFECYCLE_TRANSITIONS.get(from_state, ())
+    if to_state not in allowed:
+        return {
+            "format": "appgen.ar-credit-invoice-transition.v1",
+            "ok": False,
+            "reason": "invalid_transition",
+            "invoice_id": invoice_id,
+            "from_state": from_state,
+            "to_state": to_state,
+            "allowed_transitions": allowed,
+            "side_effects": (),
+        }
+    if to_state == "replaced" and not transition.get("replacement_invoice_id"):
+        return {
+            "format": "appgen.ar-credit-invoice-transition.v1",
+            "ok": False,
+            "reason": "replacement_required",
+            "invoice_id": invoice_id,
+            "remediation": "name the replacement invoice, or cancel the original instead of replacing it",
+            "side_effects": (),
+        }
+    record = {
+        "invoice_id": invoice_id,
+        "tenant": invoice["tenant"],
+        "from_state": from_state,
+        "to_state": to_state,
+        "actor": transition.get("actor"),
+        "reason": transition.get("reason"),
+        "replacement_invoice_id": transition.get("replacement_invoice_id"),
+    }
+    updated = {
+        **invoice,
+        "lifecycle_state": to_state,
+        "lifecycle_history": (*invoice.get("lifecycle_history", ()), record),
+    }
+    if to_state == "replaced":
+        updated["replacement_invoice_id"] = transition["replacement_invoice_id"]
+    next_state = {
+        **state,
+        "invoices": {**state["invoices"], invoice_id: updated},
+        "invoice_lifecycle_transitions": (*state.get("invoice_lifecycle_transitions", ()), record),
+    }
+    next_state = _append_event(
+        next_state,
+        "InvoiceCancelled" if to_state == "cancelled" else "InvoiceReplaced",
+        {"tenant": invoice["tenant"], "invoice_id": invoice_id, "reason": transition.get("reason")},
+    )
+    return {
+        "format": "appgen.ar-credit-invoice-transition.v1",
+        "ok": True,
+        "state": next_state,
+        "invoice": updated,
+        "transition": record,
+        "side_effects": (),
+    }
+
+
+def ar_credit_record_credit_decision(state: dict, decision: dict) -> dict:
+    """Record a credit limit decision, gated on the approver's authority.
+
+    The limit is not written to the customer by the caller; it is the outcome of
+    a decision this function records. An approver whose ceiling is below the
+    requested limit is refused with the ceiling named, rather than granted a
+    smaller limit than they asked for, because a silently clamped limit hides the
+    fact that the decision needed someone else.
+    """
+    required = ("decision_id", "tenant", "customer_id", "requested_limit", "approver", "approver_role", "decision")
+    missing = tuple(field for field in required if decision.get(field) in (None, ""))
+    if missing:
+        raise ValueError(f"Missing AR credit decision fields: {missing}")
+    if decision["decision"] not in AR_CREDIT_CREDIT_DECISIONS:
+        raise ValueError(f"Unsupported AR credit decision: {decision['decision']}")
+    if decision["approver_role"] not in AR_CREDIT_APPROVER_AUTHORITY:
+        raise ValueError(f"Unsupported AR credit approver role: {decision['approver_role']}")
+    customer = state.get("customers", {}).get(decision["customer_id"])
+    if customer is None:
+        return {"ok": False, "reason": "unknown_customer", "customer_id": decision["customer_id"], "side_effects": ()}
+    if decision["decision_id"] in state.get("credit_decisions", {}):
+        raise ValueError(f"AR credit decision already exists: {decision['decision_id']}")
+    requested = round(float(decision["requested_limit"]), 2)
+    ceiling = AR_CREDIT_APPROVER_AUTHORITY[decision["approver_role"]]
+    if decision["decision"] == "approve" and requested > ceiling:
+        return {
+            "format": "appgen.ar-credit-decision.v1",
+            "ok": False,
+            "reason": "insufficient_authority",
+            "decision_id": decision["decision_id"],
+            "approver_role": decision["approver_role"],
+            "authority_limit": ceiling,
+            "requested_limit": requested,
+            "remediation": f"escalate to a role whose authority covers {requested}",
+            "side_effects": (),
+        }
+    approved_limit = requested if decision["decision"] == "approve" else float(customer.get("credit_limit", 0.0))
+    exposure = round(
+        sum(float(invoice.get("open_amount", 0.0)) for invoice in state.get("invoices", {}).values() if invoice.get("customer_id") == decision["customer_id"]),
+        2,
+    )
+    record = {
+        **decision,
+        "requested_limit": requested,
+        "approved_limit": approved_limit,
+        "exposure_at_decision": exposure,
+        "policy_version": decision.get("policy_version", "ar-credit-policy.v1"),
+        "expected_exposure_impact": round(approved_limit - exposure, 2),
+    }
+    updated_customer = {**customer, "credit_limit": approved_limit, "risk_grade": decision.get("risk_grade", customer.get("risk_grade"))}
+    next_state = {
+        **state,
+        "customers": {**state["customers"], decision["customer_id"]: updated_customer},
+        "credit_decisions": {**state.get("credit_decisions", {}), decision["decision_id"]: record},
+    }
+    next_state = _append_event(
+        next_state,
+        "CreditDecisionRecorded",
+        {"tenant": decision["tenant"], "customer_id": decision["customer_id"], "decision": decision["decision"], "approved_limit": approved_limit},
+    )
+    return {
+        "format": "appgen.ar-credit-decision.v1",
+        "ok": True,
+        "state": next_state,
+        "decision": record,
+        "customer": updated_customer,
+        "side_effects": (),
+    }
+
+
+def ar_credit_customer_exposure(state: dict, *, tenant: str, customer_id: str) -> dict:
+    """Aggregate a customer's exposure across every place credit can be consumed.
+
+    A credit check that reads only open invoices understates exposure, because
+    disputed amounts, credit memos already promised, and refunds already scheduled
+    are all claims against the same limit. The buckets are reported separately so
+    a reviewer can see which one moved.
+    """
+    invoices = tuple(
+        invoice
+        for invoice in state.get("invoices", {}).values()
+        if invoice.get("tenant") == tenant and invoice.get("customer_id") == customer_id
+    )
+    open_invoices = tuple(invoice for invoice in invoices if invoice.get("open_amount", 0.0) > 0)
+    disputed = round(
+        sum(
+            float(dispute.get("amount", 0.0))
+            for dispute in state.get("disputes", {}).values()
+            if dispute.get("customer_id") == customer_id or any(invoice["invoice_id"] == dispute.get("invoice_id") for invoice in invoices)
+        ),
+        2,
+    )
+    unapplied = round(
+        sum(float(item.get("amount", 0.0)) for item in state.get("unapplied_cash", {}).values() if item.get("customer_id") == customer_id),
+        2,
+    )
+    scheduled_refunds = round(
+        sum(
+            float(refund.get("amount", 0.0))
+            for refund in state.get("refunds", {}).values()
+            if refund.get("customer_id") == customer_id and refund.get("status") == "scheduled"
+        ),
+        2,
+    )
+    open_balance = round(sum(float(invoice.get("open_amount", 0.0)) for invoice in open_invoices), 2)
+    customer = state.get("customers", {}).get(customer_id, {})
+    credit_limit = round(float(customer.get("credit_limit", 0.0)), 2)
+    total_exposure = round(open_balance + disputed + scheduled_refunds, 2)
+    return {
+        "format": "appgen.ar-credit-exposure.v1",
+        "ok": True,
+        "tenant": tenant,
+        "customer_id": customer_id,
+        "open_invoice_count": len(open_invoices),
+        "open_balance": open_balance,
+        "disputed_amount": disputed,
+        "unapplied_cash": unapplied,
+        "scheduled_refunds": scheduled_refunds,
+        "total_exposure": total_exposure,
+        "credit_limit": credit_limit,
+        "available_credit": round(max(0.0, credit_limit - total_exposure), 2),
+        "utilisation": round(total_exposure / credit_limit, 4) if credit_limit else 0.0,
+        "buckets": (
+            ("open_balance", open_balance),
+            ("disputed_amount", disputed),
+            ("scheduled_refunds", scheduled_refunds),
+        ),
+        "side_effects": (),
+    }
+
+
+def ar_credit_invoice_correction_contract() -> dict:
+    """Return the invoice and credit governance a screen renders from."""
+    return {
+        "format": "appgen.ar-credit-invoice-correction-contract.v1",
+        "ok": True,
+        "invoice_states": tuple(AR_CREDIT_INVOICE_LIFECYCLE_TRANSITIONS),
+        "invoice_transitions": {state_name: targets for state_name, targets in AR_CREDIT_INVOICE_LIFECYCLE_TRANSITIONS.items()},
+        "invoice_terminal_states": AR_CREDIT_INVOICE_TERMINAL_STATES,
+        "invoice_sealed_states": AR_CREDIT_INVOICE_SEALED_STATES,
+        "credit_decisions": AR_CREDIT_CREDIT_DECISIONS,
+        "approver_authority": {role: limit for role, limit in AR_CREDIT_APPROVER_AUTHORITY.items() if limit != float("inf")},
+        "exposure_buckets": ("open_balance", "disputed_amount", "scheduled_refunds"),
+        "side_effects": (),
+    }
 
 
 def ar_credit_record_delivery_confirmation(state: dict, delivery: dict) -> dict:
@@ -733,9 +1128,25 @@ def ar_credit_record_unapplied_cash(state: dict, receipt: dict) -> dict:
 
 def ar_credit_create_credit_memo(state: dict, memo: dict) -> dict:
     invoice = state["invoices"][memo["invoice_id"]]
+    if invoice.get("lifecycle_state", "issued") in AR_CREDIT_INVOICE_SEALED_STATES:
+        return {
+            "format": "appgen.ar-credit-credit-memo.v1",
+            "ok": False,
+            "reason": "invoice_sealed",
+            "invoice_id": invoice["invoice_id"],
+            "remediation": "issue a replacement invoice rather than crediting a cancelled one",
+            "side_effects": (),
+        }
     amount = round(float(memo["amount"]), 2)
     open_amount = round(max(0, invoice["open_amount"] - amount), 2)
-    updated_invoice = {**invoice, "open_amount": open_amount, "status": "credited" if open_amount else "cleared"}
+    # `credited_amount` accumulates alongside `open_amount` so a statement can
+    # report the gross credit taken without reconstructing it from the memos.
+    updated_invoice = {
+        **invoice,
+        "open_amount": open_amount,
+        "credited_amount": round(float(invoice.get("credited_amount", 0.0)) + amount, 2),
+        "status": "credited" if open_amount else "cleared",
+    }
     credit_memo = {
         **memo,
         "credit_memo_id": memo.get("credit_memo_id", f"cm_{memo['invoice_id']}"),
@@ -872,6 +1283,13 @@ def ar_credit_recognize_revenue_schedule(state: dict, invoice_id: str) -> dict:
 def ar_credit_build_workbench_view(state: dict, *, tenant: str, as_of: str) -> dict:
     aging = ar_credit_calculate_aging(state, tenant=tenant, as_of=as_of)
     open_invoices = tuple(invoice for invoice in state["invoices"].values() if invoice["tenant"] == tenant and invoice["open_amount"] > 0)
+    invoices = tuple(invoice for invoice in state["invoices"].values() if invoice["tenant"] == tenant)
+    invoice_state_counts: dict[str, int] = {}
+    for invoice in invoices:
+        state_name = invoice.get("lifecycle_state", "issued")
+        invoice_state_counts[state_name] = invoice_state_counts.get(state_name, 0) + 1
+    sealed = set(AR_CREDIT_INVOICE_SEALED_STATES)
+    decisions = tuple(decision for decision in state.get("credit_decisions", {}).values() if decision["tenant"] == tenant)
     return {
         "ok": True,
         "tenant": tenant,
@@ -881,6 +1299,13 @@ def ar_credit_build_workbench_view(state: dict, *, tenant: str, as_of: str) -> d
         "aging": aging["buckets"],
         "collection_action_count": len(tuple(action for action in state["collection_actions"].values() if action["tenant"] == tenant)),
         "unapplied_cash_total": round(sum(item["amount"] for item in state["unapplied_cash"].values() if item["tenant"] == tenant), 2),
+        "invoice_count": len(invoices),
+        "sealed_invoice_count": sum(1 for invoice in invoices if invoice.get("lifecycle_state", "issued") in sealed),
+        "invoice_lifecycle_state_counts": tuple(sorted(invoice_state_counts.items())),
+        "credit_decision_count": len(decisions),
+        "approved_decision_count": sum(1 for decision in decisions if decision.get("decision") == "approve"),
+        "escalated_decision_count": sum(1 for decision in decisions if decision.get("decision") == "review"),
+        "credited_amount_total": round(sum(float(invoice.get("credited_amount", 0.0)) for invoice in invoices), 2),
         "configuration_bound": bool(state.get("configuration", {}).get("ok")),
         "rule_count": len(state.get("rules", {})),
         "parameter_count": len(state.get("parameters", {})),
@@ -982,6 +1407,10 @@ def ar_credit_build_api_contract() -> dict:
         "routes": (
             {"route": "POST /ar/customers", "command": "onboard_customer", "owned_tables": ("ar_customer", "ar_customer_graph", "ar_cash_pool"), "emits": ("CustomerOnboarded",), "requires_permission": "ar_credit.customer", "idempotency_key": "customer_id"},
             {"route": "POST /ar/invoices", "command": "issue_invoice", "owned_tables": ("ar_invoice",), "emits": ("InvoiceIssued",), "requires_permission": "ar_credit.invoice", "idempotency_key": "invoice_id"},
+            {"route": "POST /ar/invoices/{invoice_id}/lifecycle-transitions", "command": "transition_invoice_state", "owned_tables": ("ar_invoice",), "emits": ("InvoiceCancelled", "InvoiceReplaced"), "requires_permission": "ar_credit.invoice", "idempotency_key": "invoice_id"},
+            {"route": "POST /ar/credit-decisions", "command": "record_credit_decision", "owned_tables": ("ar_customer", "ar_credit_decision"), "emits": ("CreditDecisionRecorded",), "requires_permission": "ar_credit.credit", "idempotency_key": "decision_id"},
+            {"route": "GET /ar/customers/{customer_id}/exposure", "query": "customer_exposure", "owned_tables": ("ar_invoice", "ar_credit_memo", "ar_refund", "ar_customer"), "requires_permission": "ar_credit.read"},
+            {"route": "GET /ar/invoice-governance", "query": "invoice_correction_contract", "owned_tables": AR_CREDIT_OWNED_TABLES, "requires_permission": "ar_credit.read"},
             {"route": "POST /ar/deliveries", "command": "record_delivery_confirmation", "owned_tables": ("ar_delivery_confirmation",), "emits": ("DeliveryConfirmed",), "requires_permission": "ar_credit.delivery", "idempotency_key": "delivery_id"},
             {"route": "POST /ar/receipts/apply", "command": "apply_cash", "owned_tables": ("ar_cash_receipt", "ar_invoice", "ar_cash_pool"), "emits": ("PaymentReceived",), "requires_permission": "ar_credit.cash", "idempotency_key": "receipt_id"},
             {"route": "POST /ar/receipts/unapplied", "command": "record_unapplied_cash", "owned_tables": ("ar_unapplied_cash", "ar_cash_pool"), "emits": ("UnappliedCashRecorded",), "requires_permission": "ar_credit.cash", "idempotency_key": "receipt_id"},
@@ -1076,7 +1505,9 @@ def ar_credit_build_schema_contract() -> dict:
         "format": "appgen.ar-credit-owned-schema-contract.v1",
         "ok": len(tables) == len(AR_CREDIT_OWNED_TABLES)
         and len(tables) >= 35
-        and all(item["table"].startswith(("ar_", "ar_credit_")) for item in tables),
+        # `tables` walks AR_CREDIT_OWNED_TABLES, so the prefix check reads the same
+        # names the table list does rather than the union of a row's value types.
+        and all(table.startswith(("ar_", "ar_credit_")) for table in AR_CREDIT_OWNED_TABLES),
         "tables": tables,
         "relationships": relationships,
         "migrations": tuple(
@@ -1226,6 +1657,10 @@ def ar_credit_permissions_contract() -> dict:
         "action_permissions": {
             "onboard_customer": "ar_credit.customer",
             "issue_invoice": "ar_credit.invoice",
+            "transition_invoice_state": "ar_credit.invoice",
+            "record_credit_decision": "ar_credit.credit",
+            "customer_exposure": "ar_credit.read",
+            "invoice_correction_contract": "ar_credit.read",
             "record_delivery_confirmation": "ar_credit.delivery",
             "apply_cash": "ar_credit.cash",
             "record_unapplied_cash": "ar_credit.cash",

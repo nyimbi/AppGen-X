@@ -7,6 +7,7 @@ from .runtime import AR_CREDIT_CONSUMED_EVENT_TYPES
 from .runtime import AR_CREDIT_EMITTED_EVENT_TYPES
 from .runtime import AR_CREDIT_OWNED_TABLES
 from .runtime import AR_CREDIT_REQUIRED_EVENT_TOPIC
+from .runtime import ar_credit_invoice_correction_contract
 from .runtime import ar_credit_permissions_contract
 from .receivables_workflows import AR_CREDIT_WORKFLOW_OPERATIONS
 
@@ -15,6 +16,7 @@ AR_CREDIT_UI_FRAGMENT_KEYS = (
     "AccountsReceivableWorkbench",
     "CustomerCreditConsole",
     "InvoiceIssueQueue",
+    "CreditAuthorityConsole",
     "DeliveryConfirmationBoard",
     "CashApplicationWorkbench",
     "UnappliedCashTriage",
@@ -41,6 +43,7 @@ def ar_credit_ui_contract() -> dict:
             "/workbench/pbcs/ar_credit",
             "/workbench/pbcs/ar_credit/customers",
             "/workbench/pbcs/ar_credit/invoices",
+            "/workbench/pbcs/ar_credit/invoice-governance",
             "/workbench/pbcs/ar_credit/deliveries",
             "/workbench/pbcs/ar_credit/cash",
             "/workbench/pbcs/ar_credit/unapplied-cash",
@@ -66,6 +69,12 @@ def ar_credit_ui_contract() -> dict:
                 "fragment": "InvoiceIssueQueue",
                 "binds_to": ("invoice", "delivery", "revenue_schedule"),
                 "commands": ("issue_invoice", "record_delivery_confirmation", "recognize_revenue_schedule"),
+            },
+            {
+                "key": "invoice_governance",
+                "fragment": "CreditAuthorityConsole",
+                "binds_to": ("invoice", "credit_decision", "invoice_lifecycle_transition"),
+                "commands": ("transition_invoice_state", "record_credit_decision", "customer_exposure"),
             },
             {
                 "key": "cash",
@@ -124,6 +133,7 @@ def ar_credit_ui_contract() -> dict:
             "dead_letter_status": "visible",
         },
         "permissions_contract": ar_credit_permissions_contract(),
+        "invoice_governance": ar_credit_invoice_correction_contract(),
         "binding_evidence": {"owned_tables": AR_CREDIT_OWNED_TABLES, "shared_table_access": False},
     }
 
@@ -139,6 +149,14 @@ def ar_credit_render_workbench(
     visible_actions = tuple(action for action, required in contract["action_permissions"].items() if required in permissions)
     invoices = tuple(invoice for invoice in state["invoices"].values() if invoice["tenant"] == tenant)
     open_invoices = tuple(invoice for invoice in invoices if invoice["open_amount"] > 0)
+    sealed_invoices = tuple(
+        invoice
+        for invoice in invoices
+        if invoice.get("lifecycle_state", "issued") in ar_credit_invoice_correction_contract()["invoice_sealed_states"]
+    )
+    credit_decisions = tuple(
+        decision for decision in state.get("credit_decisions", {}).values() if decision["tenant"] == tenant
+    )
     receipts = tuple(receipt for receipt in state["receipts"].values() if receipt["tenant"] == tenant)
     collection_actions = tuple(action for action in state["collection_actions"].values() if action["tenant"] == tenant)
     cards = (
@@ -147,6 +165,8 @@ def ar_credit_render_workbench(
         {"key": "open_balance", "value": round(sum(invoice["open_amount"] for invoice in open_invoices), 2), "fragment": "CashApplicationWorkbench"},
         {"key": "receipts", "value": len(receipts), "fragment": "CashApplicationWorkbench"},
         {"key": "collections", "value": len(collection_actions), "fragment": "DunningCollectionsConsole"},
+        {"key": "sealed_invoices", "value": len(sealed_invoices), "fragment": "CreditAuthorityConsole"},
+        {"key": "credit_decisions", "value": len(credit_decisions), "fragment": "CreditAuthorityConsole"},
         {"key": "rules", "value": len(state.get("rules", {})), "fragment": "ArRuleStudio"},
     )
     return {
@@ -243,6 +263,12 @@ def smoke_test():
         "required_fields": ("rule_id", "scope", "status"),
     }
     binding_evidence = contract.get("binding_evidence") or {"shared_table_access": False}
+    # A panel whose fragment is not declared renders nothing, and the workbench
+    # route still answers 200, so the failure is silent. Every panel must name a
+    # fragment the contract declares.
+    undeclared_fragments = tuple(
+        panel["fragment"] for panel in contract.get("panels", ()) if panel["fragment"] not in contract.get("fragments", ())
+    )
     governance = {
         "configuration_editor": configuration_editor,
         "parameter_editor": contract.get("parameter_editor", {}),
@@ -265,8 +291,10 @@ def smoke_test():
         and bool(event_surfaces)
         and ("outbox_status" in event_surfaces or "contract" in event_surfaces)
         and binding_evidence.get("shared_table_access") is not True
-        and not binding_evidence.get("shared_tables", ()),
+        and not binding_evidence.get("shared_tables", ())
+        and not undeclared_fragments,
         "manifest": {"fragments": contract.get("fragments", ()), "routes": contract.get("routes", ())},
+        "undeclared_panel_fragments": undeclared_fragments,
         "contract": contract,
         "governance": governance,
         "rendered": rendered,

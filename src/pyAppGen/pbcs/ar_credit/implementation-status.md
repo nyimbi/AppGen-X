@@ -36,7 +36,25 @@
 - Expand dispute resolution from recommendation-only into full owned-case
   lifecycle state.
 - Add promise-to-pay and collector work queue execution.
-- Deepen credit policy compilation for temporary limits, authority bands, and
-  review cadence.
+- Add temporary limits and review cadence to the credit-authority ladder: the
+  ceiling is modelled, but a limit with an expiry and a scheduled review is not.
 - Add more generated-app coverage that exercises the new workflow operations
   through route dispatch and composed app surfaces.
+
+## Invoice Governance Slice
+
+- `ar_credit_transition_invoice_state` gives an invoice a governance state
+  separate from its cash `status`, so a fully-paid invoice can be cancelled
+  without pretending the cash never arrived. `cancelled` and `replaced` are
+  terminal, and `replaced` refuses unless it names its replacement.
+- `ar_credit_record_credit_decision` writes a credit limit as the outcome of a
+  decision rather than as a caller-supplied number. An approver whose ceiling is
+  below the request is refused with the ceiling named, not clamped.
+- `ar_credit_customer_exposure` aggregates every claim against the limit (open
+  balance, disputed, scheduled refunds) and reports unapplied cash separately,
+  because cash in hand is not a claim.
+- `ar_credit_create_credit_memo` refuses a sealed invoice, and accumulates
+  `credited_amount` so a statement reports gross credit without re-reading memos.
+- The workbench carries `invoice_count`, `sealed_invoice_count`,
+  `invoice_lifecycle_state_counts`, and the credit-decision counters; the UI
+  contract carries the governance contract and a `CreditAuthorityConsole` panel.

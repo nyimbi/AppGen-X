@@ -18,7 +18,10 @@ from .runtime import ar_credit_verify_customer_identity
 
 AR_CREDIT_IMPLEMENTED_BACKLOG_ITEMS = (
     "customer_credit_onboarding_evidence_pack",
+    "credit_limit_lifecycle_governance",
+    "customer_exposure_aggregation",
     "invoice_issuance_completeness_gate",
+    "invoice_correction_and_cancellation_lifecycle",
     "semantic_remittance_intake_and_cash_application",
     "collections_follow_up_workspace",
 )
@@ -399,6 +402,18 @@ def ar_credit_workflow_release_evidence() -> dict:
             "invoice_readiness": {
                 "operation": "review_invoice_readiness",
                 "owned_tables": ("ar_invoice", "ar_invoice_line", "ar_invoice_tax", "ar_invoice_performance_obligation"),
+            },
+            "invoice_correction": {
+                "operation": "transition_invoice_state",
+                "owned_tables": ("ar_invoice",),
+            },
+            "credit_authority": {
+                "operation": "record_credit_decision",
+                "owned_tables": ("ar_credit_decision", "ar_customer_credit_profile"),
+            },
+            "customer_exposure": {
+                "operation": "customer_exposure",
+                "owned_tables": ("ar_invoice", "ar_dispute_case", "ar_refund", "ar_unapplied_cash", "ar_customer_credit_profile"),
             },
             "receipt_application": {
                 "operation": "execute_receipt_application",
