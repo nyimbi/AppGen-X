@@ -278,24 +278,45 @@ def test_catalog_descriptor_matches_package_for_reference_pbcs():
         assert set(descriptor["consumes"]) == set(consumed), key
 
 
+def _resolve_owned_table(key, table, owned):
+    """Resolve a manifest table to the physical table the package owns.
+
+    Exact name first, then a unique suffix match, then the generated
+    key-prefixed form. Mirrors ``_owned_table_name`` so the test measures the
+    same mapping the generator uses.
+    """
+    if table in owned:
+        return table
+    suffixed = tuple(name for name in owned if name.endswith(f"_{table}"))
+    if len(suffixed) == 1:
+        return suffixed[0]
+    return f"{key}_{table}"
+
+
 def test_manifest_tables_resolve_to_owned_tables_for_every_pbc():
-    """Every manifest table must resolve to a table the package owns.
+    """Every manifest table must resolve to exactly one owned table.
 
     A manifest table with no owned-table counterpart is a name the package
     never creates, so generation would emit a table nothing migrates. Packages
     prefix owned tables with their own domain prefix (``ar_credit`` owns
     ``ar_customer`` for a manifest table ``customer``), so resolution is by
-    suffix as well as by exact name.
+    suffix as well as by exact name. Two manifest tables resolving to the same
+    physical table would mean two generated tables are one, so the mapping must
+    also be injective.
     """
     for key in PBC_CATALOG:
         manifest = import_module(f"pyAppGen.pbcs.{key}.manifest").PBC_MANIFEST
         owned = _owned_tables(key)
+        physical_to_logical: dict[str, str] = {}
 
         for table in manifest.get("tables", ()) or ():
-            resolved = table in owned or any(
-                name.endswith(f"_{table}") for name in owned
+            physical = _resolve_owned_table(key, table, owned)
+            assert physical in owned, f"{key}: manifest table {table!r} is not owned"
+            assert physical not in physical_to_logical, (
+                f"{key}: manifest tables {physical_to_logical.get(physical)!r} and "
+                f"{table!r} both resolve to {physical!r}"
             )
-            assert resolved, f"{key}: manifest table {table!r} is not owned"
+            physical_to_logical[physical] = table
 
 
 def test_no_two_pbcs_claim_the_same_generated_table():
