@@ -34,19 +34,32 @@ COMPOSITION = ("dam_core", "gl_core", "ar_credit")
 playwright_api = pytest.importorskip("playwright.sync_api", reason="playwright is not installed")
 
 
-@pytest.fixture(scope="module")
-def built_spa(tmp_path_factory):
-    """Generate a real app and build its SPA. Skips without a toolchain."""
+def _build_spa(root: Path, *, break_workbench: bool) -> Path:
+    """Generate an app and build its SPA. Skips without a toolchain.
+
+    `break_workbench` replaces the emitted `Workbench.tsx` with a component that
+    renders an empty shell. That is the canary for the gate below: a render gate
+    that has never been watched fail is not evidence, and this is the cheapest
+    input that should make every DOM assertion here fail.
+    """
     studio_modules = REPO_ROOT / "appgen-frontend" / "node_modules"
     if not (studio_modules / ".bin" / "vite").exists():
         pytest.skip("no installed frontend toolchain to borrow")
 
-    root = tmp_path_factory.mktemp("render") / "app"
     dsl = pbc_composition_dsl(COMPOSITION, app_name="LegoLedger")
     schema = schema_from_dsl(dsl, source_name="lego.appgen")
     generate_app_from_schema(schema, root)
 
     project = root.parent
+    if break_workbench:
+        (project / "src" / "Workbench.tsx").write_text(
+            "/** Canary: a workbench that renders nothing. */\n"
+            "export function Workbench() {\n"
+            "  return <div id=\"canary-blank\" />\n"
+            "}\n",
+            encoding="utf-8",
+        )
+
     link = project / "node_modules"
     if not link.exists():
         link.symlink_to(studio_modules)
@@ -64,9 +77,26 @@ def built_spa(tmp_path_factory):
 
 
 @pytest.fixture(scope="module")
-def rendered(built_spa):
-    """Serve the built SPA with a stub API and yield a browser page factory."""
-    payload = _workbench_payloads(built_spa)
+def built_spa(tmp_path_factory):
+    """Generate a real app and build its SPA."""
+    return _build_spa(tmp_path_factory.mktemp("render") / "app", break_workbench=False)
+
+
+@pytest.fixture(scope="module")
+def driver():
+    """Own the single Playwright context for this module.
+
+    The sync API refuses to open a second context on a thread that already has
+    one, so the healthy build and the canary build share this rather than each
+    opening their own.
+    """
+    with playwright_api.sync_playwright() as playwright:
+        yield playwright
+
+
+def _serve(project: Path, playwright):
+    """Serve a built SPA with a stub API and yield a browser page and payload."""
+    payload = _workbench_payloads(project)
 
     class Handler(SimpleHTTPRequestHandler):
         def __init__(self, *args, payload=None, directory=None, **kwargs):
@@ -105,21 +135,31 @@ def rendered(built_spa):
 
     server = ThreadingHTTPServer(
         ("127.0.0.1", 0),
-        partial(Handler, payload=payload, directory=str(built_spa / "dist")),
+        partial(Handler, payload=payload, directory=str(project / "dist")),
     )
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
 
-    with playwright_api.sync_playwright() as driver:
-        browser = driver.chromium.launch()
-        page = browser.new_page()
-        page.goto(f"http://127.0.0.1:{server.server_port}/", wait_until="networkidle")
-        try:
-            yield page, payload
-        finally:
-            browser.close()
-            server.shutdown()
-            thread.join(timeout=5)
+    browser = playwright.chromium.launch()
+    page = browser.new_page()
+    # The workbench renders from a payload the page already has, so anything
+    # slower than a couple of seconds is a defect rather than a slow machine.
+    # The default 30s also made the canary below spend three minutes waiting on
+    # markup a blank template never produces.
+    page.set_default_timeout(2500)
+    page.goto(f"http://127.0.0.1:{server.server_port}/", wait_until="networkidle")
+    try:
+        yield page, payload
+    finally:
+        browser.close()
+        server.shutdown()
+        thread.join(timeout=5)
+
+
+@pytest.fixture(scope="module")
+def rendered(built_spa, driver):
+    """Serve the built SPA with a stub API and yield a browser page factory."""
+    yield from _serve(built_spa, driver)
 
 
 def _workbench_payloads(project: Path) -> dict:
@@ -166,18 +206,48 @@ def _workbench_payloads(project: Path) -> dict:
     return rendered
 
 
+def _select(page, payload, key: str) -> None:
+    """Click the rail item for `key` and wait for its workbench to render.
+
+    The page is shared across this module and the shell remembers which
+    workbench is showing, so a test that assumes a particular PBC must select it
+    rather than rely on the order the tests happen to run in.
+    """
+    entry = payload[key]
+    page.get_by_role("button", name=entry["label"]).first.click()
+    page.wait_for_timeout(300)
+    assert entry["owned_tables"][0] in page.locator(".appgen-workbench").inner_text(), key
+
+
 def test_the_workbench_actually_renders(rendered):
-    """A blank page must fail. This is the assertion the dict gates cannot make."""
-    page = rendered[0]
+    """A workbench region with nothing in it must fail.
+
+    Asserting on `#root` alone is not enough: the shell's nav rail renders the
+    workbench labels whether or not the workbench itself renders, so the first
+    version of this test passed on a page whose workbench body was empty. The
+    assertion is scoped to the layout the workbench mounts inside, which is the
+    region a broken template leaves blank.
+    """
+    page, payload = rendered
     root = page.locator("#root")
     assert root.count() == 1
-    assert root.inner_text().strip(), "the SPA rendered nothing"
+
+    _select(page, payload, COMPOSITION[0])
+    layout = page.locator(".appgen-workbench")
+    assert layout.count() == 1, "the workbench layout did not mount"
+
+    first = payload[COMPOSITION[0]]
+    assert first["owned_tables"], "the payload carries no owned tables to assert on"
+    assert first["owned_tables"][0] in layout.inner_text(), "the workbench region rendered nothing"
 
 
 def test_the_first_workbench_shows_its_own_pbc(rendered):
     page, payload = rendered
     first = payload[COMPOSITION[0]]
-    text = page.locator("#root").inner_text()
+    _select(page, payload, COMPOSITION[0])
+    layout = page.locator(".appgen-workbench")
+    assert layout.count() == 1, "the workbench layout did not mount"
+    text = layout.inner_text()
     assert first["label"] in text
     assert first["pbc"] in text
 
@@ -186,10 +256,11 @@ def test_owned_tables_appear_as_real_rows(rendered):
     """The tables must be rendered, not merely counted."""
     page, payload = rendered
     first = payload[COMPOSITION[0]]
-    body = page.locator("#root").inner_text()
     # Without this the loop below and the count comparison both hold on an
     # empty list, so the test passed on a workbench that rendered no tables.
     assert first["owned_tables"], "the payload carries no owned tables to assert on"
+    _select(page, payload, COMPOSITION[0])
+    body = page.locator(".appgen-workbench").inner_text()
     for table in first["owned_tables"][:5]:
         assert table in body, table
     rows = page.locator("table.appgen-table tbody tr")
@@ -199,8 +270,9 @@ def test_owned_tables_appear_as_real_rows(rendered):
 def test_api_routes_appear_with_their_methods(rendered):
     page, payload = rendered
     first = payload[COMPOSITION[0]]
-    body = page.locator("#root").inner_text()
     assert first["apis"], "the payload carries no API routes to assert on"
+    _select(page, payload, COMPOSITION[0])
+    body = page.locator(".appgen-workbench").inner_text()
     for api in first["apis"][:3]:
         assert api["route"] in body, api["route"]
     assert page.locator("table.appgen-table").count() >= 2
@@ -208,7 +280,8 @@ def test_api_routes_appear_with_their_methods(rendered):
 
 def test_the_shared_kit_classes_are_on_the_page(rendered):
     """The render must come through the kit, not from private markup."""
-    page, _ = rendered
+    page, payload = rendered
+    _select(page, payload, COMPOSITION[0])
     for selector in (".appgen-workbench", ".appgen-table", ".appgen-card", ".appgen-nav-rail"):
         assert page.locator(selector).count() > 0, selector
 
@@ -219,17 +292,14 @@ def test_the_shell_navigates_to_another_workbench(rendered):
     second = payload[COMPOSITION[1]]
     page.get_by_role("button", name=second["label"]).first.click()
     page.wait_for_timeout(300)
-    assert second["pbc"] in page.locator("#root").inner_text()
+    assert second["pbc"] in page.locator(".appgen-workbench").inner_text()
 
 
 def test_every_workbench_renders_without_error(rendered):
     page, payload = rendered
     for key in COMPOSITION:
-        entry = payload[key]
-        page.get_by_role("button", name=entry["label"]).first.click()
-        page.wait_for_timeout(250)
-        body = page.locator("#root").inner_text()
-        assert entry["owned_tables"][0] in body, key
+        _select(page, payload, key)
+        body = page.locator(".appgen-workbench").inner_text()
         assert "Could not load" not in body, key
 
 
@@ -275,3 +345,52 @@ def test_the_rendered_workbench_has_no_serious_accessibility_violations(rendered
                 f"{len(violation['nodes'])} node(s)" for violation in blocking
             )
         )
+
+
+@pytest.fixture(scope="module")
+def rendered_broken(tmp_path_factory, driver):
+    """Build the same app with a Workbench that renders an empty shell."""
+    project = _build_spa(tmp_path_factory.mktemp("canary") / "app", break_workbench=True)
+    yield from _serve(project, driver)
+
+
+def test_the_render_gate_fails_on_a_workbench_that_renders_nothing(rendered_broken):
+    """Canary the gate: point the gate's own assertions at a blank workbench.
+
+    A DOM assertion is worth its green only once it has been seen red, so this
+    runs the assertions above, unmodified, against a build whose `Workbench.tsx`
+    renders an empty shell. What must happen is that at least one of them
+    raises: if all of them pass on a page with no workbench in it, they are not
+    reading the workbench.
+
+    The shell's nav rail still lists the workbench labels, which is why the
+    canary does not simply assert a blank page and why every assertion below
+    that reads the page reads the workbench region rather than `#root`. The one
+    assertion left out is `test_the_shell_navigates_to_another_workbench`: the
+    nav is not part of the workbench template, so a blank workbench correctly
+    leaves it passing.
+    """
+    page, payload = rendered_broken
+    assert page.locator("#canary-blank").count() == 1, "the broken template was not the one built"
+
+    gate_assertions = (
+        test_the_workbench_actually_renders,
+        test_the_first_workbench_shows_its_own_pbc,
+        test_owned_tables_appear_as_real_rows,
+        test_api_routes_appear_with_their_methods,
+        test_the_shared_kit_classes_are_on_the_page,
+        test_every_workbench_renders_without_error,
+    )
+    survived = []
+    for assertion in gate_assertions:
+        try:
+            assertion((page, payload))
+        except (AssertionError, playwright_api.Error):
+            # Either shape is the gate failing, which is what the canary wants.
+            # A locator for markup the broken template never renders raises the
+            # Playwright timeout, and an assertion on a value it never produced
+            # raises AssertionError.
+            continue
+        survived.append(assertion.__name__)
+
+    assert not survived, f"these passed on a blank workbench, so they prove nothing: {survived}"
