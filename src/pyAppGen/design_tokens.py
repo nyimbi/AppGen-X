@@ -129,6 +129,10 @@ def token_css_variables(palette: dict[str, str]) -> tuple[tuple[str, str], ...]:
         (f"--appgen-shadow-{name}", value) for name, value in _emittable(tokens["shadow"])
     )
     variables.extend(
+        (f"--appgen-{name}", value)
+        for name, value in _emittable(tokens["surface_detail"])
+    )
+    variables.extend(
         (f"--appgen-state-{name}", value) for name, value in _emittable(tokens["state"])
     )
     variables.append(("--appgen-touch-target", tokens["touch_target"]))
@@ -139,6 +143,7 @@ def token_css_variables(palette: dict[str, str]) -> tuple[tuple[str, str], ...]:
         for name, value in _emittable(typography)
         if name.startswith("size_")
     )
+    variables.append(("--appgen-line-height", typography["line_height"]))
     variables.append(("--appgen-content-max", tokens["content"]["max"]))
     variables.append(("--appgen-density-row", tokens["density"]["row"]))
     return tuple(variables)

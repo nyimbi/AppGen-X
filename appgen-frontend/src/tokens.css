@@ -18,6 +18,8 @@
   --appgen-space-4: 16px;
   --appgen-space-5: 24px;
   --appgen-shadow-panel: 0 10px 24px rgba(15, 23, 42, 0.08);
+  --appgen-border: #d9e2ec;
+  --appgen-elevated: #ffffff;
   --appgen-state-hover: rgba(47, 111, 94, 0.08);
   --appgen-state-selected: rgba(154, 107, 47, 0.14);
   --appgen-state-invalid: #b42318;
@@ -27,6 +29,7 @@
   --appgen-font-size-md: 1rem;
   --appgen-font-size-lg: 1.125rem;
   --appgen-font-size-xl: 1.5rem;
+  --appgen-line-height: 1.5;
   --appgen-content-max: 1180px;
   --appgen-density-row: 48px;
 }

@@ -104,6 +104,7 @@ from app.database_ops import register_database_ops
 from app.schema_import import register_schema_import
 from app.backup import register_backup
 from app.workflow import register_workflows
+from app.pbc_workbench import register_pbc_workbenches
 from app.rules import register_rules
 from app.monitoring import register_error_handlers, register_monitoring
 from app.resilience import register_resilience
@@ -182,6 +183,7 @@ register_resilience(appbuilder)
 register_performance(appbuilder)
 register_runtime_assurance(appbuilder)
 register_workflows(appbuilder)
+register_pbc_workbenches(appbuilder)
 register_rules(appbuilder)
 register_reports(appbuilder)
 register_report_delivery(appbuilder)

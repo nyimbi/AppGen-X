@@ -25857,6 +25857,306 @@ def smoke_test():
 '''
 
 
+def _pbc_workbench_payload(schema: AppSchema) -> dict:
+    """Return the workbench render payload for every selected PBC.
+
+    Each selected PBC contributes the fragments, route, and binding its
+    package declares, plus the owned tables the composition generated. The
+    payload is embedded in the generated module rather than imported from the
+    generated ``pbcs/`` tree, because that tree imports Flask-AppBuilder and
+    would make the workbench unimportable outside a running app.
+    """
+    from .pbc import pbc_composition_plan
+    from .pbc import pbc_implementation_contracts
+
+    selected = _selected_pbc_keys_from_schema(schema)
+    if not selected:
+        return {"selected_pbcs": (), "workbenches": (), "composition": {}}
+    composition = pbc_composition_plan(
+        selected, app_name=schema.app_name or "GeneratedComposableApp"
+    )
+    workbenches = []
+    for contract in pbc_implementation_contracts(selected):
+        if not contract["ok"]:
+            continue
+        ui = contract["ui"]
+        workbenches.append(
+            {
+                "pbc": contract["pbc"],
+                "label": contract["manifest"]["label"],
+                "mesh": contract["mesh"],
+                "route": ui.get("route") or f"/workbench/pbcs/{contract['pbc']}",
+                "fragments": tuple(ui.get("fragments", ())),
+                "workbench_view": ui.get("workbench_view"),
+                "binds_to": ui.get("binds_to"),
+                "owned_tables": tuple(
+                    table["owned_table"] for table in contract["owned_schema"]["tables"]
+                ),
+                "permissions": tuple(contract["permissions"]),
+                "apis": tuple(contract["apis"]),
+                "outbox_table": contract["events"]["outbox_table"],
+                "inbox_table": contract["events"]["inbox_table"],
+                "dead_letter_table": contract["events"]["dead_letter_table"],
+            }
+        )
+    return {
+        "selected_pbcs": selected,
+        "workbenches": tuple(workbenches),
+        "composition": composition,
+    }
+
+
+def _pbc_workbench_text(schema: AppSchema) -> str:
+    payload = _pbc_workbench_payload(schema)
+    return f'''"""Generated PBC workbench views, one mounted route per selected PBC.
+
+The PBC packages declare a workbench route in their UI contract. This module
+is what mounts it: a Flask-AppBuilder BaseView per PBC rendering the package's
+own fragments and owned tables, plus a JSON endpoint the contract can be read
+from without rendering HTML.
+"""
+
+from __future__ import annotations
+
+from flask import jsonify
+from flask_appbuilder import BaseView
+from flask_appbuilder import expose
+
+WORKBENCHES = {payload!r}
+
+
+def workbench_catalog():
+    """Return every mounted workbench with its route and bound artifacts."""
+    return {{
+        "format": "appgen.generated-pbc-workbench-catalog.v1",
+        "ok": bool(WORKBENCHES["workbenches"]),
+        "selected_pbcs": WORKBENCHES["selected_pbcs"],
+        "workbenches": WORKBENCHES["workbenches"],
+        "side_effects": (),
+    }}
+
+
+def workbench_payload(pbc):
+    """Return one PBC's workbench payload, or None when it is not selected."""
+    for entry in WORKBENCHES["workbenches"]:
+        if entry["pbc"] == pbc:
+            return entry
+    return None
+
+
+def render_workbench(pbc, *, tenant="default", principal_permissions=()):
+    """Render one PBC workbench from its declared contract.
+
+    The cards name the artifacts the workbench is bound to, so an empty or
+    mismatched workbench is visible rather than implied.
+    """
+    entry = workbench_payload(pbc)
+    if entry is None:
+        return {{
+            "format": "appgen.generated-pbc-workbench-render.v1",
+            "ok": False,
+            "pbc": pbc,
+            "reason": "pbc_not_selected",
+        }}
+    cards = (
+        {{"key": "owned_tables", "label": "Owned tables", "value": len(entry["owned_tables"])}},
+        {{"key": "api_routes", "label": "Command and query APIs", "value": len(entry["apis"])}},
+        {{"key": "permissions", "label": "Bound permissions", "value": len(entry["permissions"])}},
+        {{"key": "outbox", "label": "Event outbox", "value": entry["outbox_table"]}},
+        {{"key": "dead_letter", "label": "Dead-letter queue", "value": entry["dead_letter_table"]}},
+    )
+    return {{
+        "format": "appgen.generated-pbc-workbench-render.v1",
+        "ok": bool(entry["fragments"]) and bool(entry["owned_tables"]),
+        "pbc": pbc,
+        "label": entry["label"],
+        "mesh": entry["mesh"],
+        "tenant": tenant,
+        "route": entry["route"],
+        "fragments": entry["fragments"],
+        "workbench_view": entry["workbench_view"],
+        "binds_to": entry["binds_to"],
+        "owned_tables": entry["owned_tables"],
+        "apis": entry["apis"],
+        "permissions_bound": tuple(principal_permissions),
+        "cards": cards,
+        "side_effects": (),
+    }}
+
+
+class PbcWorkbenchView(BaseView):
+    """Mount every selected PBC workbench under ``/workbench/pbcs``."""
+
+    route_base = "/workbench/pbcs"
+    default_view = "index"
+
+    @expose("/")
+    def index(self):
+        return self.render_template(
+            "appgen_pbc_workbenches.html", catalog=workbench_catalog()
+        )
+
+    @expose("/<pbc>")
+    def detail(self, pbc):
+        payload = render_workbench(pbc)
+        if not payload["ok"]:
+            return self.render_template(
+                "appgen_pbc_workbenches.html",
+                catalog=workbench_catalog(),
+                missing=pbc,
+            ), 404
+        return self.render_template("appgen_pbc_workbench.html", workbench=payload)
+
+    @expose("/<pbc>/workbench.json")
+    def detail_json(self, pbc):
+        return jsonify(render_workbench(pbc))
+
+    @expose("/catalog.json")
+    def catalog_json(self):
+        return jsonify(workbench_catalog())
+
+
+def register_pbc_workbenches(appbuilder):
+    """Register the PBC workbench view when any PBC is selected."""
+    if not WORKBENCHES["workbenches"]:
+        return
+    appbuilder.add_view(
+        PbcWorkbenchView,
+        "PBC Workbenches",
+        icon="fa-cubes",
+        category="AppGen",
+    )
+
+
+def smoke_test():
+    """Exercise the workbench render path side-effect-free."""
+    catalog = workbench_catalog()
+    rendered = tuple(
+        render_workbench(entry["pbc"], tenant="smoke")
+        for entry in WORKBENCHES["workbenches"]
+    )
+    return {{
+        "format": "appgen.generated-pbc-workbench-smoke.v1",
+        "ok": catalog["ok"] and all(item["ok"] for item in rendered),
+        "catalog": catalog,
+        "rendered": rendered,
+        "side_effects": (),
+    }}
+'''
+
+
+def write_pbc_workbench_file(output_dir, schema: AppSchema):
+    """Write the generated PBC workbench views and their templates."""
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "pbc_workbench.py").write_text(
+        _pbc_workbench_text(schema), encoding="utf-8"
+    )
+    write_pbc_workbench_templates(output_dir)
+
+
+def write_pbc_workbench_templates(output_dir):
+    """Write the workbench list and detail templates.
+
+    Both render through the design-token variables the theme stylesheet
+    defines, so a workbench carries the same palette and spacing as every
+    other generated screen.
+    """
+    templates_dir = Path(output_dir) / "templates"
+    templates_dir.mkdir(parents=True, exist_ok=True)
+    (templates_dir / "appgen_pbc_workbenches.html").write_text(
+        _PBC_WORKBENCH_INDEX_TEMPLATE, encoding="utf-8"
+    )
+    (templates_dir / "appgen_pbc_workbench.html").write_text(
+        _PBC_WORKBENCH_DETAIL_TEMPLATE, encoding="utf-8"
+    )
+
+
+_PBC_WORKBENCH_INDEX_TEMPLATE = """{% extends "appbuilder/base.html" %}
+{% block content %}
+<section class="appgen-page">
+  <header class="appgen-page-header">
+    <div>
+      <h1 class="appgen-page-title">PBC Workbenches</h1>
+      <p class="appgen-page-note">
+        One workbench per selected Packaged Business Capability. Each renders the
+        capability's own fragments and owned tables, so the composed app exposes
+        every block it was built from.
+      </p>
+    </div>
+  </header>
+  {% if missing %}
+  <div class="alert alert-warning" role="alert">
+    No workbench is mounted for <strong>{{ missing }}</strong>. It is not part of this composition.
+  </div>
+  {% endif %}
+  <div class="appgen-workbench-grid">
+    {% for item in catalog.workbenches %}
+    <article class="appgen-workbench-card">
+      <h2 class="appgen-workbench-name">{{ item.label }}</h2>
+      <p class="appgen-workbench-mesh">{{ item.mesh }}</p>
+      <ul class="appgen-workbench-facts">
+        <li><span>Owned tables</span><strong>{{ item.owned_tables | length }}</strong></li>
+        <li><span>APIs</span><strong>{{ item.apis | length }}</strong></li>
+        <li><span>Permissions</span><strong>{{ item.permissions | length }}</strong></li>
+      </ul>
+      <a class="btn btn-primary" href="{{ url_for('PbcWorkbenchView.detail', pbc=item.pbc) }}">
+        Open workbench
+      </a>
+    </article>
+    {% else %}
+    <div class="appgen-empty">
+      <p>This application selects no PBCs.</p>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+"""
+
+
+_PBC_WORKBENCH_DETAIL_TEMPLATE = """{% extends "appbuilder/base.html" %}
+{% block content %}
+<section class="appgen-page">
+  <header class="appgen-page-header">
+    <div>
+      <h1 class="appgen-page-title">{{ workbench.label }}</h1>
+      <p class="appgen-page-note">
+        Mesh <strong>{{ workbench.mesh }}</strong>. Fragments
+        {% for fragment in workbench.fragments %}<code>{{ fragment }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+        bound to <code>{{ workbench.binds_to }}</code>.
+      </p>
+    </div>
+    <a class="btn btn-default" href="{{ url_for('PbcWorkbenchView.catalog_json') }}">Catalog JSON</a>
+  </header>
+
+  <div class="appgen-kpi-row">
+    {% for card in workbench.cards %}
+    <div class="appgen-kpi">
+      <span class="appgen-kpi-label">{{ card.label }}</span>
+      <strong class="appgen-kpi-value">{{ card.value }}</strong>
+    </div>
+    {% endfor %}
+  </div>
+
+  <h2 class="appgen-section-title">Owned tables</h2>
+  <ul class="appgen-table-list">
+    {% for table in workbench.owned_tables %}
+    <li><code>{{ table }}</code></li>
+    {% endfor %}
+  </ul>
+
+  <h2 class="appgen-section-title">Command and query APIs</h2>
+  <ul class="appgen-api-list">
+    {% for api in workbench.apis %}
+    <li><code>{{ api }}</code></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}
+"""
+
+
 def write_nl_evolution_file(output_dir, schema: AppSchema):
     """Write generated natural-language app evolution helpers."""
     output_dir = Path(output_dir)
@@ -31774,6 +32074,7 @@ def generate_app_from_database(database_url, output_dir, *, config_database_url=
     write_form_designer_file(output_dir, app_schema)
     write_pbc_runtime_file(output_dir, app_schema)
     write_pbc_package_files(output_dir, app_schema)
+    write_pbc_workbench_file(output_dir, app_schema)
     write_nl_evolution_file(output_dir, app_schema)
     write_dsl_reference_file(output_dir, app_schema)
     write_view_experience_file(output_dir, app_schema)
@@ -31944,6 +32245,7 @@ def generate_app_from_schema(schema: AppSchema, output_dir, *, config_database_u
     write_form_designer_file(output_dir, schema)
     write_pbc_runtime_file(output_dir, schema)
     write_pbc_package_files(output_dir, schema)
+    write_pbc_workbench_file(output_dir, schema)
     write_nl_evolution_file(output_dir, schema)
     write_dsl_reference_file(output_dir, schema)
     write_view_experience_file(output_dir, schema)
@@ -35547,6 +35849,100 @@ body {{
 .appgen-form-field.is-invalid .form-control,
 .form-control.is-invalid {{
   border-color: var(--appgen-state-invalid);
+}}
+
+.appgen-page-note {{
+  color: var(--appgen-muted);
+  max-width: 760px;
+  line-height: var(--appgen-line-height);
+}}
+
+.appgen-section-title {{
+  margin: var(--appgen-space-5) 0 var(--appgen-space-3);
+  font-size: var(--appgen-font-size-lg);
+  font-weight: 700;
+}}
+
+.appgen-workbench-grid {{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--appgen-space-4);
+}}
+
+.appgen-workbench-card {{
+  display: grid;
+  gap: var(--appgen-space-3);
+  align-content: start;
+  padding: var(--appgen-space-4);
+  border: 1px solid var(--appgen-border);
+  border-radius: var(--appgen-radius-md);
+  background: var(--appgen-elevated);
+  box-shadow: var(--appgen-shadow-panel);
+}}
+
+.appgen-workbench-name {{
+  margin: 0;
+  font-size: var(--appgen-font-size-lg);
+}}
+
+.appgen-workbench-mesh {{
+  margin: 0;
+  color: var(--appgen-muted);
+  font-size: var(--appgen-font-size-sm);
+  text-transform: capitalize;
+}}
+
+.appgen-workbench-facts,
+.appgen-table-list,
+.appgen-api-list {{
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}}
+
+.appgen-workbench-facts li {{
+  display: flex;
+  justify-content: space-between;
+  gap: var(--appgen-space-3);
+  padding: var(--appgen-space-2) 0;
+  border-top: 1px solid var(--appgen-border);
+}}
+
+.appgen-workbench-facts span {{
+  color: var(--appgen-muted);
+}}
+
+.appgen-table-list li,
+.appgen-api-list li {{
+  padding: var(--appgen-space-2) 0;
+  border-top: 1px solid var(--appgen-border);
+}}
+
+.appgen-kpi-row {{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--appgen-space-4);
+}}
+
+.appgen-kpi-label {{
+  display: block;
+  color: var(--appgen-muted);
+  font-size: var(--appgen-font-size-sm);
+}}
+
+.appgen-kpi-value {{
+  display: block;
+  margin-top: var(--appgen-space-1);
+  font-size: var(--appgen-font-size-xl);
+  overflow-wrap: anywhere;
+}}
+
+.appgen-empty {{
+  padding: var(--appgen-space-5);
+  border: 1px dashed var(--appgen-border);
+  border-radius: var(--appgen-radius-md);
+  color: var(--appgen-muted);
+  text-align: center;
 }}
 
 .table {{
