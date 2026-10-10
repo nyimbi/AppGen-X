@@ -14156,64 +14156,137 @@ def pbc_composition_dsl(
         )
     )
     for service in plan["services"]:
-        for table in service["tables"][:3]:
-            table_name = f"{service['pbc']}_{table}"
-            lines.extend(
-                (
-                    "",
-                    f"table {table_name} {{",
-                    "  id: int pk",
-                    "  code: string required search",
-                    "  status: string required",
-                    "  updated_at: datetime",
-                    "}",
-                )
-            )
-        event_table = f"{service['pbc']}_appgen_outbox_event"
-        inbox_table = f"{service['pbc']}_appgen_inbox_event"
-        dead_letter_table = f"{service['pbc']}_appgen_dead_letter_event"
-        lines.extend(
-            (
-                "",
-                f"table {event_table} {{",
-                "  id: int pk",
-                "  event_id: string required unique",
-                "  event_type: string required search",
-                "  payload: text required",
-                "  attempts: int default 0",
-                "  status: string default \"pending\" search",
-                "  published_at: datetime",
-                "}",
-                "",
-                f"table {inbox_table} {{",
-                "  id: int pk",
-                "  event_id: string required unique",
-                "  event_type: string required search",
-                "  handler: string required search",
-                "  payload: text required",
-                "  attempts: int default 0",
-                "  processed_at: datetime",
-                "}",
-                "",
-                f"table {dead_letter_table} {{",
-                "  id: int pk",
-                "  event_id: string required search",
-                "  event_type: string required search",
-                "  failure_reason: text required",
-                "  payload: text required",
-                "  failed_at: datetime",
-                "}",
-                "",
-                f"view {service['class_name']}Workbench for {event_table} {{",
-                "  Main: event_type, status, payload, published_at",
-                "  @ event_type TextBox 0 0 6 1",
-                "  @ status Select 6 0 3 1",
-                "  @ payload TextArea 0 1 12 3",
-                "  @ published_at DateTimePicker 0 4 6 1",
-                "}",
-            )
-        )
+        for table_name, body in _composition_table_bodies(service["pbc"]):
+            lines.extend(("", f"table {table_name} {{", *body, "}"))
+        lines.extend(_composition_workbench_view(service))
     return "\n".join(lines).rstrip() + "\n"
+
+
+def _composition_table_bodies(key: str) -> tuple[tuple[str, tuple[str, ...]], ...]:
+    """Return every owned table of a PBC as DSL lines, from its real columns.
+
+    The composition DSL declared three tables per PBC with the same
+    `code`/`status`/`updated_at` body, so a three-PBC app declared eighteen
+    tables and described none of them: `gl_core_journal_entry` had no journal,
+    no debit, and no credit.
+
+    The source is the package's migration rather than the manifest, because the
+    migration is the physical inventory: `gl_core`'s manifest names 24 tables
+    and its migration declares 31, and the seven the manifest omits include the
+    outbox the workbench view binds to. A table the app does not declare cannot
+    be rendered, so the union is the migration's set.
+    """
+    tables = pbc_schema.owned_schema(key)
+    if not tables:
+        return ()
+    return tuple(
+        (table_name, tuple(_dsl_field_lines(table["fields"])))
+        for table_name, table in tables.items()
+        if table["fields"]
+    )
+
+
+def _composition_workbench_view(service: dict) -> tuple[str, ...]:
+    """Return the DSL for a PBC's workbench view, bound to its real outbox.
+
+    The view was written against four columns (`event_type`, `status`,
+    `payload`, `published_at`) that exist together in no package. `gl_core` and
+    `ar_credit` have no `status` or `published_at` on the outbox at all, so the
+    view referenced columns the table did not have and the DSL could not be
+    parsed, let alone generated. The columns come from the table's own
+    declaration, and the first four that are worth showing are placed.
+    """
+    key = service["pbc"]
+    outbox = f"{key}_appgen_outbox_event"
+    fields = (pbc_schema.owned_schema(key).get(outbox) or {}).get("fields") or ()
+    if not fields:
+        return ()
+    shown = _workbench_view_fields(fields)
+    if not shown:
+        return ()
+    return (
+        "",
+        f"view {service['class_name']}Workbench for {outbox} {{",
+        "  Main: " + ", ".join(field["name"] for field, _x, _y, _w in shown),
+        *(
+            f"  @ {field['name']} {_view_control(field)} {x} {y} {w} 1"
+            for field, x, y, w in shown
+        ),
+        "}",
+    )
+
+
+def _workbench_view_fields(fields: tuple[dict, ...]) -> tuple[tuple[dict, int, int, int], ...]:
+    """Pick the outbox columns a workbench shows, with their grid placement.
+
+    Bookkeeping columns are skipped: a primary key and the tenant are the
+    record's identity, not something a workbench screen edits. The event type,
+    the payload, and the outcome of the attempt are what the screen is for, and
+    they are found by name so a package that spells them differently still gets
+    a view over the columns it actually has.
+    """
+    preferred = ("event_type", "status", "payload", "attempts", "reason", "published_at", "created_at")
+    hidden = {"id", "tenant"}
+    picked = [field for name in preferred for field in fields if field["name"] == name and name not in hidden]
+    if not picked:
+        picked = [field for field in fields if field["name"] not in hidden][:4]
+    widths = (6, 3, 12, 3, 6, 6, 6)
+    placed = []
+    x = y = 0
+    for field, width in zip(picked, widths):
+        if x + width > 12:
+            x, y = 0, y + 1
+        placed.append((field, x, y, width))
+        x += width
+    return tuple(placed)
+
+
+def _view_control(field: dict) -> str:
+    """Return the form control a column's type is edited with."""
+    return {
+        "text": "TextBox",
+        "string": "TextBox",
+        "integer": "NumberInput",
+        "int": "NumberInput",
+        "float": "NumberInput",
+        "decimal": "NumberInput",
+        "boolean": "Checkbox",
+        "bool": "Checkbox",
+        "date": "DatePicker",
+        "datetime": "DateTimePicker",
+        "json": "TextArea",
+    }.get(field["type"], "TextBox")
+
+
+def _dsl_field_lines(fields: tuple[dict, ...]) -> list[str]:
+    """Render a contract's fields as DSL column declarations.
+
+    The migration types are the generator's own vocabulary already, so the
+    only work is the keyword suffix: `pk` for the primary key, `required` for
+    a NOT NULL column, and `search` for the text columns a list screen filters
+    on. The index's unique columns are left to the migration, since the DSL
+    declares indexes separately and a wrong `unique` here would reject a
+    package that permits duplicates.
+
+    Only the first primary key is declared. Some packages write
+    `PRIMARY KEY` on several columns of one table (`gl_core_journal_entry`
+    marks `id`, `journal_id`, and `period_id`), which is invalid SQL and would
+    be a second `pk` the grammar rejects; the extras become `required`, which
+    is what they are in practice.
+    """
+    lines = []
+    declared_pk = False
+    for field in fields:
+        parts = [f"{field['name']}:", field["type"]]
+        if field.get("primary_key") and not declared_pk:
+            parts.append("pk")
+            declared_pk = True
+        elif field.get("required"):
+            parts.append("required")
+        if field["type"] == "text" and not field.get("primary_key"):
+            parts.append("search")
+        lines.append("  " + " ".join(parts))
+    return lines
 
 
 def pbc_release_audit() -> dict:
@@ -14806,7 +14879,7 @@ def _table_contract(
     real foreign keys outside the contract and fails the owned-table check.
     Reconciling that is its own change; this one only stops the fields lying.
     """
-    owned_table = f"{key}_{table}"
+    owned_table = table if table.startswith(f"{key}_") else f"{key}_{table}"
     fields = _table_fields(key, table, owned, primary_table, position)
     relationships = []
     if position > 0:
