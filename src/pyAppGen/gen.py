@@ -31973,6 +31973,24 @@ def copy_support_files(output_dir):
             (templates_dir / template.name).write_bytes(template.read_bytes())
 
 
+def write_ui_kit(output_dir):
+    """Copy the shared component kit into a generated app.
+
+    The kit is one source consumed twice: the Studio aliases it from the repo,
+    and a generated app gets this copy. Both therefore render the same markup
+    from the same tokens, so a component cannot mean one thing in the Studio
+    and another in a generated app.
+    """
+    output_dir = Path(output_dir)
+    source_root = Path(__file__).resolve().parent / "ui_kit" / "src"
+    target_root = output_dir / "ui_kit"
+    target_root.mkdir(parents=True, exist_ok=True)
+    for source in sorted(source_root.iterdir()):
+        if source.is_file():
+            (target_root / source.name).write_bytes(source.read_bytes())
+    return target_root
+
+
 def update_generated_config(config_file, database_url):
     """Update generated app config when the target config exists."""
     config_path = Path(config_file)
@@ -32261,6 +32279,7 @@ def generate_app_from_schema(schema: AppSchema, output_dir, *, config_database_u
     write_extensions_file(output_dir, schema)
     write_designer_file(output_dir, schema)
     copy_support_files(output_dir)
+    write_ui_kit(output_dir)
     write_generated_home(output_dir, schema)
     write_pwa_assets(output_dir, schema)
     write_designer_template(output_dir, schema)

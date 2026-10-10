@@ -1,13 +1,17 @@
 .app-shell {
-  --surface: #fdfefe;
-  --surface-subtle: #f8fafc;
-  --line: #cfd8e6;
-  --line-soft: #d7e0ec;
-  --text: #172033;
-  --muted: #64748b;
-  --brand: #246b61;
-  --brand-strong: #17463f;
-  --brand-soft: #e5f2ef;
+  /* Aliases onto the canonical tokens. The Studio used to define its own
+     palette here, which is how its colours drifted from generated apps.
+     These names stay so existing rules keep working; the values now come
+     from design/tokens.json via tokens.css. */
+  --surface: var(--appgen-elevated);
+  --surface-subtle: var(--appgen-surface);
+  --line: var(--appgen-border);
+  --line-soft: var(--appgen-border);
+  --text: var(--appgen-text);
+  --muted: var(--appgen-muted);
+  --brand: var(--appgen-primary);
+  --brand-strong: var(--appgen-text);
+  --brand-soft: var(--appgen-state-hover);
   min-height: 100vh;
   padding: 16px;
   color: var(--text);

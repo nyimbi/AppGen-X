@@ -23,6 +23,9 @@
   --appgen-state-hover: rgba(47, 111, 94, 0.08);
   --appgen-state-selected: rgba(154, 107, 47, 0.14);
   --appgen-state-invalid: #b42318;
+  --appgen-state-success: #067647;
+  --appgen-state-warning: #b54708;
+  --appgen-state-scrim: rgba(15, 23, 42, 0.42);
   --appgen-touch-target: 44px;
   --appgen-font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --appgen-font-size-sm: 0.875rem;

@@ -1,3 +1,4 @@
+import { Button } from '@appgen/ui-kit'
 import { Icon } from './Icon'
 
 const navItems = [
@@ -50,10 +51,7 @@ export function StudioChrome() {
             Agents
           </span>
         </div>
-        <button className="primary-action" type="button">
-          <Icon name="workflow" />
-          Generate
-        </button>
+        <Button leading={<Icon name="workflow" />}>Generate</Button>
       </div>
     </header>
   )

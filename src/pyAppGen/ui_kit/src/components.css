@@ -1,0 +1,793 @@
+/* AppGen-X component kit styles.
+ *
+ * Every value here is a `--appgen-*` token. There is no literal colour in this
+ * file: a theme is a palette swap in `design/tokens.json` and nothing else.
+ * Consumers import `tokens.css` first, then this file.
+ */
+
+/* ---------------------------------------------------------------- primitives */
+
+.appgen-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.appgen-shell {
+  display: flex;
+  min-height: 100vh;
+  color: var(--appgen-text);
+  background: var(--appgen-surface);
+  font-family: var(--appgen-font-body);
+  font-size: var(--appgen-font-size-md);
+  line-height: var(--appgen-line-height);
+}
+
+.appgen-shell__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.appgen-shell__topbar {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  border-bottom: 1px solid var(--appgen-border);
+  background: var(--appgen-elevated);
+}
+
+.appgen-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.appgen-page {
+  max-width: var(--appgen-content-max);
+  margin-inline: auto;
+  padding: var(--appgen-space-5) var(--appgen-space-4);
+  width: 100%;
+}
+
+/* ------------------------------------------------------------------- buttons */
+
+.appgen-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--appgen-space-2);
+  min-height: var(--appgen-touch-target);
+  padding: 0 var(--appgen-space-4);
+  border: 1px solid transparent;
+  border-radius: var(--appgen-radius-sm);
+  background: var(--appgen-primary);
+  color: var(--appgen-elevated);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.appgen-button:hover:not(:disabled) {
+  background: var(--appgen-accent);
+}
+
+.appgen-button:focus-visible {
+  box-shadow: var(--appgen-focus-ring);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.appgen-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.appgen-button--sm {
+  min-height: 32px;
+  padding: 0 var(--appgen-space-3);
+  font-size: var(--appgen-font-size-sm);
+}
+
+.appgen-button--secondary {
+  border-color: var(--appgen-border);
+  background: var(--appgen-elevated);
+  color: var(--appgen-text);
+}
+
+.appgen-button--secondary:hover:not(:disabled) {
+  background: var(--appgen-state-hover);
+  color: var(--appgen-text);
+}
+
+.appgen-button--ghost {
+  background: transparent;
+  color: var(--appgen-text);
+}
+
+.appgen-button--ghost:hover:not(:disabled) {
+  background: var(--appgen-state-hover);
+  color: var(--appgen-text);
+}
+
+.appgen-button--danger {
+  background: var(--appgen-state-invalid);
+}
+
+.appgen-button--danger:hover:not(:disabled) {
+  background: var(--appgen-state-invalid);
+  filter: brightness(0.92);
+}
+
+.appgen-button__spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: appgen-spin 640ms linear infinite;
+}
+
+@keyframes appgen-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .appgen-button__spinner {
+    animation-duration: 1600ms;
+  }
+}
+
+/* --------------------------------------------------------------------- cards */
+
+.appgen-card {
+  display: grid;
+  gap: var(--appgen-space-3);
+  align-content: start;
+  padding: var(--appgen-space-4);
+  border: 1px solid var(--appgen-border);
+  border-radius: var(--appgen-radius-md);
+  background: var(--appgen-elevated);
+  box-shadow: var(--appgen-shadow-panel);
+}
+
+.appgen-card--flush {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.appgen-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--appgen-space-3);
+}
+
+.appgen-card__title {
+  margin: 0;
+  font-size: var(--appgen-font-size-lg);
+  font-weight: 700;
+}
+
+.appgen-card__subtitle {
+  margin: var(--appgen-space-1) 0 0;
+  color: var(--appgen-muted);
+  font-size: var(--appgen-font-size-sm);
+}
+
+.appgen-card__actions {
+  display: flex;
+  gap: var(--appgen-space-2);
+  flex-shrink: 0;
+}
+
+/* -------------------------------------------------------------------- badges */
+
+.appgen-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--appgen-space-1);
+  padding: 2px var(--appgen-space-2);
+  border: 1px solid var(--appgen-border);
+  border-radius: 999px;
+  background: var(--appgen-surface);
+  color: var(--appgen-muted);
+  font-size: var(--appgen-font-size-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.appgen-badge--info {
+  border-color: var(--appgen-primary);
+  color: var(--appgen-primary);
+}
+
+.appgen-badge--success {
+  border-color: var(--appgen-state-success);
+  color: var(--appgen-state-success);
+}
+
+.appgen-badge--warning {
+  border-color: var(--appgen-state-warning);
+  color: var(--appgen-state-warning);
+}
+
+.appgen-badge--danger {
+  border-color: var(--appgen-state-invalid);
+  color: var(--appgen-state-invalid);
+}
+
+/* --------------------------------------------------------------- form fields */
+
+.appgen-field {
+  display: grid;
+  gap: var(--appgen-space-2);
+  margin-bottom: var(--appgen-space-4);
+}
+
+.appgen-field__label {
+  font-size: var(--appgen-font-size-sm);
+  font-weight: 600;
+}
+
+.appgen-field__required {
+  margin-left: 2px;
+  color: var(--appgen-state-invalid);
+}
+
+.appgen-field__hint,
+.appgen-field__error {
+  margin: 0;
+  font-size: var(--appgen-font-size-sm);
+}
+
+.appgen-field__hint {
+  color: var(--appgen-muted);
+}
+
+.appgen-field__error {
+  color: var(--appgen-state-invalid);
+}
+
+.appgen-input,
+.appgen-select {
+  width: 100%;
+  min-height: var(--appgen-touch-target);
+  padding: 0 var(--appgen-space-3);
+  border: 1px solid var(--appgen-border);
+  border-radius: var(--appgen-radius-sm);
+  background: var(--appgen-elevated);
+  color: var(--appgen-text);
+  font: inherit;
+}
+
+.appgen-input:focus-visible,
+.appgen-select:focus-visible {
+  border-color: var(--appgen-primary);
+  box-shadow: var(--appgen-focus-ring);
+  outline: 2px solid transparent;
+  outline-offset: 1px;
+}
+
+.appgen-input.is-invalid,
+.appgen-select.is-invalid {
+  border-color: var(--appgen-state-invalid);
+}
+
+.appgen-input-group {
+  display: flex;
+  align-items: center;
+  gap: var(--appgen-space-2);
+  width: 100%;
+  padding: 0 var(--appgen-space-3);
+  border: 1px solid var(--appgen-border);
+  border-radius: var(--appgen-radius-sm);
+  background: var(--appgen-elevated);
+}
+
+.appgen-input-group:focus-within {
+  border-color: var(--appgen-primary);
+  box-shadow: var(--appgen-focus-ring);
+}
+
+.appgen-input-group.is-invalid {
+  border-color: var(--appgen-state-invalid);
+}
+
+.appgen-input-group .appgen-input {
+  min-height: calc(var(--appgen-touch-target) - 2px);
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.appgen-input-group .appgen-input:focus-visible {
+  box-shadow: none;
+  outline: none;
+}
+
+.appgen-input-group__addon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--appgen-muted);
+  flex-shrink: 0;
+}
+
+/* -------------------------------------------------------------------- tables */
+
+.appgen-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--appgen-border);
+  border-radius: var(--appgen-radius-md);
+  background: var(--appgen-elevated);
+}
+
+.appgen-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.appgen-table__th {
+  padding: var(--appgen-space-2) var(--appgen-space-3);
+  border-bottom: 1px solid var(--appgen-border);
+  color: var(--appgen-muted);
+  font-size: var(--appgen-font-size-sm);
+  font-weight: 600;
+  text-align: start;
+  white-space: nowrap;
+}
+
+.appgen-table__td {
+  padding: 0 var(--appgen-space-3);
+  min-height: var(--appgen-density-row);
+  height: var(--appgen-density-row);
+  border-bottom: 1px solid var(--appgen-border);
+  vertical-align: middle;
+}
+
+.appgen-table__row:last-child .appgen-table__td {
+  border-bottom: 0;
+}
+
+.appgen-table__row.is-clickable {
+  cursor: pointer;
+}
+
+.appgen-table__row.is-clickable:hover {
+  background: var(--appgen-state-hover);
+}
+
+.appgen-table__row.is-selected {
+  background: var(--appgen-state-selected);
+}
+
+.appgen-table__th.is-end,
+.appgen-table__td.is-end {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.appgen-table-empty {
+  border: 1px dashed var(--appgen-border);
+  border-radius: var(--appgen-radius-md);
+}
+
+/* ---------------------------------------------------------------------- tabs */
+
+.appgen-tabs {
+  display: flex;
+  gap: var(--appgen-space-1);
+  border-bottom: 1px solid var(--appgen-border);
+  overflow-x: auto;
+}
+
+.appgen-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--appgen-space-2);
+  min-height: var(--appgen-touch-target);
+  padding: 0 var(--appgen-space-3);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--appgen-muted);
+  font: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.appgen-tab:hover:not(:disabled) {
+  color: var(--appgen-text);
+}
+
+.appgen-tab.is-active {
+  border-bottom-color: var(--appgen-primary);
+  color: var(--appgen-text);
+}
+
+.appgen-tab:focus-visible {
+  box-shadow: var(--appgen-focus-ring);
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+}
+
+.appgen-tab:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.appgen-tab__badge {
+  padding: 0 var(--appgen-space-2);
+  border-radius: 999px;
+  background: var(--appgen-surface);
+  color: var(--appgen-muted);
+  font-size: var(--appgen-font-size-sm);
+}
+
+/* -------------------------------------------------------------------- dialog */
+
+.appgen-dialog {
+  padding: 0;
+  border: 0;
+  border-radius: var(--appgen-radius-md);
+  background: transparent;
+  max-width: min(560px, calc(100vw - var(--appgen-space-5)));
+}
+
+.appgen-dialog--lg {
+  max-width: min(880px, calc(100vw - var(--appgen-space-5)));
+}
+
+.appgen-dialog::backdrop {
+  background: var(--appgen-state-scrim);
+}
+
+.appgen-dialog__panel {
+  display: grid;
+  gap: var(--appgen-space-4);
+  padding: var(--appgen-space-5);
+  border: 1px solid var(--appgen-border);
+  border-radius: var(--appgen-radius-md);
+  background: var(--appgen-elevated);
+  box-shadow: var(--appgen-shadow-panel);
+}
+
+.appgen-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--appgen-space-3);
+}
+
+.appgen-dialog__title {
+  margin: 0;
+  font-size: var(--appgen-font-size-lg);
+}
+
+.appgen-dialog__close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: var(--appgen-radius-sm);
+  background: transparent;
+  color: var(--appgen-muted);
+  font-size: var(--appgen-font-size-lg);
+  cursor: pointer;
+}
+
+.appgen-dialog__close:hover {
+  background: var(--appgen-state-hover);
+  color: var(--appgen-text);
+}
+
+.appgen-dialog__close:focus-visible {
+  box-shadow: var(--appgen-focus-ring);
+  outline: 2px solid transparent;
+}
+
+.appgen-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--appgen-space-2);
+}
+
+/* -------------------------------------------------------------------- toasts */
+
+.appgen-toast-region {
+  position: fixed;
+  right: var(--appgen-space-4);
+  bottom: var(--appgen-space-4);
+  z-index: 10;
+  display: grid;
+  gap: var(--appgen-space-2);
+  width: min(360px, calc(100vw - var(--appgen-space-5)));
+}
+
+.appgen-toast {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--appgen-space-3);
+  padding: var(--appgen-space-3) var(--appgen-space-4);
+  border: 1px solid var(--appgen-border);
+  border-left: 4px solid var(--appgen-primary);
+  border-radius: var(--appgen-radius-sm);
+  background: var(--appgen-elevated);
+  box-shadow: var(--appgen-shadow-panel);
+}
+
+.appgen-toast--success {
+  border-left-color: var(--appgen-state-success);
+}
+
+.appgen-toast--warning {
+  border-left-color: var(--appgen-state-warning);
+}
+
+.appgen-toast--danger {
+  border-left-color: var(--appgen-state-invalid);
+}
+
+.appgen-toast__close {
+  border: 0;
+  background: transparent;
+  color: var(--appgen-muted);
+  font-size: var(--appgen-font-size-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------------ tooltips */
+
+.appgen-tooltip {
+  position: relative;
+  display: inline-flex;
+}
+
+.appgen-tooltip__label {
+  position: absolute;
+  z-index: 20;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--appgen-space-1) var(--appgen-space-2);
+  border-radius: var(--appgen-radius-sm);
+  background: var(--appgen-text);
+  color: var(--appgen-elevated);
+  font-size: var(--appgen-font-size-sm);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.appgen-tooltip--top .appgen-tooltip__label {
+  bottom: calc(100% + 6px);
+}
+
+.appgen-tooltip--bottom .appgen-tooltip__label {
+  top: calc(100% + 6px);
+}
+
+.appgen-tooltip:hover .appgen-tooltip__label,
+.appgen-tooltip:focus-within .appgen-tooltip__label {
+  opacity: 1;
+}
+
+/* --------------------------------------------------------------- empty state */
+
+.appgen-empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--appgen-space-2);
+  padding: var(--appgen-space-5);
+  border: 1px dashed var(--appgen-border);
+  border-radius: var(--appgen-radius-md);
+  color: var(--appgen-muted);
+  text-align: center;
+}
+
+.appgen-empty__icon {
+  color: var(--appgen-muted);
+}
+
+.appgen-empty__title {
+  margin: 0;
+  color: var(--appgen-text);
+  font-weight: 600;
+}
+
+.appgen-empty__description {
+  margin: 0;
+  max-width: 48ch;
+}
+
+.appgen-empty__action {
+  margin-top: var(--appgen-space-2);
+}
+
+/* ---------------------------------------------------------------- page header */
+
+.appgen-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--appgen-space-4);
+  margin-bottom: var(--appgen-space-5);
+}
+
+.appgen-page-header__breadcrumb {
+  margin-bottom: var(--appgen-space-2);
+  color: var(--appgen-muted);
+  font-size: var(--appgen-font-size-sm);
+}
+
+.appgen-page-title {
+  margin: 0;
+  font-size: var(--appgen-font-size-xl);
+  font-weight: 700;
+}
+
+.appgen-page-note {
+  margin: var(--appgen-space-2) 0 0;
+  max-width: 72ch;
+  color: var(--appgen-muted);
+}
+
+.appgen-page-header__actions {
+  display: flex;
+  gap: var(--appgen-space-2);
+  flex-shrink: 0;
+}
+
+/* ------------------------------------------------------------------ nav rail */
+
+.appgen-nav-rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--appgen-space-3);
+  width: 248px;
+  flex-shrink: 0;
+  padding: var(--appgen-space-3);
+  border-right: 1px solid var(--appgen-border);
+  background: var(--appgen-elevated);
+}
+
+.appgen-nav-rail__list {
+  display: grid;
+  gap: var(--appgen-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.appgen-nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--appgen-space-3);
+  width: 100%;
+  min-height: var(--appgen-touch-target);
+  padding: 0 var(--appgen-space-3);
+  border: 0;
+  border-radius: var(--appgen-radius-sm);
+  background: transparent;
+  color: var(--appgen-muted);
+  font: inherit;
+  font-weight: 600;
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.appgen-nav-item:hover {
+  background: var(--appgen-state-hover);
+  color: var(--appgen-text);
+}
+
+.appgen-nav-item.is-active {
+  background: var(--appgen-state-selected);
+  color: var(--appgen-text);
+}
+
+.appgen-nav-item:focus-visible {
+  box-shadow: var(--appgen-focus-ring);
+  outline: 2px solid transparent;
+}
+
+.appgen-nav-item.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.appgen-nav-rail__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.appgen-nav-rail__label {
+  flex: 1 1 auto;
+}
+
+.appgen-nav-rail__badge {
+  color: var(--appgen-muted);
+  font-size: var(--appgen-font-size-sm);
+}
+
+.appgen-nav-rail__footer {
+  margin-top: auto;
+  padding-top: var(--appgen-space-3);
+  border-top: 1px solid var(--appgen-border);
+}
+
+/* ------------------------------------------------------------------ workbench */
+
+.appgen-workbench {
+  display: grid;
+  gap: var(--appgen-space-4);
+}
+
+.appgen-workbench--split {
+  grid-template-columns: minmax(0, 1fr) var(--appgen-aside-width, 320px);
+}
+
+.appgen-workbench__toolbar {
+  grid-column: 1 / -1;
+}
+
+.appgen-workbench__main {
+  min-width: 0;
+}
+
+.appgen-workbench__aside {
+  min-width: 0;
+  padding: var(--appgen-space-4);
+  border: 1px solid var(--appgen-border);
+  border-radius: var(--appgen-radius-md);
+  background: var(--appgen-elevated);
+  align-self: start;
+}
+
+/* ------------------------------------------------------------------ responsive */
+
+@media (max-width: 760px) {
+  .appgen-shell {
+    flex-direction: column;
+  }
+
+  .appgen-nav-rail {
+    width: 100%;
+    border-right: 0;
+    border-bottom: 1px solid var(--appgen-border);
+  }
+
+  .appgen-nav-rail__list {
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    overflow-x: auto;
+  }
+
+  .appgen-page-header {
+    display: block;
+  }
+
+  .appgen-page-header__actions {
+    margin-top: var(--appgen-space-3);
+  }
+
+  .appgen-workbench--split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

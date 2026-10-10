@@ -14,8 +14,17 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@appgen/ui-kit": ["../src/pyAppGen/ui_kit/src/index.ts"],
+      "@appgen/ui-kit/components.css": ["../src/pyAppGen/ui_kit/src/components.css"],
+      "react": ["node_modules/@types/react"],
+      "react/*": ["node_modules/@types/react/*"],
+      "react-dom": ["node_modules/@types/react-dom"],
+      "react-dom/*": ["node_modules/@types/react-dom/*"]
+    }
   },
-  "include": ["src"],
+  "include": ["src", "../src/pyAppGen/ui_kit/src"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

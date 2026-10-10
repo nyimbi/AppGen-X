@@ -19,6 +19,7 @@ platform-guide
 architecture
 architecture-notes
 app-generation-guide
+design-system
 pbc-catalog
 tooling
 language-tutorials/index
