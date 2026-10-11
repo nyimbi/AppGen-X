@@ -16,6 +16,13 @@ const defaultPort = Number(process.env.APPGEN_STUDIO_PORT ?? 5199)
 const backendCommand = process.env.APPGEN_STUDIO_COMMAND ?? 'appgen'
 const backendArgs = ['studio-serve', '--host', '127.0.0.1', '--port', String(defaultPort)]
 
+// `--virtual-time-budget` pauses virtual time while a network fetch is pending,
+// so the dump only completes once every request the SPA fires has settled. The
+// budget therefore has to cover the slowest route (`/api/studio/workspace`
+// walks the whole catalog) on the slowest runner, not just a local machine.
+const virtualTimeBudgetMs = Number(process.env.APPGEN_STUDIO_VIRTUAL_TIME_MS ?? 15000)
+const dumpTimeoutMs = Number(process.env.APPGEN_STUDIO_DUMP_TIMEOUT_MS ?? 60000)
+
 const chromeCandidates = [
   process.env.APPGEN_CHROME_BIN,
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -78,7 +85,7 @@ function dumpDomWithHeadlessMode(chrome, url, headlessMode) {
       '--use-mock-keychain',
       `--crash-dumps-dir=${userDataDir}`,
       `--user-data-dir=${userDataDir}`,
-      '--virtual-time-budget=3000',
+      `--virtual-time-budget=${virtualTimeBudgetMs}`,
       '--dump-dom',
       url,
     ], {
@@ -107,8 +114,13 @@ function dumpDomWithHeadlessMode(chrome, url, headlessMode) {
       // some Chrome builds. A complete document is the evidence the caller
       // wants, so it is accepted; a truncated one is still a failure.
       if (stdout.includes('</html>')) finish()
-      else finish(new Error(`Timed out loading ${url} with an incomplete document`))
-    }, 20000)
+      else finish(new Error(
+        `Timed out loading ${url} with an incomplete document `
+        + `(${stdout.length} bytes received)\n`
+        + `--- partial document ---\n${stdout.slice(-2000) || '(nothing on stdout)'}\n`
+        + `--- chrome stderr ---\n${stderr.slice(-2000) || '(nothing on stderr)'}`,
+      ))
+    }, dumpTimeoutMs)
 
     browser.stdout.on('data', (chunk) => {
       stdout += chunk.toString()
