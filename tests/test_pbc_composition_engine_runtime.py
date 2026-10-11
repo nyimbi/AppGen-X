@@ -26,6 +26,7 @@ from pyAppGen.pbcs.composition_engine import COMPOSITION_ENGINE_EMITTED_EVENT_TY
 from pyAppGen.pbcs.composition_engine import COMPOSITION_ENGINE_OWNED_TABLES
 from pyAppGen.pbcs.composition_engine import COMPOSITION_ENGINE_REQUIRED_EVENT_TOPIC
 from pyAppGen.pbcs.composition_engine import COMPOSITION_ENGINE_RUNTIME_TABLES
+from pyAppGen.pbcs.composition_engine import COMPOSITION_ENGINE_STANDARD_FEATURE_KEYS
 from pyAppGen.pbcs.composition_engine import composition_engine_build_api_contract
 from pyAppGen.pbcs.composition_engine import composition_engine_build_release_evidence
 from pyAppGen.pbcs.composition_engine import composition_engine_build_schema_contract
@@ -53,7 +54,9 @@ def test_composition_engine_runtime_executes_standard_and_advanced_capabilities(
     assert "configuration_schema" in runtime["standard_features"]
     assert "workbench" in runtime["standard_features"]
     assert smoke["ok"] is True
-    assert set(COMPOSITION_ENGINE_ADVANCED_CAPABILITY_KEYS) == {check["id"] for check in smoke["checks"]}
+    check_ids = {check["id"] for check in smoke["checks"]}
+    assert set(COMPOSITION_ENGINE_ADVANCED_CAPABILITY_KEYS) <= check_ids
+    assert check_ids <= set(COMPOSITION_ENGINE_ADVANCED_CAPABILITY_KEYS) | set(COMPOSITION_ENGINE_STANDARD_FEATURE_KEYS)
     assert not smoke["blocking_gaps"]
 
     contract = pbc_implementation_contract("composition_engine")
@@ -259,12 +262,13 @@ def test_composition_engine_runtime_applies_rules_parameters_configuration_and_u
             "composition_engine.event",
             "composition_engine.configure",
             "composition_engine.audit",
+            "composition_engine.read",
         ),
     )
     assert rendered["ok"] is True
     assert rendered["configuration_bound"] is True
     assert rendered["event_outbox_count"] == 9
-    assert rendered["inbox_count"] == 1
+    assert rendered["event_inbox_count"] == 1
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
     assert rendered["binding_evidence"]["owned_tables"] == COMPOSITION_ENGINE_OWNED_TABLES

@@ -16,8 +16,11 @@ from pyAppGen.pbcs.checkout_processing import checkout_processing_build_service_
 from pyAppGen.pbcs.checkout_processing import checkout_processing_build_workbench_view
 from pyAppGen.pbcs.checkout_processing import checkout_processing_complete_checkout
 from pyAppGen.pbcs.checkout_processing import checkout_processing_configure_runtime
+from pyAppGen.pbcs.checkout_processing import checkout_processing_confirm_inventory_reservation
 from pyAppGen.pbcs.checkout_processing import checkout_processing_create_cart
 from pyAppGen.pbcs.checkout_processing import checkout_processing_create_payment_intent
+from pyAppGen.pbcs.checkout_processing import checkout_processing_authorize_payment_intent
+from pyAppGen.pbcs.checkout_processing import checkout_processing_capture_payment_intent
 from pyAppGen.pbcs.checkout_processing import checkout_processing_empty_state
 from pyAppGen.pbcs.checkout_processing import checkout_processing_open_checkout_session
 from pyAppGen.pbcs.checkout_processing import checkout_processing_permissions_contract
@@ -277,11 +280,15 @@ def test_checkout_processing_runtime_handles_checkout_flow_and_workbench_evidenc
     state = payment["state"]
     assert payment["payment_intent"]["amount"] == 118.4
 
+    state = checkout_processing_confirm_inventory_reservation(state, "chk_ops")["state"]
+    state = checkout_processing_authorize_payment_intent(state, "chk_ops", authorization_id="auth_ops")["state"]
+    state = checkout_processing_capture_payment_intent(state, "chk_ops", capture_id="cap_ops")["state"]
+
     completed = checkout_processing_complete_checkout(state, "chk_ops")
     state = completed["state"]
     assert completed["ok"] is True
     assert completed["session"]["status"] == "completed"
-    assert state["outbox"][-1]["idempotency_key"] == "checkout_processing:CheckoutCompleted:checkout_evt_000012"
+    assert state["outbox"][-1]["idempotency_key"] == "checkout_processing:CheckoutCompleted:checkout_evt_000015"
 
     workbench = checkout_processing_build_workbench_view(state, tenant="tenant_ops")
     assert workbench["cart_count"] == 1
@@ -326,7 +333,7 @@ def test_checkout_processing_runtime_handles_checkout_flow_and_workbench_evidenc
     )
     assert rendered["ok"] is True
     assert rendered["configuration_bound"] is True
-    assert rendered["event_outbox_count"] == 12
+    assert rendered["event_outbox_count"] == 15
     assert rendered["event_inbox_count"] == 3
     assert rendered["binding_evidence"]["event_contract"] == "AppGen-X"
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])

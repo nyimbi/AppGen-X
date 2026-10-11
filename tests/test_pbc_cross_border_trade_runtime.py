@@ -8,6 +8,7 @@ from pyAppGen.pbcs.cross_border_trade import CROSS_BORDER_TRADE_OWNED_TABLES
 from pyAppGen.pbcs.cross_border_trade import CROSS_BORDER_TRADE_REQUIRED_EVENT_TOPIC
 from pyAppGen.pbcs.cross_border_trade import CROSS_BORDER_TRADE_RUNTIME_TABLES
 from pyAppGen.pbcs.cross_border_trade import CROSS_BORDER_TRADE_SCHEMA_TABLES
+from pyAppGen.pbcs.cross_border_trade import CROSS_BORDER_TRADE_STANDARD_FEATURE_KEYS
 from pyAppGen.pbcs.cross_border_trade import implementation_contract
 from pyAppGen.pbcs.cross_border_trade import cross_border_trade_build_api_contract
 from pyAppGen.pbcs.cross_border_trade import cross_border_trade_build_release_evidence
@@ -52,7 +53,9 @@ def test_cross_border_trade_runtime_executes_standard_and_advanced_capabilities(
     assert "broker_carrier_handoffs" in runtime["standard_features"]
     assert "compliance_holds" in runtime["standard_features"]
     assert smoke["ok"] is True
-    assert {check["id"] for check in smoke["checks"]} == set(CROSS_BORDER_TRADE_RUNTIME_CAPABILITY_KEYS)
+    check_ids = {check["id"] for check in smoke["checks"]}
+    assert set(CROSS_BORDER_TRADE_RUNTIME_CAPABILITY_KEYS) <= check_ids
+    assert check_ids <= set(CROSS_BORDER_TRADE_RUNTIME_CAPABILITY_KEYS) | set(CROSS_BORDER_TRADE_STANDARD_FEATURE_KEYS)
     assert not smoke["blocking_gaps"]
 
     contract = implementation_contract()

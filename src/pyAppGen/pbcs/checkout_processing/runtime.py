@@ -56,6 +56,7 @@ CHECKOUT_PROCESSING_RUNTIME_CAPABILITY_KEYS = (
     "probabilistic_conversion_scoring",
     "probabilistic_checkout_risk_scoring",
     "real_time_checkout_analytics",
+    "checkout_fulfillment_payment_finalization",
     "counterfactual_promotion_fulfillment_simulation",
     "temporal_abandonment_forecasting",
     "autonomous_checkout_exception_resolution",

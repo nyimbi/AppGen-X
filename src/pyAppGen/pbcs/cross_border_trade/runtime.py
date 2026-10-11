@@ -154,6 +154,9 @@ CROSS_BORDER_TRADE_STANDARD_FEATURE_KEYS = (
     "forms",
     "wizards",
     "controls",
+    "denied_party_screening_lifecycle",
+    "country_restriction_policy_lifecycle",
+    "compliance_hold_resolution",
 )
 
 _SUPPORTED_PARAMETERS = {

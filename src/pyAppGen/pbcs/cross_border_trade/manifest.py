@@ -55,6 +55,9 @@ PBC_MANIFEST = {
         'forms',
         'wizards',
         'controls',
+        'denied_party_screening_lifecycle',
+        'country_restriction_policy_lifecycle',
+        'compliance_hold_resolution',
     ),
     'workflows': PBC_MANIFEST['workflows']
     + (
