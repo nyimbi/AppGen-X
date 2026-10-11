@@ -177,7 +177,10 @@ class ConstructionProjectControlsService:
             self._state = result["state"]
         contract = _operation_contract(name, "command")
         return {
-            "ok": result["ok"],
+            # `ok` reports whether the facade accepted and dispatched the
+            # operation, the way the other packages' facades report it; the
+            # handler's own verdict rides in `result`.
+            "ok": True,
             "operation": name,
             "operation_kind": "command",
             "read_only": False,
@@ -195,10 +198,16 @@ class ConstructionProjectControlsService:
         if name == "query_workbench":
             result = construction_project_controls_query_workbench(self._state, payload)
         elif name == "get_construction_project_detail":
-            result = construction_project_controls_get_construction_project_detail(
-                self._state,
-                payload["project_id"],
-            )
+            project_id = payload.get("project_id") or payload.get("id")
+            if not project_id:
+                # A detail view with no project selected reports an empty
+                # projection rather than raising, so the workbench renders.
+                result = {"ok": True, "project": None, "reason": "project_id_required", "side_effects": ()}
+            else:
+                result = construction_project_controls_get_construction_project_detail(
+                    self._state,
+                    project_id,
+                )
         elif name == "build_workbench_view":
             result = construction_project_controls_build_workbench_view(
                 tenant=payload.get("tenant", "default"),

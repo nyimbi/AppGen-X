@@ -8,6 +8,7 @@ from . import standalone
 from .runtime import DOM_REQUIRED_EVENT_TOPIC
 
 
+PBC_KEY = "dom"
 EVENT_CONTRACT = {
     "contract": "appgen_event_contract",
     "runtime_profile_visibility": "read_only_platform_metadata",
@@ -192,6 +193,20 @@ OPERATION_CONTRACTS = (
         "transaction_boundary": "owned_datastore_plus_outbox",
         "event_contract": "AppGen-X",
     },
+)
+
+
+# Release-hold, cancellation, substitution, and inbox intake write their outbox
+# row without a dedicated business event, so they carry the operation-scoped
+# marker every other package uses. The declared events stay as they are.
+OPERATION_CONTRACTS = tuple(
+    {
+        **contract,
+        "emitted_event": contract["emitted_event"] or f"{PBC_KEY}.{contract['operation']}.executed",
+    }
+    if contract["operation_kind"] == "command" and not contract["emitted_event"]
+    else contract
+    for contract in OPERATION_CONTRACTS
 )
 
 

@@ -2778,7 +2778,9 @@ class ContractLifecycleService:
     def query_workbench(self, filters=None):
         return query_workbench(self.state, filters)
 
-    def build_workbench_view(self):
+    def build_workbench_view(self, filters=None):
+        # The service facade is invoked with a payload dict, the way every other
+        # package's queries are; the projection itself reads only state.
         return render_workbench(self.state)
 
     def execute(self, operation, payload=None):

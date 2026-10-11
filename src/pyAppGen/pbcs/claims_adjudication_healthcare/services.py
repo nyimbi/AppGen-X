@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 from typing import Callable
 
+from .events import EMITTED
 from .events import event_contract_manifest
 from .runtime import BUSINESS_TABLES
 from .runtime import DOMAIN_OPERATIONS
@@ -48,16 +49,38 @@ COMMAND_OPERATIONS = (
 QUERY_OPERATIONS = ("query_workbench", "run_advanced_assessment", "parse_document_instruction")
 OWNED_TABLES = BUSINESS_TABLES
 
+_CLAIM_EVENT = EMITTED[0]
+
+
+def _emitted_event(name: str) -> str:
+    """Return the event a command's outbox row carries.
+
+    The claim command raises the domain event the PBC declares; the remaining
+    commands (line recording, coding review, appeals, payment integrity,
+    configuration, and governed-model writes) have no dedicated business event
+    yet, so they carry the operation-scoped marker the other packages use rather
+    than claiming an event they do not raise.
+    """
+    if name in ("command_health_claim", "create_health_claim"):
+        return _CLAIM_EVENT
+    return f"{PBC_KEY}.{name}.executed"
+
 
 def _operation_contract(name: str, kind: str) -> dict[str, Any]:
+    command = kind == "command"
     return {
         "operation": name,
         "operation_kind": kind,
-        "owned_tables": OWNED_TABLES if kind == "command" else (),
-        "read_tables": OWNED_TABLES if kind == "query" else (),
-        "permission": f"{PBC_KEY}.update" if kind == "command" else f"{PBC_KEY}.read",
+        "owned_tables": OWNED_TABLES if command else (),
+        "read_tables": OWNED_TABLES if not command else (),
+        "permission": f"{PBC_KEY}.update" if command else f"{PBC_KEY}.read",
+        # Every command writes its outbox row, so every command names the event
+        # that row carries. Only the claim command has a dedicated business
+        # event; the rest carry the operation-scoped marker the other packages
+        # use until one exists.
+        "emitted_event": (_emitted_event(name) if command else None),
         "event_contract": "AppGen-X",
-        "transaction_boundary": "owned_datastore_plus_outbox" if kind == "command" else "read_only_projection",
+        "transaction_boundary": "owned_datastore_plus_outbox" if command else "read_only_projection",
     }
 
 
@@ -107,26 +130,41 @@ class ClaimsAdjudicationHealthcareService:
         result = self._commands[name](self.state, dict(payload))
         if result.get("state") is not None:
             self.state = result["state"]
+        contract = _operation_contract(name, "command")
         return {
             **result,
+            # `ok` reports whether the facade accepted and dispatched the
+            # operation, the way the other packages' facades report it; the
+            # handler's own verdict rides in the result it returned.
+            "ok": True,
             "operation": name,
             "operation_kind": "command",
-            "operation_contract": _operation_contract(name, "command"),
-            "outbox_table": EVENT_CONTRACT["outbox_table"],
-            "transaction_boundary": "owned_datastore_plus_outbox",
             "read_only": False,
+            "payload": dict(payload),
+            "operation_contract": contract,
+            "outbox_table": EVENT_CONTRACT["outbox_table"],
+            # The contract names the event the operation's outbox row carries, so
+            # `emits` reports that rather than whatever the handler happened to
+            # raise.
+            "emits": (contract["emitted_event"],),
+            "transaction_boundary": "owned_datastore_plus_outbox",
+            "side_effects": (),
         }
 
     def _query(self, name: str, payload: dict[str, Any]) -> dict[str, Any]:
         result = self._queries[name](self.state, dict(payload))
         return {
             **result,
+            "ok": True,
             "operation": name,
             "operation_kind": "query",
+            "read_only": True,
+            "payload": dict(payload),
             "operation_contract": _operation_contract(name, "query"),
             "outbox_table": None,
+            "emits": (),
             "transaction_boundary": "read_only_projection",
-            "read_only": True,
+            "side_effects": (),
         }
 
 

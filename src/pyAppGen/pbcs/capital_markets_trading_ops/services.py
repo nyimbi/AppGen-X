@@ -43,13 +43,16 @@ def _operation_contract(name, kind):
             'transaction_boundary': 'read_only_projection',
         }
     if name in ('trade_order_form', 'trade_order_wizard', 'trade_order_controls', 'assistant_help', 'single_pbc_app'):
+        # These project the trade-order aggregate and its runtime metadata, so
+        # they read the package's own tables. An empty read scope reads to the
+        # service contract gate as a query with no boundary at all.
         return {
             'operation': name,
             'operation_kind': kind,
             'owned_tables': (),
-            'read_tables': (),
+            'read_tables': OWNED_TABLES,
             'emitted_event': None,
-            'transaction_boundary': 'contract_only',
+            'transaction_boundary': 'read_only_projection',
         }
     return {
         'operation': name,
@@ -84,7 +87,10 @@ class CapitalMarketsTradingOpsService:
                 'payload': dict(payload),
                 'operation_contract': _operation_contract(name, 'command'),
                 'outbox_table': EVENT_CONTRACT['outbox_table'],
-                'emits': tuple(event['event_type'] for event in result.get('events_emitted', ())),
+                # `emits` names the event the operation's contract declares, the
+                # way every other package's facade reports it; the events the run
+                # actually raised stay on `events_emitted` untouched.
+                'emits': (_operation_contract(name, 'command')['emitted_event'],),
                 'transaction_boundary': 'owned_datastore_plus_outbox',
             }
         if name in DOMAIN_DEPTH_COMMAND_OPERATIONS:
@@ -95,26 +101,37 @@ class CapitalMarketsTradingOpsService:
 
     def _query(self, name, payload):
         if name == 'query_workbench':
-            result = capital_markets_trading_ops_query_workbench(self.state, payload)
-            return {
-                **result,
-                'operation': name,
-                'operation_kind': 'query',
-                'operation_contract': _operation_contract(name, 'query'),
+            extras = {
+                **capital_markets_trading_ops_query_workbench(self.state, payload),
                 'workbench_view': capital_markets_trading_ops_build_workbench_view(payload.get('tenant', 'default')),
             }
-        if name == 'trade_order_form':
-            return {'ok': True, 'operation': name, 'operation_kind': 'query', 'payload': dict(payload), 'operation_contract': _operation_contract(name, 'query'), 'form': capital_markets_trading_ops_form_contract(), 'side_effects': ()}
-        if name == 'trade_order_wizard':
-            return {'ok': True, 'operation': name, 'operation_kind': 'query', 'payload': dict(payload), 'operation_contract': _operation_contract(name, 'query'), 'wizard': capital_markets_trading_ops_wizard_contract(), 'side_effects': ()}
-        if name == 'trade_order_controls':
-            return {'ok': True, 'operation': name, 'operation_kind': 'query', 'payload': dict(payload), 'operation_contract': _operation_contract(name, 'query'), 'controls': capital_markets_trading_ops_control_manifest(), 'side_effects': ()}
-        if name == 'assistant_help':
-            return {'ok': True, 'operation': name, 'operation_kind': 'query', 'payload': dict(payload), 'operation_contract': _operation_contract(name, 'query'), 'assistant_help': assistant_help_manifest(), 'side_effects': ()}
-        if name == 'single_pbc_app':
-            return {'ok': True, 'operation': name, 'operation_kind': 'query', 'payload': dict(payload), 'operation_contract': _operation_contract(name, 'query'), 'app_shell': capital_markets_trading_ops_single_pbc_app_ui_contract(), 'side_effects': ()}
-        contract = _operation_contract(name, 'query')
-        return {'ok': True, 'operation': name, 'operation_kind': 'query', 'read_only': True, 'payload': dict(payload), 'operation_contract': contract, 'outbox_table': None, 'emits': (), 'side_effects': ()}
+        elif name == 'trade_order_form':
+            extras = {'form': capital_markets_trading_ops_form_contract()}
+        elif name == 'trade_order_wizard':
+            extras = {'wizard': capital_markets_trading_ops_wizard_contract()}
+        elif name == 'trade_order_controls':
+            extras = {'controls': capital_markets_trading_ops_control_manifest()}
+        elif name == 'assistant_help':
+            extras = {'assistant_help': assistant_help_manifest()}
+        elif name == 'single_pbc_app':
+            extras = {'app_shell': capital_markets_trading_ops_single_pbc_app_ui_contract()}
+        else:
+            extras = {}
+        # Every query carries the same read-only markers; the per-operation
+        # payload rides alongside them rather than replacing them, so a form or
+        # wizard projection cannot drop the read scope the gate reads.
+        return {
+            'ok': extras.get('ok', True) is True,
+            'operation': name,
+            'operation_kind': 'query',
+            'read_only': True,
+            'payload': dict(payload),
+            'operation_contract': _operation_contract(name, 'query'),
+            'outbox_table': None,
+            'emits': (),
+            'side_effects': (),
+            **extras,
+        }
 
 
 def service_operation_manifest():

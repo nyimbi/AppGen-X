@@ -6,6 +6,23 @@ from .events import EVENT_CONTRACT
 from . import runtime
 
 
+# The configuration a fresh deployment starts from, mirroring the package's
+# standalone surface. `command_configure_runtime` applies it when the caller
+# supplies none, so configuring an unconfigured package is not an error.
+DEFAULT_CONFIGURATION = {
+    "database_backend": "postgresql",
+    "event_topic": runtime.DAM_CORE_REQUIRED_EVENT_TOPIC,
+    "retry_limit": 3,
+    "default_storage_tier": "warm",
+    "allowed_mime_types": ("image/jpeg", "image/png"),
+    "rendition_profiles": ("web_large", "social_square"),
+    "rights_default_decision": "review",
+    "metadata_taxonomies": ("product", "campaign", "usage"),
+    "default_locale": "en-US",
+    "workbench_limit": 100,
+}
+
+
 _COMMAND_OPERATION_SPECS = (
     {"operation": "command_configure_runtime", "method": "POST", "path": "/api/pbc/dam_core/runtime/configuration", "permission": "dam_core.configure", "owned_tables": ("dam_core_dam_configuration",), "emitted_event": None},
     {"operation": "command_set_parameter", "method": "POST", "path": "/api/pbc/dam_core/runtime/parameters", "permission": "dam_core.configure", "owned_tables": ("dam_core_dam_parameter",), "emitted_event": None},
@@ -51,6 +68,10 @@ OPERATION_CONTRACTS = tuple(
         **spec,
         "operation_kind": "command",
         "read_tables": (),
+        # Runtime configuration, parameter, rule registration, and inbox intake
+        # write their outbox row with no dedicated business event, so they carry
+        # the operation-scoped marker the other packages use.
+        "emitted_event": spec["emitted_event"] or f"dam_core.{spec['operation']}.executed",
         "transaction_boundary": "owned_datastore_plus_outbox",
         "event_contract": "AppGen-X",
         "idempotency_key": f"dam_core:{spec['operation']}:idempotency_key",
@@ -132,6 +153,7 @@ class DamCoreService:
             "pbc": "dam_core",
             "operation": operation_name,
             "operation_kind": "command",
+            "read_only": False,
             "payload": payload,
             "operation_contract": plan,
             "transaction_boundary": plan["transaction_boundary"],
@@ -153,8 +175,10 @@ class DamCoreService:
             "pbc": "dam_core",
             "operation": operation_name,
             "operation_kind": "query",
+            "read_only": True,
             "payload": payload,
             "operation_contract": plan,
+            "outbox_table": None,
             "transaction_boundary": plan["transaction_boundary"],
             "emits": (),
             "result": result,
@@ -164,7 +188,10 @@ class DamCoreService:
 
     def _apply_command(self, operation_name: str, payload: dict) -> dict:
         if operation_name == "command_configure_runtime":
-            return runtime.dam_core_configure_runtime(self.state, payload["configuration"])
+            # Configuring with no explicit configuration applies the package
+            # defaults, the way every other package's configure command does,
+            # rather than raising on a bare workbench payload.
+            return runtime.dam_core_configure_runtime(self.state, payload.get("configuration") or DEFAULT_CONFIGURATION)
         if operation_name == "command_set_parameter":
             return runtime.dam_core_set_parameter(self.state, payload["name"], payload["value"])
         if operation_name == "command_register_rule":
@@ -215,13 +242,24 @@ class DamCoreService:
 
     def _apply_query(self, operation_name: str, payload: dict) -> dict:
         if operation_name == "query_rights":
-            return runtime.dam_core_enforce_rights(self.state, payload["asset_id"], market=payload["market"], use_case=payload.get("use_case", "workbench"))
+            asset_id = payload.get("asset_id")
+            market = payload.get("market")
+            if not asset_id or not market:
+                # A rights decision is scoped to one asset in one market; asked
+                # without either, the query reports an empty decision rather
+                # than raising, so a workbench that has not selected an asset
+                # renders instead of failing.
+                return {"ok": True, "decision": "not_evaluated", "reason": "asset_and_market_required", "side_effects": ()}
+            return runtime.dam_core_enforce_rights(self.state, asset_id, market=market, use_case=payload.get("use_case", "workbench"))
         if operation_name == "query_intake_readiness":
-            return runtime.dam_core_assess_intake_readiness(self.state, payload["asset"])
+            asset = payload.get("asset")
+            if not asset:
+                return {"ok": True, "ready": False, "blocking": ("asset",), "reason": "asset_required", "side_effects": ()}
+            return runtime.dam_core_assess_intake_readiness(self.state, asset)
         if operation_name == "query_lifecycle_contract":
             return runtime.dam_core_lifecycle_contract()
         if operation_name == "query_workbench":
-            return runtime.dam_core_build_workbench_view(self.state, tenant=payload["tenant"])
+            return runtime.dam_core_build_workbench_view(self.state, tenant=payload.get("tenant", "default"))
         if operation_name == "query_api_contract":
             return runtime.dam_core_build_api_contract()
         if operation_name == "query_schema_contract":
@@ -233,7 +271,10 @@ class DamCoreService:
 
             return release_evidence.build_release_evidence()
         if operation_name == "query_permissions_contract":
-            return runtime.dam_core_permissions_contract()
+            # The runtime returns the permission map itself rather than a
+            # result envelope, so the facade wraps it the way every other query
+            # reports.
+            return {"ok": True, "permissions": runtime.dam_core_permissions_contract(), "side_effects": ()}
         if operation_name == "query_agent_surface":
             from . import agent
 

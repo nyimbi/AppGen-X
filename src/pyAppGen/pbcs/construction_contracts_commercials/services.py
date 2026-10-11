@@ -92,15 +92,18 @@ class ConstructionContractsCommercialsService:
         result = _COMMAND_HANDLERS[name](self.state, dict(payload))
         if "state" in result:
             self.state = result["state"]
+        contract = _operation_contract(name, "command")
         return {
             **result,
             "operation": name,
             "operation_kind": "command",
             "read_only": False,
             "payload": dict(payload),
-            "operation_contract": _operation_contract(name, "command"),
+            "operation_contract": contract,
             "outbox_table": EVENT_CONTRACT["outbox_table"],
-            "emits": (result.get("operation_contract", {}) or {}).get("emitted_event", _operation_contract(name, "command")["emitted_event"]),
+            # `emits` is the tuple the contract's event name implies, the way
+            # every other package reports it.
+            "emits": (contract["emitted_event"],),
             "transaction_boundary": "owned_datastore_plus_outbox",
         }
 

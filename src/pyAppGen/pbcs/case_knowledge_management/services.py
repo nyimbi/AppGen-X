@@ -5,6 +5,7 @@ from __future__ import annotations
 from .application import create_app
 from .domain_depth import DOMAIN_OPERATIONS
 from .domain_depth import QUERY_OPERATIONS
+from .domain_depth import operation_to_event
 from .models import OWNED_TABLES
 
 
@@ -30,6 +31,17 @@ COMMAND_OPERATIONS = (
 OWNED_TABLES = OWNED_TABLES
 
 
+def _emitted_event(name: str) -> str:
+    """Return the event a command's outbox row carries.
+
+    The domain operations map to real events in `domain_depth`; the runtime
+    configuration, inbox intake, and agent-assist commands have no dedicated
+    business event, so they carry the operation-scoped marker the other packages
+    use rather than claiming a domain event they do not raise.
+    """
+    return operation_to_event(name) or f"{PBC_KEY}.{name}.executed"
+
+
 def _operation_contract(name: str, kind: str) -> dict:
     command = kind == "command"
     return {
@@ -37,15 +49,7 @@ def _operation_contract(name: str, kind: str) -> dict:
         "operation_kind": kind,
         "owned_tables": OWNED_TABLES if command else (),
         "read_tables": OWNED_TABLES if not command else (),
-        "emitted_event": None if not command else {
-            "command_support_case": "CaseCreated",
-            "create_support_case": "CaseCreated",
-            "assign_case": "CaseAssigned",
-            "resolve_case": "CaseResolved",
-            "publish_knowledge_article": "KnowledgeArticlePublished",
-            "record_case_deflection": "CaseDeflected",
-            "recommend_next_best_resolution": "AgentAssistRecommended",
-        }.get(name),
+        "emitted_event": _emitted_event(name) if command else None,
         "transaction_boundary": "owned_datastore_plus_outbox" if command else "read_only_projection",
     }
 

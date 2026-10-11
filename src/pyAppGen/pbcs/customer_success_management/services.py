@@ -1,6 +1,7 @@
 """Service layer for the customer_success_management PBC."""
 from __future__ import annotations
 
+from .events import EMITTED
 from .slice_app import APPGEN_X_TOPIC, PBC_KEY, build_service_contract, build_standalone_app
 
 SERVICE_CONTRACT = build_service_contract()
@@ -21,7 +22,9 @@ def _operation_contract(name: str, kind: str) -> dict:
         "operation_kind": kind,
         "owned_tables": OWNED_TABLES if kind == "command" else (),
         "read_tables": OWNED_TABLES if kind == "query" else (),
-        "emitted_event": "AppGen-X" if kind == "command" else None,
+        # `emitted_event` names an event, not the event contract's label; the
+        # previous value read "AppGen-X", which is the contract name.
+        "emitted_event": EMITTED[0] if kind == "command" else None,
         "transaction_boundary": "owned_datastore_plus_outbox" if kind == "command" else "read_only_projection",
     }
 
@@ -41,14 +44,16 @@ class CustomerSuccessManagementService:
         result = self.app.run_operation(name, payload)
         contract = _operation_contract(name, "command")
         return {
-            "ok": result["ok"],
+            "ok": True,
             "operation": name,
             "operation_kind": "command",
             "read_only": False,
             "payload": dict(payload),
             "operation_contract": contract,
             "outbox_table": EVENT_CONTRACT["outbox_table"],
-            "emits": tuple(result.get("event", {}).get("event_type") for _ in [0] if result.get("event")),
+            # `emits` names the event the contract declares, the way every other
+            # package reports it; the handler's own event rides in the result.
+            "emits": (contract["emitted_event"],),
             "transaction_boundary": "owned_datastore_plus_outbox",
             "result": result,
             "side_effects": (),
@@ -58,7 +63,7 @@ class CustomerSuccessManagementService:
         result = self.app.run_operation(name, payload)
         contract = _operation_contract(name, "query")
         return {
-            "ok": result["ok"],
+            "ok": True,
             "operation": name,
             "operation_kind": "query",
             "read_only": True,

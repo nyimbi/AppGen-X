@@ -1028,6 +1028,11 @@ def claims_adjudication_healthcare_run_advanced_assessment(
     payload: dict[str, Any],
 ) -> dict[str, Any]:
     claim_id = str(payload.get("claim_id") or "")
+    if not claim_id:
+        # The assessment is scoped to one claim; asked without one, it reports
+        # an empty assessment rather than an unknown_claim error, so the
+        # workbench renders before a claim is selected.
+        return {"ok": True, "claim_id": None, "assessment": None, "reason": "claim_id_required", "side_effects": ()}
     claim = state["claims"].get(claim_id)
     if not claim:
         return {

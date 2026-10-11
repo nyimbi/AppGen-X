@@ -126,7 +126,9 @@ def _build_operation_contracts() -> tuple[dict, ...]:
                 "permission": permission,
                 "owned_tables": _SERVICE_TABLES if kind == "command" else (),
                 "read_tables": () if kind == "command" else _QUERY_TABLES,
-                "emitted_event": emitted_event,
+                # Inbox intake writes its outbox row without a dedicated
+                # business event, so it carries the operation-scoped marker.
+                "emitted_event": emitted_event or (f"asset_lifecycle.{operation}.executed" if kind == "command" else None),
                 "transaction_boundary": "owned_datastore_plus_outbox",
                 "event_contract": "AppGen-X",
             }

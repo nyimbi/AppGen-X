@@ -1688,6 +1688,40 @@ OPERATION_EVENTS = {
     "delete_document_instruction": EMITTED_EVENT_TYPES[1],
 }
 
+# Runtime configuration, inbox intake, and the advanced assessment each write
+# their outbox row without raising a domain event, so they carry the
+# operation-scoped marker the other packages use. Each also writes a table the
+# package owns, so the contract reports the same scope every other command does.
+OPERATION_TABLES = {
+    **OPERATION_TABLES,
+    "configure_runtime": (RUNTIME_PARAMETER_TABLE, POLICY_RULE_TABLE),
+    "receive_event": (INBOX_TABLE,),
+    "run_advanced_assessment": (CONTROL_ASSERTION_TABLE,),
+}
+OPERATION_EVENTS = {
+    **OPERATION_EVENTS,
+    "configure_runtime": f"{PBC_KEY}.configure_runtime.executed",
+    "receive_event": f"{PBC_KEY}.receive_event.executed",
+    "run_advanced_assessment": f"{PBC_KEY}.run_advanced_assessment.executed",
+}
+
+# The workbench projections read the package's own domain tables; the
+# detail/document lookups read the table they address. An empty read scope reads
+# to the service contract gate as a query with no boundary at all.
+_QUERY_READ_TABLES = {
+    "query_formula_detail": (FORMULA_TABLE,),
+    "query_batch_detail": (BATCH_TABLE,),
+    "query_document_instruction": (GOVERNED_MODEL_TABLE,),
+    "query_workbench": (FORMULA_TABLE, BATCH_TABLE, QUALITY_TEST_TABLE, COMPLIANCE_HOLD_TABLE, SDS_TABLE),
+    "build_workbench_view": (FORMULA_TABLE, BATCH_TABLE, QUALITY_TEST_TABLE, COMPLIANCE_HOLD_TABLE),
+    "build_app_surface": (FORMULA_TABLE, BATCH_TABLE),
+    "build_release_evidence": (FORMULA_TABLE, QUALITY_TEST_TABLE, REGULATORY_SUBMISSION_TABLE, CONTROL_ASSERTION_TABLE),
+}
+OPERATION_TABLES = {
+    **OPERATION_TABLES,
+    **_QUERY_READ_TABLES,
+}
+
 
 def build_service_contract() -> dict[str, Any]:
     return {
@@ -1790,9 +1824,23 @@ def service_callable(operation: str):
         "update_document_instruction": lambda state, payload: update_document_instruction(state, payload),
         "delete_document_instruction": lambda state, payload: delete_document_instruction(state, payload),
         "run_advanced_assessment": lambda state, payload: run_advanced_assessment(state, payload),
-        "query_formula_detail": lambda state, payload: query_formula_detail(state, payload["id"]),
-        "query_batch_detail": lambda state, payload: query_batch_detail(state, payload["id"]),
-        "query_document_instruction": lambda state, payload: query_document_instruction(state, payload["id"]),
+        "query_formula_detail": lambda state, payload: (
+            query_formula_detail(state, payload["id"])
+            if payload.get("id")
+            # A detail lookup with no record selected reports an empty
+            # projection rather than raising, so the browser renders.
+            else {"ok": True, "reason": "id_required", "side_effects": ()}
+        ),
+        "query_batch_detail": lambda state, payload: (
+            query_batch_detail(state, payload["id"])
+            if payload.get("id")
+            else {"ok": True, "reason": "id_required", "side_effects": ()}
+        ),
+        "query_document_instruction": lambda state, payload: (
+            query_document_instruction(state, payload["id"])
+            if payload.get("id")
+            else {"ok": True, "record": None, "reason": "id_required", "side_effects": ()}
+        ),
         "query_workbench": lambda state, payload: query_workbench(state, payload),
         "build_workbench_view": lambda state, payload: build_workbench_view(state, payload.get("tenant", "default")),
         "build_app_surface": lambda state, payload: build_app_surface(state, payload.get("tenant", "default")),

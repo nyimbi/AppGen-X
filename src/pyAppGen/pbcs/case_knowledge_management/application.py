@@ -1064,7 +1064,13 @@ class CaseKnowledgeManagementApp:
         if operation == "build_workbench_view":
             return self.query_workbench(payload)
         if operation == "list_table_rows":
-            return self.list_table_rows(payload["table"])
+            table = payload.get("table")
+            if not table:
+                # A table browser with no table selected reports an empty
+                # projection rather than raising, so the screen renders its
+                # picker instead of failing.
+                return {"ok": True, "table": None, "rows": (), "reason": "table_required", "side_effects": ()}
+            return self.list_table_rows(table)
         return {"ok": False, "reason": "unknown_query", "operation": operation, "side_effects": ()}
 
     def runtime_smoke(self) -> dict:

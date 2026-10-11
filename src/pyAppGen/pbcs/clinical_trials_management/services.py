@@ -181,6 +181,20 @@ OPERATION_CONTRACTS = (
 )
 
 
+# Policy-rule and runtime-parameter registration write their outbox row without
+# a dedicated business event, so they carry the operation-scoped marker the
+# other packages use. The declared trial events stay as they are.
+OPERATION_CONTRACTS = tuple(
+    {
+        **contract,
+        "emitted_event": contract["emitted_event"] or f"clinical_trials_management.{contract['operation']}.executed",
+    }
+    if contract["operation_kind"] == "command" and not contract["emitted_event"]
+    else contract
+    for contract in OPERATION_CONTRACTS
+)
+
+
 def service_operation_contracts() -> dict:
     """Return route-bound service operation contracts for this PBC."""
     operations = tuple(item["operation"] for item in OPERATION_CONTRACTS)

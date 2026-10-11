@@ -158,9 +158,14 @@ class BankingCoreAccountsService:
         if name == "query_workbench":
             result = banking_core_accounts_query_workbench(self.state, payload)
         elif name == "query_account_detail":
-            result = banking_core_accounts_query_account_detail(
-                self.state, payload.get("account_id") or payload.get("id")
-            )
+            account_id = payload.get("account_id") or payload.get("id")
+            if not account_id:
+                # A detail view with no account selected reports an empty
+                # projection rather than an account_not_found error, so the
+                # workbench renders its picker.
+                result = {"ok": True, "account": None, "reason": "account_id_required", "side_effects": ()}
+            else:
+                result = banking_core_accounts_query_account_detail(self.state, account_id)
         elif name == "build_workbench_view":
             result = banking_core_accounts_build_app_surface(
                 state=self.state, tenant=payload.get("tenant", "default")

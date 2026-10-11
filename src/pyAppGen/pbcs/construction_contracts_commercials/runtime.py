@@ -295,6 +295,12 @@ DOMAIN_OPERATIONS = (
     "generate_cash_flow_forecast",
     "generate_contractor_scorecard",
 )
+_PROJECTION_OPERATIONS = (
+    "build_payment_certificate",
+    "build_final_account_packet",
+    "generate_cash_flow_forecast",
+    "generate_contractor_scorecard",
+)
 DOMAIN_EDGE_CASES = (
     "duplicate_submission",
     "missing_required_evidence",
@@ -1460,7 +1466,13 @@ def construction_contracts_commercials_build_payment_certificate(
     auth = _authorize(actor, "construction_contracts_commercials.read")
     if not auth["ok"]:
         return {"ok": False, "reason": "permission_denied", "authorization": auth, "side_effects": ()}
-    pay_application = _pay_application_by_reference(state, payload.get("pay_application_id") or payload.get("application_number", ""))
+    reference = payload.get("pay_application_id") or payload.get("application_number", "")
+    if not reference:
+        # The projection is scoped to one pay application; asked without a
+        # reference, it reports an empty certificate rather than a not-found,
+        # so a workbench that has not selected one still renders.
+        return {"ok": True, "certificate": None, "reason": "pay_application_reference_required", "side_effects": ()}
+    pay_application = _pay_application_by_reference(state, reference)
     if not pay_application:
         return {"ok": False, "reason": "pay_application_not_found", "side_effects": ()}
     if pay_application["intake_status"] != "certified":
@@ -1489,7 +1501,13 @@ def construction_contracts_commercials_build_final_account_packet(
     auth = _authorize(actor, "construction_contracts_commercials.close_final_account")
     if not auth["ok"]:
         return {"ok": False, "reason": "permission_denied", "authorization": auth, "side_effects": ()}
-    contract = _contract_by_reference(state, payload.get("contract_id") or payload.get("contract_code", ""))
+    reference = payload.get("contract_id") or payload.get("contract_code", "")
+    if not reference:
+        # The packet is scoped to one contract; asked without a reference, it
+        # reports an empty packet rather than a not-found, so the closeout
+        # screen still renders.
+        return {"ok": True, "packet": None, "reason": "contract_reference_required", "side_effects": ()}
+    contract = _contract_by_reference(state, reference)
     if not contract:
         return {"ok": False, "reason": "contract_not_found", "side_effects": ()}
     blockers = _contract_closeout_blockers(state, contract["id"])
@@ -1845,6 +1863,22 @@ def construction_contracts_commercials_build_schema_contract() -> dict[str, Any]
 
 def _operation_contract(name: str, kind: str) -> dict[str, Any]:
     table = OPERATION_TO_TABLE.get(name)
+    tables: tuple[str, ...] = (table,) if table else ()
+    if not tables:
+        # Runtime configuration, parameter and rule registration, inbox intake,
+        # the workbench projections, and the contract command each read or write
+        # tables the package owns but are absent from OPERATION_TO_TABLE, which
+        # only maps domain operations. Name their scope explicitly rather than
+        # reporting an empty one, which the service contract gate reads as a
+        # missing boundary.
+        tables = {
+            "configure_runtime": (PARAMETER_TABLE,),
+            "set_parameter": (PARAMETER_TABLE,),
+            "register_rule": (RULE_TABLE,),
+            "register_schema_extension": (SCHEMA_EXTENSION_TABLE,),
+            "receive_event": (INBOX_TABLE,),
+            "command_construction_contract": (CONTRACT_TABLE,),
+        }.get(name, BUSINESS_TABLES if kind == "query" else ())
     permission = {
         "create_construction_contract": "construction_contracts_commercials.create",
         "record_pay_application": "construction_contracts_commercials.create",
@@ -1867,8 +1901,8 @@ def _operation_contract(name: str, kind: str) -> dict[str, Any]:
     return {
         "operation": name,
         "operation_kind": kind,
-        "owned_tables": (table,) if kind == "command" and table else (),
-        "read_tables": (table,) if kind == "query" and table else (),
+        "owned_tables": tables if kind == "command" else (),
+        "read_tables": tables if kind == "query" else (),
         "emitted_event": emitted_event,
         "permission": permission,
         "transaction_boundary": "owned_datastore_plus_outbox" if kind == "command" else "read_only_projection",
@@ -1876,21 +1910,27 @@ def _operation_contract(name: str, kind: str) -> dict[str, Any]:
     }
 
 
-SERVICE_COMMAND_OPERATIONS = (
-    "configure_runtime",
-    "set_parameter",
-    "register_rule",
-    "register_schema_extension",
-    "receive_event",
-    "command_construction_contract",
-) + DOMAIN_OPERATIONS
+# The four projection operations below are in DOMAIN_OPERATIONS (they appear in
+# the package's workflow catalog), but they read state and return a packet
+# rather than mutating it, so they are queries, not commands. Listing them in
+# both surfaces made the facade dispatch them to the command path, which has no
+# handler for them.
+SERVICE_COMMAND_OPERATIONS = tuple(
+    operation
+    for operation in (
+        "configure_runtime",
+        "set_parameter",
+        "register_rule",
+        "register_schema_extension",
+        "receive_event",
+        "command_construction_contract",
+    ) + DOMAIN_OPERATIONS
+    if operation not in _PROJECTION_OPERATIONS
+)
 SERVICE_QUERY_OPERATIONS = (
     "query_workbench",
     "build_workbench_view",
-    "build_payment_certificate",
-    "build_final_account_packet",
-    "generate_cash_flow_forecast",
-    "generate_contractor_scorecard",
+    *_PROJECTION_OPERATIONS,
 )
 
 

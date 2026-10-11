@@ -9,7 +9,7 @@ OWNED_TABLES = DOMAIN_DEPTH_OWNED_TABLES
 
 def _operation_contract(name, kind):
     if name == 'assess_release_to_service':
-        return {'operation': name, 'operation_kind': kind, 'owned_tables': ('aviation_maintenance_repair_compliance_release','aviation_maintenance_repair_work_card','aviation_maintenance_repair_component'), 'read_tables': ('aviation_maintenance_repair_aircraft','aviation_maintenance_repair_deferred_defect','aviation_maintenance_repair_airworthiness_directive'), 'emitted_event': 'AviationMaintenanceRepairApproved' if kind == 'command' else None, 'transaction_boundary': 'owned_datastore_plus_outbox'}
+        return {'operation': name, 'operation_kind': kind, 'owned_tables': ('aviation_maintenance_repair_compliance_release','aviation_maintenance_repair_work_card','aviation_maintenance_repair_component'), 'read_tables': (), 'emitted_event': 'AviationMaintenanceRepairApproved' if kind == 'command' else None, 'transaction_boundary': 'owned_datastore_plus_outbox'}
     return {'operation': name, 'operation_kind': kind, 'owned_tables': OWNED_TABLES[:2] if kind == 'command' else (), 'read_tables': OWNED_TABLES[:2] if kind == 'query' else (), 'emitted_event': ('AviationMaintenanceRepairCreated',
  'AviationMaintenanceRepairUpdated',
  'AviationMaintenanceRepairApproved',

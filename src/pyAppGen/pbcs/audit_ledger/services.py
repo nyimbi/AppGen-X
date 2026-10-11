@@ -41,7 +41,15 @@ def _operation_contracts() -> tuple[dict, ...]:
                 "permission": route["requires_permission"],
                 "owned_tables": tuple(route.get("owned_tables", ())) if operation_kind == "command" else (),
                 "read_tables": tuple(route.get("owned_tables", ())) if operation_kind == "query" else (),
-                "emitted_event": tuple(route.get("emits", ()))[0] if operation_kind == "command" and route.get("emits") else None,
+                "emitted_event": (
+                    tuple(route.get("emits", ()))[0]
+                    if route.get("emits")
+                    # A command with no declared business event still writes its
+                    # outbox row, so it carries the operation-scoped marker.
+                    else f"audit_ledger.{operation}.executed"
+                )
+                if operation_kind == "command"
+                else None,
                 "consumed_events": tuple(route.get("consumes", ())),
                 "transaction_boundary": "owned_datastore_plus_outbox",
                 "event_contract": "AppGen-X",

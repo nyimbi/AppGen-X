@@ -68,11 +68,19 @@ COMMAND_HANDLERS: dict[str, Callable[..., dict[str, Any]]] = {
 QUERY_HANDLERS: dict[str, Callable[..., dict[str, Any]]] = {
     "query_workbench": cybersecurity_operations_center_query_workbench,
     "build_workbench_view": cybersecurity_operations_center_build_workbench_view,
-    "build_case_detail": cybersecurity_operations_center_build_case_detail,
+    # The detail and document queries take a payload dict like every other
+    # query, so the facade can call them uniformly; each reports an empty
+    # projection when its identifier is absent rather than raising.
+    "build_case_detail": lambda state, payload: (
+        cybersecurity_operations_center_build_case_detail(state, payload["case_id"])
+        if payload.get("case_id")
+        else {"ok": True, "case": None, "reason": "case_id_required", "side_effects": ()}
+    ),
     "generate_handoff_packet": cybersecurity_operations_center_generate_handoff_packet,
     "run_advanced_assessment": cybersecurity_operations_center_run_advanced_assessment,
-    "parse_document_instruction": lambda _state, document, instruction: cybersecurity_operations_center_parse_document_instruction(
-        document, instruction
+    "parse_document_instruction": lambda state, payload: cybersecurity_operations_center_parse_document_instruction(
+        str(payload.get("document") or ""),
+        str(payload.get("instruction") or ""),
     ),
 }
 
@@ -83,11 +91,16 @@ OWNED_TABLES = CYBERSECURITY_OPERATIONS_CENTER_RUNTIME_TABLES
 
 def _operation_contract(name: str, kind: str) -> dict[str, Any]:
     domain = execute_domain_operation(name if name in DOMAIN_OPERATIONS else "create_security_alert")
+    # `execute_domain_operation` reports `read_tables: ()` for every command, so
+    # the fallback must test for emptiness rather than for key absence, or the
+    # query projections inherit a command's empty read scope.
+    read_tables = domain.get("read_tables") or OWNED_TABLES
+    owned_tables = domain.get("owned_tables") or OWNED_TABLES
     return {
         "operation": name,
         "operation_kind": kind,
-        "owned_tables": domain.get("owned_tables", OWNED_TABLES[:2]) if kind == "command" else (),
-        "read_tables": domain.get("read_tables", OWNED_TABLES[:2]) if kind == "query" else (),
+        "owned_tables": owned_tables if kind == "command" else (),
+        "read_tables": read_tables if kind == "query" else (),
         "emitted_event": domain.get("emitted_event") if kind == "command" else None,
         "transaction_boundary": "owned_datastore_plus_outbox" if kind == "command" else "read_only_projection",
         "event_contract": "AppGen-X",
@@ -109,15 +122,20 @@ class CybersecurityOperationsCenterService:
         result = COMMAND_HANDLERS[name](self.state, *args, **kwargs)
         if "state" in result:
             self.state = result["state"]
+        contract = _operation_contract(name, "command")
         return {
             "ok": result["ok"],
             "operation": name,
             "operation_kind": "command",
             "read_only": False,
             "payload": args[0] if args else kwargs,
-            "operation_contract": _operation_contract(name, "command"),
+            "operation_contract": contract,
             "outbox_table": EVENT_CONTRACT["outbox_table"],
-            "emits": CYBERSECURITY_OPERATIONS_CENTER_EMITTED_EVENT_TYPES,
+            # `emits` names the event the operation's contract declares, the way
+            # every other package reports it; the package's full event-type
+            # inventory is a catalog, not what one command raised.
+            "emits": (contract["emitted_event"],),
+            "emitted_event_types": CYBERSECURITY_OPERATIONS_CENTER_EMITTED_EVENT_TYPES,
             "consumes": CYBERSECURITY_OPERATIONS_CENTER_CONSUMED_EVENT_TYPES,
             "event_topic": EVENT_CONTRACT["event_topic"],
             "transaction_boundary": "owned_datastore_plus_outbox",

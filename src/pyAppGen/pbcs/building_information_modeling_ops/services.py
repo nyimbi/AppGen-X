@@ -154,9 +154,9 @@ class BuildingInformationModelingOpsService:
             "payload": dict(payload),
             "operation_contract": contract,
             "outbox_table": EVENT_CONTRACT["outbox_table"],
-            "emits": (result.get("event", {}).get("event_type"),)
-            if result.get("event")
-            else (),
+            # `emits` names the event the contract declares, the way every other
+            # package reports it; the handler's own event rides in the result.
+            "emits": (contract["emitted_event"],),
             "transaction_boundary": contract["transaction_boundary"],
             "side_effects": (),
         }
@@ -174,10 +174,17 @@ class BuildingInformationModelingOpsService:
         elif name == "build_single_pbc_app_contract":
             result = building_information_modeling_ops_build_single_pbc_app_contract()
         elif name == "build_federation_release_evidence":
-            result = building_information_modeling_ops_build_federation_release_evidence(
-                self.state,
-                payload["federation_id"],
-            )
+            federation_id = payload.get("federation_id") or payload.get("id")
+            if not federation_id:
+                # Release evidence is scoped to one federation; asked without
+                # one, the query reports an empty projection rather than
+                # raising, so the release screen renders.
+                result = {"ok": True, "federation_id": None, "evidence": (), "reason": "federation_id_required", "side_effects": ()}
+            else:
+                result = building_information_modeling_ops_build_federation_release_evidence(
+                    self.state,
+                    federation_id,
+                )
         else:
             result = building_information_modeling_ops_parse_document_instruction(
                 payload.get("document", ""),

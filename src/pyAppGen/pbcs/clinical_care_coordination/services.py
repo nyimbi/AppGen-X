@@ -84,9 +84,13 @@ class ClinicalCareCoordinationService:
         return {'ok': True, 'operation': name, 'operation_kind': 'command', 'read_only': False, 'payload': dict(payload), 'operation_contract': contract, 'outbox_table': EVENT_CONTRACT['outbox_table'], 'emits': (contract['emitted_event'],), 'transaction_boundary': 'owned_datastore_plus_outbox', 'side_effects': ()}
     def _query(self, name, payload):
         if name == 'query_workbench':
-            return {**care_coordination_workbench(self.state), 'operation': name, 'operation_kind': 'query', 'read_only': True}
+            # The workbench projection rides alongside the read-only markers the
+            # gate reads rather than replacing them.
+            extras = care_coordination_workbench(self.state)
+        else:
+            extras = {}
         contract = _operation_contract(name, 'query')
-        return {'ok': True, 'operation': name, 'operation_kind': 'query', 'read_only': True, 'payload': dict(payload), 'operation_contract': contract, 'outbox_table': None, 'emits': (), 'side_effects': ()}
+        return {'ok': extras.get('ok', True) is True, 'operation': name, 'operation_kind': 'query', 'read_only': True, 'payload': dict(payload), 'operation_contract': contract, 'outbox_table': None, 'emits': (), 'side_effects': (), **extras}
 
 def service_operation_manifest():
     return {'ok': True, 'pbc': PBC_KEY, 'service_class': 'ClinicalCareCoordinationService', 'command_operations': COMMAND_OPERATIONS, 'query_operations': QUERY_OPERATIONS, 'event_contract': EVENT_CONTRACT, 'side_effects': ()}

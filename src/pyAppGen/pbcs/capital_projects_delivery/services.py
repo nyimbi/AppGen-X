@@ -188,10 +188,16 @@ class CapitalProjectsDeliveryService:
         if name == "query_workbench":
             result = capital_projects_delivery_query_workbench(self._state, payload)
         elif name == "get_capital_project_detail":
-            result = capital_projects_delivery_get_capital_project_detail(
-                self._state,
-                payload["project_id"],
-            )
+            project_id = payload.get("project_id") or payload.get("id")
+            if not project_id:
+                # A detail view with no project selected reports an empty
+                # projection rather than raising, so the workbench renders.
+                result = {"ok": True, "project": None, "reason": "project_id_required", "side_effects": ()}
+            else:
+                result = capital_projects_delivery_get_capital_project_detail(
+                    self._state,
+                    project_id,
+                )
         elif name == "build_workbench_view":
             result = capital_projects_delivery_build_workbench_view(
                 tenant=payload.get("tenant", "default"),

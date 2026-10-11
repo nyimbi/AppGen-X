@@ -35,6 +35,7 @@ EVENT_CONTRACT = {
     "inbox_table": "ar_credit_appgen_inbox_event",
     "dead_letter_table": "ar_credit_dead_letter_event",
 }
+PBC_KEY = "ar_credit"
 
 
 _COMMAND_OPERATION_DEFS = (
@@ -193,6 +194,11 @@ _COMMAND_CONTRACTS = tuple(
         **definition,
         "operation_kind": "command",
         "read_tables": (),
+        # Every command writes its outbox row, so every command names the event
+        # that row carries. The remittance parse, the dispute intake, and the
+        # e-invoice submission have no dedicated business event yet; they carry
+        # the operation-scoped marker the other packages use until one exists.
+        "emitted_event": definition["emitted_event"] or f"{PBC_KEY}.{definition['operation']}.executed",
         "transaction_boundary": "owned_datastore_plus_outbox",
         "event_contract": "AppGen-X",
     }
@@ -367,8 +373,10 @@ class ArCreditService:
             return result
         if operation_name == "command_ar_e_invoices" and state is not None and record:
             invoice_id = record.get("invoice_id")
+            if not invoice_id:
+                return {**result, "ok": False, "reason": "invoice_id_required"}
             jurisdiction = record.get("jurisdiction", "UNSPECIFIED")
-            execution = ar_credit_submit_e_invoice(state, invoice_id, jurisdiction=jurisdiction)
+            execution = ar_credit_submit_e_invoice(state, str(invoice_id), jurisdiction=jurisdiction)
             result.update(execution)
             return result
         return result

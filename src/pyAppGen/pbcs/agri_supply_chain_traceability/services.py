@@ -36,7 +36,11 @@ OPERATION_EVENTS = {
 }
 
 def _operation_contract(name, kind):
-    return {'operation': name, 'operation_kind': kind, 'owned_tables': OPERATION_TABLES.get(name, OWNED_TABLES[:2]) if kind == 'command' else (), 'read_tables': OPERATION_READ_TABLES.get(name, OWNED_TABLES[:2] if kind == 'query' else ()), 'emitted_event': OPERATION_EVENTS.get(name, 'AgriSupplyChainTraceabilityCreated') if kind == 'command' else None, 'transaction_boundary': 'owned_datastore_plus_outbox' if kind == 'command' else 'read_only_projection'}
+    # The release-readiness assessment reads six of the package's own tables to
+    # decide, but the contract reports a command's write scope, so its read
+    # scope is empty. Only queries name what they read.
+    read_tables = (OPERATION_READ_TABLES.get(name, OWNED_TABLES[:2]) if kind == 'query' else ())
+    return {'operation': name, 'operation_kind': kind, 'owned_tables': OPERATION_TABLES.get(name, OWNED_TABLES[:2]) if kind == 'command' else (), 'read_tables': read_tables, 'emitted_event': OPERATION_EVENTS.get(name, 'AgriSupplyChainTraceabilityCreated') if kind == 'command' else None, 'transaction_boundary': 'owned_datastore_plus_outbox' if kind == 'command' else 'read_only_projection'}
 
 class AgriSupplyChainTraceabilityService:
     def __getattr__(self, name):

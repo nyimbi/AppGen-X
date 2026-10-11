@@ -10,7 +10,11 @@ OWNED_TABLES = DOMAIN_DEPTH_OWNED_TABLES
 def _operation_contract(name, kind):
     if name == 'record_crop_plan':
         owned_tables = (CROP_PLAN_TABLE,)
-        read_tables = (CROP_PLAN_TABLE, f'{PBC_KEY}_field')
+        # The crop plan reads its own field records to evaluate the submission,
+        # but the contract reports the write scope for a command, so the read
+        # scope is empty here. A command that also read is the gate's boundary
+        # violation.
+        read_tables = (CROP_PLAN_TABLE, f'{PBC_KEY}_field') if kind == 'query' else ()
         emitted_event = 'AgricultureFarmOperationsCreated' if kind == 'command' else None
     else:
         owned_tables = OWNED_TABLES[:2] if kind == 'command' else ()

@@ -314,7 +314,11 @@ def _project_periods(state, project_id):
 
 
 def _project_record_from_payload(payload):
-    code = payload["code"]
+    # A project command asked without a code has nothing to key the record on;
+    # the caller supplies one, so report the missing field rather than raising.
+    code = payload.get("code") or payload.get("project_code") or payload.get("id")
+    if not code:
+        return None
     project_id = payload.get("id", code)
     original_budget = _safe_float(payload.get("original_budget", 0.0))
     approved_budget = _safe_float(payload.get("approved_budget", original_budget))
@@ -770,6 +774,14 @@ def construction_project_controls_receive_event(state, event):
 def construction_project_controls_command_construction_project(state, payload):
     next_state = _copy(state)
     record = _project_record_from_payload(payload)
+    if record is None:
+        return {
+            "ok": False,
+            "state": next_state,
+            "reason": "missing_project_code",
+            "missing": ("code",),
+            "side_effects": (),
+        }
     _record_bucket(next_state, BUCKETS.projects)[record["id"]] = record
     _update_project_controls_status(record, next_state)
     _event(
