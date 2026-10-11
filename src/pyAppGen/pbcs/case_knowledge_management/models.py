@@ -500,6 +500,44 @@ def resolve_table_spec(table: str) -> dict:
     return TABLE_BY_NAME[owned_table]
 
 
+def model_manifest() -> dict:
+    """Return the model alignment evidence the package convention publishes.
+
+    The module already carries the typed tables, but it exposed only
+    `MODELS`/`OWNED_SCHEMA` and no manifest, so a consumer reading the
+    convention's name saw nothing. The evidence is derived from the same
+    `TABLE_SPECS` the schema contract uses, so the two cannot disagree.
+    """
+    schema_tables = OWNED_TABLES
+    model_tables = tuple(model["table"] for model in MODELS)
+    missing_models = tuple(table for table in schema_tables if table not in model_tables)
+    external_models = tuple(table for table in model_tables if not table.startswith(f"{PBC_KEY}_"))
+    relationship_targets = tuple(
+        rel.get("target_table")
+        for table in TABLE_SPECS
+        for rel in table.get("relationships", ())
+        if rel.get("target_table")
+    )
+    cross_pbc_relationships = tuple(
+        target for target in relationship_targets if not target.startswith(f"{PBC_KEY}_")
+    )
+    return {
+        "ok": bool(schema_tables)
+        and bool(model_tables)
+        and not missing_models
+        and not external_models
+        and not cross_pbc_relationships,
+        "pbc": PBC_KEY,
+        "schema_tables": schema_tables,
+        "model_tables": model_tables,
+        "missing_models": missing_models,
+        "external_models": external_models,
+        "cross_pbc_relationships": cross_pbc_relationships,
+        "relationship_targets": relationship_targets,
+        "side_effects": (),
+    }
+
+
 def build_schema_contract() -> dict:
     migrations = tuple(
         {

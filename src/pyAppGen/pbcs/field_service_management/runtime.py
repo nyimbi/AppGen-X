@@ -412,3 +412,54 @@ def field_service_management_runtime_capabilities():
         'field_workforce_ui_surfaces': FIELD_WORKFORCE_UI_SURFACES,
         'side_effects': (),
     }
+
+
+_FIELD_SERVICE_MANAGEMENT_DOMAIN_BASE_BUILD_SCHEMA_CONTRACT = field_service_management_build_schema_contract
+
+
+def field_service_management_build_schema_contract():
+    """Return the owned schema, extended with the package's domain-depth tables.
+
+    The domain-depth extension added tables to `field_service_management_runtime_capabilities()` and
+    to the migration, but not to the builder, so the package published a base
+    count in its schema evidence and the full count in its runtime. The domain
+    contract is the one source that names them, so the builder folds it in here
+    rather than leaving a second, staler list in `schema_contract.py`.
+    """
+    from .domain_depth import domain_depth_contract
+
+    schema = dict(_FIELD_SERVICE_MANAGEMENT_DOMAIN_BASE_BUILD_SCHEMA_CONTRACT())
+    existing = {table['table'] for table in schema.get('tables', ())}
+    additions = tuple(
+        {
+            'table': table,
+            'fields': ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+            'primary_key': ('id',),
+            'owned_by': PBC_KEY,
+        }
+        for table in domain_depth_contract()['owned_tables']
+        if table not in existing
+    )
+    tables = tuple(schema.get('tables', ())) + additions
+    return {
+        **schema,
+        'tables': tables,
+        'owned_tables': tuple(table['table'] for table in tables),
+        'migrations': tuple(schema.get('migrations', ())) + tuple(
+            {
+                'path': f'pbcs/field_service_management/migrations/domain_{index:03d}_{table["table"]}.sql',
+                'operation': 'create_owned_table',
+                'table': table['table'],
+                'backend_allowlist': FIELD_SERVICE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS,
+            }
+            for index, table in enumerate(additions, start=1)
+        ),
+        'models': tuple(schema.get('models', ())) + tuple(
+            {
+                'class_name': ''.join(part.capitalize() for part in table['table'].split('_')),
+                'table': table['table'],
+                'fields': table['fields'],
+            }
+            for table in additions
+        ),
+    }
