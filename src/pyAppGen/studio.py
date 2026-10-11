@@ -272,6 +272,7 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
     frontend = root / "appgen-frontend"
     package_path = frontend / "package.json"
     smoke_script = frontend / "scripts" / "browser-smoke.mjs"
+    driver_script = frontend / "scripts" / "dom_dump.py"
     studio_client = frontend / "src" / "studioApi.ts"
     workflow_path = root / ".github" / "workflows" / "studio-browser-smoke.yml"
     # Every panel that renders a platform contract names the client and the
@@ -291,6 +292,7 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
     if package_path.exists():
         package = json.loads(package_path.read_text(encoding="utf-8"))
     script_text = smoke_script.read_text(encoding="utf-8") if smoke_script.exists() else ""
+    driver_text = driver_script.read_text(encoding="utf-8") if driver_script.exists() else ""
     studio_client_text = studio_client.read_text(encoding="utf-8") if studio_client.exists() else ""
     workflow_text = workflow_path.read_text(encoding="utf-8") if workflow_path.exists() else ""
     scenarios = (
@@ -326,14 +328,21 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
                 "npm run test:browser" in workflow_text
                 or ("npm run build" in workflow_text and "node scripts/browser-smoke.mjs" in workflow_text)
             )
-            and "APPGEN_CHROME_BIN" in workflow_text
+            and "playwright install" in workflow_text
             and "pip install -e ." in workflow_text,
         },
         {
+            # The smoke renders through Playwright's driver, which owns the
+            # browser profile and the headless flags. The check is therefore
+            # that it renders through a driver that is installed, not that it
+            # passes a particular set of Chrome flags: the previous version of
+            # this check asserted `--user-data-dir=` and
+            # `--disable-crash-reporter` because the harness shelled out to
+            # `chrome --dump-dom`, and that mechanism is exactly what broke.
             "id": "prepared_host_contract",
-            "ok": "APPGEN_CHROME_BIN" in script_text
-            and "--disable-crash-reporter" in script_text
-            and "--user-data-dir=" in script_text,
+            "ok": "playwright" in driver_text
+            and "dom_dump" in script_text
+            and "networkidle" in driver_text,
         },
         {
             # The smoke drives the Python backend rather than a static server,
@@ -384,7 +393,7 @@ def studio_browser_smoke_ci_contract(repo_root: str | Path | None = None) -> dic
         "panels": tuple(str(path) for path in panel_sources.values()),
         "scenarios": scenarios,
         "environment": {
-            "browser_binary": "APPGEN_CHROME_BIN",
+            "browser": "playwright chromium",
             "node": "20",
             "working_directory": "appgen-frontend",
         },

@@ -1,11 +1,14 @@
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { existsSync, writeFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
 import { spawn } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 
-const root = resolve(new URL('..', import.meta.url).pathname)
+const here = dirname(fileURLToPath(import.meta.url))
+const root = resolve(here, '..')
 const distDir = join(root, 'dist')
 const reportPath = join(root, 'browser-smoke-report.json')
+const domDumpScript = join(here, 'dom_dump.py')
+const pythonCommand = process.env.APPGEN_PYTHON ?? 'python3'
 
 // The Studio's panels read the Python backend over `/api/studio/*`, so the
 // smoke needs both halves. `appgen studio-serve` serves the API and `dist/`
@@ -16,29 +19,11 @@ const defaultPort = Number(process.env.APPGEN_STUDIO_PORT ?? 5199)
 const backendCommand = process.env.APPGEN_STUDIO_COMMAND ?? 'appgen'
 const backendArgs = ['studio-serve', '--host', '127.0.0.1', '--port', String(defaultPort)]
 
-// `--virtual-time-budget` pauses virtual time while a network fetch is pending,
-// so the dump only completes once every request the SPA fires has settled. The
-// budget therefore has to cover the slowest route (`/api/studio/workspace`
-// walks the whole catalog) on the slowest runner, not just a local machine.
-const virtualTimeBudgetMs = Number(process.env.APPGEN_STUDIO_VIRTUAL_TIME_MS ?? 15000)
+// The document is only complete once every `/api/studio/*` fetch has settled,
+// and `/api/studio/workspace` alone walks the whole catalog. On a two-core
+// runner that outruns a short budget, so the timeout has to cover the slowest
+// route on the slowest machine rather than a local one.
 const dumpTimeoutMs = Number(process.env.APPGEN_STUDIO_DUMP_TIMEOUT_MS ?? 60000)
-
-const chromeCandidates = [
-  process.env.APPGEN_CHROME_BIN,
-  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  '/Applications/Chromium.app/Contents/MacOS/Chromium',
-  '/usr/bin/google-chrome',
-  '/usr/bin/chromium',
-  '/usr/bin/chromium-browser',
-].filter(Boolean)
-
-function findChrome() {
-  const chrome = chromeCandidates.find((candidate) => existsSync(candidate))
-  if (!chrome) {
-    throw new Error('No Chrome-compatible browser found. Set APPGEN_CHROME_BIN to run the Studio browser smoke test.')
-  }
-  return chrome
-}
 
 function startBackend(port) {
   const backend = spawn(backendCommand, backendArgs, {
@@ -64,38 +49,12 @@ async function waitForBackend(baseUrl, attempts = 60) {
   throw new Error(`Studio backend did not answer on ${baseUrl}. Is the \`appgen\` CLI installed, or set APPGEN_STUDIO_COMMAND?`)
 }
 
-function dumpDomWithHeadlessMode(chrome, url, headlessMode) {
+function dumpDom(url) {
   return new Promise((resolveDump, rejectDump) => {
-    const userDataDir = mkdtempSync(join(tmpdir(), 'appgen-studio-chrome-'))
-    const browser = spawn(chrome, [
-      headlessMode,
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-gpu',
-      '--disable-dev-shm-usage',
-      '--disable-crash-reporter',
-      '--disable-breakpad',
-      '--disable-extensions',
-      '--no-first-run',
-      '--no-default-browser-check',
-      '--disable-background-networking',
-      '--disable-component-update',
-      '--disable-features=Crashpad',
-      '--password-store=basic',
-      '--use-mock-keychain',
-      `--crash-dumps-dir=${userDataDir}`,
-      `--user-data-dir=${userDataDir}`,
-      `--virtual-time-budget=${virtualTimeBudgetMs}`,
-      '--dump-dom',
-      url,
-    ], {
-      env: {
-        ...process.env,
-        HOME: userDataDir,
-        TMPDIR: userDataDir,
-        XDG_CACHE_HOME: userDataDir,
-        XDG_CONFIG_HOME: userDataDir,
-      },
+    const child = spawn(pythonCommand, [domDumpScript, url], {
+      cwd: root,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: process.env,
     })
     let stdout = ''
     let stderr = ''
@@ -103,55 +62,46 @@ function dumpDomWithHeadlessMode(chrome, url, headlessMode) {
     const finish = (error) => {
       if (settled) return
       settled = true
-      clearTimeout(timeout)
-      browser.kill('SIGKILL')
-      rmSync(userDataDir, { force: true, recursive: true })
+      clearTimeout(timer)
+      child.kill('SIGKILL')
       if (error) rejectDump(error)
       else resolveDump(stdout)
     }
-    const timeout = setTimeout(() => {
-      // `--dump-dom` writes the document and then hangs instead of exiting on
-      // some Chrome builds. A complete document is the evidence the caller
-      // wants, so it is accepted; a truncated one is still a failure.
-      if (stdout.includes('</html>')) finish()
-      else finish(new Error(
-        `Timed out loading ${url} with an incomplete document `
+    // The driver owns the page timeout; this is the backstop for a driver that
+    // never exits at all, so it sits above the page timeout rather than at it.
+    const timer = setTimeout(() => {
+      finish(new Error(
+        `Rendering ${url} produced no document within ${dumpTimeoutMs}ms `
         + `(${stdout.length} bytes received)\n`
         + `--- partial document ---\n${stdout.slice(-2000) || '(nothing on stdout)'}\n`
-        + `--- chrome stderr ---\n${stderr.slice(-2000) || '(nothing on stderr)'}`,
+        + `--- driver stderr ---\n${stderr.slice(-2000) || '(nothing on stderr)'}`,
       ))
-    }, dumpTimeoutMs)
+    }, dumpTimeoutMs + 15000)
 
-    browser.stdout.on('data', (chunk) => {
+    child.stdout.on('data', (chunk) => {
       stdout += chunk.toString()
-      if (stdout.includes('</html>')) finish()
     })
-    browser.stderr.on('data', (chunk) => {
+    child.stderr.on('data', (chunk) => {
       stderr += chunk.toString()
     })
-    browser.once('error', (error) => {
+    child.once('error', (error) => {
       finish(error)
     })
-    browser.once('close', (code) => {
+    child.once('close', (code) => {
       if (code !== 0) {
-        finish(new Error(`Chrome exited with ${code} for ${url}\n${stderr}`))
+        finish(new Error(`Rendering ${url} failed with ${code}\n${stderr}`))
+        return
+      }
+      if (!stdout.includes('</html>')) {
+        finish(new Error(
+          `Rendering ${url} returned an incomplete document (${stdout.length} bytes)\n`
+          + `--- partial document ---\n${stdout.slice(-2000) || '(nothing on stdout)'}`,
+        ))
         return
       }
       finish()
     })
   })
-}
-
-async function dumpDom(chrome, url) {
-  const errors = []
-  for (const headlessMode of ['--headless=new', '--headless']) {
-    try {
-      return await dumpDomWithHeadlessMode(chrome, url, headlessMode)
-    } catch (error) {
-      errors.push(`${headlessMode}: ${error.message}`)
-    }
-  }
-  throw new Error(`Chrome dump failed for ${url}\n${errors.join('\n')}`)
 }
 
 function assertIncludes(dom, expected, scenario) {
@@ -166,7 +116,6 @@ async function main() {
     throw new Error('Build the Studio first with `npm run build` before running browser smoke tests.')
   }
 
-  const chrome = findChrome()
   const backend = startBackend(defaultPort)
   const baseUrl = `http://127.0.0.1:${defaultPort}`
   const scenarios = [
@@ -227,7 +176,7 @@ async function main() {
   try {
     await waitForBackend(baseUrl)
     for (const scenario of scenarios) {
-      const dom = await dumpDom(chrome, `${baseUrl}${scenario.path}`)
+      const dom = await dumpDom(`${baseUrl}${scenario.path}`)
       assertIncludes(dom, scenario.includes, scenario.id)
       results.push({ id: scenario.id, ok: true, bytes: dom.length })
     }
@@ -238,7 +187,7 @@ async function main() {
   const report = {
     format: 'appgen.studio-browser-smoke.v1',
     ok: results.every((result) => result.ok),
-    browser: chrome,
+    browser: process.env.APPGEN_CHROME_BIN ?? 'playwright-chromium',
     scenarios: results,
   }
   writeFileSync(reportPath, JSON.stringify(report, null, 2))
