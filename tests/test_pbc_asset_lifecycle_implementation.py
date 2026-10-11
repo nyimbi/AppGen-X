@@ -169,7 +169,10 @@ def test_service_ui_agent_and_release_evidence_expose_depreciation_slice():
     assert preview["preview"]["revision_reason"] == "maintenance_review"
     assert "preview_depreciation_plan" in service.preview_depreciation_plan.__name__
     assert operation_plan("command_depreciation_runs")["emitted_event"] == "DepreciationCalculated"
-    assert operation_plan("command_assets_events_inbox")["emitted_event"] is None
+    # Inbox intake writes its outbox row without a dedicated business event, so
+    # its contract carries the operation-scoped marker every package uses rather
+    # than the `None` that would leave a command with no declared event.
+    assert operation_plan("command_assets_events_inbox")["emitted_event"] == "asset_lifecycle.command_assets_events_inbox.executed"
 
     assert "DepreciationRevisionConsole" in ui_contract["fragments"]
     assert "review_depreciation_plan" in ui_contract["action_permissions"]
