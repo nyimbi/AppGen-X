@@ -1,4 +1,5 @@
 from pyAppGen.pbcs.customer_success_management import implementation_contract, customer_success_management_runtime_capabilities, customer_success_management_runtime_smoke, customer_success_management_build_schema_contract, customer_success_management_build_service_contract, customer_success_management_build_release_evidence, customer_success_management_receive_event, customer_success_management_ui_contract, customer_success_management_verify_owned_table_boundary, customer_success_management_configure_runtime, customer_success_management_set_parameter, customer_success_management_register_rule
+from pyAppGen.pbcs.customer_success_management.config import DOMAIN_PARAMETER_SCHEMA
 
 
 def test_customer_success_management_runtime_capabilities_and_smoke():
@@ -19,5 +20,5 @@ def test_customer_success_management_contracts_events_workbench_and_boundary():
     assert customer_success_management_verify_owned_table_boundary(('foreign_table',))['ok'] is False  # foreign boundary
     state = {'records': {}, 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
     assert customer_success_management_configure_runtime(state, {'database_backend':'postgresql','event_topic':'pbc.customer_success_management.events'})['ok'] is True
-    assert customer_success_management_set_parameter(state, 'threshold', 1)['ok'] is True
+    assert customer_success_management_set_parameter(state, DOMAIN_PARAMETER_SCHEMA[0]['key'], DOMAIN_PARAMETER_SCHEMA[0]['default'])['ok'] is True
     assert customer_success_management_register_rule(state, {'rule_id':'r1'})['ok'] is True
