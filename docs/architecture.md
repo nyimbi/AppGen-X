@@ -186,7 +186,10 @@ This workbench-first architecture lets a web IDE, desktop IDE, external plugin,
 or automated agent consume the same structured contracts.
 The React Studio prototype is also bound to `.github/workflows/studio-browser-smoke.yml`,
 which runs `npm run test:browser` against `appgen-frontend/scripts/browser-smoke.mjs`
-on a prepared CI host. `studio_browser_smoke_ci_contract()` is included in the
+on a prepared CI host. The smoke renders each scenario through
+`appgen-frontend/scripts/dom_dump.py`, which drives the Playwright-installed
+Chromium; it replaced a `chrome --dump-dom` shell-out that returned nothing and
+hung on the browser build CI installs. `studio_browser_smoke_ci_contract()` is included in the
 package Studio release audit so the browser smoke command, workflow, scenarios,
 and prepared-host browser contract remain part of the required evidence.
 

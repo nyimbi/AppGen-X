@@ -170,8 +170,8 @@ npm run test:browser
 ```
 
 CI runs the same command through `.github/workflows/studio-browser-smoke.yml`.
-Set `APPGEN_CHROME_BIN` on prepared hosts when the browser binary is not in a
-standard location.
+The smoke renders through Playwright, which resolves the Chromium it installed;
+set `APPGEN_CHROME_BIN` only to point it at a different browser binary.
 
 ## Enterprise Capabilities
 
