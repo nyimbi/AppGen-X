@@ -14815,11 +14815,33 @@ def _package_manifest(key: str) -> dict:
     return manifest if isinstance(manifest, dict) else {}
 
 
+def _package_event_types(key: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Return the events a PBC package's runtime declares it emits and consumes.
+
+    The package publishes its event surface twice: as ``*_EMITTED_EVENT_TYPES``
+    and ``*_CONSUMED_EVENT_TYPES`` in ``runtime.py``, and again as ``emits`` and
+    ``consumes`` in its manifest. They are both hand-maintained and had drifted
+    apart in a dozen packages, in both directions, so the descriptor was reading
+    whichever the manifest happened to say. The runtime constants are what the
+    package's own api and service contracts are built from, so they win; a
+    package that publishes none falls back to its manifest.
+    """
+    try:
+        module = importlib.import_module(f"pyAppGen.pbcs.{key}.runtime")
+    except ImportError:
+        return (), ()
+    prefix = key.upper()
+    emits = tuple(getattr(module, f"{prefix}_EMITTED_EVENT_TYPES", None) or ())
+    consumes = tuple(getattr(module, f"{prefix}_CONSUMED_EVENT_TYPES", None) or ())
+    return emits, consumes
+
+
 def _pbc_descriptor(key: str, pbc: dict) -> dict:
     manifest = _package_manifest(key)
     tables = tuple(manifest.get("tables", ()) or pbc.get("tables", ()))
-    emits = tuple(manifest.get("emits", ()) or pbc.get("emits", ()))
-    consumes = tuple(manifest.get("consumes", ()) or pbc.get("consumes", ()))
+    runtime_emits, runtime_consumes = _package_event_types(key)
+    emits = runtime_emits or tuple(manifest.get("emits", ()) or pbc.get("emits", ()))
+    consumes = runtime_consumes or tuple(manifest.get("consumes", ()) or pbc.get("consumes", ()))
     # `tables` is the manifest's declared inventory in logical spelling, which
     # `_table_contract` consumes. It is not the whole story: a package's
     # `*_OWNED_TABLES` names every physical table it owns, and for `gl_core` and

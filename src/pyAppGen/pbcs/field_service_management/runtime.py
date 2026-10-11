@@ -8,7 +8,7 @@ FIELD_SERVICE_MANAGEMENT_OWNED_TABLES = ('field_service_management_field_work_or
 FIELD_SERVICE_MANAGEMENT_RUNTIME_TABLES = ('field_service_management_field_work_order', 'field_service_management_dispatch_assignment', 'field_service_management_technician_profile', 'field_service_management_mobile_task', 'field_service_management_parts_usage', 'field_service_management_service_sla', 'field_service_management_service_history', 'field_service_management_customer_service_update', 'field_service_management_appgen_outbox_event', 'field_service_management_appgen_inbox_event', 'field_service_management_appgen_dead_letter_event')
 FIELD_SERVICE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS = ('postgresql', 'mysql', 'mariadb')
 FIELD_SERVICE_MANAGEMENT_REQUIRED_EVENT_TOPIC = 'pbc.field_service_management.events'
-FIELD_SERVICE_MANAGEMENT_EMITTED_EVENT_TYPES = ('FieldWorkOrderCreated', 'TechnicianDispatched', 'FieldTaskCompleted', 'ServiceSlaBreached')
+FIELD_SERVICE_MANAGEMENT_EMITTED_EVENT_TYPES = ('FieldWorkOrderCreated', 'TechnicianDispatched', 'FieldTaskCompleted', 'ServiceSlaBreached', 'TechnicianLocationUpdated', 'TechnicianAvailabilityChanged', 'ServiceRouteOptimized', 'RouteReoptimizationRequested', 'MobileTaskDependenciesPlanned', 'JobToolRequirementsValidated', 'JobToolsReserved', 'SkillBasedAssignmentRecommended')
 FIELD_SERVICE_MANAGEMENT_CONSUMED_EVENT_TYPES = ('ServiceTicketOpened', 'InventoryPositionUpdated', 'CustomerUpdated')
 FIELD_SERVICE_MANAGEMENT_STANDARD_FEATURE_KEYS = ('field_work_order_management',
  'field_service_management_workflow',

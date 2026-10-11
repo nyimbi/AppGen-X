@@ -5,12 +5,15 @@ read. Its package is what runs. They were allowed to drift because the catalog
 row was hand-maintained and the package was not, so `dam_core`'s row declared
 four tables while its package owned forty-nine.
 
-The three reference PBCs are the ones the composition pass is proven on, so
-their descriptors are held to exact equality with the package runtime: the same
-owned tables, the same emitted events, the same consumed events. The manifest's
-declared `tables` is a logical view of that inventory and is asserted to resolve
-one-to-one into it, which is the weaker property that holds across all 147
-packages while the stronger one is proven on three.
+The descriptor is now derived from the package: `_pbc_descriptor` reads the
+runtime constants for owned tables and for emitted and consumed events. That
+makes "descriptor equals runtime" true by construction, so the property worth
+gating is the one that can still fail: the package publishes its event surface
+*twice*, as `*_EMITTED_EVENT_TYPES` in `runtime.py` and as `emits` in its
+manifest, and those two hand-maintained lists had drifted apart in a dozen
+packages in both directions. This file holds every PBC to agreement, and holds
+the descriptor's declared tables to resolving one-to-one into the owned
+inventory.
 """
 
 import importlib
@@ -18,8 +21,7 @@ import importlib
 import pytest
 
 from pyAppGen import pbc
-
-REFERENCE_PBCS = ("dam_core", "gl_core", "ar_credit")
+from pyAppGen.pbc import IMPLEMENTED_PBC_KEYS
 
 
 def _runtime(key: str):
@@ -27,21 +29,51 @@ def _runtime(key: str):
     return importlib.import_module(f"pyAppGen.pbcs.{key}.runtime")
 
 
-@pytest.mark.parametrize("key", REFERENCE_PBCS)
-def test_descriptor_owned_tables_match_the_package_runtime(key: str) -> None:
-    """Every table the package owns must appear in the descriptor."""
+@pytest.mark.parametrize("key", IMPLEMENTED_PBC_KEYS)
+def test_descriptor_owned_tables_cover_the_package_runtime(key: str) -> None:
+    """The descriptor must carry every table the package's runtime declares.
+
+    `*_OWNED_TABLES` is the base declaration. `_owned_tables` folds it together
+    with `*_RUNTIME_TABLES` and `*_runtime_capabilities().owned_tables`, which
+    is where an extended package (a `domain_depth` or `slice_app` layer) reports
+    the rest of its inventory. The descriptor must be the folded, complete set:
+    a base constant that is smaller than the folded set is a package that
+    extends itself, not drift, so the property is containment, not equality.
+    """
     prefix = key.upper()
     runtime = _runtime(key)
-    declared = tuple(getattr(runtime, f"{prefix}_OWNED_TABLES"))
+    declared = set(getattr(runtime, f"{prefix}_OWNED_TABLES"))
     descriptor = pbc._pbc_descriptor(key, pbc.PBC_CATALOG[key])
 
-    assert set(descriptor["owned_tables"]) == set(declared), key
-    assert set(pbc._owned_tables(key)) == set(declared), key
+    assert declared <= set(descriptor["owned_tables"]), key
+    assert set(descriptor["owned_tables"]) == set(pbc._owned_tables(key)), key
 
 
-@pytest.mark.parametrize("key", REFERENCE_PBCS)
+@pytest.mark.parametrize("key", IMPLEMENTED_PBC_KEYS)
+def test_manifest_events_match_the_package_runtime(key: str) -> None:
+    """The manifest and the runtime constant must name the same events.
+
+    Both are hand-maintained. They drifted apart in a dozen packages: some
+    manifests carried events with no emit site (`ForecastUpdated` for
+    `product_catalog_pim`), and some runtime constants omitted events the code
+    really emits (`field_service_management`'s eight workforce events). The
+    descriptor reads the runtime constant, so a manifest that disagrees is a
+    package that lies about its own surface.
+    """
+    prefix = key.upper()
+    runtime = _runtime(key)
+    manifest = pbc._package_manifest(key)
+
+    emitted = set(getattr(runtime, f"{prefix}_EMITTED_EVENT_TYPES", ()))
+    consumed = set(getattr(runtime, f"{prefix}_CONSUMED_EVENT_TYPES", ()))
+
+    assert set(manifest.get("emits", ())) == emitted, key
+    assert set(manifest.get("consumes", ())) == consumed, key
+
+
+@pytest.mark.parametrize("key", IMPLEMENTED_PBC_KEYS)
 def test_descriptor_events_match_the_package_runtime(key: str) -> None:
-    """The emitted and consumed sets must be the package's, exactly."""
+    """The descriptor's event surface is the package's, exactly."""
     prefix = key.upper()
     runtime = _runtime(key)
     descriptor = pbc._pbc_descriptor(key, pbc.PBC_CATALOG[key])
@@ -53,14 +85,13 @@ def test_descriptor_events_match_the_package_runtime(key: str) -> None:
     assert set(descriptor["consumes"]) == set(consumed), key
 
 
-@pytest.mark.parametrize("key", REFERENCE_PBCS)
+@pytest.mark.parametrize("key", IMPLEMENTED_PBC_KEYS)
 def test_declared_tables_resolve_into_the_owned_inventory(key: str) -> None:
     """The manifest's logical tables must name tables the package owns.
 
-    This is the property that holds for every package: a declared name resolves
-    to exactly one owned physical table, and no two declared names collide on
-    the same one. It is what lets `_table_contract` build a physical name
-    without guessing.
+    A declared name resolves to exactly one owned physical table, and no two
+    declared names collide on the same one. That is what lets `_table_contract`
+    build a physical name without guessing.
     """
     descriptor = pbc._pbc_descriptor(key, pbc.PBC_CATALOG[key])
     owned = pbc._owned_tables(key)
@@ -71,17 +102,17 @@ def test_declared_tables_resolve_into_the_owned_inventory(key: str) -> None:
     assert len(set(resolved)) == len(resolved), f"{key} has two logical tables on one physical table"
 
 
-def test_the_descriptor_is_not_a_stub_for_the_reference_pbcs() -> None:
+@pytest.mark.parametrize("key", IMPLEMENTED_PBC_KEYS)
+def test_the_descriptor_is_not_a_stub(key: str) -> None:
     """A descriptor that under-reports its package is the defect being closed.
 
     `gl_core` and `ar_credit` each own more than their manifest declares, so a
     test that only compared `tables` would have passed on the drift. The owned
     inventory is what must be complete.
     """
-    for key in REFERENCE_PBCS:
-        descriptor = pbc._pbc_descriptor(key, pbc.PBC_CATALOG[key])
-        assert len(descriptor["owned_tables"]) >= len(descriptor["tables"]), key
-        assert descriptor["owned_tables"], key
+    descriptor = pbc._pbc_descriptor(key, pbc.PBC_CATALOG[key])
+    assert len(descriptor["owned_tables"]) >= len(descriptor["tables"]), key
+    assert descriptor["owned_tables"], key
 
 
 def test_gl_core_and_ar_credit_own_more_than_they_declare() -> None:
