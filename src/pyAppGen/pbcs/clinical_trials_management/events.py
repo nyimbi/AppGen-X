@@ -7,6 +7,7 @@ import hashlib
 from .runtime import CLINICAL_TRIALS_MANAGEMENT_CONSUMED_EVENT_TYPES as CONSUMED
 from .runtime import CLINICAL_TRIALS_MANAGEMENT_EMITTED_EVENT_TYPES as EMITTED
 from .runtime import CLINICAL_TRIALS_MANAGEMENT_REQUIRED_EVENT_TOPIC
+from ..source_contract import source_event_smoke_test
 
 
 PBC_KEY = "clinical_trials_management"
@@ -41,8 +42,8 @@ def validate_event_contract():
         "ok": not invalid_tables and EVENT_CONTRACT["event_contract"] == "AppGen-X",
         "pbc": PBC_KEY,
         "invalid_tables": invalid_tables,
-        "invalid_emitted": (),
-        "invalid_consumed": (),
+        "invalid_emitted": tuple(event for event in EMITTED if not event),
+        "invalid_consumed": tuple(event for event in CONSUMED if not event),
         "side_effects": (),
     }
 
@@ -74,11 +75,8 @@ def event_dispatch_plan(event_type, payload=None):
 
 
 def smoke_test():
+    validation = validate_event_contract()
+    manifest = event_contract_manifest()
     emitted = build_event_envelope(EMITTED[0], {"tenant": "tenant-smoke"})
     consumed = build_event_envelope(CONSUMED[0], {"tenant": "tenant-smoke"})
-    return {
-        "ok": event_contract_manifest()["ok"] and validate_event_contract()["ok"] and emitted["ok"] and consumed["ok"],
-        "emitted": emitted,
-        "consumed": consumed,
-        "side_effects": (),
-    }
+    return source_event_smoke_test(PBC_KEY, manifest, validation, emitted, consumed)

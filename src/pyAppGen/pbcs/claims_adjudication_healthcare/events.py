@@ -7,6 +7,7 @@ from typing import Any
 from .config import REQUIRED_EVENT_TOPIC
 from .models import EVENT_TABLES
 from .models import PBC_KEY
+from ..source_contract import source_event_smoke_test
 
 EMITTED = (
     "ClaimsAdjudicationHealthcareCreated",
@@ -74,11 +75,8 @@ def event_dispatch_plan(event_type: str, payload: dict[str, Any] | None = None) 
 
 
 def smoke_test() -> dict[str, Any]:
+    validation = validate_event_contract()
+    manifest = event_contract_manifest()
     emitted = build_event_envelope(EMITTED[0], {"tenant": "default"})
     consumed = build_event_envelope(CONSUMED[0], {"tenant": "default"})
-    return {
-        "ok": event_contract_manifest()["ok"] and validate_event_contract()["ok"] and emitted["ok"] and consumed["ok"],
-        "emitted": emitted,
-        "consumed": consumed,
-        "side_effects": (),
-    }
+    return source_event_smoke_test(PBC_KEY, manifest, validation, emitted, consumed)

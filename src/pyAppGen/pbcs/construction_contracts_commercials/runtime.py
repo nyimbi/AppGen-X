@@ -2010,8 +2010,16 @@ def validate_event_contract() -> dict[str, Any]:
         "ok": not invalid_tables,
         "pbc": PBC_KEY,
         "invalid_tables": invalid_tables,
-        "invalid_emitted": (),
-        "invalid_consumed": (),
+        "invalid_emitted": tuple(
+            event
+            for event in CONSTRUCTION_CONTRACTS_COMMERCIALS_EMITTED_EVENT_TYPES
+            if not event
+        ),
+        "invalid_consumed": tuple(
+            event
+            for event in CONSTRUCTION_CONTRACTS_COMMERCIALS_CONSUMED_EVENT_TYPES
+            if not event
+        ),
         "side_effects": (),
     }
 

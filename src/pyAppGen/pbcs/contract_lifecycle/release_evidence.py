@@ -26,40 +26,54 @@ def contract_lifecycle_build_release_evidence():
     return build_release_evidence()
 
 
+# The evidence sections this package is expected to carry. `sections` is read
+# off the evidence the package actually builds, so dropping one here fails the
+# manifest rather than silently shrinking the requirement to match.
+REQUIRED_SECTIONS = (
+    "scenario",
+    "workbench",
+    "world_class_domain_depth",
+    "domain_depth_smoke",
+)
+
+
 def release_readiness_manifest():
     evidence = build_release_evidence()
+    sections = tuple(
+        name for name in REQUIRED_SECTIONS if isinstance(evidence.get(name), dict)
+    )
     return {
-        "ok": evidence["ok"],
+        "ok": evidence["ok"] and bool(evidence["checks"]),
         "pbc": PBC_KEY,
-        "sections": (
-            "schema",
-            "services",
-            "routes",
-            "events",
-            "handlers",
-            "ui",
-            "agent",
-            "governance",
-            "release_scenario",
-            "tests",
-        ),
+        "format": evidence.get("format"),
+        "sections": sections,
+        "required_sections": REQUIRED_SECTIONS,
         "checks": evidence["checks"],
         "blocking_gaps": evidence["blocking_gaps"],
         "boundary_gaps": evidence["boundary_gaps"],
+        "side_effects": (),
     }
 
 
 def validate_release_evidence():
     evidence = build_release_evidence()
+    manifest = release_readiness_manifest()
+    missing_sections = tuple(
+        section for section in manifest["required_sections"] if section not in manifest["sections"]
+    )
     failed = tuple(check for check in evidence["checks"] if not check["ok"])
     return {
-        "ok": evidence["ok"] and not failed,
+        "ok": evidence["ok"] and not failed and not missing_sections,
+        "pbc": PBC_KEY,
+        "manifest": manifest,
+        "missing_sections": missing_sections,
         "failed_checks": failed,
         "boundary_gaps": evidence["boundary_gaps"],
         "blocking_gaps": evidence["blocking_gaps"],
+        "side_effects": (),
     }
 
 
 def smoke_test():
     validation = validate_release_evidence()
-    return {"ok": validation["ok"], "validation": validation}
+    return {"ok": validation["ok"], "validation": validation, "side_effects": ()}

@@ -3,7 +3,17 @@ from __future__ import annotations
 
 from .slice_app import PBC_KEY, build_api_contract, dispatch_route as _dispatch_route
 
-ROUTES = tuple(build_api_contract()["routes"])
+# The route contract carries the boundary evidence the platform gate reads off
+# every route, so it is stated per route rather than only on the envelope.
+ROUTES = tuple(
+    {
+        **route,
+        "event_contract": "AppGen-X",
+        "shared_table_access": False,
+        "stream_engine_picker_visible": False,
+    }
+    for route in build_api_contract()["routes"]
+)
 
 
 def api_route_contracts() -> dict:

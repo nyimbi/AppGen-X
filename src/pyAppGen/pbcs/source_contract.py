@@ -107,6 +107,60 @@ def validate_source_package_metadata(metadata: dict) -> dict:
     }
 
 
+def source_event_dispatch_plan(
+    pbc_key: str,
+    manifest: dict,
+    envelope: dict,
+    *,
+    direction: str = "emitted",
+) -> dict:
+    """Return the canonical outbox or inbox dispatch plan for one event envelope.
+
+    The platform gate reads `table`, `retry_policy`, and `dead_letter_table`
+    off the emitted and consumed plans every package's `events.smoke_test()`
+    reports. Packages whose events module is hand-written reach that shape
+    through this helper instead of restating it.
+    """
+    return {
+        "ok": envelope["ok"],
+        "pbc": pbc_key,
+        "direction": direction,
+        "event_type": envelope["event_type"],
+        "table": manifest["outbox_table" if direction == "emitted" else "inbox_table"],
+        "topic": envelope.get("topic")
+        or manifest.get("topic")
+        or manifest.get("required_topic")
+        or manifest.get("event_topic"),
+        "envelope": envelope,
+        "retry_policy": dict(
+            manifest.get("retry_policy") or {"max_attempts": 5, "backoff": "exponential"}
+        ),
+        "dead_letter_table": manifest["dead_letter_table"],
+        "idempotency": manifest.get("idempotency"),
+        "publishes": False,
+        "side_effects": (),
+    }
+
+
+def source_event_smoke_test(
+    pbc_key: str,
+    manifest: dict,
+    validation: dict,
+    emitted_envelope: dict,
+    consumed_envelope: dict,
+) -> dict:
+    """Return the canonical events smoke result: validation plus both dispatch plans."""
+    emitted = source_event_dispatch_plan(pbc_key, manifest, emitted_envelope, direction="emitted")
+    consumed = source_event_dispatch_plan(pbc_key, manifest, consumed_envelope, direction="consumed")
+    return {
+        "ok": validation["ok"] and emitted["ok"] and consumed["ok"],
+        "validation": validation,
+        "emitted": emitted,
+        "consumed": consumed,
+        "side_effects": (),
+    }
+
+
 def source_registration_plan(
     pbc_key: str,
     manifest: dict,

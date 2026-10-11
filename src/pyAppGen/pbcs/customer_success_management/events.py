@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from .slice_app import build_event_contract
+from ..source_contract import source_event_smoke_test
 
 PBC_KEY = "customer_success_management"
 EVENT_CONTRACT = build_event_contract()
@@ -65,11 +66,7 @@ def event_dispatch_plan(event_type: str, payload: dict | None = None) -> dict:
 
 def smoke_test() -> dict:
     validation = validate_event_contract()
-    emitted = event_dispatch_plan(EMITTED[0], {"tenant": "tenant-smoke"})
+    manifest = event_contract_manifest()
+    emitted = build_event_envelope(EMITTED[0], {"tenant": "tenant-smoke"})
     consumed = build_event_envelope(CONSUMED[0], {"tenant": "tenant-smoke"})
-    return {
-        "ok": validation["ok"] and emitted["ok"] and consumed["ok"],
-        "emitted": emitted,
-        "consumed": consumed,
-        "side_effects": (),
-    }
+    return source_event_smoke_test(PBC_KEY, manifest, validation, emitted, consumed)

@@ -8,6 +8,7 @@ from .domain_depth import DOMAIN_CONSUMED_EVENTS
 from .domain_depth import DOMAIN_EVENTS
 from .domain_depth import PBC_KEY
 from .domain_depth import REQUIRED_EVENT_TOPIC
+from ..source_contract import source_event_smoke_test
 
 
 EMITTED = DOMAIN_EVENTS
@@ -52,6 +53,8 @@ def validate_event_contract() -> dict:
         and manifest["stream_engine_picker_visible"] is False,
         "manifest": manifest,
         "invalid_tables": invalid_tables,
+        "invalid_emitted": tuple(event for event in EMITTED if not event),
+        "invalid_consumed": tuple(event for event in CONSUMED if not event),
         "side_effects": (),
     }
 
@@ -91,10 +94,7 @@ def event_dispatch_plan(event_type: str, payload: dict | None = None) -> dict:
 
 def smoke_test() -> dict:
     validation = validate_event_contract()
-    emitted = event_dispatch_plan(EMITTED[0], {"case_id": "case-1"})
-    return {
-        "ok": validation["ok"] and emitted["ok"],
-        "validation": validation,
-        "emitted": emitted,
-        "side_effects": (),
-    }
+    manifest = event_contract_manifest()
+    emitted = build_event_envelope(EMITTED[0], {"case_id": "case-1"})
+    consumed = build_event_envelope(CONSUMED[0], {"case_id": "case-1"})
+    return source_event_smoke_test(PBC_KEY, manifest, validation, emitted, consumed)

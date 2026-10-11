@@ -1,7 +1,10 @@
 """AppGen-X event contracts for construction project controls."""
 from __future__ import annotations
 
+from ..source_contract import source_event_smoke_test
+
 PBC_KEY = "construction_project_controls"
+REQUIRED_EVENT_TOPIC = f"pbc.{PBC_KEY}.events"
 EMITTED = (
     "ConstructionProjectControlsCreated",
     "ConstructionProjectControlsUpdated",
@@ -31,8 +34,10 @@ def event_contract_manifest():
         "inbox_table": f"{PBC_KEY}_appgen_inbox_event",
         "dead_letter_table": f"{PBC_KEY}_appgen_dead_letter_event",
         "event_contract": "AppGen-X",
+        "required_topic": REQUIRED_EVENT_TOPIC,
         "stream_engine_picker_visible": False,
         "idempotency": "required",
+        "side_effects": (),
     }
 
 
@@ -70,17 +75,11 @@ def event_dispatch_plan(event_type, payload=None):
 
 
 def smoke_test():
+    validation = validate_event_contract()
+    manifest = event_contract_manifest()
     emitted = build_event_envelope(
         EMITTED[0],
         {"project_id": "CP-001", "project_code": "CP-001", "tenant": "tenant-smoke"},
     )
     consumed = build_event_envelope(CONSUMED[0], {"policy_id": "float-threshold"})
-    return {
-        "ok": event_contract_manifest()["ok"]
-        and validate_event_contract()["ok"]
-        and emitted["ok"]
-        and consumed["ok"],
-        "emitted": emitted,
-        "consumed": consumed,
-        "side_effects": (),
-    }
+    return source_event_smoke_test(PBC_KEY, manifest, validation, emitted, consumed)

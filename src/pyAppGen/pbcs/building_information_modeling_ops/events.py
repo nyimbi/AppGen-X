@@ -1,7 +1,10 @@
 """AppGen-X event contract for the BIM federation slice."""
 from __future__ import annotations
 
+from ..source_contract import source_event_smoke_test
+
 PBC_KEY = "building_information_modeling_ops"
+REQUIRED_EVENT_TOPIC = f"pbc.{PBC_KEY}.events"
 EMITTED = (
     "BuildingInformationModelingOpsCreated",
     "BuildingInformationModelingOpsUpdated",
@@ -21,6 +24,7 @@ def event_contract_manifest() -> dict:
         "inbox_table": f"{PBC_KEY}_appgen_inbox_event",
         "dead_letter_table": f"{PBC_KEY}_appgen_dead_letter_event",
         "event_contract": "AppGen-X",
+        "required_topic": REQUIRED_EVENT_TOPIC,
         "stream_engine_picker_visible": False,
         "idempotency": "required",
         "shared_table_access": False,
@@ -69,14 +73,8 @@ def event_dispatch_plan(event_type: str, payload: dict | None = None) -> dict:
 
 
 def smoke_test() -> dict:
+    validation = validate_event_contract()
+    manifest = event_contract_manifest()
     emitted = build_event_envelope(EMITTED[0], {"tenant": "tenant-smoke"})
     consumed = build_event_envelope(CONSUMED[0], {"tenant": "tenant-smoke"})
-    return {
-        "ok": event_contract_manifest()["ok"]
-        and validate_event_contract()["ok"]
-        and emitted["ok"]
-        and consumed["ok"],
-        "emitted": emitted,
-        "consumed": consumed,
-        "side_effects": (),
-    }
+    return source_event_smoke_test(PBC_KEY, manifest, validation, emitted, consumed)

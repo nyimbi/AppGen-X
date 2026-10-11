@@ -11,6 +11,7 @@ from .slice_app import OUTBOX_TABLE
 from .slice_app import PBC_KEY
 from .slice_app import REQUIRED_EVENT_TOPIC
 from .slice_app import stable_hash
+from ..source_contract import source_event_smoke_test
 
 
 def event_contract_manifest() -> dict:
@@ -26,6 +27,7 @@ def event_contract_manifest() -> dict:
         "required_topic": REQUIRED_EVENT_TOPIC,
         "stream_engine_picker_visible": False,
         "idempotency": "required",
+        "side_effects": (),
     }
 
 
@@ -70,11 +72,8 @@ def event_dispatch_plan(event_type: str, payload: dict | None = None, tenant: st
 
 
 def smoke_test() -> dict:
+    validation = validate_event_contract()
+    manifest = event_contract_manifest()
     emitted = build_event_envelope(EMITTED[0], {"tenant": "tenant-smoke"}, tenant="tenant-smoke")
     consumed = build_event_envelope(CONSUMED[0], {"tenant": "tenant-smoke"}, tenant="tenant-smoke")
-    return {
-        "ok": event_contract_manifest()["ok"] and validate_event_contract()["ok"] and emitted["ok"] and consumed["ok"],
-        "emitted": emitted,
-        "consumed": consumed,
-        "side_effects": (),
-    }
+    return source_event_smoke_test(PBC_KEY, manifest, validation, emitted, consumed)

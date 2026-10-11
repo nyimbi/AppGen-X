@@ -10,6 +10,7 @@ from .runtime import (
     CYBERSECURITY_OPERATIONS_CENTER_REQUIRED_EVENT_TOPIC,
 )
 from .models import stable_digest, utc_now
+from ..source_contract import source_event_smoke_test
 
 PBC_KEY = "cybersecurity_operations_center"
 EMITTED = CYBERSECURITY_OPERATIONS_CENTER_EMITTED_EVENT_TYPES
@@ -80,11 +81,8 @@ def event_dispatch_plan(event_type: str, payload: dict[str, Any] | None = None, 
 
 
 def smoke_test() -> dict[str, Any]:
+    validation = validate_event_contract()
+    manifest = event_contract_manifest()
     emitted = build_event_envelope(EMITTED[0], {"tenant": "tenant-smoke"})
     consumed = build_event_envelope(CONSUMED[0], {"sealed_bundle_id": "bundle-smoke"})
-    return {
-        "ok": event_contract_manifest()["ok"] and validate_event_contract()["ok"] and emitted["ok"] and consumed["ok"],
-        "emitted": emitted,
-        "consumed": consumed,
-        "side_effects": (),
-    }
+    return source_event_smoke_test(PBC_KEY, manifest, validation, emitted, consumed)
