@@ -140,6 +140,35 @@ def test_descriptive_fields_come_from_the_package(key: str) -> None:
         assert descriptor["description"] == manifest["description"], key
 
 
+@pytest.mark.parametrize("key", IMPLEMENTED_PBC_KEYS)
+def test_no_declared_table_falls_back_to_the_generic_envelope(key: str) -> None:
+    """Every declared table must describe its own columns.
+
+    The contract built each table from the package migration. Fourteen packages
+    declare owned tables their migration never creates, and the descriptor
+    answered those with a shared `code`/`status`/`version` body, so a
+    `field_service_management_technician_live_location` had no technician and no
+    location. The package's own `build_schema_contract()` names the columns for
+    those tables, so it is the fallback now; the envelope is the last resort and
+    should be unreachable while every package can describe itself.
+    """
+    descriptor = pbc._pbc_descriptor(key, pbc.PBC_CATALOG[key])
+    owned = pbc._owned_tables(key)
+    primary = descriptor["tables"][0]
+
+    # The envelope is compared at the table's own position: `_fallback_table_fields`
+    # inserts a `{primary}_id` column for every table after the first, so a
+    # position-0 envelope never matches a stubbed table at position 3 and the
+    # check would pass on exactly the defect it exists to catch.
+    stubbed = [
+        table
+        for position, table in enumerate(descriptor["tables"])
+        if pbc._table_fields(key, table, owned, primary, position)
+        == pbc._fallback_table_fields(key, primary, position)
+    ]
+    assert not stubbed, f"{key} describes these tables with the generic envelope: {stubbed}"
+
+
 def test_gl_core_and_ar_credit_own_more_than_they_declare() -> None:
     """Pin the measured gap so a silent widening or narrowing fails CI.
 

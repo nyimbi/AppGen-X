@@ -15123,7 +15123,91 @@ def _table_fields(
     parsed = pbc_schema.fields_for(key, candidates)
     if parsed:
         return [dict(field) for field in parsed]
+    contract_fields = _package_schema_fields(key, candidates)
+    if contract_fields:
+        return contract_fields
     return _fallback_table_fields(key, primary_table, position)
+
+
+def _package_schema_fields(key: str, candidates: tuple[str, ...]) -> list[dict]:
+    """Return a table's columns from the package's own schema contract.
+
+    The migration is the first source, and for 112 of 147 packages it is also
+    the only one needed. Fourteen packages declare owned tables their migration
+    never creates, and the descriptor answered those with the generic
+    `code`/`status`/`version` envelope, so the generated app declared a
+    `field_service_management_technician_live_location` with no technician and
+    no location. The package's `build_schema_contract()` names the columns for
+    every table it owns, including those the migration omits, so it is a truer
+    fallback than the envelope. Its `fields` are bare column names in most
+    packages and typed dicts in a few, so both shapes are read.
+
+    The column *names* come from the package; the types are inferred from the
+    name, because the contract does not carry them. That is a weaker claim than
+    the migration's, which is why the migration is still tried first: an
+    inferred type can be wrong, and only the package's SQL is authoritative.
+    """
+    try:
+        module = importlib.import_module(f"pyAppGen.pbcs.{key}.runtime")
+    except ImportError:
+        return []
+    build = getattr(module, f"{key}_build_schema_contract", None)
+    if build is None:
+        return []
+    try:
+        contract = build()
+    except Exception:
+        return []
+    wanted = set(candidates)
+    for collection in ("tables", "runtime_tables"):
+        for table in contract.get(collection) or ():
+            if not isinstance(table, dict) or str(table.get("table")) not in wanted:
+                continue
+            return _contract_fields(key, table.get("fields") or ())
+    return []
+
+
+def _contract_fields(key: str, fields: tuple) -> list[dict]:
+    """Type a package schema contract's field list.
+
+    A typed entry (`{"name": ..., "type": ...}`) is used as written. A bare
+    column name is typed from its own spelling: the suffixes and names a PBC
+    convention gives a fixed meaning (`*_at` is a timestamp, `attempts` a
+    count, `payload` structured data). The first field is the primary key,
+    which is the package's own convention, and every other column is required,
+    which is how the packages declare their envelope.
+    """
+    typed: list[dict] = []
+    for position, field in enumerate(fields):
+        if isinstance(field, dict) and field.get("name"):
+            entry = dict(field)
+            entry.setdefault("required", not entry.get("nullable", True))
+            typed.append(entry)
+            continue
+        name = str(field)
+        entry = {
+            "name": name,
+            "type": _contract_field_type(name),
+            "required": True,
+            "nullable": False,
+        }
+        if position == 0:
+            entry["primary_key"] = True
+        typed.append(entry)
+    return typed
+
+
+def _contract_field_type(name: str) -> str:
+    """Infer a canonical column type from a PBC column name."""
+    if name.endswith("_at") or name in {"created_at", "updated_at", "occurred_at", "published_at", "processed_at"}:
+        return "datetime"
+    if name in {"payload", "payload_json", "data", "metadata", "context", "history", "states", "transitions"}:
+        return "json"
+    if name in {"attempts", "retry_count", "version", "capacity_minutes", "sample_size", "duration_ms", "retry_budget", "deadline_seconds"}:
+        return "integer"
+    if name.endswith("_id") and name not in {"id"}:
+        return "string"
+    return "string"
 
 
 def _fallback_table_fields(key: str, primary_table: str, position: int) -> list[dict]:
