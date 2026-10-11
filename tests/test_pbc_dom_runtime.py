@@ -179,17 +179,7 @@ def test_dom_runtime_applies_rules_parameters_and_configuration() -> None:
     rendered = dom_render_workbench(
         state,
         tenant="tenant_ops",
-        principal_permissions=(
-            "dom.create",
-            "dom.verify",
-            "dom.price",
-            "dom.allocate",
-            "dom.plan",
-            "dom.ship",
-            "dom.event",
-            "dom.audit",
-            "dom.configure",
-        ),
+        principal_permissions=tuple(ui_contract["action_permissions"].values()),
     )
     assert rendered["ok"] is True
     assert rendered["configuration_bound"] is True
@@ -199,6 +189,10 @@ def test_dom_runtime_applies_rules_parameters_and_configuration() -> None:
     assert rendered["binding_evidence"]["owned_tables"] == DOM_OWNED_TABLES
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
+    # The empty grant is the half that proves the lock is real: with every
+    # permission withheld, every action must be locked.
+    ungranted = dom_render_workbench(state, tenant="tenant_ops", principal_permissions=())
+    assert set(ungranted["locked_actions"]) == set(ui_contract["action_permissions"])
 
 
 def test_dom_rejects_unsupported_database_backends_and_unknown_parameters() -> None:

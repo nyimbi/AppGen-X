@@ -363,15 +363,7 @@ def test_payment_orchestration_runtime_applies_configuration_events_commands_and
     rendered = payment_orchestration_render_workbench(
         state,
         tenant="tenant_ops",
-        principal_permissions=(
-            "payment_orchestration.read",
-            "payment_orchestration.intent",
-            "payment_orchestration.capture",
-            "payment_orchestration.refund",
-            "payment_orchestration.event",
-            "payment_orchestration.configure",
-            "payment_orchestration.audit",
-        ),
+        principal_permissions=tuple(ui_contract["action_permissions"].values()),
     )
     assert rendered["ok"] is True
     assert rendered["configuration_bound"] is True
@@ -380,6 +372,10 @@ def test_payment_orchestration_runtime_applies_configuration_events_commands_and
     assert rendered["dead_letter_count"] == 0
     assert set(rendered["visible_actions"]) == set(ui_contract["action_permissions"])
     assert not rendered["locked_actions"]
+    # The empty grant is the half that proves the lock is real: with every
+    # permission withheld, every action must be locked.
+    ungranted = payment_orchestration_render_workbench(state, tenant="tenant_ops", principal_permissions=())
+    assert set(ungranted["locked_actions"]) == set(ui_contract["action_permissions"])
     assert rendered["binding_evidence"]["owned_tables"] == PAYMENT_ORCHESTRATION_OWNED_TABLES
 
     boundary = payment_orchestration_verify_owned_table_boundary(

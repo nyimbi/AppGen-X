@@ -3,66 +3,33 @@
 from __future__ import annotations
 
 from . import services
+from .runtime import dom_build_service_contract as _runtime_build_service_contract
 
 
-SERVICE_CONTRACT = {
-    **services.service_operation_manifest()["standalone_service"],
-    "format": "appgen.dom-service-contract.v1",
-    "transaction_boundary": "dom_owned_datastore_plus_appgen_outbox",
-    "command_methods": tuple(
-        method for method in services.standalone_service_manifest()["service_methods"] if method not in {"workbench", "crud_mutation_plan", "get_order_snapshot"}
-    ),
-    "query_methods": services.standalone_service_manifest()["query_methods"],
-    "mutates_only": (
-        "sales_order",
-        "order_line",
-        "order_status",
-        "order_hold",
-        "order_promise",
-        "tax_projection",
-        "fraud_screen",
-        "inventory_allocation_projection",
-        "fulfillment_plan",
-        "split_shipment",
-        "backorder",
-        "substitution",
-        "cancellation_request",
-        "shipment_projection",
-        "order_exception",
-        "dom_appgen_outbox_event",
-        "dom_appgen_inbox_event",
-        "dom_dead_letter_event",
-    ),
-    "external_dependencies": {
-        "apis": (
-            "GET /inventory/allocations/{id}",
-            "GET /tax/calculations/{id}",
-            "GET /customers/{id}",
-            "GET /payments/authorizations/{id}",
-            "GET /shipments/{id}",
-            "POST /audit/order-events",
-        ),
-        "events": (
-            "InventoryAllocated",
-            "TaxCalculated",
-            "CustomerUpdated",
-            "PaymentAuthorized",
-            "ShipmentDelivered",
-        ),
-        "api_projections": (
-            "inventory_allocation_projection",
-            "tax_calculation_projection",
-            "customer_profile_projection",
-            "payment_authorization_projection",
-            "shipment_delivery_projection",
-        ),
-        "shared_tables": (),
-    },
-    "pbc": "dom",
-    "shared_table_access": False,
-}
+def build_service_contract() -> dict:
+    """Return generated command, eventing, and handler evidence.
+
+    The domain command surface is the runtime contract's, which covers every
+    owned-table mutation and advanced operation. The standalone application
+    facade is reported alongside it rather than in place of it, so a facade
+    method list can never shrink the contract's command depth.
+    """
+    contract = dict(_runtime_build_service_contract())
+    operation_manifest = services.service_operation_manifest()
+    standalone = operation_manifest["standalone_service"]
+    contract.update(
+        {
+            "pbc": "dom",
+            "shared_table_access": False,
+            "package_service_class": operation_manifest["service_class"],
+            "package_operations": operation_manifest["operations"],
+            "package_command_operations": operation_manifest["command_operations"],
+            "package_query_operations": operation_manifest["query_operations"],
+            "package_outbox_table": operation_manifest["outbox_table"],
+            "package_service_methods": standalone["service_methods"],
+        }
+    )
+    return contract
 
 
-def build_service_contract():
-    """Return generated command, eventing, and handler evidence."""
-    return dict(SERVICE_CONTRACT)
+SERVICE_CONTRACT = build_service_contract()
