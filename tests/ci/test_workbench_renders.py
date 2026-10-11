@@ -191,15 +191,38 @@ def _workbench_payloads(project: Path) -> dict:
             "route": entry["route"],
             "fragments": list(entry["fragments"]),
             "panels": [dict(panel) for panel in entry["panels"]],
+            "routes": list(entry["routes"]),
             "workbench_view": entry["workbench_view"],
             "binds_to": entry["binds_to"],
             "owned_tables": list(entry["owned_tables"]),
             "apis": [dict(api) for api in entry["apis"]],
+            # The stub mirrors the real payload's surface key for key. A stub
+            # that carries fewer keys than the generator emits tests a component
+            # against a shape the app never produces, which is how a missing
+            # `configuration` read as an undefined-property crash in the browser
+            # rather than as a stub that had gone stale.
+            "configuration": dict(entry["configuration"]),
+            "rules": dict(entry["rules"]),
+            "events": dict(entry["events"]),
+            "workflow_actions": list(entry["workflow_actions"]),
+            "action_permissions": dict(entry["action_permissions"]),
+            "unauthorized_actions": sorted(entry["action_permissions"]),
             "permissions_bound": [],
             "cards": [
                 {"key": "owned_tables", "label": "Owned tables", "value": len(entry["owned_tables"])},
                 {"key": "api_routes", "label": "Command and query APIs", "value": len(entry["apis"])},
                 {"key": "panels", "label": "Workbench panels", "value": len(entry["panels"])},
+                {
+                    "key": "configuration",
+                    "label": "Configuration fields",
+                    "value": len(entry["configuration"].get("required_fields", ())),
+                },
+                {"key": "rules", "label": "Rule types", "value": len(entry["rules"].get("rule_types", ()))},
+                {
+                    "key": "emitted_events",
+                    "label": "Emitted events",
+                    "value": len(entry["events"].get("emits", ())),
+                },
                 {"key": "permissions", "label": "Bound permissions", "value": len(entry["permissions"])},
                 {"key": "outbox", "label": "Event outbox", "value": entry["outbox_table"]},
                 {"key": "dead_letter", "label": "Dead-letter queue", "value": entry["dead_letter_table"]},
@@ -307,6 +330,29 @@ def test_declared_panels_appear_as_real_rows(rendered):
         assert panel["fragment"] in body, panel["fragment"]
 
 
+def test_the_packages_own_surface_appears_on_the_page(rendered):
+    """The configuration, rules, and events must render, not just be counted.
+
+    The workbench used to show three cards describing the contract's own shape,
+    which read the same for every PBC. A `dam_core` workbench and an `ar_credit`
+    workbench looked identical. The package's own configuration fields, rule
+    types, and emitted events are what make the screen belong to the block, so
+    this asserts they reach the DOM.
+    """
+    page, payload = rendered
+    first = payload[COMPOSITION[0]]
+    assert first["configuration"]["required_fields"], "the payload carries no configuration"
+    assert first["rules"]["rule_types"], "the payload carries no rules"
+    assert first["events"]["emits"], "the payload carries no emitted events"
+
+    _select(page, payload, COMPOSITION[0])
+    body = page.locator(".appgen-workbench").inner_text()
+
+    assert first["configuration"]["required_fields"][0] in body
+    assert first["rules"]["rule_types"][0] in body
+    assert first["events"]["emits"][0] in body
+
+
 def test_the_shell_navigates_to_another_workbench(rendered):
     """Clicking a rail item must swap the rendered workbench."""
     page, payload = rendered
@@ -401,6 +447,7 @@ def test_the_render_gate_fails_on_a_workbench_that_renders_nothing(rendered_brok
         test_api_routes_appear_with_their_methods,
         test_the_shared_kit_classes_are_on_the_page,
         test_declared_panels_appear_as_real_rows,
+        test_the_packages_own_surface_appears_on_the_page,
         test_every_workbench_renders_without_error,
     )
     survived = []

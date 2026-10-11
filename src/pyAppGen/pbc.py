@@ -13443,6 +13443,84 @@ def pbc_implementation_contract(key: str) -> dict:
             "binds_to": tuple(package_ui.get("panels", ())[0].get("binds_to", ()))
             if package_ui.get("panels")
             else event_contract["outbox_table"],
+            # The package's editors and event surfaces, so the generated
+            # workbench renders the configuration a `dam_core` installer must
+            # supply and the events the block actually emits, instead of three
+            # cards describing the contract's own shape.
+            #
+            # A package declares this surface in one of three shapes: the rich
+            # dict (`dam_core` names its required keys and rule types), a bare
+            # `True` meaning "I have an editor" with no content, or `None`. 48
+            # of 147 packages carry the dict; the other 99 would otherwise
+            # render an empty card, so each editor falls back to the contract's
+            # own configuration, event, and permission surface, which every
+            # package carries. `action_permissions` is a dict in 49 packages and
+            # a flat permission tuple in 98, so the tuple form is keyed by the
+            # permission's own verb to stay readable.
+            "configuration_editor": {
+                "required_fields": tuple(
+                    (package_ui.get("configuration_editor") or {}).get("required_fields")
+                    or configuration
+                )
+                if isinstance(package_ui.get("configuration_editor"), dict)
+                else tuple(configuration),
+                "allowed_database_backends": tuple(
+                    (package_ui.get("configuration_editor") or {}).get("allowed_database_backends")
+                    or (service["datastore_backend"],)
+                )
+                if isinstance(package_ui.get("configuration_editor"), dict)
+                else (service["datastore_backend"],),
+                "required_event_topic": (package_ui.get("configuration_editor") or {}).get("required_event_topic")
+                if isinstance(package_ui.get("configuration_editor"), dict)
+                else event_contract["topic"],
+                "stream_engine_picker_visible": bool(
+                    (package_ui.get("configuration_editor") or {}).get("stream_engine_picker_visible", False)
+                )
+                if isinstance(package_ui.get("configuration_editor"), dict)
+                else False,
+            },
+            "rule_editor": {
+                "rule_types": tuple((package_ui.get("rule_editor") or {}).get("rule_types") or ("configuration", "parameter", "release_gate"))
+                if isinstance(package_ui.get("rule_editor"), dict)
+                else ("configuration", "parameter", "release_gate"),
+                "required_fields": tuple(
+                    (package_ui.get("rule_editor") or {}).get("required_fields")
+                    or ("rule_id", "tenant", "scope", "status", "condition", "effect")
+                )
+                if isinstance(package_ui.get("rule_editor"), dict)
+                else ("rule_id", "tenant", "scope", "status", "condition", "effect"),
+                "compiled_evidence_required": bool(
+                    (package_ui.get("rule_editor") or {}).get("compiled_evidence_required", True)
+                )
+                if isinstance(package_ui.get("rule_editor"), dict)
+                else True,
+            },
+            "event_surfaces": {
+                "emits": tuple(
+                    (package_ui.get("event_surfaces") or {}).get("emits")
+                    or (event["event_type"] for event in event_contract["emitted"])
+                ),
+                "consumes": tuple(
+                    (package_ui.get("event_surfaces") or {}).get("consumes")
+                    or (event["event_type"] for event in event_contract["consumed"])
+                ),
+                "outbox_status": (package_ui.get("event_surfaces") or {}).get("outbox_status", "visible")
+                if isinstance(package_ui.get("event_surfaces"), dict)
+                else "visible",
+                "inbox_status": (package_ui.get("event_surfaces") or {}).get("inbox_status", "visible")
+                if isinstance(package_ui.get("event_surfaces"), dict)
+                else "visible",
+                "dead_letter_status": (package_ui.get("event_surfaces") or {}).get("dead_letter_status", "visible")
+                if isinstance(package_ui.get("event_surfaces"), dict)
+                else "visible",
+            },
+            "action_permissions": dict(package_ui["action_permissions"])
+            if isinstance(package_ui.get("action_permissions"), dict)
+            else {
+                permission.rsplit(".", 1)[-1]: permission
+                for permission in (package_ui.get("action_permissions") or permissions)
+            },
+            "workflow_actions": tuple(package_ui.get("workflow_actions") or ()),
         },
         "permissions": permissions,
         "configuration": tuple(

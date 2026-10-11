@@ -25185,22 +25185,82 @@ def _pbc_package_file_contents(contract: dict) -> dict[str, str]:
             "        'binds_to': UI.get('binds_to'),\n"
             "        'side_effects': (),\n"
             "    }\n\n\n"
+            "def configuration_surface():\n"
+            "    \"\"\"Return the installer-supplied configuration keys and their defaults.\"\"\"\n"
+            "    editor = UI.get('configuration_editor') or {}\n"
+            "    return {\n"
+            "        'ok': bool(editor),\n"
+            "        'required_fields': tuple(editor.get('required_fields', ())),\n"
+            "        'allowed_database_backends': tuple(editor.get('allowed_database_backends', ())),\n"
+            "        'required_event_topic': editor.get('required_event_topic'),\n"
+            "        'stream_engine_picker_visible': bool(editor.get('stream_engine_picker_visible', False)),\n"
+            "        'side_effects': (),\n"
+            "    }\n\n\n"
+            "def rule_surface():\n"
+            "    \"\"\"Return the rule types this PBC compiles and the fields each rule carries.\"\"\"\n"
+            "    editor = UI.get('rule_editor') or {}\n"
+            "    return {\n"
+            "        'ok': bool(editor),\n"
+            "        'rule_types': tuple(editor.get('rule_types', ())),\n"
+            "        'required_fields': tuple(editor.get('required_fields', ())),\n"
+            "        'compiled_evidence_required': bool(editor.get('compiled_evidence_required')),\n"
+            "        'side_effects': (),\n"
+            "    }\n\n\n"
+            "def event_surface():\n"
+            "    \"\"\"Return the events this PBC emits and consumes, and its outbox visibility.\"\"\"\n"
+            "    surfaces = UI.get('event_surfaces') or {}\n"
+            "    return {\n"
+            "        'ok': bool(surfaces),\n"
+            "        'emits': tuple(surfaces.get('emits', ())),\n"
+            "        'consumes': tuple(surfaces.get('consumes', ())),\n"
+            "        'outbox_status': surfaces.get('outbox_status'),\n"
+            "        'inbox_status': surfaces.get('inbox_status'),\n"
+            "        'dead_letter_status': surfaces.get('dead_letter_status'),\n"
+            "        'side_effects': (),\n"
+            "    }\n\n\n"
             "def render_workbench_fragment(state=None, *, tenant='default', principal_permissions=()):\n"
-            "    \"\"\"Render a deterministic workbench payload from supplied state.\"\"\"\n"
+            "    \"\"\"Render a deterministic workbench payload from the PBC's own surface.\n\n"
+            "    Every card is read from what the package declares: the panels it\n"
+            "    mounts, the configuration an installer must supply, the rules it\n"
+            "    compiles, and the events it emits. A card list derived from the\n"
+            "    contract's own shape rather than the block's content is the stub this\n"
+            "    replaces.\n"
+            "    \"\"\"\n"
             "    manifest = ui_fragment_manifest()\n"
             "    supplied = dict(state or {})\n"
+            "    configuration = configuration_surface()\n"
+            "    rules = rule_surface()\n"
+            "    events = event_surface()\n"
+            "    panels = tuple(UI.get('panels', ()))\n"
+            "    workflow_actions = tuple(UI.get('workflow_actions', ()))\n"
+            "    granted = set(principal_permissions)\n"
+            "    action_permissions = dict(UI.get('action_permissions') or {})\n"
             "    cards = (\n"
-            "        {'key': 'owned_binding', 'value': manifest['binds_to'], 'fragment': manifest['workbench_view']},\n"
-            "        {'key': 'state_keys', 'value': tuple(sorted(supplied)), 'fragment': manifest['workbench_view']},\n"
-            "        {'key': 'permission_count', 'value': len(tuple(principal_permissions)), 'fragment': manifest['workbench_view']},\n"
+            "        {'key': 'panels', 'label': 'Workbench panels', 'value': len(panels), 'fragment': manifest['workbench_view']},\n"
+            "        {'key': 'configuration_keys', 'label': 'Configuration fields', 'value': len(configuration['required_fields']), 'fragment': manifest['workbench_view']},\n"
+            "        {'key': 'rule_types', 'label': 'Rule types', 'value': len(rules['rule_types']), 'fragment': manifest['workbench_view']},\n"
+            "        {'key': 'emitted_events', 'label': 'Emitted events', 'value': len(events['emits']), 'fragment': manifest['workbench_view']},\n"
+            "        {'key': 'workflow_actions', 'label': 'Workflow actions', 'value': len(workflow_actions), 'fragment': manifest['workbench_view']},\n"
+            "        {'key': 'permission_count', 'label': 'Permissions bound', 'value': len(granted), 'fragment': manifest['workbench_view']},\n"
             "    )\n"
             "    return {\n"
-            "        'ok': manifest['ok'],\n"
+            "        'ok': manifest['ok'] and bool(configuration['required_fields']),\n"
             "        'pbc': PBC_KEY,\n"
             "        'tenant': tenant,\n"
             "        'route': manifest['route'],\n"
             "        'fragments': manifest['fragments'],\n"
+            "        'panels': panels,\n"
+            "        'routes': tuple(UI.get('routes', ())),\n"
+            "        'configuration': configuration,\n"
+            "        'rules': rules,\n"
+            "        'events': events,\n"
+            "        'workflow_actions': workflow_actions,\n"
+            "        'action_permissions': action_permissions,\n"
+            "        'unauthorized_actions': tuple(\n"
+            "            sorted(action for action, permission in action_permissions.items() if permission not in granted)\n"
+            "        ),\n"
             "        'cards': cards,\n"
+            "        'state_keys': tuple(sorted(supplied)),\n"
             "        'permissions_bound': tuple(principal_permissions),\n"
             "        'side_effects': (),\n"
             "    }\n\n\n"
@@ -25208,10 +25268,21 @@ def _pbc_package_file_contents(contract: dict) -> dict[str, str]:
             "    \"\"\"Exercise the generated workbench contract side-effect-free.\"\"\"\n"
             "    manifest = ui_fragment_manifest()\n"
             "    rendered = render_workbench_fragment({'smoke': True}, tenant='smoke')\n"
+            "    configuration = configuration_surface()\n"
+            "    rules = rule_surface()\n"
+            "    events = event_surface()\n"
             "    return {\n"
-            "        'ok': manifest['ok'] and rendered['ok'] and bool(rendered['cards']),\n"
+            "        'ok': manifest['ok']\n"
+            "        and rendered['ok']\n"
+            "        and bool(rendered['panels'] or rendered['routes'])\n"
+            "        and bool(configuration['required_fields'])\n"
+            "        and bool(rules['rule_types'])\n"
+            "        and bool(events['emits']),\n"
             "        'manifest': manifest,\n"
             "        'rendered': rendered,\n"
+            "        'configuration': configuration,\n"
+            "        'rules': rules,\n"
+            "        'events': events,\n"
             "        'side_effects': (),\n"
             "    }\n"
         ),
@@ -25893,6 +25964,14 @@ def _pbc_workbench_payload(schema: AppSchema) -> dict:
                 "routes": tuple(ui.get("routes", ())),
                 "workbench_view": ui.get("workbench_view"),
                 "binds_to": ui.get("binds_to"),
+                # The package's own editable surface, so the SPA workbench
+                # renders the configuration an installer supplies and the events
+                # the block emits rather than a count of the contract's keys.
+                "configuration": dict(ui.get("configuration_editor") or {}),
+                "rules": dict(ui.get("rule_editor") or {}),
+                "events": dict(ui.get("event_surfaces") or {}),
+                "workflow_actions": tuple(ui.get("workflow_actions", ())),
+                "action_permissions": dict(ui.get("action_permissions") or {}),
                 "owned_tables": tuple(
                     table["owned_table"] for table in contract["owned_schema"]["tables"]
                 ),
@@ -25966,6 +26045,9 @@ def render_workbench(pbc, *, tenant="default", principal_permissions=()):
         {{"key": "owned_tables", "label": "Owned tables", "value": len(entry["owned_tables"])}},
         {{"key": "api_routes", "label": "Command and query APIs", "value": len(entry["apis"])}},
         {{"key": "panels", "label": "Workbench panels", "value": len(entry["panels"])}},
+        {{"key": "configuration", "label": "Configuration fields", "value": len(entry["configuration"].get("required_fields", ()))}},
+        {{"key": "rules", "label": "Rule types", "value": len(entry["rules"].get("rule_types", ()))}},
+        {{"key": "emitted_events", "label": "Emitted events", "value": len(entry["events"].get("emits", ()))}},
         {{"key": "permissions", "label": "Bound permissions", "value": len(entry["permissions"])}},
         {{"key": "outbox", "label": "Event outbox", "value": entry["outbox_table"]}},
         {{"key": "dead_letter", "label": "Dead-letter queue", "value": entry["dead_letter_table"]}},
@@ -25980,10 +26062,23 @@ def render_workbench(pbc, *, tenant="default", principal_permissions=()):
         "route": entry["route"],
         "fragments": entry["fragments"],
         "panels": entry["panels"],
+        "routes": entry["routes"],
         "workbench_view": entry["workbench_view"],
         "binds_to": entry["binds_to"],
         "owned_tables": entry["owned_tables"],
         "apis": entry["apis"],
+        "configuration": entry["configuration"],
+        "rules": entry["rules"],
+        "events": entry["events"],
+        "workflow_actions": entry["workflow_actions"],
+        "action_permissions": entry["action_permissions"],
+        "unauthorized_actions": tuple(
+            sorted(
+                action
+                for action, permission in entry["action_permissions"].items()
+                if permission not in set(principal_permissions)
+            )
+        ),
         "permissions_bound": tuple(principal_permissions),
         "cards": cards,
         "side_effects": (),
@@ -32109,10 +32204,24 @@ def _spa_contract_text(schema: AppSchema) -> str:
         "export type WorkbenchPanel = {\n"
         "  key: string\n  fragment: string\n"
         "  binds_to: readonly string[]\n  commands: readonly string[]\n}\n\n"
+        "export type WorkbenchConfiguration = {\n"
+        "  required_fields?: readonly string[]\n"
+        "  allowed_database_backends?: readonly string[]\n"
+        "  required_event_topic?: string | null\n"
+        "  stream_engine_picker_visible?: boolean\n}\n\n"
+        "export type WorkbenchRules = {\n"
+        "  rule_types?: readonly string[]\n  required_fields?: readonly string[]\n"
+        "  compiled_evidence_required?: boolean\n}\n\n"
+        "export type WorkbenchEvents = {\n"
+        "  emits?: readonly string[]\n  consumes?: readonly string[]\n"
+        "  outbox_status?: string\n  inbox_status?: string\n  dead_letter_status?: string\n}\n\n"
         "export type WorkbenchRender = {\n"
         "  ok: boolean\n  pbc: string\n  label: string\n  mesh: string\n  tenant: string\n  route: string\n"
         "  fragments: readonly string[]\n  owned_tables: readonly string[]\n"
-        "  panels: readonly WorkbenchPanel[]\n"
+        "  panels: readonly WorkbenchPanel[]\n  routes: readonly string[]\n"
+        "  configuration: WorkbenchConfiguration\n  rules: WorkbenchRules\n  events: WorkbenchEvents\n"
+        "  workflow_actions: readonly string[]\n  action_permissions: Readonly<Record<string, string>>\n"
+        "  unauthorized_actions: readonly string[]\n"
         "  apis: readonly Record<string, string>[]\n  cards: readonly WorkbenchCard[]\n}\n\n"
         f"export const TABLES: readonly TableSpec[] = {_ts_literal(tables)}\n\n"
         f"export const WORKBENCHES: readonly WorkbenchSpec[] = {_ts_literal(workbenches)}\n"

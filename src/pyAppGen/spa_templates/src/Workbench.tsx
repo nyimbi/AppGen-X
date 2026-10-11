@@ -102,6 +102,51 @@ export function Workbench({ workbench }: { workbench: WorkbenchRender }) {
         </Card>
       )}
 
+      {(workbench.configuration.required_fields?.length ?? 0) > 0 && (
+        <Card
+          title="Configuration"
+          subtitle={`${workbench.configuration.required_fields?.length ?? 0} fields`}
+        >
+          <ul className="appgen-kpi-row">
+            {workbench.configuration.required_fields?.map((field) => (
+              <li key={field}>
+                <code>{field}</code>
+              </li>
+            ))}
+          </ul>
+          {workbench.configuration.required_event_topic && (
+            <p>
+              Event topic: <code>{workbench.configuration.required_event_topic}</code>
+            </p>
+          )}
+        </Card>
+      )}
+
+      {(workbench.rules.rule_types?.length ?? 0) > 0 && (
+        <Card title="Rules" subtitle={`${workbench.rules.rule_types?.length ?? 0} types`}>
+          <ul>
+            {workbench.rules.rule_types?.map((rule) => (
+              <li key={rule}>{rule}</li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      {(workbench.events.emits?.length ?? 0) > 0 && (
+        <Card
+          title="Events"
+          subtitle={`${workbench.events.emits?.length ?? 0} emitted · ${workbench.events.consumes?.length ?? 0} consumed`}
+        >
+          <ul>
+            {workbench.events.emits?.map((event) => (
+              <li key={event}>
+                <Badge tone="info">{event}</Badge>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
       {workbench.fragments.length > 0 && (
         <Card title="Declared fragments">
           <ul>
