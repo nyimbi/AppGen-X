@@ -204,17 +204,14 @@ def test_price_promotion_engine_runtime_covers_table_stakes_and_binding_evidence
     rendered = price_promotion_engine_render_workbench(
         state,
         tenant="tenant_ops",
-        principal_permissions=(
-            "price_promotion_engine.price.write",
-            "price_promotion_engine.promotion.write",
-            "price_promotion_engine.quote",
-            "price_promotion_engine.event.consume",
-            "price_promotion_engine.configure",
-            "price_promotion_engine.audit",
-        ),
+        principal_permissions=tuple(ui_contract["action_permissions"].values()),
     )
     assert rendered["ok"] is True
     assert not rendered["locked_actions"]
+    # The empty grant is the half that proves the lock is real: with every
+    # permission withheld, every action must be locked.
+    ungranted = price_promotion_engine_render_workbench(state, tenant="tenant_ops", principal_permissions=())
+    assert set(ungranted["locked_actions"]) == set(ui_contract["action_permissions"])
     assert rendered["binding_evidence"]["owned_tables"] == PRICE_PROMOTION_ENGINE_OWNED_TABLES
     assert rendered["binding_evidence"]["tenant_counts"]["simulations"] == 1
 

@@ -264,7 +264,7 @@ def test_streaming_analytics_rejects_invalid_inputs_and_proves_boundary_and_dead
         )
     )
     assert boundary["ok"] is True
-    assert boundary["owned_tables"] == ("metric_stream", "aggregation_window", "kpi_snapshot", "dashboard_projection")
+    assert boundary["owned_tables"] == STREAMING_ANALYTICS_OWNED_TABLES
     assert boundary["runtime_tables"] == (
         "streaming_analytics_appgen_outbox_event",
         "streaming_analytics_appgen_inbox_event",

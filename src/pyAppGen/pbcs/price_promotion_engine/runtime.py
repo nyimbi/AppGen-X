@@ -2670,6 +2670,8 @@ def price_promotion_engine_permissions_contract() -> dict:
             "price_promotion_engine.price.write",
             "price_promotion_engine.promotion.write",
             "price_promotion_engine.promotion.approve",
+            "price_promotion_engine.promotion.settle",
+            "price_promotion_engine.exception.write",
             "price_promotion_engine.quote",
             "price_promotion_engine.event.consume",
             "price_promotion_engine.configure",

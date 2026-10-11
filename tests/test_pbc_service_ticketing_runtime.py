@@ -251,18 +251,14 @@ def test_service_ticketing_runtime_covers_table_stakes_and_ui_bindings() -> None
     rendered = service_ticketing_render_workbench(
         state,
         tenant="tenant_ops",
-        principal_permissions=(
-            "service_ticketing.ticket.write",
-            "service_ticketing.assignment.write",
-            "service_ticketing.escalation.write",
-            "service_ticketing.customer.update",
-            "service_ticketing.event.consume",
-            "service_ticketing.configure",
-            "service_ticketing.audit",
-        ),
+        principal_permissions=tuple(ui_contract["action_permissions"].values()),
     )
     assert rendered["ok"] is True
     assert not rendered["locked_actions"]
+    # The empty grant is the half that proves the lock is real: with every
+    # permission withheld, every action must be locked.
+    ungranted = service_ticketing_render_workbench(state, tenant="tenant_ops", principal_permissions=())
+    assert set(ungranted["locked_actions"]) == set(ui_contract["action_permissions"])
     assert rendered["binding_evidence"]["owned_tables"] == SERVICE_TICKETING_OWNED_TABLES
     assert rendered["binding_evidence"]["runtime_tables"] == SERVICE_TICKETING_RUNTIME_TABLES
     assert rendered["binding_evidence"]["eventing"]["event_contract"] == "AppGen-X"

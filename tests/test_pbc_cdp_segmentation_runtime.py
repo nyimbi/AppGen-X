@@ -105,17 +105,14 @@ def test_cdp_segmentation_runtime_applies_rules_parameters_configuration_events_
     rendered = cdp_segmentation_render_workbench(
         state,
         tenant="tenant_ops",
-        principal_permissions=(
-            "cdp_segmentation.event.write",
-            "cdp_segmentation.segment.write",
-            "cdp_segmentation.membership.evaluate",
-            "cdp_segmentation.event.consume",
-            "cdp_segmentation.configure",
-            "cdp_segmentation.audit",
-        ),
+        principal_permissions=tuple(ui_contract["action_permissions"].values()),
     )
     assert rendered["ok"] is True
     assert not rendered["locked_actions"]
+    # The empty grant is the half that proves the lock is real: with every
+    # permission withheld, every action must be locked.
+    ungranted = cdp_segmentation_render_workbench(state, tenant="tenant_ops", principal_permissions=())
+    assert set(ungranted["locked_actions"]) == set(ui_contract["action_permissions"])
     assert rendered["binding_evidence"]["owned_tables"] == CDP_SEGMENTATION_OWNED_TABLES
 
     api_contract = cdp_segmentation_build_api_contract()

@@ -206,20 +206,15 @@ def test_subscription_billing_runtime_applies_rules_parameters_configuration_and
     rendered = subscription_billing_render_workbench(
         state,
         tenant="tenant_ops",
-        principal_permissions=(
-            "subscription_billing.configure",
-            "subscription_billing.subscription",
-            "subscription_billing.usage",
-            "subscription_billing.invoice",
-            "subscription_billing.renewal",
-            "subscription_billing.dunning",
-            "subscription_billing.event",
-            "subscription_billing.audit",
-        ),
+        principal_permissions=tuple(ui_contract["action_permissions"].values()),
     )
     assert rendered["ok"] is True
     assert rendered["configuration_bound"] is True
     assert not rendered["locked_actions"]
+    # The empty grant is the half that proves the lock is real: with every
+    # permission withheld, every action must be locked.
+    ungranted = subscription_billing_render_workbench(state, tenant="tenant_ops", principal_permissions=())
+    assert set(ungranted["locked_actions"]) == set(ui_contract["action_permissions"])
     assert rendered["event_inbox_count"] == 2
 
     api_contract = subscription_billing_build_api_contract()

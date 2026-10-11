@@ -262,7 +262,7 @@ def test_loyalty_rewards_rejects_invalid_inputs_and_proves_boundary_and_dead_let
         )
     )
     assert boundary["ok"] is True
-    assert boundary["owned_tables"] == ("reward_account", "points_ledger", "earning_rule", "redemption")
+    assert boundary["owned_tables"] == LOYALTY_REWARDS_OWNED_TABLES
     assert boundary["declared_dependencies"]["shared_tables"] == ()
     assert "promotion_projection" in boundary["declared_dependencies"]["api_projections"]
     violated = loyalty_rewards_verify_owned_table_boundary(("customer_account",))
