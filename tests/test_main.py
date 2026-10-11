@@ -853,7 +853,14 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
         item["datastore_backend"] in {"postgresql", "mysql", "mariadb"}
         for item in catalog
     )
-    assert all(item["stream_processor"] in {"bytewax", "quix_streams", "faust_streaming"} for item in catalog)
+    # Ordinary PBCs take the AppGen-X event contract and expose no stream engine
+    # picker; `faust_streaming` is the platform's hidden runtime profile, not a
+    # per-PBC choice. A row may only name a processor when it carries the
+    # exception evidence that justifies departing from the default.
+    assert all(
+        item["stream_processor"] is None or item["stream_exception_evidence"]
+        for item in catalog
+    )
     assert all(item["apis"] and item["emits"] and item["tables"] for item in catalog)
     assert all(item["package_directory"] == f"pbcs/{item['pbc']}" for item in catalog)
 

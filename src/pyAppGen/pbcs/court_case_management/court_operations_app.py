@@ -62,13 +62,19 @@ def _case_number(court: str, division: str, year: int, sequence: int) -> str:
     return f"{court}-{division}-{year}-{sequence:06d}"
 
 
+def _index_key(court: str, division: str, year: int) -> str:
+    # State is published verbatim in the implementation contract, so every key
+    # in it must survive JSON round-tripping; a tuple key raises TypeError.
+    return f"{court}|{division}|{year}"
+
+
 def create_court_case(state: dict, payload: dict) -> dict:
     next_state = _copy_state(state)
     required = ("court", "division", "filing_year", "case_type", "caption")
     missing = tuple(field for field in required if not payload.get(field))
     if missing:
         return {"ok": False, "state": next_state, "reason": "missing_required_fields", "missing": missing, "side_effects": ()}
-    key = (payload["court"], payload["division"], int(payload["filing_year"]))
+    key = _index_key(payload["court"], payload["division"], int(payload["filing_year"]))
     sequence = int(payload.get("sequence") or next_state["case_number_index"].get(key, 0) + 1)
     number = payload.get("case_number") or _case_number(payload["court"], payload["division"], int(payload["filing_year"]), sequence)
     if any(case["case_number"] == number for case in next_state["cases"].values()):
