@@ -115,6 +115,31 @@ def test_the_descriptor_is_not_a_stub(key: str) -> None:
     assert descriptor["owned_tables"], key
 
 
+@pytest.mark.parametrize("key", IMPLEMENTED_PBC_KEYS)
+def test_descriptive_fields_come_from_the_package(key: str) -> None:
+    """The descriptor's label, mesh, and description are the package's.
+
+    These were read from the catalog literal, which is a second copy of a fact
+    the package owns. `description` had drifted in 22 packages (`dom`'s literal
+    still described order verification while the package had grown to a full
+    order-management suite) and `label`/`mesh` agreed by luck.
+
+    The assertion is against the *package*, not against the descriptor's own
+    fallback expression, so it fails if the read is reverted to the literal:
+    the literal disagrees with the package for 22 descriptions, so a revert
+    cannot pass. That is the regression this pins.
+    """
+    manifest = pbc._package_manifest(key)
+    descriptor = pbc._pbc_descriptor(key, pbc.PBC_CATALOG[key])
+
+    if manifest.get("label"):
+        assert descriptor["label"] == manifest["label"], key
+    if manifest.get("mesh"):
+        assert descriptor["mesh"] == manifest["mesh"], key
+    if manifest.get("description"):
+        assert descriptor["description"] == manifest["description"], key
+
+
 def test_gl_core_and_ar_credit_own_more_than_they_declare() -> None:
     """Pin the measured gap so a silent widening or narrowing fails CI.
 

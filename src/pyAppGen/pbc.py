@@ -14852,10 +14852,26 @@ def _pbc_descriptor(key: str, pbc: dict) -> dict:
     owned = _owned_tables(key)
     return {
         "pbc": key,
-        "label": pbc["label"],
-        "mesh": pbc["mesh"],
-        "mesh_label": PBC_MESHES[pbc["mesh"]]["label"],
-        "description": pbc["description"],
+        # Every descriptive field comes from the package, which is the source of
+        # truth, with the catalog literal as the fallback for an entry whose
+        # package cannot be imported. `label` and `mesh` happen to agree in all
+        # 147 today, but reading them from the package anyway means the literal
+        # is never consulted for a fact the package already carries, so there is
+        # one fewer place for the two to drift. `description` had drifted in 22
+        # packages and `template` in 3, each time because the package grew and
+        # the literal did not.
+        #
+        # `apis` is the one field still read from the literal. It feeds
+        # `_api_contract`, which generates the app's real routes, and the
+        # runtime's own `build_api_contract()` route set disagrees with it in 36
+        # packages (`gl_core` names advanced-capability endpoints the runtime
+        # does not implement; the runtime names operational `/gl/`-prefixed ones
+        # the literal omits). Choosing between two route *designs* is an API
+        # decision, not drift cleanup, so it is left for its own change.
+        "label": manifest.get("label") or pbc["label"],
+        "mesh": manifest.get("mesh") or pbc["mesh"],
+        "mesh_label": PBC_MESHES[manifest.get("mesh") or pbc["mesh"]]["label"],
+        "description": manifest.get("description") or pbc["description"],
         "datastore": f"{key}_store",
         "datastore_backend": manifest.get("datastore_backend")
         or pbc.get("datastore_backend", "postgresql"),
@@ -14870,6 +14886,10 @@ def _pbc_descriptor(key: str, pbc: dict) -> dict:
         "apis": pbc["apis"],
         "emits": emits,
         "consumes": consumes,
+        # `template` stays on the literal too. It is an optional ERP bridge key,
+        # and the drift runs both ways: `streaming_analytics` says `None` where
+        # the literal says `reporting`, so there is no superset to adopt. Which
+        # bridge a PBC maps to is a routing decision, not a stale copy.
         "template": pbc["template"],
         "package_directory": f"pbcs/{key}",
         "selectable": True,
