@@ -187,6 +187,7 @@ WORKFLOW_ORCHESTRATION_STANDARD_FEATURE_KEYS = (
     "audit_evidence",
     "package_registration_validation",
     "appgen_event_contract",
+    "standard_workflow_table_stakes_records",
 )
 
 

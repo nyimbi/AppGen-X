@@ -17,6 +17,7 @@ from pyAppGen.pbcs.workflow_orchestration import workflow_orchestration_register
 from pyAppGen.pbcs.workflow_orchestration import workflow_orchestration_ui_binding_contract
 from pyAppGen.pbcs.workflow_orchestration import workflow_orchestration_verify_owned_table_boundary
 from pyAppGen.pbc import WORKFLOW_ORCHESTRATION_ADVANCED_CAPABILITY_KEYS
+from pyAppGen.pbcs.workflow_orchestration import WORKFLOW_ORCHESTRATION_STANDARD_FEATURE_KEYS
 from pyAppGen.pbc import pbc_implemented_capability_audit
 from pyAppGen.pbc import pbc_implementation_contract
 from pyAppGen.pbc import pbc_implementation_release_audit
@@ -56,7 +57,11 @@ def test_workflow_orchestration_runtime_executes_standard_and_advanced_capabilit
     assert "workbench" in runtime["standard_features"]
     assert {"build_schema_contract", "build_service_contract", "build_release_evidence", "run_control_tests"} <= set(runtime["operations"])
     assert smoke["ok"] is True
-    assert set(WORKFLOW_ORCHESTRATION_ADVANCED_CAPABILITY_KEYS) == {check["id"] for check in smoke["checks"]}
+    # Every smoke id is pinned to a declared tier, and the advanced constant must
+    # be fully exercised; exact equality is not the platform invariant.
+    check_ids = {check["id"] for check in smoke["checks"]}
+    assert set(WORKFLOW_ORCHESTRATION_ADVANCED_CAPABILITY_KEYS) <= check_ids
+    assert check_ids <= set(WORKFLOW_ORCHESTRATION_ADVANCED_CAPABILITY_KEYS) | set(WORKFLOW_ORCHESTRATION_STANDARD_FEATURE_KEYS)
     assert not smoke["blocking_gaps"]
 
     contract = pbc_implementation_contract("workflow_orchestration")

@@ -197,6 +197,10 @@ ENTERPRISE_PIM_STANDARD_FEATURE_KEYS = (
     "workbench",
     "immutable_audit",
     "governed_model_evidence",
+    "attribute_group_option_validation_lifecycle",
+    "translation_memory_and_locale_fallback_lifecycle",
+    "relationship_bundle_variant_assortment_lifecycle",
+    "data_steward_and_exception_resolution_lifecycle",
 )
 
 _SUPPORTED_DATABASE_BACKENDS = ENTERPRISE_PIM_ALLOWED_DATABASE_BACKENDS

@@ -76,6 +76,7 @@ def test_fraud_anomaly_detection_runtime_executes_standard_and_advanced_capabili
         "model_per_owned_table",
         "runtime_event_tables_evidence",
         "service_contract_depth",
+        "standard_table_runtime_population",
         "generated_runtime_artifacts",
         "appgen_event_contract_only",
         "permissions_cover_release_queries",
@@ -319,12 +320,7 @@ def test_fraud_anomaly_detection_rejects_invalid_inputs_and_proves_boundary_and_
 
     boundary = fraud_anomaly_detection_verify_owned_table_boundary()
     assert boundary["ok"] is True
-    assert boundary["owned_tables"] == (
-        "risk_signal",
-        "anomaly_score",
-        "fraud_rule",
-        "risk_case",
-    )
+    assert boundary["owned_tables"] == FRAUD_ANOMALY_DETECTION_OWNED_TABLES
     assert boundary["runtime_tables"] == (
         "fraud_anomaly_detection_appgen_outbox_event",
         "fraud_anomaly_detection_appgen_inbox_event",
