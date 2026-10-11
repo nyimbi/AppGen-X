@@ -7,12 +7,14 @@ on:
       - "src/pyAppGen/studio_backend.py"
       - "src/pyAppGen/form_designer.py"
       - ".github/workflows/studio-browser-smoke.yml"
+      - "pyproject.toml"
   pull_request:
     paths:
       - "appgen-frontend/**"
       - "src/pyAppGen/studio_backend.py"
       - "src/pyAppGen/form_designer.py"
       - ".github/workflows/studio-browser-smoke.yml"
+      - "pyproject.toml"
   workflow_dispatch:
 
 jobs:
@@ -33,7 +35,10 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          # `pyproject.toml` requires >=3.14. This pinned 3.11, so `pip install
+          # -e .` failed here and every run of this workflow died before the
+          # smoke it exists to run.
+          python-version: "3.14"
 
       # The Studio's panels read the Python backend over `/api/studio/*`, so the
       # smoke runs both halves: `appgen studio-serve` serves the API and the

@@ -19,6 +19,7 @@ on:
       - "tests/ci/test_workbench_renders.py"
       - "tests/ci/test_generated_spa.py"
       - ".github/workflows/generated-ui-render.yml"
+      - "pyproject.toml"
   pull_request:
     paths:
       - "src/pyAppGen/gen.py"
@@ -30,6 +31,7 @@ on:
       - "tests/ci/test_workbench_renders.py"
       - "tests/ci/test_generated_spa.py"
       - ".github/workflows/generated-ui-render.yml"
+      - "pyproject.toml"
   workflow_dispatch:
 
 jobs:
@@ -43,7 +45,10 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          # `pyproject.toml` requires >=3.14. This pinned 3.12, so `pip install
+          # -e .` failed at the step below and the render step was skipped on
+          # all fifteen runs. The gate had never rendered anything.
+          python-version: "3.14"
 
       - name: Set up Node
         uses: actions/setup-node@v4
