@@ -43,8 +43,12 @@ jobs:
       # The Studio's panels read the Python backend over `/api/studio/*`, so the
       # smoke runs both halves: `appgen studio-serve` serves the API and the
       # built frontend from one process, which is how the Studio actually runs.
+      # `playwright` is a poetry dev-group dependency, so `pip install -e .`
+      # does not bring it in. The step below needs the Python package to locate
+      # the browser binary, and without it that step died at
+      # "No module named playwright" before the smoke ever ran.
       - name: Install the backend
-        run: pip install -e .
+        run: pip install -e . playwright
 
       - name: Install frontend dependencies
         working-directory: appgen-frontend
