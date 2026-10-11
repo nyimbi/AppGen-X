@@ -26,11 +26,20 @@ def contract_lifecycle_ui_contract():
 
 def contract_lifecycle_render_workbench(state=None):
     base = render_workbench(state)
+    capability = ui_capability_surface_contract()
     coverage = domain_capability_surface_contract()
     return {
         **base,
         "ok": base["ok"] and coverage["ok"],
         "pbc": PBC_KEY,
+        # The workbench renders the same capability surface the contract
+        # declares, so a screen cannot offer an action the contract omits.
+        "panels": tuple(dict.fromkeys(tuple(base.get("panels", ())) + capability["navigation_sections"])),
+        "operation_actions": capability["operation_actions"],
+        "advanced_panels": capability["advanced_panels"],
+        "edge_case_queues": capability["edge_case_queues"],
+        "table_browsers": capability["table_browsers"],
+        "agent_tools": capability["agent_tools"],
         "coverage": coverage,
     }
 

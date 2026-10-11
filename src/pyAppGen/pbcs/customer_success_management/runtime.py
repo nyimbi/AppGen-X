@@ -179,12 +179,18 @@ def customer_success_management_runtime_smoke() -> dict:
 
 
 def customer_success_management_runtime_capabilities() -> dict:
+    from .domain_depth import domain_depth_contract, domain_depth_smoke_test
+
     runtime = build_runtime_capabilities()
     smoke = customer_success_management_runtime_smoke()
+    domain = domain_depth_contract()
+    domain_smoke = domain_depth_smoke_test()
     return {
         **runtime,
-        "ok": runtime["ok"] and smoke["ok"],
-        "owned_tables": CUSTOMER_SUCCESS_MANAGEMENT_OWNED_TABLES,
+        "ok": runtime["ok"] and smoke["ok"] and domain_smoke["ok"],
+        "owned_tables": tuple(
+            dict.fromkeys(CUSTOMER_SUCCESS_MANAGEMENT_OWNED_TABLES + tuple(domain["owned_tables"]))
+        ),
         "operations": tuple(
             dict.fromkeys(
                 tuple(build_service_contract()["command_methods"] + build_service_contract()["query_methods"])
@@ -193,8 +199,21 @@ def customer_success_management_runtime_capabilities() -> dict:
                     "build_service_contract",
                     "build_release_evidence",
                 )
+                + tuple(domain["operations"])
             )
         ),
+        # The runtime's capability map carries the world-class domain-depth
+        # contract, the way every other enterprise package's does.
+        "world_class_domain_depth": domain,
+        "domain_depth_smoke": domain_smoke,
         "smoke": smoke,
         "side_effects": (),
     }
+
+
+# The package namespace re-exports the domain-depth entry points under the
+# package prefix, the way every other enterprise package's runtime does, so a
+# caller reaches them through the package rather than the submodule.
+from .domain_depth import domain_depth_contract as customer_success_management_domain_depth_contract  # noqa: E402, F401
+from .domain_depth import domain_depth_smoke_test as customer_success_management_domain_depth_smoke_test  # noqa: E402, F401
+from .domain_depth import execute_domain_operation as customer_success_management_execute_domain_operation  # noqa: E402, F401

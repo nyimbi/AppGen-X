@@ -184,7 +184,10 @@ def composed_agent_contribution():
         "dsl_tools": (
             f"{PBC_KEY}_skills",
             f"{PBC_KEY}_document_preview",
-            f"{PBC_KEY}_crud_preview",
+            # The governed datastore tool carries the platform-wide `<key>_crud`
+            # name every other package's contribution uses; the plan it returns
+            # is still a preview.
+            f"{PBC_KEY}_crud",
             f"{PBC_KEY}_routing_policy",
         ),
         "skills": tuple(item["name"] for item in skills["skills"]),

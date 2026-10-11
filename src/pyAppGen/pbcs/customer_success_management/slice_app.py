@@ -1211,8 +1211,13 @@ def build_agent_contract() -> dict[str, Any]:
             {
                 "name": f"{PBC_KEY}_{skill}",
                 "scope": PBC_KEY,
+                # Guidance and reading reach no mutating action, so they have
+                # nothing to confirm; every other skill declares the CRUD
+                # actions it may reach and asks before it reaches them.
+                "allowed_crud_actions": ("read",) if skill in {"guide_user", "read_records"} else ("create", "read", "update"),
                 "requires_confirmation_for_mutation": skill not in {"guide_user", "read_records"},
                 "uses_appgen_event_contract": True,
+                "stream_engine_picker_visible": False,
             }
             for skill in skills
         ),

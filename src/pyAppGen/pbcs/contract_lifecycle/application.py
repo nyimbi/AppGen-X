@@ -1399,8 +1399,10 @@ def agent_skill_manifest() -> dict:
                 "name": f"{PBC_KEY}_{operation}",
                 "scope": PBC_KEY,
                 "description": f"{operation.replace('_', ' ')} assistant for contract lifecycle operators",
+                "allowed_crud_actions": ("create", "read", "update"),
                 "requires_confirmation_for_mutation": True,
                 "uses_appgen_event_contract": True,
+                "stream_engine_picker_visible": False,
                 "target_table": spec["target_table"],
             }
         )
@@ -1410,16 +1412,22 @@ def agent_skill_manifest() -> dict:
                 "name": f"{PBC_KEY}_read_records",
                 "scope": PBC_KEY,
                 "description": "Read owned contract lifecycle records",
+                # A read-only skill reaches no mutating action, so it declares
+                # only `read` and has nothing to confirm.
+                "allowed_crud_actions": ("read",),
                 "requires_confirmation_for_mutation": False,
                 "uses_appgen_event_contract": True,
+                "stream_engine_picker_visible": False,
                 "target_table": "contract_lifecycle_contract_record",
             },
             {
                 "name": f"{PBC_KEY}_document_instruction",
                 "scope": PBC_KEY,
                 "description": "Parse contract document instructions into governed CRUD previews",
+                "allowed_crud_actions": ("create", "read", "update"),
                 "requires_confirmation_for_mutation": True,
                 "uses_appgen_event_contract": True,
+                "stream_engine_picker_visible": False,
                 "target_table": "contract_lifecycle_contract_record",
             },
         )

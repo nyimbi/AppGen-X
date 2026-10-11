@@ -223,6 +223,18 @@ def operation_to_event(operation: str) -> str | None:
     return OPERATION_EVENT_MAP.get(operation)
 
 
+DOMAIN_EDGE_CASES = tuple(f"{operation}_edge_case" for operation in DOMAIN_OPERATIONS) + (
+    "duplicate_submission",
+    "stale_reference_data",
+    "missing_required_evidence",
+    "policy_conflict",
+    "approval_deadlock",
+    "cross_tenant_access_attempt",
+    "idempotency_replay",
+    "dead_letter_recovery",
+)
+
+
 def domain_depth_contract() -> dict:
     return {
         "format": f"appgen.{PBC_KEY}.domain-depth.v2",
@@ -311,6 +323,7 @@ def domain_capability_surface_contract() -> dict:
             "target_table": operation_to_table(operation),
             "permission": f"{PBC_KEY}.update",
             "requires_confirmation": operation not in {"classify_case", "route_case_queue"},
+            "agent_tool": f"{PBC_KEY}_skills.{operation}",
             "event": operation_to_event(operation),
         }
         for operation in DOMAIN_OPERATIONS
@@ -355,6 +368,14 @@ def domain_capability_surface_contract() -> dict:
             }
             for capability in DOMAIN_ADVANCED_CAPABILITIES
         ),
+        "edge_case_surfaces": tuple(
+            {
+                "edge_case": edge_case,
+                "surface": f"{PBC_KEY}.ui.edge_case.{edge_case}",
+                "triage_queue": True,
+            }
+            for edge_case in DOMAIN_EDGE_CASES
+        ),
         "coverage_counts": {
             "operations": len(operation_surfaces),
             "rules": len(DOMAIN_RULES),
@@ -381,7 +402,11 @@ def ui_capability_surface_contract() -> dict:
             "cases",
             "knowledge_studio",
             "quality_and_freshness",
+            "specialist_capabilities",
+            "advanced_intelligence",
+            "edge_case_triage",
             "rules_and_parameters",
+            "configuration",
             "agent_assistant",
             "release_evidence",
         ),
@@ -389,7 +414,9 @@ def ui_capability_surface_contract() -> dict:
         "rule_editors": tuple(item["rule"] for item in surface["rule_surfaces"]),
         "parameter_editors": tuple(item["parameter"] for item in surface["parameter_surfaces"]),
         "advanced_panels": tuple(item["capability"] for item in surface["advanced_surfaces"]),
+        "edge_case_queues": tuple(item["edge_case"] for item in surface["edge_case_surfaces"]),
         "table_browsers": tuple(item["owned_table"] for item in surface["table_surfaces"]),
+        "agent_tools": tuple(item["agent_tool"] for item in surface["operation_surfaces"]),
         "forms": WORKBENCH_FORMS,
         "wizards": WORKBENCH_WIZARDS,
         "controls": WORKBENCH_CONTROLS,

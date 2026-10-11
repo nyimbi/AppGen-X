@@ -180,6 +180,28 @@ def contract_lifecycle_runtime_smoke():
 
 
 def contract_lifecycle_runtime_capabilities():
+    from .domain_depth import domain_depth_contract, domain_depth_smoke_test
+
     runtime = runtime_capabilities()
     smoke = contract_lifecycle_runtime_smoke()
-    return {**runtime, "ok": runtime["ok"] and smoke["ok"], "smoke": smoke}
+    domain = domain_depth_contract()
+    domain_smoke = domain_depth_smoke_test()
+    return {
+        **runtime,
+        "ok": runtime["ok"] and smoke["ok"] and domain_smoke["ok"],
+        "smoke": smoke,
+        # The runtime's capability map carries the world-class domain-depth
+        # contract, the way every other enterprise package's does.
+        "world_class_domain_depth": domain,
+        "domain_depth_smoke": domain_smoke,
+        "operations": tuple(dict.fromkeys(tuple(runtime.get("operations", ())) + tuple(domain["operations"]))),
+        "owned_tables": tuple(dict.fromkeys(tuple(runtime.get("owned_tables", ())) + tuple(domain["owned_tables"]))),
+    }
+
+
+# The package namespace re-exports the domain-depth entry points under the
+# package prefix, the way every other enterprise package's runtime does, so a
+# caller reaches them through the package rather than the submodule.
+from .domain_depth import domain_depth_contract as contract_lifecycle_domain_depth_contract  # noqa: E402, F401
+from .domain_depth import domain_depth_smoke_test as contract_lifecycle_domain_depth_smoke_test  # noqa: E402, F401
+from .domain_depth import execute_domain_operation as contract_lifecycle_execute_domain_operation  # noqa: E402, F401

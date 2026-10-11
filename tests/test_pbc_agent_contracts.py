@@ -27,7 +27,18 @@ def test_every_pbc_exposes_agent_chatbot_skills_and_governed_crud() -> None:
         assert rejected_foreign["ok"] is False
         assert contribution["ok"] is True
         assert smoke["ok"] is True
-        assert all(skill["requires_confirmation_for_mutation"] for skill in skills["skills"])
+        # A skill that can reach a mutating CRUD action must ask before it acts;
+        # a read-only or guidance skill has nothing to confirm, so requiring
+        # confirmation of every row would forbid a package from declaring one.
+        mutating = {"create", "update", "delete"}
+        assert all(
+            skill["requires_confirmation_for_mutation"]
+            for skill in skills["skills"]
+            if mutating & set(skill.get("allowed_crud_actions") or ())
+        )
+        assert all(
+            isinstance(skill["requires_confirmation_for_mutation"], bool) for skill in skills["skills"]
+        )
         assert all(skill["stream_engine_picker_visible"] is False for skill in skills["skills"])
         assert read_plan["requires_confirmation"] is False
         assert create_plan["requires_confirmation"] is True

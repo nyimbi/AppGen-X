@@ -283,13 +283,17 @@ def case_knowledge_management_runtime_smoke() -> dict:
 
 
 def case_knowledge_management_runtime_capabilities() -> dict:
+    from .domain_depth import domain_depth_contract, domain_depth_smoke_test
+
     smoke = case_knowledge_management_runtime_smoke()
+    domain = domain_depth_contract()
+    domain_smoke = domain_depth_smoke_test()
     return {
         "format": "appgen.case-knowledge-management-runtime-capabilities.v2",
-        "ok": smoke["ok"],
+        "ok": smoke["ok"] and domain_smoke["ok"],
         "pbc": PBC_KEY,
         "implementation_directory": "src/pyAppGen/pbcs/case_knowledge_management",
-        "owned_tables": OWNED_TABLES,
+        "owned_tables": tuple(dict.fromkeys(OWNED_TABLES + tuple(domain["owned_tables"]))),
         "allowed_database_backends": ALLOWED_DATABASE_BACKENDS,
         "required_event_topic": REQUIRED_EVENT_TOPIC,
         "capabilities": CASE_KNOWLEDGE_MANAGEMENT_RUNTIME_CAPABILITY_KEYS,
@@ -314,6 +318,18 @@ def case_knowledge_management_runtime_capabilities() -> dict:
             *DOMAIN_OPERATIONS,
         ),
         "domain_advanced_capabilities": DOMAIN_ADVANCED_CAPABILITIES,
+        # The runtime's capability map carries the world-class domain-depth
+        # contract, the way every other enterprise package's does.
+        "world_class_domain_depth": domain,
+        "domain_depth_smoke": domain_smoke,
         "smoke": smoke,
         "side_effects": (),
     }
+
+
+# The package namespace re-exports the domain-depth entry points under the
+# package prefix, the way every other enterprise package's runtime does, so a
+# caller reaches them through the package rather than the submodule.
+from .domain_depth import domain_depth_contract as case_knowledge_management_domain_depth_contract  # noqa: E402, F401
+from .domain_depth import domain_depth_smoke_test as case_knowledge_management_domain_depth_smoke_test  # noqa: E402, F401
+from .domain_depth import execute_domain_operation as case_knowledge_management_execute_domain_operation  # noqa: E402, F401
