@@ -97,11 +97,33 @@ def normalize_type(sql_type: str) -> str:
 def _split_columns(body: str) -> list[str]:
     """Split a table body into column definitions.
 
-    Column definitions contain no parentheses beyond a type's own width, so a
-    split on newlines is exact for this generator's output; the width's comma
-    is inside parentheses and never at a line start.
+    The packages write their DDL two ways. 70 of 147 put one column per line;
+    the other 77 put the whole ``CREATE TABLE`` on a single line. Splitting on
+    newlines reads the second shape as one statement, so ``_COLUMN`` matches its
+    leading ``id TEXT`` and silently drops the other seven columns, which is how
+    a `clinical_care_coordination_patient_care_plan` came to have no patient and
+    no plan.
+
+    A split on commas at parenthesis depth zero reads both. A type's own width
+    carries a comma (`NUMERIC(10, 2)`) and a table-level `PRIMARY KEY (a, b)`
+    does too, so depth is tracked rather than assumed absent; the newline split
+    was exact only for the layout it was written against.
     """
-    return [line.strip().rstrip(",") for line in body.splitlines() if line.strip()]
+    statements: list[str] = []
+    depth = 0
+    current: list[str] = []
+    for character in body:
+        if character == "(":
+            depth += 1
+        elif character == ")":
+            depth -= 1
+        if character == "," and depth == 0:
+            statements.append("".join(current))
+            current = []
+            continue
+        current.append(character)
+    statements.append("".join(current))
+    return [statement.strip() for statement in statements if statement.strip()]
 
 
 def parse_migration(text: str) -> dict[str, dict]:
