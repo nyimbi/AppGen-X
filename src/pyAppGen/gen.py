@@ -13,6 +13,21 @@ from pathlib import Path
 import click
 from sqlalchemy import create_engine
 from sqlalchemy import MetaData
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Date,
+    DateTime,
+    Float,
+    Integer,
+    Interval,
+    JSON,
+    LargeBinary,
+    Numeric,
+    String,
+    Text,
+    Time,
+)
 
 try:
     from sqlalchemy.orm import declarative_base
@@ -37,7 +52,6 @@ from .schema import normalize_platform_targets
 from .schema import schema_from_metadata
 from .schema import schema_source_contract
 from .schema import schema_source_example_audit
-from .utils import map_pgsql_datatypes
 from .utils import snake_to_label
 from .utils import snake_to_pascal
 from .utils import update_config_setting
@@ -48,6 +62,12 @@ Base = ''
 engine = ''
 
 REF_TYPE_MIXIN_FIELDS = ["name", "code", "description", "notes"]
+
+# Attribute names the SQLAlchemy Declarative API claims for itself. A class
+# attribute of one of these names raises `InvalidRequestError` at class-creation
+# time, so the attribute is suffixed and the column keeps its database name.
+_DECLARATIVE_RESERVED = frozenset({"metadata"})
+
 REF_TYPE_MIXIN_FIELDSET = [
     {
         "label": "Identification",
@@ -322,6 +342,51 @@ def generate_view_code(schema: AppSchema | None = None):
     return "\n".join(output)
 
 
+def _fab_type_expression(column) -> str:
+    """Return the Python expression naming a column's SQLAlchemy type.
+
+    The emitted `models.py` is source code, so the type has to be a *name the
+    file can resolve*, not a string the database dialect happens to print. The
+    emitter used to lower-case a dialect-compiled spelling and pass it through
+    `map_pgsql_datatypes`, a legacy Postgres-only string mapper. That produced
+    three unusable results:
+
+    * `DATETIME` (what SQLite prints) fell through every branch and came back
+      as the lowercase `datetime`, so the file asked for the *module*;
+      `Column(datetime, ...)` raises `ArgumentError`.
+    * `timestamp` returned `"DateTime, server_default=text('NOW())'"`, whose
+      parentheses never balance: the file is a `SyntaxError`.
+    * `numeric(18, 4)`, `serial`, and `character varying(255)` came back as
+      themselves, and `BigInteger`/`Currency` as names the header never imports.
+
+    Reading the type object instead is exact: `to_metadata` already built these
+    columns through `schema.sqlalchemy_type`, so the object in hand is the
+    answer, and every name below is imported by `write_model_file`'s header.
+
+    The order matters: SQLAlchemy's `BigInteger` subclasses `Integer`, `Text`
+    subclasses `String`, and `Float` subclasses `Numeric`, so the narrower type
+    has to be tested first or the broader one swallows it.
+    """
+    for candidate, name in (
+        (Boolean, "Boolean"),
+        (BigInteger, "BigInteger"),
+        (Integer, "Integer"),
+        (Float, "Float"),
+        (Numeric, "Numeric"),
+        (DateTime, "DateTime"),
+        (Date, "Date"),
+        (Time, "Time"),
+        (Interval, "Interval"),
+        (LargeBinary, "LargeBinary"),
+        (JSON, "JSON"),
+        (Text, "Text"),
+        (String, "String"),
+    ):
+        if isinstance(column.type, candidate):
+            return name
+    return "String"
+
+
 def generate_model_code(schema: AppSchema | None = None):
     output = []
     enum_values = {enum.name: tuple(enum.values) for enum in schema.enums} if schema else {}
@@ -353,42 +418,56 @@ def generate_model_code(schema: AppSchema | None = None):
                 )
         return None, None
 
-    def render_column(column):
+    def render_column(column, attribute_name):
         schema_column = schema_columns.get((column.table.name, column.name))
         if schema_column is not None and schema_column.type_name in enum_values:
             values = ", ".join(repr(value) for value in enum_values[schema_column.type_name])
             fab_column_type = f"Enum({values}, name='{underscore(schema_column.type_name)}_enum')"
         else:
-            column_type = column.type.compile(engine.dialect)
-            fab_column_type = map_pgsql_datatypes(column_type.lower())
+            fab_column_type = _fab_type_expression(column)
         fk, remote_table = get_relationship_type(column.table, column)
+        # `metadata` is reserved by the Declarative API: a class attribute of
+        # that name raises `InvalidRequestError` at class-creation time, so
+        # `dom_order_channel_context.metadata` made the whole generated module
+        # unimportable. Naming the column explicitly keeps its real database
+        # name while the attribute carries the suffix.
+        explicit = f"'{column.name}', " if attribute_name != column.name else ""
 
         if fk == "One-to-Many":
             return (
-                f"Column({fab_column_type}, ForeignKey('{remote_table}.id'), "
+                f"Column({explicit}{fab_column_type}, ForeignKey('{remote_table}.id'), "
                 f"nullable={column.nullable})",
                 underscore(remote_table),
             )
         elif fk == "One-to-One":
             return (
-                f"Column({fab_column_type}, ForeignKey('{remote_table}.id'), "
+                f"Column({explicit}{fab_column_type}, ForeignKey('{remote_table}.id'), "
                 f"nullable={column.nullable}, unique=True)",
                 underscore(remote_table),
             )
         elif fk == "Many-to-Many":
             return (
-                f"Column({fab_column_type}, ForeignKey('{remote_table}.id'), "
+                f"Column({explicit}{fab_column_type}, ForeignKey('{remote_table}.id'), "
                 f"primary_key=True, nullable={column.nullable})",
                 underscore(remote_table),
             )
         elif column.primary_key:
+            # `autoincrement` is deliberately not written. SQLAlchemy infers it
+            # for a single integer primary key (emitting SERIAL) and declines it
+            # otherwise, which is exactly right in both cases; stating it
+            # explicitly overrides that inference and breaks two real shapes:
+            # a TEXT key (`Column type TEXT ... is not compatible with
+            # autoincrement=True`, 313 tables) and a composite integer key
+            # (`Only one Column may be marked autoincrement=True`). Both raise
+            # from `Model.metadata.create_all`, which `flask fab create-db`
+            # calls, so the generated app could not create its own schema.
             return (
-                f"Column({fab_column_type}, primary_key=True, "
-                f"nullable={column.nullable}, autoincrement=True)",
+                f"Column({explicit}{fab_column_type}, primary_key=True, "
+                f"nullable={column.nullable})",
                 None,
             )
         else:
-            return f"Column({fab_column_type}, nullable={column.nullable})", None
+            return f"Column({explicit}{fab_column_type}, nullable={column.nullable})", None
 
     for table_name, table in metadata.tables.items():
         class_name = snake_to_pascal(table_name)
@@ -401,12 +480,16 @@ def generate_model_code(schema: AppSchema | None = None):
 
         primary_key_exists = any(column.primary_key for column in table.columns)
         if not primary_key_exists:
-            print(table_name, 'NO PRIMARY KEY')
-            output.append("    id = Column(Integer, primary_key=True, nullable=False, autoincrement=True)")
+            # A table with no key gets a surrogate one. SQLAlchemy infers
+            # autoincrement from the integer type, so it is not stated here
+            # either, and the inferred form is what emits SERIAL.
+            output.append("    id = Column(Integer, primary_key=True, nullable=False)")
 
         for column in table.columns:
             column_name = underscore(column.name)
-            column_def, col_type = render_column(column)
+            if column_name in _DECLARATIVE_RESERVED:
+                column_name = f"{column_name}_"
+            column_def, col_type = render_column(column, column_name)
             if col_type is not None:
                 column_name = col_type
             output.append(f"    {column_name} = {column_def}")
@@ -431,8 +514,9 @@ def write_model_file(output_dir, schema: AppSchema | None = None):
     model_code = generate_model_code(schema)   # TODO change this to a template
     with open(output_dir / "models.py", "w") as f:
         f.write(
-            "from sqlalchemy import (Column, Integer, String, ForeignKey, "
-            "DateTime, Boolean, Float, Text, Date, Time, Numeric, Interval, Enum)\n"
+            "from sqlalchemy import (Column, Integer, BigInteger, String, ForeignKey, "
+            "DateTime, Boolean, Float, Text, Date, Time, Numeric, Interval, Enum, "
+            "LargeBinary, JSON)\n"
         )
         f.write("from sqlalchemy.orm import relationship, backref\n")
         f.write("from sqlalchemy.ext.associationproxy import association_proxy\n")
