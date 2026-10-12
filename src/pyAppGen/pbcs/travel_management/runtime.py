@@ -167,7 +167,7 @@ def travel_management_build_schema_contract():
          'owned_by': 'travel_management'}
         for table in TRAVEL_MANAGEMENT_OWNED_TABLES
     )
-    return {'format': 'appgen.travel-management-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/travel_management/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': TRAVEL_MANAGEMENT_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': TRAVEL_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'database_backends': TRAVEL_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': TRAVEL_MANAGEMENT_OWNED_TABLES}
+    return {'format': 'appgen.travel-management-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/travel_management/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': TRAVEL_MANAGEMENT_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(TRAVEL_MANAGEMENT_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _travel_management_table_fields(table)} for table in TRAVEL_MANAGEMENT_OWNED_TABLES), 'datastore_backends': TRAVEL_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'database_backends': TRAVEL_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': TRAVEL_MANAGEMENT_OWNED_TABLES}
 
 
 def travel_management_build_service_contract():
@@ -297,19 +297,21 @@ def travel_management_build_schema_contract():
         'owned_tables': tuple(table['table'] for table in tables),
         'migrations': tuple(schema.get('migrations', ())) + tuple(
             {
-                'path': f'pbcs/travel_management/migrations/domain_{index:03d}_{table["table"]}.sql',
+                'path': f'pbcs/travel_management/migrations/domain_{index:03d}_{table}.sql',
                 'operation': 'create_owned_table',
-                'table': table['table'],
+                'table': table,
                 'backend_allowlist': TRAVEL_MANAGEMENT_ALLOWED_DATABASE_BACKENDS,
             }
-            for index, table in enumerate(additions, start=1)
+            for index, table in enumerate(domain_depth_contract()['owned_tables'], start=1)
+            if table not in existing
         ),
         'models': tuple(schema.get('models', ())) + tuple(
             {
-                'class_name': ''.join(part.capitalize() for part in table['table'].split('_')),
-                'table': table['table'],
-                'fields': table['fields'],
+                'class_name': ''.join(part.capitalize() for part in table.split('_')),
+                'table': table,
+                'fields': _travel_management_table_fields(table),
             }
-            for table in additions
+            for table in domain_depth_contract()['owned_tables']
+            if table not in existing
         ),
     }
