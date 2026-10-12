@@ -27,7 +27,8 @@ CREATE TABLE clinical_care_coordination_patient_care_plan (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (patient_care_plan_id));
 
 CREATE TABLE clinical_care_coordination_care_team (
   id INTEGER PRIMARY KEY NOT NULL,

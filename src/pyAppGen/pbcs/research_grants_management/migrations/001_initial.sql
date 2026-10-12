@@ -27,7 +27,8 @@ CREATE TABLE research_grants_management_grant_proposal (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (grant_proposal_id));
 
 CREATE TABLE research_grants_management_research_award (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -53,7 +54,8 @@ CREATE TABLE research_grants_management_research_award (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (grant_proposal_id) REFERENCES research_grants_management_grant_proposal(grant_proposal_id)
-);
+,
+  UNIQUE (research_award_id));
 
 CREATE TABLE research_grants_management_sponsor_budget (
   id INTEGER PRIMARY KEY NOT NULL,

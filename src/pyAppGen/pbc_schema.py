@@ -43,7 +43,7 @@ _CREATE_TABLE = re.compile(
     r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([A-Za-z0-9_]+)\s*\((.*?)\)\s*;",
     re.DOTALL | re.IGNORECASE,
 )
-_COLUMN = re.compile(r"^([A-Za-z0-9_]+)\s+([A-Za-z]+(?:\s*\([0-9,\s]+\))?)")
+_COLUMN = re.compile(r'^("?)([A-Za-z0-9_]+)\1\s+([A-Za-z]+(?:\s*\([0-9,\s]+\))?)')
 _TABLE_PRIMARY_KEY = re.compile(r"PRIMARY\s+KEY\s*\(([^)]*)\)", re.IGNORECASE)
 _TABLE_FOREIGN_KEY = re.compile(
     r"FOREIGN\s+KEY\s*\(([^)]*)\)\s*REFERENCES\s+([A-Za-z0-9_]+)\s*\(([^)]*)\)",
@@ -163,7 +163,7 @@ def parse_migration(text: str) -> dict[str, dict]:
             match = _COLUMN.match(statement)
             if not match:
                 continue
-            name, sql_type = match.group(1), match.group(2)
+            name, sql_type = match.group(2), match.group(3)
             upper = statement.upper()
             fields.append(
                 {

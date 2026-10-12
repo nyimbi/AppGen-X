@@ -31,7 +31,8 @@ CREATE TABLE medical_device_lifecycle_medical_device (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (medical_device_id));
 
 CREATE TABLE medical_device_lifecycle_device_assignment (
   id INTEGER PRIMARY KEY NOT NULL,

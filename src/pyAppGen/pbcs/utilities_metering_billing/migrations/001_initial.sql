@@ -35,7 +35,8 @@ CREATE TABLE utilities_metering_billing_meter_read (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (meter_read_id));
 
 CREATE TABLE utilities_metering_billing_usage_interval (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -100,7 +101,8 @@ CREATE TABLE utilities_metering_billing_tariff (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (tariff_id));
 
 CREATE TABLE utilities_metering_billing_service_order (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -168,7 +170,8 @@ CREATE TABLE utilities_metering_billing_utility_bill (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (utility_bill_id));
 
 CREATE TABLE utilities_metering_billing_billing_adjustment (
   id INTEGER PRIMARY KEY NOT NULL,

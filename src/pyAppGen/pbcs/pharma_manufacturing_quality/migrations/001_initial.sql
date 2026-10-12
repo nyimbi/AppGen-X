@@ -26,7 +26,8 @@ CREATE TABLE pharma_manufacturing_quality_pharma_batch (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (pharma_batch_id));
 
 CREATE TABLE pharma_manufacturing_quality_master_batch_record (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -99,7 +100,8 @@ CREATE TABLE pharma_manufacturing_quality_deviation (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (pharma_batch_id) REFERENCES pharma_manufacturing_quality_pharma_batch(pharma_batch_id)
-);
+,
+  UNIQUE (deviation_id));
 
 CREATE TABLE pharma_manufacturing_quality_capa (
   id INTEGER PRIMARY KEY NOT NULL,

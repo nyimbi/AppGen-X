@@ -27,7 +27,8 @@ CREATE TABLE mining_operations_management_mine_plan (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (mine_plan_id));
 
 CREATE TABLE mining_operations_management_pit_block (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -64,7 +65,8 @@ CREATE TABLE mining_operations_management_pit_block (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (mine_plan_id) REFERENCES mining_operations_management_mine_plan(mine_plan_id)
-);
+,
+  UNIQUE (pit_block_id));
 
 CREATE TABLE mining_operations_management_extraction_shift (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -98,7 +100,8 @@ CREATE TABLE mining_operations_management_extraction_shift (
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (mine_plan_id) REFERENCES mining_operations_management_mine_plan(mine_plan_id),
   FOREIGN KEY (pit_block_id) REFERENCES mining_operations_management_pit_block(pit_block_id)
-);
+,
+  UNIQUE (extraction_shift_id));
 
 CREATE TABLE mining_operations_management_haulage_cycle (
   id INTEGER PRIMARY KEY NOT NULL,

@@ -25,7 +25,8 @@ CREATE TABLE smart_city_mobility_operations_transit_service (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (transit_service_id));
 
 CREATE TABLE smart_city_mobility_operations_parking_asset (
   id INTEGER PRIMARY KEY NOT NULL,

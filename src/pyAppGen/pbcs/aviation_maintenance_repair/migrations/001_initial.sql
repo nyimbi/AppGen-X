@@ -22,7 +22,8 @@ CREATE TABLE aviation_maintenance_repair_aircraft (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (tail_number));
 
 CREATE TABLE aviation_maintenance_repair_component (
   id INTEGER PRIMARY KEY NOT NULL,

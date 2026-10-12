@@ -15,7 +15,7 @@ CREATE TABLE master_data_governance_master_record (
 CREATE TABLE master_data_governance_golden_record (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  master_record_id INTEGER NOT NULL,
+  master_record_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
@@ -42,7 +42,7 @@ CREATE TABLE master_data_governance_match_candidate (
 CREATE TABLE master_data_governance_merge_decision (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  master_record_id INTEGER NOT NULL,
+  master_record_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
@@ -97,7 +97,7 @@ CREATE TABLE master_data_governance_stewardship_task (
 CREATE TABLE master_data_governance_downstream_sync_event (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  master_record_id INTEGER NOT NULL,
+  master_record_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,

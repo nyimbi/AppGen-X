@@ -33,7 +33,8 @@ CREATE TABLE gaming_casino_operations_player_profile (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (player_profile_id));
 
 CREATE TABLE gaming_casino_operations_table_game (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -134,7 +135,8 @@ CREATE TABLE gaming_casino_operations_wager_session (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (player_profile_id) REFERENCES gaming_casino_operations_player_profile(player_profile_id)
-);
+,
+  UNIQUE (wager_session_id));
 
 CREATE TABLE gaming_casino_operations_payout (
   id INTEGER PRIMARY KEY NOT NULL,

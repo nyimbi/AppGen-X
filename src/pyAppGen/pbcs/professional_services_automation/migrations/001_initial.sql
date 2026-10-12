@@ -26,6 +26,29 @@ CREATE TABLE professional_services_automation_client_engagement (
   updated_at TIMESTAMP NOT NULL
 );
 
+CREATE TABLE professional_services_automation_engagement (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  engagement_id VARCHAR(255) NOT NULL,
+  engagement_code VARCHAR(255) NOT NULL,
+  engagement_name VARCHAR(255) NOT NULL,
+  engagement_type VARCHAR(255) NOT NULL,
+  lifecycle_state VARCHAR(255) NOT NULL,
+  client_reference VARCHAR(255) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  contract_value DECIMAL(18, 4) NOT NULL,
+  start_date TIMESTAMP,
+  end_date TIMESTAMP,
+  code VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  payload TEXT,
+  effective_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+,
+  UNIQUE (engagement_id));
+
 CREATE TABLE professional_services_automation_statement_of_work (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
@@ -56,7 +79,7 @@ CREATE TABLE professional_services_automation_statement_of_work (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (client_engagement_id) REFERENCES professional_services_automation_client_engagement(id),
-  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(id)
+  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(engagement_id)
 );
 
 CREATE TABLE professional_services_automation_engagement_staffing (
@@ -190,7 +213,7 @@ CREATE TABLE professional_services_automation_utilization_snapshot (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (client_engagement_id) REFERENCES professional_services_automation_client_engagement(id),
-  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(id)
+  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(engagement_id)
 );
 
 CREATE TABLE professional_services_automation_engagement_margin (
@@ -236,7 +259,7 @@ CREATE TABLE professional_services_automation_appgen_outbox_event (
   effective_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(id),
+  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(engagement_id),
   FOREIGN KEY (client_engagement_id) REFERENCES professional_services_automation_client_engagement(id)
 );
 
@@ -257,7 +280,7 @@ CREATE TABLE professional_services_automation_appgen_inbox_event (
   effective_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(id),
+  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(engagement_id),
   FOREIGN KEY (client_engagement_id) REFERENCES professional_services_automation_client_engagement(id)
 );
 
@@ -278,30 +301,8 @@ CREATE TABLE professional_services_automation_appgen_dead_letter_event (
   effective_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(id),
+  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(engagement_id),
   FOREIGN KEY (client_engagement_id) REFERENCES professional_services_automation_client_engagement(id)
-);
-
-CREATE TABLE professional_services_automation_engagement (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  engagement_id VARCHAR(255) NOT NULL,
-  engagement_code VARCHAR(255) NOT NULL,
-  engagement_name VARCHAR(255) NOT NULL,
-  engagement_type VARCHAR(255) NOT NULL,
-  lifecycle_state VARCHAR(255) NOT NULL,
-  client_reference VARCHAR(255) NOT NULL,
-  currency VARCHAR(255) NOT NULL,
-  contract_value DECIMAL(18, 4) NOT NULL,
-  start_date TIMESTAMP,
-  end_date TIMESTAMP,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
 );
 
 CREATE TABLE professional_services_automation_engagement_role (
@@ -327,7 +328,7 @@ CREATE TABLE professional_services_automation_engagement_role (
   effective_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(id)
+  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(engagement_id)
 );
 
 CREATE TABLE professional_services_automation_consultant_skill_profile (
@@ -354,7 +355,7 @@ CREATE TABLE professional_services_automation_consultant_skill_profile (
   effective_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(id)
+  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(engagement_id)
 );
 
 CREATE TABLE professional_services_automation_staffing_request (
@@ -381,7 +382,7 @@ CREATE TABLE professional_services_automation_staffing_request (
   effective_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(id)
+  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(engagement_id)
 );
 
 CREATE TABLE professional_services_automation_staffing_assignment (
@@ -409,7 +410,7 @@ CREATE TABLE professional_services_automation_staffing_assignment (
   effective_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(id)
+  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(engagement_id)
 );
 
 CREATE TABLE professional_services_automation_time_entry (
@@ -438,7 +439,7 @@ CREATE TABLE professional_services_automation_time_entry (
   effective_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(id)
+  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(engagement_id)
 );
 
 CREATE TABLE professional_services_automation_expense_link (
@@ -465,7 +466,7 @@ CREATE TABLE professional_services_automation_expense_link (
   effective_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(id)
+  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(engagement_id)
 );
 
 CREATE TABLE professional_services_automation_milestone (
@@ -492,7 +493,7 @@ CREATE TABLE professional_services_automation_milestone (
   effective_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(id)
+  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(engagement_id)
 );
 
 CREATE TABLE professional_services_automation_deliverable (
@@ -519,7 +520,7 @@ CREATE TABLE professional_services_automation_deliverable (
   effective_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(id)
+  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(engagement_id)
 );
 
 CREATE TABLE professional_services_automation_billing_schedule (
@@ -546,7 +547,7 @@ CREATE TABLE professional_services_automation_billing_schedule (
   effective_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(id)
+  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(engagement_id)
 );
 
 CREATE TABLE professional_services_automation_billing_readiness_check (
@@ -572,7 +573,7 @@ CREATE TABLE professional_services_automation_billing_readiness_check (
   effective_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(id)
+  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(engagement_id)
 );
 
 CREATE TABLE professional_services_automation_margin_forecast (
@@ -598,7 +599,7 @@ CREATE TABLE professional_services_automation_margin_forecast (
   effective_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(id)
+  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(engagement_id)
 );
 
 CREATE TABLE professional_services_automation_delivery_risk (
@@ -624,7 +625,7 @@ CREATE TABLE professional_services_automation_delivery_risk (
   effective_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(id)
+  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(engagement_id)
 );
 
 CREATE TABLE professional_services_automation_client_acceptance (
@@ -651,7 +652,7 @@ CREATE TABLE professional_services_automation_client_acceptance (
   effective_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(id)
+  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(engagement_id)
 );
 
 CREATE TABLE professional_services_automation_engagement_exception_case (
@@ -677,7 +678,7 @@ CREATE TABLE professional_services_automation_engagement_exception_case (
   effective_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(id)
+  FOREIGN KEY (engagement_id) REFERENCES professional_services_automation_engagement(engagement_id)
 );
 
 CREATE TABLE professional_services_automation_psa_policy_rule (

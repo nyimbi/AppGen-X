@@ -43,7 +43,8 @@ CREATE TABLE trade_finance_operations_letter_of_credit (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (letter_of_credit_id));
 
 CREATE TABLE trade_finance_operations_bank_guarantee (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -104,7 +105,8 @@ CREATE TABLE trade_finance_operations_documentary_collection (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (documentary_collection_id));
 
 CREATE TABLE trade_finance_operations_trade_document (
   id INTEGER PRIMARY KEY NOT NULL,

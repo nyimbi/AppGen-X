@@ -45,7 +45,8 @@ CREATE TABLE lease_lending_equipment_finance_equipment_lease (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (equipment_lease_id));
 
 CREATE TABLE lease_lending_equipment_finance_leased_asset (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -206,7 +207,7 @@ CREATE TABLE lease_lending_equipment_finance_lease_servicing_event (
   FOREIGN KEY (equipment_lease_id) REFERENCES lease_lending_equipment_finance_equipment_lease(equipment_lease_id)
 );
 
-CREATE TABLE lease_lending_equipment_finance_lease_lending_equipment_finance_policy_rule (
+CREATE TABLE lease_lending_equipment_finance_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   rule_id VARCHAR(255) NOT NULL,
@@ -225,7 +226,7 @@ CREATE TABLE lease_lending_equipment_finance_lease_lending_equipment_finance_pol
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE lease_lending_equipment_finance_lease_lending_equipment_finance_runtime_parameter (
+CREATE TABLE lease_lending_equipment_finance_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_name VARCHAR(255) NOT NULL,
@@ -239,7 +240,7 @@ CREATE TABLE lease_lending_equipment_finance_lease_lending_equipment_finance_run
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE lease_lending_equipment_finance_lease_lending_equipment_finance_schema_extension (
+CREATE TABLE lease_lending_equipment_finance_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -253,7 +254,7 @@ CREATE TABLE lease_lending_equipment_finance_lease_lending_equipment_finance_sch
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE lease_lending_equipment_finance_lease_lending_equipment_finance_control_assertion (
+CREATE TABLE lease_lending_equipment_finance_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -274,7 +275,7 @@ CREATE TABLE lease_lending_equipment_finance_lease_lending_equipment_finance_con
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE lease_lending_equipment_finance_lease_lending_equipment_finance_governed_model (
+CREATE TABLE lease_lending_equipment_finance_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

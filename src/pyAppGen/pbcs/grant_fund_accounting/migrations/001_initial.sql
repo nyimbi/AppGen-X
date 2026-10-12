@@ -43,7 +43,7 @@ CREATE TABLE grant_fund_accounting_grant_budget (
 CREATE TABLE grant_fund_accounting_donor_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  grant_award_id INTEGER NOT NULL,
+  grant_award_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
@@ -56,7 +56,7 @@ CREATE TABLE grant_fund_accounting_donor_rule (
 CREATE TABLE grant_fund_accounting_allowable_cost (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  grant_award_id INTEGER NOT NULL,
+  grant_award_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
@@ -69,7 +69,7 @@ CREATE TABLE grant_fund_accounting_allowable_cost (
 CREATE TABLE grant_fund_accounting_reimbursement_claim (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  grant_award_id INTEGER NOT NULL,
+  grant_award_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
@@ -82,7 +82,7 @@ CREATE TABLE grant_fund_accounting_reimbursement_claim (
 CREATE TABLE grant_fund_accounting_grant_compliance_report (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  grant_award_id INTEGER NOT NULL,
+  grant_award_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
@@ -95,7 +95,7 @@ CREATE TABLE grant_fund_accounting_grant_compliance_report (
 CREATE TABLE grant_fund_accounting_fund_audit_trail (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  grant_award_id INTEGER NOT NULL,
+  grant_award_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,

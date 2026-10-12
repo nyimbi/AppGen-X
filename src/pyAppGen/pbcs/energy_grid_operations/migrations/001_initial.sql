@@ -24,7 +24,8 @@ CREATE TABLE energy_grid_operations_grid_asset (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (parent_asset_id) REFERENCES energy_grid_operations_grid_asset(grid_asset_id)
-);
+,
+  UNIQUE (grid_asset_id));
 
 CREATE TABLE energy_grid_operations_load_forecast (
   id INTEGER PRIMARY KEY NOT NULL,

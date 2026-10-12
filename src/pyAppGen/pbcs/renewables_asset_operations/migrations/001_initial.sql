@@ -25,7 +25,8 @@ CREATE TABLE renewables_asset_operations_renewable_asset (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (renewable_asset_id));
 
 CREATE TABLE renewables_asset_operations_generation_reading (
   id INTEGER PRIMARY KEY NOT NULL,

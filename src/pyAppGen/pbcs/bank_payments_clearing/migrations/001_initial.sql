@@ -1,5 +1,30 @@
 CREATE SCHEMA IF NOT EXISTS bank_payments_clearing;
 
+CREATE TABLE bank_payments_clearing_participant_bank (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  participant_bank_id VARCHAR(255) NOT NULL,
+  bank_name VARCHAR(255) NOT NULL,
+  routing_identifier VARCHAR(255) NOT NULL,
+  settlement_account_projection VARCHAR(255) NOT NULL,
+  supported_rails VARCHAR(255) NOT NULL,
+  active_windows VARCHAR(255) NOT NULL,
+  return_contact VARCHAR(255) NOT NULL,
+  cutoff_at TIMESTAMP,
+  suspension_state VARCHAR(255) NOT NULL,
+  health_state VARCHAR(255) NOT NULL,
+  acknowledgement_latency_minutes INTEGER NOT NULL,
+  reject_rate DECIMAL(18, 4) NOT NULL,
+  outage_state VARCHAR(255) NOT NULL,
+  fallback_rule VARCHAR(255) NOT NULL,
+  escalation_owner VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+,
+  UNIQUE (participant_bank_id));
+
 CREATE TABLE bank_payments_clearing_payment_instruction (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
@@ -59,7 +84,8 @@ CREATE TABLE bank_payments_clearing_payment_instruction (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (beneficiary_bank_id) REFERENCES bank_payments_clearing_participant_bank(participant_bank_id)
-);
+,
+  UNIQUE (instruction_id));
 
 CREATE TABLE bank_payments_clearing_clearing_batch (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -87,7 +113,8 @@ CREATE TABLE bank_payments_clearing_clearing_batch (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (participant_bank_id) REFERENCES bank_payments_clearing_participant_bank(participant_bank_id)
-);
+,
+  UNIQUE (batch_id));
 
 CREATE TABLE bank_payments_clearing_settlement_file (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -182,30 +209,6 @@ CREATE TABLE bank_payments_clearing_bank_reconciliation (
   balance_projection DECIMAL(18, 4) NOT NULL,
   projection_freshness VARCHAR(255) NOT NULL,
   reconciled_at TIMESTAMP,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
-);
-
-CREATE TABLE bank_payments_clearing_participant_bank (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  participant_bank_id VARCHAR(255) NOT NULL,
-  bank_name VARCHAR(255) NOT NULL,
-  routing_identifier VARCHAR(255) NOT NULL,
-  settlement_account_projection VARCHAR(255) NOT NULL,
-  supported_rails VARCHAR(255) NOT NULL,
-  active_windows VARCHAR(255) NOT NULL,
-  return_contact VARCHAR(255) NOT NULL,
-  cutoff_at TIMESTAMP,
-  suspension_state VARCHAR(255) NOT NULL,
-  health_state VARCHAR(255) NOT NULL,
-  acknowledgement_latency_minutes INTEGER NOT NULL,
-  reject_rate DECIMAL(18, 4) NOT NULL,
-  outage_state VARCHAR(255) NOT NULL,
-  fallback_rule VARCHAR(255) NOT NULL,
-  escalation_owner VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,

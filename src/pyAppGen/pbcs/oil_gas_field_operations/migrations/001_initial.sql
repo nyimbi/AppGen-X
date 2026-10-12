@@ -28,7 +28,8 @@ CREATE TABLE oil_gas_field_operations_well (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (well_id));
 
 CREATE TABLE oil_gas_field_operations_production_reading (
   id INTEGER PRIMARY KEY NOT NULL,

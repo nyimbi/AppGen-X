@@ -38,6 +38,40 @@ CREATE TABLE field_service_management_field_work_order (
   updated_at TIMESTAMP NOT NULL
 );
 
+CREATE TABLE field_service_management_work_order (
+  id TEXT PRIMARY KEY NOT NULL,
+  tenant TEXT NOT NULL,
+  code TEXT NOT NULL,
+  work_order_id TEXT NOT NULL,
+  work_order_type TEXT NOT NULL,
+  priority TEXT NOT NULL,
+  severity TEXT NOT NULL,
+  customer_reference TEXT NOT NULL,
+  site_reference TEXT NOT NULL,
+  asset_reference TEXT NOT NULL,
+  requested_at TIMESTAMP,
+  promised_window_start TIMESTAMP,
+  promised_window_end TIMESTAMP,
+  scheduled_start TIMESTAMP,
+  scheduled_end TIMESTAMP,
+  required_skill_set TEXT NOT NULL,
+  required_tool_class TEXT NOT NULL,
+  entitlement_state TEXT NOT NULL,
+  warranty_covered BOOLEAN NOT NULL,
+  safety_risk_level TEXT NOT NULL,
+  estimated_labor_minutes INTEGER NOT NULL,
+  estimated_travel_minutes INTEGER NOT NULL,
+  first_time_fix_target BOOLEAN NOT NULL,
+  reopen_count INTEGER NOT NULL,
+  exception_reason TEXT NOT NULL,
+  status TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  payload TEXT,
+  effective_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
 CREATE TABLE field_service_management_dispatch_assignment (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
@@ -126,7 +160,8 @@ CREATE TABLE field_service_management_mobile_task (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (field_work_order_id) REFERENCES field_service_management_field_work_order(id)
-);
+,
+  UNIQUE (mobile_task_id));
 
 CREATE TABLE field_service_management_parts_usage (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -273,7 +308,8 @@ CREATE TABLE field_service_management_technician_live_location (
   payload TEXT,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (technician_live_location_id));
 
 CREATE TABLE field_service_management_technician_location_breadcrumb (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -299,7 +335,7 @@ CREATE TABLE field_service_management_technician_location_breadcrumb (
   payload TEXT,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (technician_live_location_id) REFERENCES field_service_management_technician_live_location(id)
+  FOREIGN KEY (technician_live_location_id) REFERENCES field_service_management_technician_live_location(technician_live_location_id)
 );
 
 CREATE TABLE field_service_management_technician_availability (
@@ -382,7 +418,8 @@ CREATE TABLE field_service_management_service_route_plan (
   payload TEXT,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (service_route_plan_id));
 
 CREATE TABLE field_service_management_service_route_stop (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -413,7 +450,7 @@ CREATE TABLE field_service_management_service_route_stop (
   payload TEXT,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (service_route_plan_id) REFERENCES field_service_management_service_route_plan(id)
+  FOREIGN KEY (service_route_plan_id) REFERENCES field_service_management_service_route_plan(service_route_plan_id)
 );
 
 CREATE TABLE field_service_management_service_route_leg (
@@ -438,7 +475,7 @@ CREATE TABLE field_service_management_service_route_leg (
   payload TEXT,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (service_route_plan_id) REFERENCES field_service_management_service_route_plan(id)
+  FOREIGN KEY (service_route_plan_id) REFERENCES field_service_management_service_route_plan(service_route_plan_id)
 );
 
 CREATE TABLE field_service_management_route_reoptimization (
@@ -465,7 +502,7 @@ CREATE TABLE field_service_management_route_reoptimization (
   payload TEXT,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (service_route_plan_id) REFERENCES field_service_management_service_route_plan(id)
+  FOREIGN KEY (service_route_plan_id) REFERENCES field_service_management_service_route_plan(service_route_plan_id)
 );
 
 CREATE TABLE field_service_management_mobile_task_dependency (
@@ -490,7 +527,7 @@ CREATE TABLE field_service_management_mobile_task_dependency (
   payload TEXT,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (mobile_task_id) REFERENCES field_service_management_mobile_task(id)
+  FOREIGN KEY (mobile_task_id) REFERENCES field_service_management_mobile_task(mobile_task_id)
 );
 
 CREATE TABLE field_service_management_task_safety_gate (
@@ -516,7 +553,7 @@ CREATE TABLE field_service_management_task_safety_gate (
   payload TEXT,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (mobile_task_id) REFERENCES field_service_management_mobile_task(id)
+  FOREIGN KEY (mobile_task_id) REFERENCES field_service_management_mobile_task(mobile_task_id)
 );
 
 CREATE TABLE field_service_management_job_tool_requirement (
@@ -544,7 +581,7 @@ CREATE TABLE field_service_management_job_tool_requirement (
   payload TEXT,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (mobile_task_id) REFERENCES field_service_management_mobile_task(id)
+  FOREIGN KEY (mobile_task_id) REFERENCES field_service_management_mobile_task(mobile_task_id)
 );
 
 CREATE TABLE field_service_management_tool_inventory (
@@ -572,7 +609,8 @@ CREATE TABLE field_service_management_tool_inventory (
   payload TEXT,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (tool_inventory_id));
 
 CREATE TABLE field_service_management_tool_calibration (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -596,7 +634,7 @@ CREATE TABLE field_service_management_tool_calibration (
   payload TEXT,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (tool_inventory_id) REFERENCES field_service_management_tool_inventory(id)
+  FOREIGN KEY (tool_inventory_id) REFERENCES field_service_management_tool_inventory(tool_inventory_id)
 );
 
 CREATE TABLE field_service_management_van_stock_position (
@@ -787,40 +825,6 @@ CREATE TABLE field_service_management_appgen_dead_letter_event (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (service_id) REFERENCES field_service_management_work_order(id)
-);
-
-CREATE TABLE field_service_management_work_order (
-  id TEXT PRIMARY KEY NOT NULL,
-  tenant TEXT NOT NULL,
-  code TEXT NOT NULL,
-  work_order_id TEXT NOT NULL,
-  work_order_type TEXT NOT NULL,
-  priority TEXT NOT NULL,
-  severity TEXT NOT NULL,
-  customer_reference TEXT NOT NULL,
-  site_reference TEXT NOT NULL,
-  asset_reference TEXT NOT NULL,
-  requested_at TIMESTAMP,
-  promised_window_start TIMESTAMP,
-  promised_window_end TIMESTAMP,
-  scheduled_start TIMESTAMP,
-  scheduled_end TIMESTAMP,
-  required_skill_set TEXT NOT NULL,
-  required_tool_class TEXT NOT NULL,
-  entitlement_state TEXT NOT NULL,
-  warranty_covered BOOLEAN NOT NULL,
-  safety_risk_level TEXT NOT NULL,
-  estimated_labor_minutes INTEGER NOT NULL,
-  estimated_travel_minutes INTEGER NOT NULL,
-  first_time_fix_target BOOLEAN NOT NULL,
-  reopen_count INTEGER NOT NULL,
-  exception_reason TEXT NOT NULL,
-  status TEXT NOT NULL,
-  version INTEGER NOT NULL,
-  payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
 );
 
 CREATE TABLE field_service_management_service_request (

@@ -19,7 +19,8 @@ CREATE TABLE actuarial_pricing_reserving_rating_model (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (rating_model_id));
 
 CREATE TABLE actuarial_pricing_reserving_actuarial_assumption (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -62,6 +63,28 @@ CREATE TABLE actuarial_pricing_reserving_experience_study (
   updated_at TIMESTAMP NOT NULL
 );
 
+CREATE TABLE actuarial_pricing_reserving_loss_triangle (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  loss_triangle_id VARCHAR(255) NOT NULL,
+  triangle_type VARCHAR(255) NOT NULL,
+  valuation_date TIMESTAMP NOT NULL,
+  origin_period VARCHAR(255) NOT NULL,
+  development_age INTEGER NOT NULL,
+  measure VARCHAR(255) NOT NULL,
+  incremental_flag BOOLEAN NOT NULL,
+  source VARCHAR(255) NOT NULL,
+  reconciliation_status VARCHAR(255) NOT NULL,
+  observed_factor DECIMAL(18, 4),
+  selected_factor DECIMAL(18, 4),
+  tail_factor DECIMAL(18, 4),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+,
+  UNIQUE (loss_triangle_id));
+
 CREATE TABLE actuarial_pricing_reserving_reserve_estimate (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
@@ -85,27 +108,6 @@ CREATE TABLE actuarial_pricing_reserving_reserve_estimate (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (loss_triangle_id) REFERENCES actuarial_pricing_reserving_loss_triangle(loss_triangle_id)
-);
-
-CREATE TABLE actuarial_pricing_reserving_loss_triangle (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  loss_triangle_id VARCHAR(255) NOT NULL,
-  triangle_type VARCHAR(255) NOT NULL,
-  valuation_date TIMESTAMP NOT NULL,
-  origin_period VARCHAR(255) NOT NULL,
-  development_age INTEGER NOT NULL,
-  measure VARCHAR(255) NOT NULL,
-  incremental_flag BOOLEAN NOT NULL,
-  source VARCHAR(255) NOT NULL,
-  reconciliation_status VARCHAR(255) NOT NULL,
-  observed_factor DECIMAL(18, 4),
-  selected_factor DECIMAL(18, 4),
-  tail_factor DECIMAL(18, 4),
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
 );
 
 CREATE TABLE actuarial_pricing_reserving_capital_scenario (

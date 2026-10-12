@@ -126,7 +126,7 @@ CREATE TABLE construction_contracts_commercials_subcontract_package (
     updated_at TEXT NOT NULL
 );
 
-CREATE TABLE construction_contracts_commercials_construction_contracts_commercials_policy_rule (
+CREATE TABLE construction_contracts_commercials_policy_rule (
     id TEXT PRIMARY KEY,
     tenant TEXT NOT NULL,
     rule_code TEXT NOT NULL,
@@ -140,7 +140,7 @@ CREATE TABLE construction_contracts_commercials_construction_contracts_commercia
     updated_at TEXT NOT NULL
 );
 
-CREATE TABLE construction_contracts_commercials_construction_contracts_commercials_runtime_parameter (
+CREATE TABLE construction_contracts_commercials_runtime_parameter (
     id TEXT PRIMARY KEY,
     tenant TEXT NOT NULL,
     parameter_name TEXT NOT NULL,
@@ -151,7 +151,7 @@ CREATE TABLE construction_contracts_commercials_construction_contracts_commercia
     updated_at TEXT NOT NULL
 );
 
-CREATE TABLE construction_contracts_commercials_construction_contracts_commercials_schema_extension (
+CREATE TABLE construction_contracts_commercials_schema_extension (
     id TEXT PRIMARY KEY,
     tenant TEXT NOT NULL,
     target_table TEXT NOT NULL,
@@ -162,7 +162,7 @@ CREATE TABLE construction_contracts_commercials_construction_contracts_commercia
     updated_at TEXT NOT NULL
 );
 
-CREATE TABLE construction_contracts_commercials_construction_contracts_commercials_control_assertion (
+CREATE TABLE construction_contracts_commercials_control_assertion (
     id TEXT PRIMARY KEY,
     tenant TEXT NOT NULL,
     control_code TEXT NOT NULL,
@@ -175,7 +175,7 @@ CREATE TABLE construction_contracts_commercials_construction_contracts_commercia
     updated_at TEXT NOT NULL
 );
 
-CREATE TABLE construction_contracts_commercials_construction_contracts_commercials_governed_model (
+CREATE TABLE construction_contracts_commercials_governed_model (
     id TEXT PRIMARY KEY,
     tenant TEXT NOT NULL,
     model_name TEXT NOT NULL,

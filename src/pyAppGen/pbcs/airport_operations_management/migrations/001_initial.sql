@@ -28,7 +28,8 @@ CREATE TABLE airport_operations_management_gate_assignment (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (gate_assignment_id));
 
 CREATE TABLE airport_operations_management_stand_allocation (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -56,7 +57,8 @@ CREATE TABLE airport_operations_management_stand_allocation (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (gate_assignment_id) REFERENCES airport_operations_management_gate_assignment(gate_assignment_id)
-);
+,
+  UNIQUE (stand_allocation_id));
 
 CREATE TABLE airport_operations_management_slot (
   id INTEGER PRIMARY KEY NOT NULL,

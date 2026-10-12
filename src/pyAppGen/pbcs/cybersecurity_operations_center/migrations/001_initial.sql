@@ -139,7 +139,7 @@ CREATE TABLE cybersecurity_operations_center_response_evidence (
     version INTEGER
 );
 
-CREATE TABLE cybersecurity_operations_center_cybersecurity_operations_center_policy_rule (
+CREATE TABLE cybersecurity_operations_center_policy_rule (
     id TEXT PRIMARY KEY,
     tenant TEXT NOT NULL,
     code TEXT NOT NULL,
@@ -152,7 +152,7 @@ CREATE TABLE cybersecurity_operations_center_cybersecurity_operations_center_pol
     version INTEGER
 );
 
-CREATE TABLE cybersecurity_operations_center_cybersecurity_operations_center_runtime_parameter (
+CREATE TABLE cybersecurity_operations_center_runtime_parameter (
     id TEXT PRIMARY KEY,
     tenant TEXT NOT NULL,
     code TEXT NOT NULL,
@@ -167,7 +167,7 @@ CREATE TABLE cybersecurity_operations_center_cybersecurity_operations_center_run
     version INTEGER
 );
 
-CREATE TABLE cybersecurity_operations_center_cybersecurity_operations_center_schema_extension (
+CREATE TABLE cybersecurity_operations_center_schema_extension (
     id TEXT PRIMARY KEY,
     tenant TEXT NOT NULL,
     code TEXT NOT NULL,
@@ -179,7 +179,7 @@ CREATE TABLE cybersecurity_operations_center_cybersecurity_operations_center_sch
     version INTEGER
 );
 
-CREATE TABLE cybersecurity_operations_center_cybersecurity_operations_center_control_assertion (
+CREATE TABLE cybersecurity_operations_center_control_assertion (
     id TEXT PRIMARY KEY,
     tenant TEXT NOT NULL,
     code TEXT NOT NULL,
@@ -192,7 +192,7 @@ CREATE TABLE cybersecurity_operations_center_cybersecurity_operations_center_con
     version INTEGER
 );
 
-CREATE TABLE cybersecurity_operations_center_cybersecurity_operations_center_governed_model (
+CREATE TABLE cybersecurity_operations_center_governed_model (
     id TEXT PRIMARY KEY,
     tenant TEXT NOT NULL,
     code TEXT NOT NULL,

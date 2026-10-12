@@ -37,7 +37,8 @@ CREATE TABLE laboratory_information_management_lab_sample (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (lab_sample_id));
 
 CREATE TABLE laboratory_information_management_test_order (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -69,7 +70,8 @@ CREATE TABLE laboratory_information_management_test_order (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (lab_sample_id) REFERENCES laboratory_information_management_lab_sample(lab_sample_id)
-);
+,
+  UNIQUE (test_order_id));
 
 CREATE TABLE laboratory_information_management_lab_batch (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -90,7 +92,8 @@ CREATE TABLE laboratory_information_management_lab_batch (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (lab_batch_id));
 
 CREATE TABLE laboratory_information_management_instrument_run (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -119,7 +122,8 @@ CREATE TABLE laboratory_information_management_instrument_run (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (lab_batch_id) REFERENCES laboratory_information_management_lab_batch(lab_batch_id)
-);
+,
+  UNIQUE (instrument_run_id));
 
 CREATE TABLE laboratory_information_management_result (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -201,7 +205,7 @@ CREATE TABLE laboratory_information_management_chain_custody (
   FOREIGN KEY (lab_sample_id) REFERENCES laboratory_information_management_lab_sample(lab_sample_id)
 );
 
-CREATE TABLE laboratory_information_management_laboratory_information_management_policy_rule (
+CREATE TABLE laboratory_information_management_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -219,7 +223,7 @@ CREATE TABLE laboratory_information_management_laboratory_information_management
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE laboratory_information_management_laboratory_information_management_runtime_parameter (
+CREATE TABLE laboratory_information_management_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_name VARCHAR(255) NOT NULL,
@@ -233,7 +237,7 @@ CREATE TABLE laboratory_information_management_laboratory_information_management
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE laboratory_information_management_laboratory_information_management_schema_extension (
+CREATE TABLE laboratory_information_management_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -247,7 +251,7 @@ CREATE TABLE laboratory_information_management_laboratory_information_management
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE laboratory_information_management_laboratory_information_management_control_assertion (
+CREATE TABLE laboratory_information_management_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -262,7 +266,7 @@ CREATE TABLE laboratory_information_management_laboratory_information_management
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE laboratory_information_management_laboratory_information_management_governed_model (
+CREATE TABLE laboratory_information_management_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

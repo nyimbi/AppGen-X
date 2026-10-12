@@ -182,7 +182,7 @@ CREATE TABLE audit_ledger_crypto_key_epoch (
 CREATE TABLE audit_ledger_carbon_processing_window (
   tenant TEXT NOT NULL,
   window_id TEXT NOT NULL,
-  window TEXT,
+  "window" TEXT,
   carbon_score DECIMAL(12,4),
   scheduled_load INTEGER,
   status TEXT NOT NULL,

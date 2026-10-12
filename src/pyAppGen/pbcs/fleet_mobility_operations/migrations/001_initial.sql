@@ -22,7 +22,8 @@ CREATE TABLE fleet_mobility_operations_vehicle (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (vehicle_id));
 
 CREATE TABLE fleet_mobility_operations_driver_assignment (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -118,7 +119,8 @@ CREATE TABLE fleet_mobility_operations_route_plan (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (vehicle_id) REFERENCES fleet_mobility_operations_vehicle(vehicle_id)
-);
+,
+  UNIQUE (route_plan_id));
 
 CREATE TABLE fleet_mobility_operations_fuel_transaction (
   id INTEGER PRIMARY KEY NOT NULL,

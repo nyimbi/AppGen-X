@@ -41,7 +41,8 @@ CREATE TABLE capital_markets_trading_ops_trade_order (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (trade_order_id));
 
 CREATE TABLE capital_markets_trading_ops_execution (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -74,7 +75,8 @@ CREATE TABLE capital_markets_trading_ops_execution (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (trade_order_id) REFERENCES capital_markets_trading_ops_trade_order(trade_order_id)
-);
+,
+  UNIQUE (execution_id));
 
 CREATE TABLE capital_markets_trading_ops_allocation (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -167,7 +169,8 @@ CREATE TABLE capital_markets_trading_ops_settlement_instruction (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (settlement_instruction_id));
 
 CREATE TABLE capital_markets_trading_ops_trade_break (
   id INTEGER PRIMARY KEY NOT NULL,

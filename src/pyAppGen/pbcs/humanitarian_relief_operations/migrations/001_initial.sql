@@ -34,7 +34,8 @@ CREATE TABLE humanitarian_relief_operations_needs_assessment (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (needs_assessment_id));
 
 CREATE TABLE humanitarian_relief_operations_aid_item (
   id INTEGER PRIMARY KEY NOT NULL,

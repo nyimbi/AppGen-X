@@ -34,7 +34,8 @@ CREATE TABLE media_production_management_production (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (production_id));
 
 CREATE TABLE media_production_management_budget_line (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -139,7 +140,8 @@ CREATE TABLE media_production_management_location_permit (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (production_id) REFERENCES media_production_management_production(production_id)
-);
+,
+  UNIQUE (location_permit_id));
 
 CREATE TABLE media_production_management_shoot_day (
   id INTEGER PRIMARY KEY NOT NULL,

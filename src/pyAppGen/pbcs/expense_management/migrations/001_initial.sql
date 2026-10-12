@@ -29,7 +29,7 @@ CREATE TABLE expense_management_expense_line (
 CREATE TABLE expense_management_receipt_document (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  expense_report_id INTEGER NOT NULL,
+  expense_report_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
@@ -42,7 +42,7 @@ CREATE TABLE expense_management_receipt_document (
 CREATE TABLE expense_management_corporate_card_feed (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  expense_report_id INTEGER NOT NULL,
+  expense_report_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
@@ -69,7 +69,7 @@ CREATE TABLE expense_management_expense_policy (
 CREATE TABLE expense_management_expense_approval (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  expense_report_id INTEGER NOT NULL,
+  expense_report_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
@@ -96,7 +96,7 @@ CREATE TABLE expense_management_reimbursement_batch (
 CREATE TABLE expense_management_expense_fraud_signal (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  expense_report_id INTEGER NOT NULL,
+  expense_report_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,

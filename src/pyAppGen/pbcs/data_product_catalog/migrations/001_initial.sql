@@ -43,7 +43,7 @@ CREATE TABLE data_product_catalog_data_contract (
 CREATE TABLE data_product_catalog_data_quality_sla (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  data_product_id INTEGER NOT NULL,
+  data_product_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
@@ -56,7 +56,7 @@ CREATE TABLE data_product_catalog_data_quality_sla (
 CREATE TABLE data_product_catalog_lineage_edge (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  data_product_id INTEGER NOT NULL,
+  data_product_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
@@ -83,7 +83,7 @@ CREATE TABLE data_product_catalog_data_access_request (
 CREATE TABLE data_product_catalog_data_governance_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  data_product_id INTEGER NOT NULL,
+  data_product_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
@@ -96,7 +96,7 @@ CREATE TABLE data_product_catalog_data_governance_rule (
 CREATE TABLE data_product_catalog_data_publication_workflow (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  data_product_id INTEGER NOT NULL,
+  data_product_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,

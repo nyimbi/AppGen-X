@@ -29,7 +29,8 @@ CREATE TABLE utility_outage_restoration_outage_incident (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (outage_incident_id));
 
 CREATE TABLE utility_outage_restoration_device_interruption (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -55,7 +56,8 @@ CREATE TABLE utility_outage_restoration_device_interruption (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (outage_incident_id) REFERENCES utility_outage_restoration_outage_incident(outage_incident_id)
-);
+,
+  UNIQUE (device_interruption_id));
 
 CREATE TABLE utility_outage_restoration_switching_step (
   id INTEGER PRIMARY KEY NOT NULL,

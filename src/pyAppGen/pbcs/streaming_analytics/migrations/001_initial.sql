@@ -3,7 +3,7 @@ CREATE SCHEMA IF NOT EXISTS streaming_analytics;
 CREATE TABLE streaming_analytics_metric_stream (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  stream_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  stream_id VARCHAR(255) NOT NULL,
   name VARCHAR(255) NOT NULL,
   event_type VARCHAR(255) NOT NULL,
   metric_field VARCHAR(255) NOT NULL,
@@ -13,12 +13,13 @@ CREATE TABLE streaming_analytics_metric_stream (
   compiled_hash VARCHAR(255) NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (stream_id));
 
 CREATE TABLE streaming_analytics_aggregation_window (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  window_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  window_id VARCHAR(255) NOT NULL,
   stream_id VARCHAR(255) NOT NULL,
   window_minutes VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
@@ -31,7 +32,7 @@ CREATE TABLE streaming_analytics_aggregation_window (
 CREATE TABLE streaming_analytics_kpi_snapshot (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  snapshot_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  snapshot_id VARCHAR(255) NOT NULL,
   stream_id VARCHAR(255) NOT NULL,
   value VARCHAR(255) NOT NULL,
   event_count INTEGER NOT NULL,
@@ -45,7 +46,7 @@ CREATE TABLE streaming_analytics_kpi_snapshot (
 CREATE TABLE streaming_analytics_dashboard_projection (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  projection_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  projection_id VARCHAR(255) NOT NULL,
   name VARCHAR(255) NOT NULL,
   stream_ids VARCHAR(255) NOT NULL,
   snapshot_count INTEGER NOT NULL,
@@ -72,7 +73,7 @@ CREATE TABLE streaming_analytics_metric_event (
 CREATE TABLE streaming_analytics_ingestion_checkpoint (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  checkpoint_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  checkpoint_id VARCHAR(255) NOT NULL,
   source VARCHAR(255) NOT NULL,
   last_event_id VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
@@ -96,7 +97,7 @@ CREATE TABLE streaming_analytics_data_quality_result (
 CREATE TABLE streaming_analytics_replay_job (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  replay_job_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  replay_job_id VARCHAR(255) NOT NULL,
   source VARCHAR(255) NOT NULL,
   from_event_id VARCHAR(255) NOT NULL,
   to_event_id VARCHAR(255) NOT NULL,
@@ -122,7 +123,7 @@ CREATE TABLE streaming_analytics_watermark_state (
 CREATE TABLE streaming_analytics_retention_policy (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  policy_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  policy_id VARCHAR(255) NOT NULL,
   retention_days VARCHAR(255) NOT NULL,
   eligible_event_count INTEGER NOT NULL,
   status VARCHAR(255) NOT NULL,
@@ -134,7 +135,7 @@ CREATE TABLE streaming_analytics_retention_policy (
 CREATE TABLE streaming_analytics_threshold_alert (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  alert_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  alert_id VARCHAR(255) NOT NULL,
   snapshot_id VARCHAR(255) NOT NULL,
   threshold DECIMAL(18, 4) NOT NULL,
   severity VARCHAR(255) NOT NULL,
@@ -148,7 +149,7 @@ CREATE TABLE streaming_analytics_threshold_alert (
 CREATE TABLE streaming_analytics_metric_forecast (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  forecast_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  forecast_id VARCHAR(255) NOT NULL,
   stream_id VARCHAR(255) NOT NULL,
   horizon_minutes VARCHAR(255) NOT NULL,
   base_value VARCHAR(255) NOT NULL,
@@ -162,7 +163,7 @@ CREATE TABLE streaming_analytics_metric_forecast (
 CREATE TABLE streaming_analytics_operational_risk_score (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  risk_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  risk_id VARCHAR(255) NOT NULL,
   stream_id VARCHAR(255) NOT NULL,
   risk_score DECIMAL(18, 4) NOT NULL,
   risk_band VARCHAR(255) NOT NULL,
@@ -174,7 +175,7 @@ CREATE TABLE streaming_analytics_operational_risk_score (
 CREATE TABLE streaming_analytics_metric_exception (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  exception_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  exception_id VARCHAR(255) NOT NULL,
   stream_id VARCHAR(255) NOT NULL,
   reason VARCHAR(255) NOT NULL,
   resolution VARCHAR(255) NOT NULL,
@@ -187,7 +188,7 @@ CREATE TABLE streaming_analytics_metric_exception (
 CREATE TABLE streaming_analytics_window_recomputation (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  recomputation_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  recomputation_id VARCHAR(255) NOT NULL,
   window_id VARCHAR(255) NOT NULL,
   stream_id VARCHAR(255) NOT NULL,
   snapshot_id VARCHAR(255) NOT NULL,
@@ -201,7 +202,7 @@ CREATE TABLE streaming_analytics_window_recomputation (
 CREATE TABLE streaming_analytics_kpi_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  assertion_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
   snapshot_id VARCHAR(255) NOT NULL,
   confidence DECIMAL(18, 4) NOT NULL,
   threshold DECIMAL(18, 4) NOT NULL,
@@ -214,7 +215,7 @@ CREATE TABLE streaming_analytics_kpi_control_assertion (
 CREATE TABLE streaming_analytics_kpi_snapshot_proof (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  proof_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  proof_id VARCHAR(255) NOT NULL,
   snapshot_id VARCHAR(255) NOT NULL,
   snapshot_hash VARCHAR(255) NOT NULL,
   event_hash VARCHAR(255) NOT NULL,
@@ -226,7 +227,7 @@ CREATE TABLE streaming_analytics_kpi_snapshot_proof (
 CREATE TABLE streaming_analytics_metric_policy_screening (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  screening_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  screening_id VARCHAR(255) NOT NULL,
   event_type VARCHAR(255) NOT NULL,
   region VARCHAR(255) NOT NULL,
   metric_field VARCHAR(255) NOT NULL,
@@ -239,7 +240,7 @@ CREATE TABLE streaming_analytics_metric_policy_screening (
 CREATE TABLE streaming_analytics_analytics_audit_entry (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  audit_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  audit_id VARCHAR(255) NOT NULL,
   action VARCHAR(255) NOT NULL,
   payload_hash TEXT NOT NULL,
   payload TEXT NOT NULL,
@@ -251,7 +252,7 @@ CREATE TABLE streaming_analytics_analytics_audit_entry (
 CREATE TABLE streaming_analytics_analytics_federation_view (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  view_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  view_id VARCHAR(255) NOT NULL,
   stream_id VARCHAR(255) NOT NULL,
   event_type VARCHAR(255) NOT NULL,
   metric_field VARCHAR(255) NOT NULL,
@@ -265,7 +266,7 @@ CREATE TABLE streaming_analytics_analytics_federation_view (
 CREATE TABLE streaming_analytics_analytics_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  model_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
   model_type VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
   status VARCHAR(255) NOT NULL,

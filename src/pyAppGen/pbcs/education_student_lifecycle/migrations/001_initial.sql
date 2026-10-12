@@ -21,7 +21,8 @@ CREATE TABLE education_student_lifecycle_student_applicant (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (student_applicant_id));
 
 CREATE TABLE education_student_lifecycle_enrollment (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -42,7 +43,8 @@ CREATE TABLE education_student_lifecycle_enrollment (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (student_applicant_id) REFERENCES education_student_lifecycle_student_applicant(student_applicant_id)
-);
+,
+  UNIQUE (enrollment_id));
 
 CREATE TABLE education_student_lifecycle_curriculum_plan (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -108,7 +110,8 @@ CREATE TABLE education_student_lifecycle_course_attempt (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (enrollment_id) REFERENCES education_student_lifecycle_enrollment(enrollment_id)
-);
+,
+  UNIQUE (course_attempt_id));
 
 CREATE TABLE education_student_lifecycle_assessment_result (
   id INTEGER PRIMARY KEY NOT NULL,

@@ -20,7 +20,8 @@ CREATE TABLE hotel_revenue_management_room_type (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (room_type_id));
 
 CREATE TABLE hotel_revenue_management_rate_plan (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -51,7 +52,8 @@ CREATE TABLE hotel_revenue_management_rate_plan (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (parent_rate_plan_id) REFERENCES hotel_revenue_management_rate_plan(rate_plan_id)
-);
+,
+  UNIQUE (rate_plan_id));
 
 CREATE TABLE hotel_revenue_management_channel_inventory (
   id INTEGER PRIMARY KEY NOT NULL,

@@ -33,7 +33,8 @@ CREATE TABLE public_safety_dispatch_emergency_call (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (emergency_call_id));
 
 CREATE TABLE public_safety_dispatch_response_unit (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -59,7 +60,8 @@ CREATE TABLE public_safety_dispatch_response_unit (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (response_unit_id));
 
 CREATE TABLE public_safety_dispatch_incident (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -91,7 +93,8 @@ CREATE TABLE public_safety_dispatch_incident (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (emergency_call_id) REFERENCES public_safety_dispatch_emergency_call(emergency_call_id)
-);
+,
+  UNIQUE (incident_id));
 
 CREATE TABLE public_safety_dispatch_dispatch_assignment (
   id INTEGER PRIMARY KEY NOT NULL,

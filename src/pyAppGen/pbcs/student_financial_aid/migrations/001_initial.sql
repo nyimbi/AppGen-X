@@ -40,7 +40,8 @@ CREATE TABLE student_financial_aid_aid_application (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (aid_application_id));
 
 CREATE TABLE student_financial_aid_eligibility_review (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -113,7 +114,8 @@ CREATE TABLE student_financial_aid_award_package (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (aid_application_id) REFERENCES student_financial_aid_aid_application(aid_application_id)
-);
+,
+  UNIQUE (award_package_id));
 
 CREATE TABLE student_financial_aid_verification_item (
   id INTEGER PRIMARY KEY NOT NULL,

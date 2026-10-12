@@ -122,7 +122,8 @@ CREATE TABLE environment_health_safety_inspection (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (inspection_id));
 
 CREATE TABLE environment_health_safety_permit (
   id INTEGER PRIMARY KEY NOT NULL,

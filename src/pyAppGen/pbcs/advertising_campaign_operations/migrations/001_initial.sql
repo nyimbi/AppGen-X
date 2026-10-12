@@ -21,7 +21,8 @@ CREATE TABLE advertising_campaign_operations_ad_campaign (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (ad_campaign_id));
 
 CREATE TABLE advertising_campaign_operations_audience_segment (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -164,7 +165,7 @@ CREATE TABLE advertising_campaign_operations_billing_event (
   FOREIGN KEY (ad_campaign_id) REFERENCES advertising_campaign_operations_ad_campaign(ad_campaign_id)
 );
 
-CREATE TABLE advertising_campaign_operations_advertising_campaign_operations_policy_rule (
+CREATE TABLE advertising_campaign_operations_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -183,7 +184,7 @@ CREATE TABLE advertising_campaign_operations_advertising_campaign_operations_pol
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE advertising_campaign_operations_advertising_campaign_operations_runtime_parameter (
+CREATE TABLE advertising_campaign_operations_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   runtime_parameter_id VARCHAR(255) NOT NULL,
@@ -204,7 +205,7 @@ CREATE TABLE advertising_campaign_operations_advertising_campaign_operations_run
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE advertising_campaign_operations_advertising_campaign_operations_schema_extension (
+CREATE TABLE advertising_campaign_operations_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   schema_extension_id VARCHAR(255) NOT NULL,
@@ -222,7 +223,7 @@ CREATE TABLE advertising_campaign_operations_advertising_campaign_operations_sch
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE advertising_campaign_operations_advertising_campaign_operations_control_assertion (
+CREATE TABLE advertising_campaign_operations_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   control_assertion_id VARCHAR(255) NOT NULL,
@@ -238,7 +239,7 @@ CREATE TABLE advertising_campaign_operations_advertising_campaign_operations_con
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE advertising_campaign_operations_advertising_campaign_operations_governed_model (
+CREATE TABLE advertising_campaign_operations_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   governed_model_id VARCHAR(255) NOT NULL,

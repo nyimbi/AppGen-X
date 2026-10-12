@@ -13,7 +13,8 @@ CREATE TABLE ap_automation_vendor (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (vendor_id));
 
 CREATE TABLE ap_automation_vendor_site (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -28,7 +29,7 @@ CREATE TABLE ap_automation_vendor_site (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id)
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id)
 );
 
 CREATE TABLE ap_automation_vendor_bank_account (
@@ -45,7 +46,7 @@ CREATE TABLE ap_automation_vendor_bank_account (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id)
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id)
 );
 
 CREATE TABLE ap_automation_vendor_tax_profile (
@@ -62,7 +63,7 @@ CREATE TABLE ap_automation_vendor_tax_profile (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id)
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id)
 );
 
 CREATE TABLE ap_automation_vendor_risk_signal (
@@ -79,7 +80,7 @@ CREATE TABLE ap_automation_vendor_risk_signal (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id)
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id)
 );
 
 CREATE TABLE ap_automation_purchase_order (
@@ -95,8 +96,9 @@ CREATE TABLE ap_automation_purchase_order (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id)
-);
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id)
+,
+  UNIQUE (po_id));
 
 CREATE TABLE ap_automation_purchase_order_line (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -113,8 +115,8 @@ CREATE TABLE ap_automation_purchase_order_line (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id),
-  FOREIGN KEY (po_id) REFERENCES ap_automation_purchase_order(id)
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id),
+  FOREIGN KEY (po_id) REFERENCES ap_automation_purchase_order(po_id)
 );
 
 CREATE TABLE ap_automation_goods_receipt (
@@ -130,9 +132,10 @@ CREATE TABLE ap_automation_goods_receipt (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id),
-  FOREIGN KEY (po_id) REFERENCES ap_automation_purchase_order(id)
-);
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id),
+  FOREIGN KEY (po_id) REFERENCES ap_automation_purchase_order(po_id)
+,
+  UNIQUE (receipt_id));
 
 CREATE TABLE ap_automation_goods_receipt_line (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -148,8 +151,8 @@ CREATE TABLE ap_automation_goods_receipt_line (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id),
-  FOREIGN KEY (receipt_id) REFERENCES ap_automation_goods_receipt(id)
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id),
+  FOREIGN KEY (receipt_id) REFERENCES ap_automation_goods_receipt(receipt_id)
 );
 
 CREATE TABLE ap_automation_invoice (
@@ -168,8 +171,9 @@ CREATE TABLE ap_automation_invoice (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id)
-);
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id)
+,
+  UNIQUE (invoice_id));
 
 CREATE TABLE ap_automation_invoice_line (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -187,8 +191,8 @@ CREATE TABLE ap_automation_invoice_line (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id),
-  FOREIGN KEY (invoice_id) REFERENCES ap_automation_invoice(id)
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id),
+  FOREIGN KEY (invoice_id) REFERENCES ap_automation_invoice(invoice_id)
 );
 
 CREATE TABLE ap_automation_invoice_capture_artifact (
@@ -206,7 +210,7 @@ CREATE TABLE ap_automation_invoice_capture_artifact (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id)
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id)
 );
 
 CREATE TABLE ap_automation_invoice_match_result (
@@ -225,7 +229,7 @@ CREATE TABLE ap_automation_invoice_match_result (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id)
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id)
 );
 
 CREATE TABLE ap_automation_payment (
@@ -242,8 +246,8 @@ CREATE TABLE ap_automation_payment (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id),
-  FOREIGN KEY (invoice_id) REFERENCES ap_automation_invoice(id)
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id),
+  FOREIGN KEY (invoice_id) REFERENCES ap_automation_invoice(invoice_id)
 );
 
 CREATE TABLE ap_automation_payment_batch (
@@ -260,7 +264,7 @@ CREATE TABLE ap_automation_payment_batch (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id)
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id)
 );
 
 CREATE TABLE ap_automation_payment_rail_decision (
@@ -279,7 +283,7 @@ CREATE TABLE ap_automation_payment_rail_decision (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id)
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id)
 );
 
 CREATE TABLE ap_automation_discount_opportunity (
@@ -297,7 +301,7 @@ CREATE TABLE ap_automation_discount_opportunity (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id)
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id)
 );
 
 CREATE TABLE ap_automation_vendor_statement (
@@ -313,7 +317,7 @@ CREATE TABLE ap_automation_vendor_statement (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id)
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id)
 );
 
 CREATE TABLE ap_automation_withholding_tax (
@@ -331,7 +335,7 @@ CREATE TABLE ap_automation_withholding_tax (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id)
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id)
 );
 
 CREATE TABLE ap_automation_e_invoice_submission (
@@ -349,7 +353,7 @@ CREATE TABLE ap_automation_e_invoice_submission (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id)
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id)
 );
 
 CREATE TABLE ap_automation_exception_case (
@@ -367,8 +371,8 @@ CREATE TABLE ap_automation_exception_case (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id),
-  FOREIGN KEY (invoice_id) REFERENCES ap_automation_invoice(id)
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id),
+  FOREIGN KEY (invoice_id) REFERENCES ap_automation_invoice(invoice_id)
 );
 
 CREATE TABLE ap_automation_approval_task (
@@ -386,7 +390,7 @@ CREATE TABLE ap_automation_approval_task (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id)
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id)
 );
 
 CREATE TABLE ap_automation_cash_forecast_projection (
@@ -403,7 +407,7 @@ CREATE TABLE ap_automation_cash_forecast_projection (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id)
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id)
 );
 
 CREATE TABLE ap_automation_policy_rule (
@@ -419,7 +423,7 @@ CREATE TABLE ap_automation_policy_rule (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id)
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id)
 );
 
 CREATE TABLE ap_automation_runtime_parameter (
@@ -436,7 +440,7 @@ CREATE TABLE ap_automation_runtime_parameter (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id)
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id)
 );
 
 CREATE TABLE ap_automation_schema_extension (
@@ -452,7 +456,7 @@ CREATE TABLE ap_automation_schema_extension (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id)
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id)
 );
 
 CREATE TABLE ap_automation_control_assertion (
@@ -468,7 +472,7 @@ CREATE TABLE ap_automation_control_assertion (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id)
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id)
 );
 
 CREATE TABLE ap_automation_governed_model (
@@ -485,7 +489,7 @@ CREATE TABLE ap_automation_governed_model (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(id)
+  FOREIGN KEY (vendor_id) REFERENCES ap_automation_vendor(vendor_id)
 );
 
 CREATE TABLE ap_automation_outbox (

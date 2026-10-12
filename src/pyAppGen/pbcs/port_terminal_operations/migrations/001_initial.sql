@@ -55,7 +55,8 @@ CREATE TABLE port_terminal_operations_vessel_call (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (vessel_call_id));
 
 CREATE TABLE port_terminal_operations_berth_plan (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -96,7 +97,8 @@ CREATE TABLE port_terminal_operations_berth_plan (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (vessel_call_id) REFERENCES port_terminal_operations_vessel_call(vessel_call_id)
-);
+,
+  UNIQUE (berth_plan_id));
 
 CREATE TABLE port_terminal_operations_container_move (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -146,7 +148,8 @@ CREATE TABLE port_terminal_operations_container_move (
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (vessel_call_id) REFERENCES port_terminal_operations_vessel_call(vessel_call_id),
   FOREIGN KEY (berth_plan_id) REFERENCES port_terminal_operations_berth_plan(berth_plan_id)
-);
+,
+  UNIQUE (container_move_id));
 
 CREATE TABLE port_terminal_operations_yard_slot (
   id INTEGER PRIMARY KEY NOT NULL,

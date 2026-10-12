@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS building_information_modeling_ops_digital_twin_link (
     updated_at TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS building_information_modeling_ops_building_information_modeling_ops_policy_rule (
+CREATE TABLE IF NOT EXISTS building_information_modeling_ops_policy_rule (
     id TEXT PRIMARY KEY,
     tenant TEXT NOT NULL,
     rule_code TEXT NOT NULL,
@@ -98,7 +98,7 @@ CREATE TABLE IF NOT EXISTS building_information_modeling_ops_building_informatio
     updated_at TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS building_information_modeling_ops_building_information_modeling_ops_runtime_parameter (
+CREATE TABLE IF NOT EXISTS building_information_modeling_ops_runtime_parameter (
     id TEXT PRIMARY KEY,
     tenant TEXT NOT NULL,
     parameter_name TEXT NOT NULL,
@@ -109,7 +109,7 @@ CREATE TABLE IF NOT EXISTS building_information_modeling_ops_building_informatio
     updated_at TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS building_information_modeling_ops_building_information_modeling_ops_schema_extension (
+CREATE TABLE IF NOT EXISTS building_information_modeling_ops_schema_extension (
     id TEXT PRIMARY KEY,
     tenant TEXT NOT NULL,
     table_name TEXT NOT NULL,
@@ -120,7 +120,7 @@ CREATE TABLE IF NOT EXISTS building_information_modeling_ops_building_informatio
     updated_at TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS building_information_modeling_ops_building_information_modeling_ops_control_assertion (
+CREATE TABLE IF NOT EXISTS building_information_modeling_ops_control_assertion (
     id TEXT PRIMARY KEY,
     tenant TEXT NOT NULL,
     control_code TEXT NOT NULL,
@@ -131,7 +131,7 @@ CREATE TABLE IF NOT EXISTS building_information_modeling_ops_building_informatio
     updated_at TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS building_information_modeling_ops_building_information_modeling_ops_governed_model (
+CREATE TABLE IF NOT EXISTS building_information_modeling_ops_governed_model (
     id TEXT PRIMARY KEY,
     tenant TEXT NOT NULL,
     federation_id TEXT NOT NULL,

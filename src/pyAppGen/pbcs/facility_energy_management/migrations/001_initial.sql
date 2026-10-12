@@ -34,7 +34,8 @@ CREATE TABLE facility_energy_management_energy_meter (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (energy_meter_id));
 
 CREATE TABLE facility_energy_management_load_profile (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -98,6 +99,31 @@ CREATE TABLE facility_energy_management_equipment_schedule (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
 );
+
+CREATE TABLE facility_energy_management_energy_baseline (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  energy_baseline_id VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  baseline_version INTEGER NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  baseline_method VARCHAR(255) NOT NULL,
+  reviewer_approval VARCHAR(255),
+  superseded_baseline_id VARCHAR(255),
+  degree_day_normalized BOOLEAN NOT NULL,
+  weather_source VARCHAR(255),
+  expected_load_curve TEXT,
+  adjusted_actual_delta DECIMAL(18, 4),
+  persistence_month VARCHAR(255),
+  savings_decay_threshold DECIMAL(18, 4),
+  trigger_event VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+,
+  UNIQUE (energy_baseline_id));
 
 CREATE TABLE facility_energy_management_demand_response_event (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -182,30 +208,6 @@ CREATE TABLE facility_energy_management_tariff_signal (
   energy_rate DECIMAL(18, 4) NOT NULL,
   demand_rate DECIMAL(18, 4) NOT NULL,
   currency VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
-);
-
-CREATE TABLE facility_energy_management_energy_baseline (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  energy_baseline_id VARCHAR(255) NOT NULL,
-  scope VARCHAR(255) NOT NULL,
-  baseline_version INTEGER NOT NULL,
-  effective_from TIMESTAMP NOT NULL,
-  effective_to TIMESTAMP,
-  baseline_method VARCHAR(255) NOT NULL,
-  reviewer_approval VARCHAR(255),
-  superseded_baseline_id VARCHAR(255),
-  degree_day_normalized BOOLEAN NOT NULL,
-  weather_source VARCHAR(255),
-  expected_load_curve TEXT,
-  adjusted_actual_delta DECIMAL(18, 4),
-  persistence_month VARCHAR(255),
-  savings_decay_threshold DECIMAL(18, 4),
-  trigger_event VARCHAR(255),
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,

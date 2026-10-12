@@ -15,7 +15,7 @@ CREATE TABLE legal_matter_management_legal_matter (
 CREATE TABLE legal_matter_management_outside_counsel (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  legal_matter_id INTEGER NOT NULL,
+  legal_matter_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
@@ -56,7 +56,7 @@ CREATE TABLE legal_matter_management_matter_document (
 CREATE TABLE legal_matter_management_legal_deadline (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  legal_matter_id INTEGER NOT NULL,
+  legal_matter_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
@@ -83,7 +83,7 @@ CREATE TABLE legal_matter_management_legal_hold (
 CREATE TABLE legal_matter_management_counsel_invoice (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  legal_matter_id INTEGER NOT NULL,
+  legal_matter_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,

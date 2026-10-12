@@ -22,7 +22,8 @@ CREATE TABLE electronic_health_records_core_patient_chart (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (patient_chart_id));
 
 CREATE TABLE electronic_health_records_core_clinical_encounter (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -44,7 +45,8 @@ CREATE TABLE electronic_health_records_core_clinical_encounter (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (patient_chart_id) REFERENCES electronic_health_records_core_patient_chart(patient_chart_id)
-);
+,
+  UNIQUE (clinical_encounter_id));
 
 CREATE TABLE electronic_health_records_core_clinical_order (
   id INTEGER PRIMARY KEY NOT NULL,

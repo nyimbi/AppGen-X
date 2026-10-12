@@ -30,7 +30,8 @@ CREATE TABLE public_sector_case_management_citizen_case (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (citizen_case_id));
 
 CREATE TABLE public_sector_case_management_eligibility_determination (
   id INTEGER PRIMARY KEY NOT NULL,

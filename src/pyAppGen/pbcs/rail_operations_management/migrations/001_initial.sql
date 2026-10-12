@@ -33,7 +33,8 @@ CREATE TABLE rail_operations_management_train_plan (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (train_plan_id));
 
 CREATE TABLE rail_operations_management_consist (
   id INTEGER PRIMARY KEY NOT NULL,

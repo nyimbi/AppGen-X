@@ -33,7 +33,8 @@ CREATE TABLE tax_administration_public_sector_taxpayer_account (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (taxpayer_account_id));
 
 CREATE TABLE tax_administration_public_sector_tax_filing (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -65,7 +66,8 @@ CREATE TABLE tax_administration_public_sector_tax_filing (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (taxpayer_account_id) REFERENCES tax_administration_public_sector_taxpayer_account(taxpayer_account_id)
-);
+,
+  UNIQUE (tax_filing_id));
 
 CREATE TABLE tax_administration_public_sector_assessment (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -213,7 +215,7 @@ CREATE TABLE tax_administration_public_sector_tax_notice (
   FOREIGN KEY (taxpayer_account_id) REFERENCES tax_administration_public_sector_taxpayer_account(taxpayer_account_id)
 );
 
-CREATE TABLE tax_administration_public_sector_tax_administration_public_sector_policy_rule (
+CREATE TABLE tax_administration_public_sector_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -235,7 +237,7 @@ CREATE TABLE tax_administration_public_sector_tax_administration_public_sector_p
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE tax_administration_public_sector_tax_administration_public_sector_runtime_parameter (
+CREATE TABLE tax_administration_public_sector_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   runtime_parameter_id VARCHAR(255) NOT NULL,
@@ -254,7 +256,7 @@ CREATE TABLE tax_administration_public_sector_tax_administration_public_sector_r
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE tax_administration_public_sector_tax_administration_public_sector_schema_extension (
+CREATE TABLE tax_administration_public_sector_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   schema_extension_id VARCHAR(255) NOT NULL,
@@ -268,7 +270,7 @@ CREATE TABLE tax_administration_public_sector_tax_administration_public_sector_s
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE tax_administration_public_sector_tax_administration_public_sector_control_assertion (
+CREATE TABLE tax_administration_public_sector_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   control_assertion_id VARCHAR(255) NOT NULL,
@@ -289,7 +291,7 @@ CREATE TABLE tax_administration_public_sector_tax_administration_public_sector_c
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE tax_administration_public_sector_tax_administration_public_sector_governed_model (
+CREATE TABLE tax_administration_public_sector_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   governed_model_id VARCHAR(255) NOT NULL,

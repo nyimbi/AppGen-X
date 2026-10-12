@@ -31,7 +31,8 @@ CREATE TABLE hospitality_property_operations_room_inventory (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (room_inventory_id));
 
 CREATE TABLE hospitality_property_operations_reservation (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -60,7 +61,8 @@ CREATE TABLE hospitality_property_operations_reservation (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (reservation_id));
 
 CREATE TABLE hospitality_property_operations_guest_stay (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -89,7 +91,8 @@ CREATE TABLE hospitality_property_operations_guest_stay (
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (reservation_id) REFERENCES hospitality_property_operations_reservation(reservation_id),
   FOREIGN KEY (room_inventory_id) REFERENCES hospitality_property_operations_room_inventory(room_inventory_id)
-);
+,
+  UNIQUE (guest_stay_id));
 
 CREATE TABLE hospitality_property_operations_housekeeping_task (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -204,7 +207,7 @@ CREATE TABLE hospitality_property_operations_rate_plan (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE hospitality_property_operations_hospitality_property_operations_policy_rule (
+CREATE TABLE hospitality_property_operations_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   rule_id VARCHAR(255) NOT NULL,
@@ -223,7 +226,7 @@ CREATE TABLE hospitality_property_operations_hospitality_property_operations_pol
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE hospitality_property_operations_hospitality_property_operations_runtime_parameter (
+CREATE TABLE hospitality_property_operations_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_name VARCHAR(255) NOT NULL,
@@ -240,7 +243,7 @@ CREATE TABLE hospitality_property_operations_hospitality_property_operations_run
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE hospitality_property_operations_hospitality_property_operations_schema_extension (
+CREATE TABLE hospitality_property_operations_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -256,7 +259,7 @@ CREATE TABLE hospitality_property_operations_hospitality_property_operations_sch
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE hospitality_property_operations_hospitality_property_operations_control_assertion (
+CREATE TABLE hospitality_property_operations_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -274,7 +277,7 @@ CREATE TABLE hospitality_property_operations_hospitality_property_operations_con
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE hospitality_property_operations_hospitality_property_operations_governed_model (
+CREATE TABLE hospitality_property_operations_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

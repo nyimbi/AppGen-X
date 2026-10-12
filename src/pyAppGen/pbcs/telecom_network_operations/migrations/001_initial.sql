@@ -88,7 +88,8 @@ CREATE TABLE telecom_network_operations_network_incident (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (network_incident_id));
 
 CREATE TABLE telecom_network_operations_alarm_event (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -113,7 +114,8 @@ CREATE TABLE telecom_network_operations_alarm_event (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (alarm_event_id));
 
 CREATE TABLE telecom_network_operations_service_assurance_case (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -142,7 +144,8 @@ CREATE TABLE telecom_network_operations_service_assurance_case (
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (alarm_event_id) REFERENCES telecom_network_operations_alarm_event(alarm_event_id),
   FOREIGN KEY (network_incident_id) REFERENCES telecom_network_operations_network_incident(network_incident_id)
-);
+,
+  UNIQUE (service_assurance_case_id));
 
 CREATE TABLE telecom_network_operations_maintenance_window (
   id INTEGER PRIMARY KEY NOT NULL,

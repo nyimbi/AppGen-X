@@ -22,7 +22,8 @@ CREATE TABLE land_real_estate_development_land_parcel (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (land_parcel_id));
 
 CREATE TABLE land_real_estate_development_zoning_case (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -47,7 +48,8 @@ CREATE TABLE land_real_estate_development_zoning_case (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (land_parcel_id) REFERENCES land_real_estate_development_land_parcel(land_parcel_id)
-);
+,
+  UNIQUE (zoning_case_id));
 
 CREATE TABLE land_real_estate_development_entitlement (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -69,7 +71,8 @@ CREATE TABLE land_real_estate_development_entitlement (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (zoning_case_id) REFERENCES land_real_estate_development_zoning_case(zoning_case_id)
-);
+,
+  UNIQUE (entitlement_id));
 
 CREATE TABLE land_real_estate_development_feasibility_model (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -116,7 +119,8 @@ CREATE TABLE land_real_estate_development_permit_application (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (entitlement_id) REFERENCES land_real_estate_development_entitlement(entitlement_id)
-);
+,
+  UNIQUE (permit_application_id));
 
 CREATE TABLE land_real_estate_development_development_milestone (
   id INTEGER PRIMARY KEY NOT NULL,

@@ -29,7 +29,8 @@ CREATE TABLE real_estate_property_management_property (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (property_id));
 
 CREATE TABLE real_estate_property_management_tenant (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -84,7 +85,8 @@ CREATE TABLE real_estate_property_management_lease (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (property_id) REFERENCES real_estate_property_management_property(property_id)
-);
+,
+  UNIQUE (lease_id));
 
 CREATE TABLE real_estate_property_management_rent_charge (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -200,7 +202,7 @@ CREATE TABLE real_estate_property_management_security_deposit (
   FOREIGN KEY (lease_id) REFERENCES real_estate_property_management_lease(lease_id)
 );
 
-CREATE TABLE real_estate_property_management_real_estate_property_management_policy_rule (
+CREATE TABLE real_estate_property_management_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   rule_id VARCHAR(255) NOT NULL,
@@ -218,7 +220,7 @@ CREATE TABLE real_estate_property_management_real_estate_property_management_pol
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE real_estate_property_management_real_estate_property_management_runtime_parameter (
+CREATE TABLE real_estate_property_management_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_name VARCHAR(255) NOT NULL,
@@ -232,7 +234,7 @@ CREATE TABLE real_estate_property_management_real_estate_property_management_run
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE real_estate_property_management_real_estate_property_management_schema_extension (
+CREATE TABLE real_estate_property_management_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -246,7 +248,7 @@ CREATE TABLE real_estate_property_management_real_estate_property_management_sch
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE real_estate_property_management_real_estate_property_management_control_assertion (
+CREATE TABLE real_estate_property_management_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -261,7 +263,7 @@ CREATE TABLE real_estate_property_management_real_estate_property_management_con
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE real_estate_property_management_real_estate_property_management_governed_model (
+CREATE TABLE real_estate_property_management_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

@@ -19,7 +19,8 @@ CREATE TABLE construction_project_controls_construction_project (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (construction_project_id));
 
 CREATE TABLE construction_project_controls_work_package (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -49,7 +50,8 @@ CREATE TABLE construction_project_controls_work_package (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (project_id) REFERENCES construction_project_controls_construction_project(construction_project_id)
-);
+,
+  UNIQUE (work_package_id));
 
 CREATE TABLE construction_project_controls_rfi (
   id INTEGER PRIMARY KEY NOT NULL,

@@ -17,7 +17,8 @@ CREATE TABLE agriculture_farm_operations_field (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (field_id));
 
 CREATE TABLE agriculture_farm_operations_crop_plan (
   id INTEGER PRIMARY KEY NOT NULL,

@@ -28,7 +28,8 @@ CREATE TABLE project_portfolio_management_portfolio (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (portfolio_id));
 
 CREATE TABLE project_portfolio_management_program (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -82,7 +83,8 @@ CREATE TABLE project_portfolio_management_project (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (portfolio_id) REFERENCES project_portfolio_management_portfolio(portfolio_id)
-);
+,
+  UNIQUE (project_id));
 
 CREATE TABLE project_portfolio_management_project_milestone (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -240,7 +242,8 @@ CREATE TABLE project_portfolio_management_portfolio_item (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (portfolio_item_id));
 
 CREATE TABLE project_portfolio_management_portfolio_program (
   id INTEGER PRIMARY KEY NOT NULL,

@@ -31,7 +31,8 @@ CREATE TABLE telecom_subscription_lifecycle_subscriber_account (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (subscriber_account_id));
 
 CREATE TABLE telecom_subscription_lifecycle_service_plan (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -62,7 +63,8 @@ CREATE TABLE telecom_subscription_lifecycle_service_plan (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (service_plan_id));
 
 CREATE TABLE telecom_subscription_lifecycle_sim_profile (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -94,7 +96,8 @@ CREATE TABLE telecom_subscription_lifecycle_sim_profile (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (subscriber_account_id) REFERENCES telecom_subscription_lifecycle_subscriber_account(subscriber_account_id)
-);
+,
+  UNIQUE (sim_profile_id));
 
 CREATE TABLE telecom_subscription_lifecycle_activation_request (
   id INTEGER PRIMARY KEY NOT NULL,

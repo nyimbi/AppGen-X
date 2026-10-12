@@ -24,7 +24,8 @@ CREATE TABLE lending_origination_servicing_loan_application (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (loan_application_id));
 
 CREATE TABLE lending_origination_servicing_borrower_profile (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -82,7 +83,8 @@ CREATE TABLE lending_origination_servicing_underwriting_decision (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (loan_application_id) REFERENCES lending_origination_servicing_loan_application(loan_application_id)
-);
+,
+  UNIQUE (underwriting_decision_id));
 
 CREATE TABLE lending_origination_servicing_loan_offer (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -110,7 +112,8 @@ CREATE TABLE lending_origination_servicing_loan_offer (
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (loan_application_id) REFERENCES lending_origination_servicing_loan_application(loan_application_id),
   FOREIGN KEY (underwriting_decision_id) REFERENCES lending_origination_servicing_underwriting_decision(underwriting_decision_id)
-);
+,
+  UNIQUE (loan_offer_id));
 
 CREATE TABLE lending_origination_servicing_disbursement (
   id INTEGER PRIMARY KEY NOT NULL,

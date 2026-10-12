@@ -41,7 +41,8 @@ CREATE TABLE mining_safety_permits_mine_permit (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (mine_permit_id));
 
 CREATE TABLE mining_safety_permits_shift_roster (
   id INTEGER PRIMARY KEY NOT NULL,

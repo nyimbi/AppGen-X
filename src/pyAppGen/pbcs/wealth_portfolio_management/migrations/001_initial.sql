@@ -35,7 +35,8 @@ CREATE TABLE wealth_portfolio_management_client_portfolio (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (client_portfolio_id));
 
 CREATE TABLE wealth_portfolio_management_investment_mandate (
   id INTEGER PRIMARY KEY NOT NULL,

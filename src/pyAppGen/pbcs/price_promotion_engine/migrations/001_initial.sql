@@ -15,7 +15,8 @@ CREATE TABLE price_promotion_engine_price_configuration (
   audit_hash VARCHAR(255) NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (configuration_id));
 
 CREATE TABLE price_promotion_engine_price_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -51,7 +52,8 @@ CREATE TABLE price_promotion_engine_price_policy_rule (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (rule_id) REFERENCES price_promotion_engine_price_configuration(configuration_id)
-);
+,
+  UNIQUE (rule_id));
 
 CREATE TABLE price_promotion_engine_price_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -78,7 +80,8 @@ CREATE TABLE price_promotion_engine_price_list (
   audit_hash VARCHAR(255) NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (price_list_id));
 
 CREATE TABLE price_promotion_engine_price_book (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -93,23 +96,8 @@ CREATE TABLE price_promotion_engine_price_book (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (price_list_id) REFERENCES price_promotion_engine_price_list(price_list_id)
-);
-
-CREATE TABLE price_promotion_engine_price_book_entry (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  price_book_entry_id VARCHAR(255) NOT NULL,
-  price_book_id VARCHAR(255) NOT NULL,
-  price_rule_id VARCHAR(255) NOT NULL,
-  sku VARCHAR(255) NOT NULL,
-  base_price VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  audit_hash VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (price_book_id) REFERENCES price_promotion_engine_price_book(price_book_id),
-  FOREIGN KEY (price_rule_id) REFERENCES price_promotion_engine_price_rule(price_rule_id)
-);
+,
+  UNIQUE (price_book_id));
 
 CREATE TABLE price_promotion_engine_price_rule (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -129,6 +117,24 @@ CREATE TABLE price_promotion_engine_price_rule (
   audit_hash VARCHAR(255) NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
+,
+  UNIQUE (price_rule_id),
+  UNIQUE (sku));
+
+CREATE TABLE price_promotion_engine_price_book_entry (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  price_book_entry_id VARCHAR(255) NOT NULL,
+  price_book_id VARCHAR(255) NOT NULL,
+  price_rule_id VARCHAR(255) NOT NULL,
+  sku VARCHAR(255) NOT NULL,
+  base_price VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  audit_hash VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (price_book_id) REFERENCES price_promotion_engine_price_book(price_book_id),
+  FOREIGN KEY (price_rule_id) REFERENCES price_promotion_engine_price_rule(price_rule_id)
 );
 
 CREATE TABLE price_promotion_engine_price_agreement (
@@ -193,22 +199,6 @@ CREATE TABLE price_promotion_engine_currency_price (
   FOREIGN KEY (price_rule_id) REFERENCES price_promotion_engine_price_rule(price_rule_id)
 );
 
-CREATE TABLE price_promotion_engine_trade_promotion_plan (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  plan_id VARCHAR(255) NOT NULL,
-  promotion_id VARCHAR(255) NOT NULL,
-  calendar VARCHAR(255) NOT NULL,
-  target_uplift_percent VARCHAR(255) NOT NULL,
-  spend_amount DECIMAL(18, 4) NOT NULL,
-  owner_role VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  audit_hash VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (promotion_id) REFERENCES price_promotion_engine_promotion(promotion_id)
-);
-
 CREATE TABLE price_promotion_engine_promotion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
@@ -224,6 +214,23 @@ CREATE TABLE price_promotion_engine_promotion (
   audit_hash VARCHAR(255) NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
+,
+  UNIQUE (promotion_id));
+
+CREATE TABLE price_promotion_engine_trade_promotion_plan (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  plan_id VARCHAR(255) NOT NULL,
+  promotion_id VARCHAR(255) NOT NULL,
+  calendar VARCHAR(255) NOT NULL,
+  target_uplift_percent VARCHAR(255) NOT NULL,
+  spend_amount DECIMAL(18, 4) NOT NULL,
+  owner_role VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  audit_hash VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (promotion_id) REFERENCES price_promotion_engine_promotion(promotion_id)
 );
 
 CREATE TABLE price_promotion_engine_promotion_rule (
@@ -328,6 +335,33 @@ CREATE TABLE price_promotion_engine_promotion_approval (
   FOREIGN KEY (promotion_id) REFERENCES price_promotion_engine_promotion(promotion_id)
 );
 
+CREATE TABLE price_promotion_engine_price_decision (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  decision_id VARCHAR(255) NOT NULL,
+  customer_id VARCHAR(255) NOT NULL,
+  sku VARCHAR(255) NOT NULL,
+  price_book_id VARCHAR(255) NOT NULL,
+  price_list_id VARCHAR(255) NOT NULL,
+  channel VARCHAR(255) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  quantity VARCHAR(255) NOT NULL,
+  base_price VARCHAR(255) NOT NULL,
+  optimized_unit_price VARCHAR(255) NOT NULL,
+  extended_price VARCHAR(255) NOT NULL,
+  total_discount_percent VARCHAR(255) NOT NULL,
+  margin_percent VARCHAR(255) NOT NULL,
+  risk_score DECIMAL(18, 4) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  eligible_promotions VARCHAR(255) NOT NULL,
+  applied_promotions VARCHAR(255) NOT NULL,
+  counterfactuals VARCHAR(255) NOT NULL,
+  audit_hash VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+,
+  UNIQUE (decision_id));
+
 CREATE TABLE price_promotion_engine_promotion_accrual (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
@@ -342,7 +376,8 @@ CREATE TABLE price_promotion_engine_promotion_accrual (
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (promotion_id) REFERENCES price_promotion_engine_promotion(promotion_id),
   FOREIGN KEY (decision_id) REFERENCES price_promotion_engine_price_decision(decision_id)
-);
+,
+  UNIQUE (accrual_id));
 
 CREATE TABLE price_promotion_engine_promotion_settlement (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -415,32 +450,6 @@ CREATE TABLE price_promotion_engine_price_margin_guardrail (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (subject_id) REFERENCES price_promotion_engine_price_decision(decision_id)
-);
-
-CREATE TABLE price_promotion_engine_price_decision (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  decision_id VARCHAR(255) NOT NULL,
-  customer_id VARCHAR(255) NOT NULL,
-  sku VARCHAR(255) NOT NULL,
-  price_book_id VARCHAR(255) NOT NULL,
-  price_list_id VARCHAR(255) NOT NULL,
-  channel VARCHAR(255) NOT NULL,
-  currency VARCHAR(255) NOT NULL,
-  quantity VARCHAR(255) NOT NULL,
-  base_price VARCHAR(255) NOT NULL,
-  optimized_unit_price VARCHAR(255) NOT NULL,
-  extended_price VARCHAR(255) NOT NULL,
-  total_discount_percent VARCHAR(255) NOT NULL,
-  margin_percent VARCHAR(255) NOT NULL,
-  risk_score DECIMAL(18, 4) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  eligible_promotions VARCHAR(255) NOT NULL,
-  applied_promotions VARCHAR(255) NOT NULL,
-  counterfactuals VARCHAR(255) NOT NULL,
-  audit_hash VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
 );
 
 CREATE TABLE price_promotion_engine_price_audit_trace (

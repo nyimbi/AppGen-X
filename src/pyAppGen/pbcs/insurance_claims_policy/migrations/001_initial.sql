@@ -15,7 +15,7 @@ CREATE TABLE insurance_claims_policy_insurance_policy (
 CREATE TABLE insurance_claims_policy_claim_intake (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  insurance_policy_id INTEGER NOT NULL,
+  insurance_policy_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
@@ -28,7 +28,7 @@ CREATE TABLE insurance_claims_policy_claim_intake (
 CREATE TABLE insurance_claims_policy_coverage_validation (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  insurance_policy_id INTEGER NOT NULL,
+  insurance_policy_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
@@ -55,7 +55,7 @@ CREATE TABLE insurance_claims_policy_claim_reserve (
 CREATE TABLE insurance_claims_policy_adjuster_assignment (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  insurance_policy_id INTEGER NOT NULL,
+  insurance_policy_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
@@ -68,7 +68,7 @@ CREATE TABLE insurance_claims_policy_adjuster_assignment (
 CREATE TABLE insurance_claims_policy_claim_fraud_signal (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  insurance_policy_id INTEGER NOT NULL,
+  insurance_policy_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
@@ -81,7 +81,7 @@ CREATE TABLE insurance_claims_policy_claim_fraud_signal (
 CREATE TABLE insurance_claims_policy_claim_settlement (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  insurance_policy_id INTEGER NOT NULL,
+  insurance_policy_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
@@ -94,7 +94,7 @@ CREATE TABLE insurance_claims_policy_claim_settlement (
 CREATE TABLE insurance_claims_policy_claim_audit_evidence (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  insurance_policy_id INTEGER NOT NULL,
+  insurance_policy_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,

@@ -20,7 +20,8 @@ CREATE TABLE travel_management_travel_request (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (trip_request_id));
 
 CREATE TABLE travel_management_travel_booking (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -58,7 +59,8 @@ CREATE TABLE travel_management_travel_itinerary (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (trip_request_id) REFERENCES travel_management_travel_request(trip_request_id)
-);
+,
+  UNIQUE (itinerary_id));
 
 CREATE TABLE travel_management_travel_policy_check (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -174,7 +176,8 @@ CREATE TABLE travel_management_trip_request (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (trip_request_id));
 
 CREATE TABLE travel_management_traveler_profile (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -265,7 +268,8 @@ CREATE TABLE travel_management_booking_intent (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (trip_request_id) REFERENCES travel_management_trip_request(trip_request_id)
-);
+,
+  UNIQUE (booking_intent_id));
 
 CREATE TABLE travel_management_air_booking (
   id INTEGER PRIMARY KEY NOT NULL,

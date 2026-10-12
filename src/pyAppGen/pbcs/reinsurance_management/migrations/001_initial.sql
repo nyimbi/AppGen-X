@@ -42,7 +42,8 @@ CREATE TABLE reinsurance_management_reinsurance_treaty (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (reinsurance_treaty_id));
 
 CREATE TABLE reinsurance_management_facultative_placement (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -73,7 +74,8 @@ CREATE TABLE reinsurance_management_facultative_placement (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (reinsurance_treaty_id) REFERENCES reinsurance_management_reinsurance_treaty(reinsurance_treaty_id)
-);
+,
+  UNIQUE (facultative_placement_id));
 
 CREATE TABLE reinsurance_management_cession (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -112,7 +114,8 @@ CREATE TABLE reinsurance_management_cession (
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (reinsurance_treaty_id) REFERENCES reinsurance_management_reinsurance_treaty(reinsurance_treaty_id),
   FOREIGN KEY (facultative_placement_id) REFERENCES reinsurance_management_facultative_placement(facultative_placement_id)
-);
+,
+  UNIQUE (cession_id));
 
 CREATE TABLE reinsurance_management_bordereau (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -148,34 +151,6 @@ CREATE TABLE reinsurance_management_bordereau (
   FOREIGN KEY (reinsurance_treaty_id) REFERENCES reinsurance_management_reinsurance_treaty(reinsurance_treaty_id)
 );
 
-CREATE TABLE reinsurance_management_recoverable (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  recoverable_id VARCHAR(255) NOT NULL,
-  cession_id VARCHAR(255) NOT NULL,
-  claim_recovery_id VARCHAR(255),
-  counterparty_reference VARCHAR(255) NOT NULL,
-  recoverable_amount DECIMAL(18, 4) NOT NULL,
-  currency VARCHAR(255) NOT NULL,
-  due_date TIMESTAMP NOT NULL,
-  billed_date TIMESTAMP,
-  aging_bucket VARCHAR(255),
-  aging_days INTEGER,
-  recoverable_state VARCHAR(255) NOT NULL,
-  impairment_flag BOOLEAN NOT NULL,
-  impairment_evidence_reference VARCHAR(255),
-  write_off_reason TEXT,
-  settlement_status VARCHAR(255),
-  cash_projection_reference VARCHAR(255),
-  recoverable_notes TEXT,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (cession_id) REFERENCES reinsurance_management_cession(cession_id),
-  FOREIGN KEY (claim_recovery_id) REFERENCES reinsurance_management_claim_recovery(claim_recovery_id)
-);
-
 CREATE TABLE reinsurance_management_claim_recovery (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
@@ -203,6 +178,35 @@ CREATE TABLE reinsurance_management_claim_recovery (
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (reinsurance_treaty_id) REFERENCES reinsurance_management_reinsurance_treaty(reinsurance_treaty_id),
   FOREIGN KEY (cession_id) REFERENCES reinsurance_management_cession(cession_id)
+,
+  UNIQUE (claim_recovery_id));
+
+CREATE TABLE reinsurance_management_recoverable (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  recoverable_id VARCHAR(255) NOT NULL,
+  cession_id VARCHAR(255) NOT NULL,
+  claim_recovery_id VARCHAR(255),
+  counterparty_reference VARCHAR(255) NOT NULL,
+  recoverable_amount DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  due_date TIMESTAMP NOT NULL,
+  billed_date TIMESTAMP,
+  aging_bucket VARCHAR(255),
+  aging_days INTEGER,
+  recoverable_state VARCHAR(255) NOT NULL,
+  impairment_flag BOOLEAN NOT NULL,
+  impairment_evidence_reference VARCHAR(255),
+  write_off_reason TEXT,
+  settlement_status VARCHAR(255),
+  cash_projection_reference VARCHAR(255),
+  recoverable_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (cession_id) REFERENCES reinsurance_management_cession(cession_id),
+  FOREIGN KEY (claim_recovery_id) REFERENCES reinsurance_management_claim_recovery(claim_recovery_id)
 );
 
 CREATE TABLE reinsurance_management_exposure_layer (

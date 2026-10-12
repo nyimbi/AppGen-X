@@ -21,7 +21,8 @@ CREATE TABLE food_safety_quality_compliance_haccp_plan (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (haccp_plan_id));
 
 CREATE TABLE food_safety_quality_compliance_critical_control_point (
   id INTEGER PRIMARY KEY NOT NULL,

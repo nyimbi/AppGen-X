@@ -21,7 +21,8 @@ CREATE TABLE permitting_licensing_inspections_application (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (application_id));
 
 CREATE TABLE permitting_licensing_inspections_permit (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -42,7 +43,8 @@ CREATE TABLE permitting_licensing_inspections_permit (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (application_id) REFERENCES permitting_licensing_inspections_application(application_id)
-);
+,
+  UNIQUE (permit_id));
 
 CREATE TABLE permitting_licensing_inspections_license (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -129,7 +131,8 @@ CREATE TABLE permitting_licensing_inspections_inspection (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (permit_id) REFERENCES permitting_licensing_inspections_permit(permit_id)
-);
+,
+  UNIQUE (inspection_id));
 
 CREATE TABLE permitting_licensing_inspections_violation (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -153,7 +156,7 @@ CREATE TABLE permitting_licensing_inspections_violation (
   FOREIGN KEY (inspection_id) REFERENCES permitting_licensing_inspections_inspection(inspection_id)
 );
 
-CREATE TABLE permitting_licensing_inspections_permitting_licensing_inspections_policy_rule (
+CREATE TABLE permitting_licensing_inspections_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -170,7 +173,7 @@ CREATE TABLE permitting_licensing_inspections_permitting_licensing_inspections_p
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE permitting_licensing_inspections_permitting_licensing_inspections_runtime_parameter (
+CREATE TABLE permitting_licensing_inspections_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   runtime_parameter_id VARCHAR(255) NOT NULL,
@@ -185,7 +188,7 @@ CREATE TABLE permitting_licensing_inspections_permitting_licensing_inspections_r
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE permitting_licensing_inspections_permitting_licensing_inspections_schema_extension (
+CREATE TABLE permitting_licensing_inspections_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   schema_extension_id VARCHAR(255) NOT NULL,
@@ -199,7 +202,7 @@ CREATE TABLE permitting_licensing_inspections_permitting_licensing_inspections_s
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE permitting_licensing_inspections_permitting_licensing_inspections_control_assertion (
+CREATE TABLE permitting_licensing_inspections_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   control_assertion_id VARCHAR(255) NOT NULL,
@@ -214,7 +217,7 @@ CREATE TABLE permitting_licensing_inspections_permitting_licensing_inspections_c
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE permitting_licensing_inspections_permitting_licensing_inspections_governed_model (
+CREATE TABLE permitting_licensing_inspections_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   governed_model_id VARCHAR(255) NOT NULL,

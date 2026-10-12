@@ -138,7 +138,7 @@ CREATE TABLE payment_orchestration_payment_settlement (
   settlement_id VARCHAR(255) NOT NULL,
   intent_id VARCHAR(255) NOT NULL,
   amount DECIMAL(18, 4) NOT NULL,
-  window TIMESTAMP NOT NULL,
+  "window" TIMESTAMP NOT NULL,
   status VARCHAR(255) NOT NULL,
   audit_hash VARCHAR(255) NOT NULL,
   created_at TIMESTAMP NOT NULL,

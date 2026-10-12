@@ -22,7 +22,8 @@ CREATE TABLE restaurant_operations_menu_item (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (menu_item_id));
 
 CREATE TABLE restaurant_operations_recipe (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -43,7 +44,30 @@ CREATE TABLE restaurant_operations_recipe (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (menu_item_id) REFERENCES restaurant_operations_menu_item(menu_item_id)
-);
+,
+  UNIQUE (recipe_id));
+
+CREATE TABLE restaurant_operations_reservation (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  reservation_id VARCHAR(255) NOT NULL,
+  guest_name VARCHAR(255) NOT NULL,
+  party_size INTEGER NOT NULL,
+  table_id VARCHAR(255) NOT NULL,
+  daypart VARCHAR(255) NOT NULL,
+  service_phase VARCHAR(255) NOT NULL,
+  turn_minutes INTEGER NOT NULL,
+  accessibility_needs VARCHAR(255) NOT NULL,
+  waitlist_state VARCHAR(255) NOT NULL,
+  quoted_wait_minutes INTEGER NOT NULL,
+  seated_at TIMESTAMP,
+  channel VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+,
+  UNIQUE (reservation_id));
 
 CREATE TABLE restaurant_operations_kitchen_ticket (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -68,27 +92,6 @@ CREATE TABLE restaurant_operations_kitchen_ticket (
   FOREIGN KEY (reservation_id) REFERENCES restaurant_operations_reservation(reservation_id)
 );
 
-CREATE TABLE restaurant_operations_reservation (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  reservation_id VARCHAR(255) NOT NULL,
-  guest_name VARCHAR(255) NOT NULL,
-  party_size INTEGER NOT NULL,
-  table_id VARCHAR(255) NOT NULL,
-  daypart VARCHAR(255) NOT NULL,
-  service_phase VARCHAR(255) NOT NULL,
-  turn_minutes INTEGER NOT NULL,
-  accessibility_needs VARCHAR(255) NOT NULL,
-  waitlist_state VARCHAR(255) NOT NULL,
-  quoted_wait_minutes INTEGER NOT NULL,
-  seated_at TIMESTAMP,
-  channel VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
-);
-
 CREATE TABLE restaurant_operations_inventory_prep (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
@@ -108,7 +111,8 @@ CREATE TABLE restaurant_operations_inventory_prep (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (recipe_id) REFERENCES restaurant_operations_recipe(recipe_id)
-);
+,
+  UNIQUE (prep_batch_id));
 
 CREATE TABLE restaurant_operations_food_waste (
   id INTEGER PRIMARY KEY NOT NULL,

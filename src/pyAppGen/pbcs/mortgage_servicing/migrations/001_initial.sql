@@ -47,7 +47,8 @@ CREATE TABLE mortgage_servicing_mortgage_loan (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (mortgage_loan_id));
 
 CREATE TABLE mortgage_servicing_escrow_account (
   id INTEGER PRIMARY KEY NOT NULL,

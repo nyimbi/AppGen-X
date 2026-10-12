@@ -25,7 +25,8 @@ CREATE TABLE donor_grant_fundraising_donor (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (donor_id));
 
 CREATE TABLE donor_grant_fundraising_campaign (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -47,7 +48,8 @@ CREATE TABLE donor_grant_fundraising_campaign (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (campaign_id));
 
 CREATE TABLE donor_grant_fundraising_pledge (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -71,7 +73,30 @@ CREATE TABLE donor_grant_fundraising_pledge (
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (donor_id) REFERENCES donor_grant_fundraising_donor(donor_id),
   FOREIGN KEY (campaign_id) REFERENCES donor_grant_fundraising_campaign(campaign_id)
-);
+,
+  UNIQUE (pledge_id));
+
+CREATE TABLE donor_grant_fundraising_restriction (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  restriction_id VARCHAR(255) NOT NULL,
+  restriction_type VARCHAR(255) NOT NULL,
+  purpose_code VARCHAR(255) NOT NULL,
+  geography VARCHAR(255),
+  beneficiary_class VARCHAR(255),
+  time_window_start TIMESTAMP,
+  time_window_end TIMESTAMP,
+  required_approvals VARCHAR(255) NOT NULL,
+  release_conditions TEXT,
+  sunset_at TIMESTAMP,
+  released_at TIMESTAMP,
+  amendment_reason TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+,
+  UNIQUE (restriction_id));
 
 CREATE TABLE donor_grant_fundraising_gift (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -99,28 +124,8 @@ CREATE TABLE donor_grant_fundraising_gift (
   FOREIGN KEY (campaign_id) REFERENCES donor_grant_fundraising_campaign(campaign_id),
   FOREIGN KEY (pledge_id) REFERENCES donor_grant_fundraising_pledge(pledge_id),
   FOREIGN KEY (restriction_id) REFERENCES donor_grant_fundraising_restriction(restriction_id)
-);
-
-CREATE TABLE donor_grant_fundraising_restriction (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  restriction_id VARCHAR(255) NOT NULL,
-  restriction_type VARCHAR(255) NOT NULL,
-  purpose_code VARCHAR(255) NOT NULL,
-  geography VARCHAR(255),
-  beneficiary_class VARCHAR(255),
-  time_window_start TIMESTAMP,
-  time_window_end TIMESTAMP,
-  required_approvals VARCHAR(255) NOT NULL,
-  release_conditions TEXT,
-  sunset_at TIMESTAMP,
-  released_at TIMESTAMP,
-  amendment_reason TEXT,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (gift_id));
 
 CREATE TABLE donor_grant_fundraising_grant_application (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -152,7 +157,8 @@ CREATE TABLE donor_grant_fundraising_grant_application (
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (donor_id) REFERENCES donor_grant_fundraising_donor(donor_id),
   FOREIGN KEY (restriction_id) REFERENCES donor_grant_fundraising_restriction(restriction_id)
-);
+,
+  UNIQUE (grant_application_id));
 
 CREATE TABLE donor_grant_fundraising_stewardship_touchpoint (
   id INTEGER PRIMARY KEY NOT NULL,

@@ -33,7 +33,8 @@ CREATE TABLE livestock_herd_management_animal (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (animal_id));
 
 CREATE TABLE livestock_herd_management_herd_group (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -57,7 +58,8 @@ CREATE TABLE livestock_herd_management_herd_group (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (herd_group_id));
 
 CREATE TABLE livestock_herd_management_health_event (
   id INTEGER PRIMARY KEY NOT NULL,

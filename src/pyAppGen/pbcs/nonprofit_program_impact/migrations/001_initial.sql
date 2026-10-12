@@ -31,7 +31,8 @@ CREATE TABLE nonprofit_program_impact_program (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (program_id));
 
 CREATE TABLE nonprofit_program_impact_beneficiary (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -65,7 +66,8 @@ CREATE TABLE nonprofit_program_impact_beneficiary (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (program_id) REFERENCES nonprofit_program_impact_program(program_id)
-);
+,
+  UNIQUE (beneficiary_id));
 
 CREATE TABLE nonprofit_program_impact_service_episode (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -140,7 +142,8 @@ CREATE TABLE nonprofit_program_impact_outcome_measure (
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (program_id) REFERENCES nonprofit_program_impact_program(program_id),
   FOREIGN KEY (beneficiary_id) REFERENCES nonprofit_program_impact_beneficiary(beneficiary_id)
-);
+,
+  UNIQUE (outcome_measure_id));
 
 CREATE TABLE nonprofit_program_impact_grant_restriction (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -171,7 +174,8 @@ CREATE TABLE nonprofit_program_impact_grant_restriction (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (program_id) REFERENCES nonprofit_program_impact_program(program_id)
-);
+,
+  UNIQUE (grant_restriction_id));
 
 CREATE TABLE nonprofit_program_impact_impact_evidence (
   id INTEGER PRIMARY KEY NOT NULL,

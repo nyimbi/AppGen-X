@@ -26,7 +26,8 @@ CREATE TABLE defense_readiness_logistics_unit_readiness (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (unit_readiness_id));
 
 CREATE TABLE defense_readiness_logistics_mission_asset (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -51,8 +52,10 @@ CREATE TABLE defense_readiness_logistics_mission_asset (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
+  unit_readiness_id VARCHAR(255) NOT NULL,
   FOREIGN KEY (unit_readiness_id) REFERENCES defense_readiness_logistics_unit_readiness(unit_readiness_id)
-);
+,
+  UNIQUE (mission_asset_id));
 
 CREATE TABLE defense_readiness_logistics_supply_request (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -77,6 +80,7 @@ CREATE TABLE defense_readiness_logistics_supply_request (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
+  unit_readiness_id VARCHAR(255) NOT NULL,
   FOREIGN KEY (unit_readiness_id) REFERENCES defense_readiness_logistics_unit_readiness(unit_readiness_id)
 );
 
@@ -105,6 +109,7 @@ CREATE TABLE defense_readiness_logistics_maintenance_status (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
+  mission_asset_id VARCHAR(255) NOT NULL,
   FOREIGN KEY (mission_asset_id) REFERENCES defense_readiness_logistics_mission_asset(mission_asset_id)
 );
 
@@ -135,8 +140,10 @@ CREATE TABLE defense_readiness_logistics_deployment_plan (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
+  unit_readiness_id VARCHAR(255) NOT NULL,
   FOREIGN KEY (unit_readiness_id) REFERENCES defense_readiness_logistics_unit_readiness(unit_readiness_id)
-);
+,
+  UNIQUE (deployment_plan_id));
 
 CREATE TABLE defense_readiness_logistics_readiness_inspection (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -158,6 +165,7 @@ CREATE TABLE defense_readiness_logistics_readiness_inspection (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
+  unit_readiness_id VARCHAR(255) NOT NULL,
   FOREIGN KEY (unit_readiness_id) REFERENCES defense_readiness_logistics_unit_readiness(unit_readiness_id)
 );
 
@@ -187,8 +195,10 @@ CREATE TABLE defense_readiness_logistics_logistics_movement (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
+  deployment_plan_id VARCHAR(255) NOT NULL,
   FOREIGN KEY (deployment_plan_id) REFERENCES defense_readiness_logistics_deployment_plan(deployment_plan_id)
-);
+,
+  UNIQUE (logistics_movement_id));
 
 CREATE TABLE defense_readiness_logistics_personnel_qualification (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -210,6 +220,7 @@ CREATE TABLE defense_readiness_logistics_personnel_qualification (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
+  unit_readiness_id VARCHAR(255) NOT NULL,
   FOREIGN KEY (unit_readiness_id) REFERENCES defense_readiness_logistics_unit_readiness(unit_readiness_id)
 );
 
@@ -235,6 +246,7 @@ CREATE TABLE defense_readiness_logistics_ammunition_lot (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
+  unit_readiness_id VARCHAR(255) NOT NULL,
   FOREIGN KEY (unit_readiness_id) REFERENCES defense_readiness_logistics_unit_readiness(unit_readiness_id)
 );
 
@@ -259,6 +271,7 @@ CREATE TABLE defense_readiness_logistics_fuel_allocation (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
+  deployment_plan_id VARCHAR(255) NOT NULL,
   FOREIGN KEY (deployment_plan_id) REFERENCES defense_readiness_logistics_deployment_plan(deployment_plan_id)
 );
 
@@ -284,6 +297,7 @@ CREATE TABLE defense_readiness_logistics_movement_load_plan (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
+  logistics_movement_id VARCHAR(255) NOT NULL,
   FOREIGN KEY (logistics_movement_id) REFERENCES defense_readiness_logistics_logistics_movement(logistics_movement_id)
 );
 
@@ -306,6 +320,7 @@ CREATE TABLE defense_readiness_logistics_theater_support_request (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
+  deployment_plan_id VARCHAR(255) NOT NULL,
   FOREIGN KEY (deployment_plan_id) REFERENCES defense_readiness_logistics_deployment_plan(deployment_plan_id)
 );
 
@@ -327,6 +342,7 @@ CREATE TABLE defense_readiness_logistics_controlled_item_custody (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
+  mission_asset_id VARCHAR(255) NOT NULL,
   FOREIGN KEY (mission_asset_id) REFERENCES defense_readiness_logistics_mission_asset(mission_asset_id)
 );
 
@@ -348,6 +364,7 @@ CREATE TABLE defense_readiness_logistics_readiness_exception (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
+  unit_readiness_id VARCHAR(255) NOT NULL,
   FOREIGN KEY (unit_readiness_id) REFERENCES defense_readiness_logistics_unit_readiness(unit_readiness_id)
 );
 

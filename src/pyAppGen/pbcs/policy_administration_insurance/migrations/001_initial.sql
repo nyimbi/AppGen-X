@@ -42,7 +42,8 @@ CREATE TABLE policy_administration_insurance_insurance_policy (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (insurance_policy_id));
 
 CREATE TABLE policy_administration_insurance_coverage_item (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -216,7 +217,7 @@ CREATE TABLE policy_administration_insurance_policy_document (
   FOREIGN KEY (insurance_policy_id) REFERENCES policy_administration_insurance_insurance_policy(insurance_policy_id)
 );
 
-CREATE TABLE policy_administration_insurance_policy_administration_insurance_policy_rule (
+CREATE TABLE policy_administration_insurance_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -235,7 +236,7 @@ CREATE TABLE policy_administration_insurance_policy_administration_insurance_pol
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE policy_administration_insurance_policy_administration_insurance_runtime_parameter (
+CREATE TABLE policy_administration_insurance_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   runtime_parameter_id VARCHAR(255) NOT NULL,
@@ -256,7 +257,7 @@ CREATE TABLE policy_administration_insurance_policy_administration_insurance_run
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE policy_administration_insurance_policy_administration_insurance_schema_extension (
+CREATE TABLE policy_administration_insurance_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   schema_extension_id VARCHAR(255) NOT NULL,
@@ -274,7 +275,7 @@ CREATE TABLE policy_administration_insurance_policy_administration_insurance_sch
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE policy_administration_insurance_policy_administration_insurance_control_assertion (
+CREATE TABLE policy_administration_insurance_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   control_assertion_id VARCHAR(255) NOT NULL,
@@ -293,7 +294,7 @@ CREATE TABLE policy_administration_insurance_policy_administration_insurance_con
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE policy_administration_insurance_policy_administration_insurance_governed_model (
+CREATE TABLE policy_administration_insurance_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   governed_model_id VARCHAR(255) NOT NULL,

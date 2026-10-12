@@ -1,4 +1,3 @@
-PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS customer_success_management_customer_success_account (
   id TEXT PRIMARY KEY NOT NULL,

@@ -34,7 +34,8 @@ CREATE TABLE insurance_underwriting_underwriting_submission (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (underwriting_submission_id));
 
 CREATE TABLE insurance_underwriting_risk_profile (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -67,7 +68,8 @@ CREATE TABLE insurance_underwriting_risk_profile (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (underwriting_submission_id) REFERENCES insurance_underwriting_underwriting_submission(underwriting_submission_id)
-);
+,
+  UNIQUE (risk_profile_id));
 
 CREATE TABLE insurance_underwriting_rating_factor (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -97,7 +99,8 @@ CREATE TABLE insurance_underwriting_rating_factor (
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (underwriting_submission_id) REFERENCES insurance_underwriting_underwriting_submission(underwriting_submission_id),
   FOREIGN KEY (risk_profile_id) REFERENCES insurance_underwriting_risk_profile(risk_profile_id)
-);
+,
+  UNIQUE (rating_factor_id));
 
 CREATE TABLE insurance_underwriting_quote (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -134,7 +137,8 @@ CREATE TABLE insurance_underwriting_quote (
   FOREIGN KEY (underwriting_submission_id) REFERENCES insurance_underwriting_underwriting_submission(underwriting_submission_id),
   FOREIGN KEY (risk_profile_id) REFERENCES insurance_underwriting_risk_profile(risk_profile_id),
   FOREIGN KEY (rating_factor_id) REFERENCES insurance_underwriting_rating_factor(rating_factor_id)
-);
+,
+  UNIQUE (quote_id));
 
 CREATE TABLE insurance_underwriting_underwriting_decision (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -196,7 +200,8 @@ CREATE TABLE insurance_underwriting_bind_package (
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (underwriting_submission_id) REFERENCES insurance_underwriting_underwriting_submission(underwriting_submission_id),
   FOREIGN KEY (quote_id) REFERENCES insurance_underwriting_quote(quote_id)
-);
+,
+  UNIQUE (bind_package_id));
 
 CREATE TABLE insurance_underwriting_exclusion (
   id INTEGER PRIMARY KEY NOT NULL,

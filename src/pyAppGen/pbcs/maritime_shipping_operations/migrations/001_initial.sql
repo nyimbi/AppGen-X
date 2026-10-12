@@ -28,7 +28,8 @@ CREATE TABLE maritime_shipping_operations_voyage (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (voyage_id));
 
 CREATE TABLE maritime_shipping_operations_vessel (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -50,7 +51,8 @@ CREATE TABLE maritime_shipping_operations_vessel (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (vessel_id));
 
 CREATE TABLE maritime_shipping_operations_cargo_booking (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -147,7 +149,8 @@ CREATE TABLE maritime_shipping_operations_port_call (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (voyage_id) REFERENCES maritime_shipping_operations_voyage(voyage_id)
-);
+,
+  UNIQUE (port_call_id));
 
 CREATE TABLE maritime_shipping_operations_demurrage_claim (
   id INTEGER PRIMARY KEY NOT NULL,

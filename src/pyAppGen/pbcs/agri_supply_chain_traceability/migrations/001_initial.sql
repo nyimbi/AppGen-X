@@ -23,7 +23,8 @@ CREATE TABLE agri_supply_chain_traceability_farm_lot (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (farm_lot_id));
 
 CREATE TABLE agri_supply_chain_traceability_input_batch (
   id INTEGER PRIMARY KEY NOT NULL,

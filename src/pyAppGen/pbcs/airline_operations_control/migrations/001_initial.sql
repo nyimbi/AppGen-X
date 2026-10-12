@@ -25,7 +25,8 @@ CREATE TABLE airline_operations_control_flight_leg (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (flight_leg_id));
 
 CREATE TABLE airline_operations_control_aircraft_rotation (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -100,7 +101,8 @@ CREATE TABLE airline_operations_control_disruption_event (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (flight_leg_id) REFERENCES airline_operations_control_flight_leg(flight_leg_id)
-);
+,
+  UNIQUE (disruption_event_id));
 
 CREATE TABLE airline_operations_control_reaccommodation_plan (
   id INTEGER PRIMARY KEY NOT NULL,

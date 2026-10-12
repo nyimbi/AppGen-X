@@ -27,7 +27,8 @@ CREATE TABLE water_wastewater_operations_treatment_plant (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (treatment_plant_id));
 
 CREATE TABLE water_wastewater_operations_water_quality_sample (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -59,7 +60,8 @@ CREATE TABLE water_wastewater_operations_water_quality_sample (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (treatment_plant_id) REFERENCES water_wastewater_operations_treatment_plant(treatment_plant_id)
-);
+,
+  UNIQUE (water_quality_sample_id));
 
 CREATE TABLE water_wastewater_operations_permit_limit (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -85,7 +87,8 @@ CREATE TABLE water_wastewater_operations_permit_limit (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (treatment_plant_id) REFERENCES water_wastewater_operations_treatment_plant(treatment_plant_id)
-);
+,
+  UNIQUE (permit_limit_id));
 
 CREATE TABLE water_wastewater_operations_pump_asset (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -140,7 +143,8 @@ CREATE TABLE water_wastewater_operations_service_interruption (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (treatment_plant_id) REFERENCES water_wastewater_operations_treatment_plant(treatment_plant_id)
-);
+,
+  UNIQUE (service_interruption_id));
 
 CREATE TABLE water_wastewater_operations_field_work_order (
   id INTEGER PRIMARY KEY NOT NULL,

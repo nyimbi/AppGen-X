@@ -2,7 +2,7 @@ CREATE SCHEMA IF NOT EXISTS loyalty_rewards;
 
 CREATE TABLE loyalty_rewards_reward_account (
   id INTEGER PRIMARY KEY NOT NULL,
-  account_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  account_id VARCHAR(255) NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   customer_id VARCHAR(255) NOT NULL,
   currency VARCHAR(255) NOT NULL,
@@ -19,7 +19,7 @@ CREATE TABLE loyalty_rewards_reward_account (
 
 CREATE TABLE loyalty_rewards_points_ledger (
   id INTEGER PRIMARY KEY NOT NULL,
-  ledger_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  ledger_id VARCHAR(255) NOT NULL,
   account_id VARCHAR(255) NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   entry_type VARCHAR(255) NOT NULL,
@@ -33,7 +33,7 @@ CREATE TABLE loyalty_rewards_points_ledger (
 
 CREATE TABLE loyalty_rewards_earning_rule (
   id INTEGER PRIMARY KEY NOT NULL,
-  earning_rule_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  earning_rule_id VARCHAR(255) NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   name VARCHAR(255) NOT NULL,
   activity_type VARCHAR(255) NOT NULL,
@@ -47,7 +47,7 @@ CREATE TABLE loyalty_rewards_earning_rule (
 
 CREATE TABLE loyalty_rewards_redemption (
   id INTEGER PRIMARY KEY NOT NULL,
-  redemption_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  redemption_id VARCHAR(255) NOT NULL,
   account_id VARCHAR(255) NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   points VARCHAR(255) NOT NULL,
@@ -61,7 +61,7 @@ CREATE TABLE loyalty_rewards_redemption (
 
 CREATE TABLE loyalty_rewards_reward_tier (
   id INTEGER PRIMARY KEY NOT NULL,
-  account_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  account_id VARCHAR(255) NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   tier VARCHAR(255) NOT NULL,
   lifetime_points VARCHAR(255) NOT NULL,
@@ -74,7 +74,7 @@ CREATE TABLE loyalty_rewards_reward_tier (
 
 CREATE TABLE loyalty_rewards_tier_benefit (
   id INTEGER PRIMARY KEY NOT NULL,
-  account_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  account_id VARCHAR(255) NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   tier VARCHAR(255) NOT NULL,
   benefits VARCHAR(255) NOT NULL,
@@ -87,7 +87,7 @@ CREATE TABLE loyalty_rewards_tier_benefit (
 
 CREATE TABLE loyalty_rewards_referral_reward (
   id INTEGER PRIMARY KEY NOT NULL,
-  referral_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  referral_id VARCHAR(255) NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   account_id VARCHAR(255) NOT NULL,
   referred_customer_id VARCHAR(255) NOT NULL,
@@ -100,7 +100,7 @@ CREATE TABLE loyalty_rewards_referral_reward (
 
 CREATE TABLE loyalty_rewards_partner_accrual (
   id INTEGER PRIMARY KEY NOT NULL,
-  partner_accrual_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  partner_accrual_id VARCHAR(255) NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   account_id VARCHAR(255) NOT NULL,
   partner_id VARCHAR(255) NOT NULL,
@@ -114,7 +114,7 @@ CREATE TABLE loyalty_rewards_partner_accrual (
 
 CREATE TABLE loyalty_rewards_offer_eligibility (
   id INTEGER PRIMARY KEY NOT NULL,
-  eligibility_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  eligibility_id VARCHAR(255) NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   account_id VARCHAR(255) NOT NULL,
   offer_id VARCHAR(255) NOT NULL,
@@ -128,7 +128,7 @@ CREATE TABLE loyalty_rewards_offer_eligibility (
 
 CREATE TABLE loyalty_rewards_expiration_schedule (
   id INTEGER PRIMARY KEY NOT NULL,
-  schedule_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  schedule_id VARCHAR(255) NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   account_id VARCHAR(255) NOT NULL,
   points VARCHAR(255) NOT NULL,
@@ -141,7 +141,7 @@ CREATE TABLE loyalty_rewards_expiration_schedule (
 
 CREATE TABLE loyalty_rewards_liability_snapshot (
   id INTEGER PRIMARY KEY NOT NULL,
-  snapshot_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  snapshot_id VARCHAR(255) NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   liability_amount DECIMAL(18, 4) NOT NULL,
   reserve_amount DECIMAL(18, 4) NOT NULL,
@@ -153,7 +153,7 @@ CREATE TABLE loyalty_rewards_liability_snapshot (
 
 CREATE TABLE loyalty_rewards_fraud_review (
   id INTEGER PRIMARY KEY NOT NULL,
-  review_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  review_id VARCHAR(255) NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   account_id VARCHAR(255) NOT NULL,
   signals VARCHAR(255) NOT NULL,
@@ -166,7 +166,7 @@ CREATE TABLE loyalty_rewards_fraud_review (
 
 CREATE TABLE loyalty_rewards_churn_risk_score (
   id INTEGER PRIMARY KEY NOT NULL,
-  score_id DECIMAL(18, 4) PRIMARY KEY NOT NULL,
+  score_id DECIMAL(18, 4) NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   account_id VARCHAR(255) NOT NULL,
   churn_risk VARCHAR(255) NOT NULL,
@@ -178,7 +178,7 @@ CREATE TABLE loyalty_rewards_churn_risk_score (
 
 CREATE TABLE loyalty_rewards_breakage_forecast (
   id INTEGER PRIMARY KEY NOT NULL,
-  forecast_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  forecast_id VARCHAR(255) NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   horizon_days VARCHAR(255) NOT NULL,
   outstanding_points VARCHAR(255) NOT NULL,
@@ -190,7 +190,7 @@ CREATE TABLE loyalty_rewards_breakage_forecast (
 
 CREATE TABLE loyalty_rewards_offer_simulation (
   id INTEGER PRIMARY KEY NOT NULL,
-  simulation_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  simulation_id VARCHAR(255) NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   account_id VARCHAR(255) NOT NULL,
   offer_id VARCHAR(255) NOT NULL,
@@ -204,7 +204,7 @@ CREATE TABLE loyalty_rewards_offer_simulation (
 
 CREATE TABLE loyalty_rewards_loyalty_exception (
   id INTEGER PRIMARY KEY NOT NULL,
-  exception_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  exception_id VARCHAR(255) NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   account_id VARCHAR(255) NOT NULL,
   reason VARCHAR(255) NOT NULL,
@@ -217,7 +217,7 @@ CREATE TABLE loyalty_rewards_loyalty_exception (
 
 CREATE TABLE loyalty_rewards_balance_reconciliation (
   id INTEGER PRIMARY KEY NOT NULL,
-  reconciliation_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  reconciliation_id VARCHAR(255) NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   account_id VARCHAR(255) NOT NULL,
   recorded_balance DECIMAL(18, 4) NOT NULL,
@@ -229,7 +229,7 @@ CREATE TABLE loyalty_rewards_balance_reconciliation (
 
 CREATE TABLE loyalty_rewards_reward_balance_proof (
   id INTEGER PRIMARY KEY NOT NULL,
-  proof_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  proof_id VARCHAR(255) NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   account_id VARCHAR(255) NOT NULL,
   balance DECIMAL(18, 4) NOT NULL,
@@ -242,7 +242,7 @@ CREATE TABLE loyalty_rewards_reward_balance_proof (
 
 CREATE TABLE loyalty_rewards_loyalty_audit_entry (
   id INTEGER PRIMARY KEY NOT NULL,
-  audit_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  audit_id VARCHAR(255) NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   account_id VARCHAR(255) NOT NULL,
   action VARCHAR(255) NOT NULL,
@@ -255,7 +255,7 @@ CREATE TABLE loyalty_rewards_loyalty_audit_entry (
 
 CREATE TABLE loyalty_rewards_rewards_policy_screening (
   id INTEGER PRIMARY KEY NOT NULL,
-  screening_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  screening_id VARCHAR(255) NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   account_id VARCHAR(255) NOT NULL,
   activity_type VARCHAR(255) NOT NULL,
@@ -269,7 +269,7 @@ CREATE TABLE loyalty_rewards_rewards_policy_screening (
 
 CREATE TABLE loyalty_rewards_liability_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
-  assertion_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   liability_amount DECIMAL(18, 4) NOT NULL,
   reserve_amount DECIMAL(18, 4) NOT NULL,
@@ -282,7 +282,7 @@ CREATE TABLE loyalty_rewards_liability_control_assertion (
 
 CREATE TABLE loyalty_rewards_loyalty_federation_view (
   id INTEGER PRIMARY KEY NOT NULL,
-  view_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  view_id VARCHAR(255) NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   account_id VARCHAR(255) NOT NULL,
   customer_id VARCHAR(255) NOT NULL,
@@ -296,7 +296,7 @@ CREATE TABLE loyalty_rewards_loyalty_federation_view (
 
 CREATE TABLE loyalty_rewards_loyalty_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
-  model_id VARCHAR(255) PRIMARY KEY NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_type VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,

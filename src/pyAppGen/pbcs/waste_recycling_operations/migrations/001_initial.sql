@@ -31,7 +31,8 @@ CREATE TABLE waste_recycling_operations_waste_route (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (waste_route_id));
 
 CREATE TABLE waste_recycling_operations_bin_asset (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -63,7 +64,8 @@ CREATE TABLE waste_recycling_operations_bin_asset (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (bin_asset_id));
 
 CREATE TABLE waste_recycling_operations_pickup_event (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -94,7 +96,8 @@ CREATE TABLE waste_recycling_operations_pickup_event (
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (waste_route_id) REFERENCES waste_recycling_operations_waste_route(waste_route_id),
   FOREIGN KEY (bin_asset_id) REFERENCES waste_recycling_operations_bin_asset(bin_asset_id)
-);
+,
+  UNIQUE (pickup_event_id));
 
 CREATE TABLE waste_recycling_operations_material_stream (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -120,7 +123,8 @@ CREATE TABLE waste_recycling_operations_material_stream (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (material_stream_id));
 
 CREATE TABLE waste_recycling_operations_contamination_finding (
   id INTEGER PRIMARY KEY NOT NULL,

@@ -13,7 +13,8 @@ CREATE TABLE banking_core_accounts_deposit_account (
   payload TEXT,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (account_number));
 
 CREATE TABLE banking_core_accounts_account_balance (
   id INTEGER PRIMARY KEY NOT NULL,

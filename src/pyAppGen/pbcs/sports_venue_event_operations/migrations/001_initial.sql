@@ -36,7 +36,8 @@ CREATE TABLE sports_venue_event_operations_venue_event (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (venue_event_id));
 
 CREATE TABLE sports_venue_event_operations_seating_manifest (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -129,7 +130,8 @@ CREATE TABLE sports_venue_event_operations_security_post (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (venue_event_id) REFERENCES sports_venue_event_operations_venue_event(venue_event_id)
-);
+,
+  UNIQUE (security_post_id));
 
 CREATE TABLE sports_venue_event_operations_event_staff (
   id INTEGER PRIMARY KEY NOT NULL,

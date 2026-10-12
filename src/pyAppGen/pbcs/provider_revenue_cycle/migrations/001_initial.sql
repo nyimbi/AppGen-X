@@ -36,7 +36,8 @@ CREATE TABLE provider_revenue_cycle_patient_account (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (patient_account_id));
 
 CREATE TABLE provider_revenue_cycle_charge_capture (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -67,7 +68,8 @@ CREATE TABLE provider_revenue_cycle_charge_capture (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (patient_account_id) REFERENCES provider_revenue_cycle_patient_account(patient_account_id)
-);
+,
+  UNIQUE (charge_capture_id));
 
 CREATE TABLE provider_revenue_cycle_coding_workqueue (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -127,7 +129,8 @@ CREATE TABLE provider_revenue_cycle_claim_batch (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (claim_batch_id));
 
 CREATE TABLE provider_revenue_cycle_denial_case (
   id INTEGER PRIMARY KEY NOT NULL,

@@ -36,7 +36,8 @@ CREATE TABLE identity_kyc_aml_compliance_kyc_profile (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (kyc_profile_id));
 
 CREATE TABLE identity_kyc_aml_compliance_identity_document (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -104,7 +105,8 @@ CREATE TABLE identity_kyc_aml_compliance_beneficial_owner (
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (kyc_profile_id) REFERENCES identity_kyc_aml_compliance_kyc_profile(kyc_profile_id),
   FOREIGN KEY (parent_owner_id) REFERENCES identity_kyc_aml_compliance_beneficial_owner(beneficial_owner_id)
-);
+,
+  UNIQUE (beneficial_owner_id));
 
 CREATE TABLE identity_kyc_aml_compliance_screening_hit (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -159,7 +161,8 @@ CREATE TABLE identity_kyc_aml_compliance_monitoring_alert (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (kyc_profile_id) REFERENCES identity_kyc_aml_compliance_kyc_profile(kyc_profile_id)
-);
+,
+  UNIQUE (monitoring_alert_id));
 
 CREATE TABLE identity_kyc_aml_compliance_suspicious_activity_case (
   id INTEGER PRIMARY KEY NOT NULL,

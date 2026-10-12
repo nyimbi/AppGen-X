@@ -33,7 +33,8 @@ CREATE TABLE energy_trading_risk_energy_contract (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (energy_contract_id));
 
 CREATE TABLE energy_trading_risk_trade_position (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -73,7 +74,8 @@ CREATE TABLE energy_trading_risk_trade_position (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (energy_contract_id) REFERENCES energy_trading_risk_energy_contract(energy_contract_id)
-);
+,
+  UNIQUE (trade_position_id));
 
 CREATE TABLE energy_trading_risk_nomination (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -102,7 +104,8 @@ CREATE TABLE energy_trading_risk_nomination (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (trade_position_id) REFERENCES energy_trading_risk_trade_position(trade_position_id)
-);
+,
+  UNIQUE (nomination_id));
 
 CREATE TABLE energy_trading_risk_schedule (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -132,7 +135,8 @@ CREATE TABLE energy_trading_risk_schedule (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (nomination_id) REFERENCES energy_trading_risk_nomination(nomination_id)
-);
+,
+  UNIQUE (schedule_id));
 
 CREATE TABLE energy_trading_risk_settlement (
   id INTEGER PRIMARY KEY NOT NULL,

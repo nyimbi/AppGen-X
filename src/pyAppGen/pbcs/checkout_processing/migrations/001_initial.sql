@@ -18,7 +18,8 @@ CREATE TABLE checkout_processing_cart (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (cart_id));
 
 CREATE TABLE checkout_processing_cart_line (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -61,7 +62,8 @@ CREATE TABLE checkout_processing_checkout_session (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (cart_id) REFERENCES checkout_processing_cart(cart_id)
-);
+,
+  UNIQUE (session_id));
 
 CREATE TABLE checkout_processing_promotion_redemption (
   id INTEGER PRIMARY KEY NOT NULL,

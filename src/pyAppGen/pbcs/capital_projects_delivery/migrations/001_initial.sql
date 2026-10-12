@@ -51,7 +51,8 @@ CREATE TABLE capital_projects_delivery_epc_package (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (project_id) REFERENCES capital_projects_delivery_capital_project(id)
-);
+,
+  UNIQUE (epc_package_id));
 
 CREATE TABLE capital_projects_delivery_permit_milestone (
   id INTEGER PRIMARY KEY NOT NULL,

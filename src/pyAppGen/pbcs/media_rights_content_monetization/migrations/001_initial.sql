@@ -26,7 +26,8 @@ CREATE TABLE media_rights_content_monetization_rights_asset (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (rights_asset_id));
 
 CREATE TABLE media_rights_content_monetization_license_agreement (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -64,7 +65,8 @@ CREATE TABLE media_rights_content_monetization_license_agreement (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (rights_asset_id) REFERENCES media_rights_content_monetization_rights_asset(rights_asset_id)
-);
+,
+  UNIQUE (license_agreement_id));
 
 CREATE TABLE media_rights_content_monetization_distribution_window (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -101,7 +103,8 @@ CREATE TABLE media_rights_content_monetization_distribution_window (
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (rights_asset_id) REFERENCES media_rights_content_monetization_rights_asset(rights_asset_id),
   FOREIGN KEY (license_agreement_id) REFERENCES media_rights_content_monetization_license_agreement(license_agreement_id)
-);
+,
+  UNIQUE (distribution_window_id));
 
 CREATE TABLE media_rights_content_monetization_usage_record (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -221,7 +224,7 @@ CREATE TABLE media_rights_content_monetization_territory_restriction (
   FOREIGN KEY (rights_asset_id) REFERENCES media_rights_content_monetization_rights_asset(rights_asset_id)
 );
 
-CREATE TABLE media_rights_content_monetization_media_rights_content_monetization_policy_rule (
+CREATE TABLE media_rights_content_monetization_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -245,7 +248,7 @@ CREATE TABLE media_rights_content_monetization_media_rights_content_monetization
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE media_rights_content_monetization_media_rights_content_monetization_runtime_parameter (
+CREATE TABLE media_rights_content_monetization_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   runtime_parameter_id VARCHAR(255) NOT NULL,
@@ -266,7 +269,7 @@ CREATE TABLE media_rights_content_monetization_media_rights_content_monetization
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE media_rights_content_monetization_media_rights_content_monetization_schema_extension (
+CREATE TABLE media_rights_content_monetization_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   schema_extension_id VARCHAR(255) NOT NULL,
@@ -284,7 +287,7 @@ CREATE TABLE media_rights_content_monetization_media_rights_content_monetization
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE media_rights_content_monetization_media_rights_content_monetization_control_assertion (
+CREATE TABLE media_rights_content_monetization_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   control_assertion_id VARCHAR(255) NOT NULL,
@@ -301,7 +304,7 @@ CREATE TABLE media_rights_content_monetization_media_rights_content_monetization
   FOREIGN KEY (rights_asset_id) REFERENCES media_rights_content_monetization_rights_asset(rights_asset_id)
 );
 
-CREATE TABLE media_rights_content_monetization_media_rights_content_monetization_governed_model (
+CREATE TABLE media_rights_content_monetization_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   governed_model_id VARCHAR(255) NOT NULL,

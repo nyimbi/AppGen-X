@@ -30,7 +30,8 @@ CREATE TABLE court_case_management_court_case (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (court_case_id));
 
 CREATE TABLE court_case_management_filing (
   id INTEGER PRIMARY KEY NOT NULL,

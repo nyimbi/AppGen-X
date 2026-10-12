@@ -39,7 +39,8 @@ CREATE TABLE pharmacy_benefits_management_formulary (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (formulary_id));
 
 CREATE TABLE pharmacy_benefits_management_drug_coverage_rule (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -92,7 +93,8 @@ CREATE TABLE pharmacy_benefits_management_drug_coverage_rule (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (formulary_id) REFERENCES pharmacy_benefits_management_formulary(formulary_id)
-);
+,
+  UNIQUE (drug_coverage_rule_id));
 
 CREATE TABLE pharmacy_benefits_management_prior_authorization (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -138,7 +140,44 @@ CREATE TABLE pharmacy_benefits_management_prior_authorization (
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (formulary_id) REFERENCES pharmacy_benefits_management_formulary(formulary_id),
   FOREIGN KEY (drug_coverage_rule_id) REFERENCES pharmacy_benefits_management_drug_coverage_rule(drug_coverage_rule_id)
-);
+,
+  UNIQUE (prior_authorization_id));
+
+CREATE TABLE pharmacy_benefits_management_pharmacy_network (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  pharmacy_network_id VARCHAR(255) NOT NULL,
+  network_name VARCHAR(255) NOT NULL,
+  pharmacy_reference VARCHAR(255) NOT NULL,
+  contract_type VARCHAR(255) NOT NULL,
+  participation_start TIMESTAMP,
+  participation_end TIMESTAMP,
+  termination_reason VARCHAR(255),
+  preferred_status VARCHAR(255),
+  specialty_capable BOOLEAN NOT NULL,
+  mail_order_flag BOOLEAN NOT NULL,
+  limited_distribution_flag BOOLEAN NOT NULL,
+  cold_chain_capable BOOLEAN NOT NULL,
+  training_required BOOLEAN NOT NULL,
+  clinical_monitoring_checklist TEXT,
+  reimbursement_basis VARCHAR(255),
+  dispensing_fee_schedule VARCHAR(255),
+  fill_timeliness_score DECIMAL(18, 4),
+  reversal_rate DECIMAL(18, 4),
+  reject_rate DECIMAL(18, 4),
+  specialty_turnaround_hours DECIMAL(18, 4),
+  adherence_support_score DECIMAL(18, 4),
+  complaint_rate DECIMAL(18, 4),
+  audit_finding_count INTEGER,
+  scorecard_period VARCHAR(255),
+  dispute_state VARCHAR(255),
+  jurisdiction VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+,
+  UNIQUE (pharmacy_network_id));
 
 CREATE TABLE pharmacy_benefits_management_pharmacy_claim (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -185,7 +224,8 @@ CREATE TABLE pharmacy_benefits_management_pharmacy_claim (
   FOREIGN KEY (prior_authorization_id) REFERENCES pharmacy_benefits_management_prior_authorization(prior_authorization_id),
   FOREIGN KEY (pharmacy_network_id) REFERENCES pharmacy_benefits_management_pharmacy_network(pharmacy_network_id),
   FOREIGN KEY (formulary_id) REFERENCES pharmacy_benefits_management_formulary(formulary_id)
-);
+,
+  UNIQUE (pharmacy_claim_id));
 
 CREATE TABLE pharmacy_benefits_management_rebate_contract (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -248,41 +288,6 @@ CREATE TABLE pharmacy_benefits_management_utilization_review (
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (prior_authorization_id) REFERENCES pharmacy_benefits_management_prior_authorization(prior_authorization_id),
   FOREIGN KEY (pharmacy_claim_id) REFERENCES pharmacy_benefits_management_pharmacy_claim(pharmacy_claim_id)
-);
-
-CREATE TABLE pharmacy_benefits_management_pharmacy_network (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  pharmacy_network_id VARCHAR(255) NOT NULL,
-  network_name VARCHAR(255) NOT NULL,
-  pharmacy_reference VARCHAR(255) NOT NULL,
-  contract_type VARCHAR(255) NOT NULL,
-  participation_start TIMESTAMP,
-  participation_end TIMESTAMP,
-  termination_reason VARCHAR(255),
-  preferred_status VARCHAR(255),
-  specialty_capable BOOLEAN NOT NULL,
-  mail_order_flag BOOLEAN NOT NULL,
-  limited_distribution_flag BOOLEAN NOT NULL,
-  cold_chain_capable BOOLEAN NOT NULL,
-  training_required BOOLEAN NOT NULL,
-  clinical_monitoring_checklist TEXT,
-  reimbursement_basis VARCHAR(255),
-  dispensing_fee_schedule VARCHAR(255),
-  fill_timeliness_score DECIMAL(18, 4),
-  reversal_rate DECIMAL(18, 4),
-  reject_rate DECIMAL(18, 4),
-  specialty_turnaround_hours DECIMAL(18, 4),
-  adherence_support_score DECIMAL(18, 4),
-  complaint_rate DECIMAL(18, 4),
-  audit_finding_count INTEGER,
-  scorecard_period VARCHAR(255),
-  dispute_state VARCHAR(255),
-  jurisdiction VARCHAR(255),
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
 );
 
 CREATE TABLE pharmacy_benefits_management_pharmacy_benefits_management_policy_rule (

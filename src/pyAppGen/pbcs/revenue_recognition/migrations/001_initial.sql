@@ -71,7 +71,7 @@ CREATE TABLE revenue_recognition_revenue_schedule (
 CREATE TABLE revenue_recognition_revenue_event (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  revenue_contract_id INTEGER NOT NULL,
+  revenue_contract_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
@@ -84,7 +84,7 @@ CREATE TABLE revenue_recognition_revenue_event (
 CREATE TABLE revenue_recognition_compliance_evidence (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  revenue_contract_id INTEGER NOT NULL,
+  revenue_contract_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
@@ -97,7 +97,7 @@ CREATE TABLE revenue_recognition_compliance_evidence (
 CREATE TABLE revenue_recognition_recognition_policy (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
-  revenue_contract_id INTEGER NOT NULL,
+  revenue_contract_id TEXT NOT NULL,
   code VARCHAR(255) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,

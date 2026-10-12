@@ -35,7 +35,8 @@ CREATE TABLE library_archives_management_collection_item (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (collection_item_id));
 
 CREATE TABLE library_archives_management_catalog_record (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -74,7 +75,8 @@ CREATE TABLE library_archives_management_catalog_record (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (collection_item_id) REFERENCES library_archives_management_collection_item(collection_item_id)
-);
+,
+  UNIQUE (catalog_record_id));
 
 CREATE TABLE library_archives_management_circulation_loan (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -148,7 +150,8 @@ CREATE TABLE library_archives_management_digitization_job (
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (collection_item_id) REFERENCES library_archives_management_collection_item(collection_item_id),
   FOREIGN KEY (catalog_record_id) REFERENCES library_archives_management_catalog_record(catalog_record_id)
-);
+,
+  UNIQUE (digitization_job_id));
 
 CREATE TABLE library_archives_management_rights_statement (
   id INTEGER PRIMARY KEY NOT NULL,

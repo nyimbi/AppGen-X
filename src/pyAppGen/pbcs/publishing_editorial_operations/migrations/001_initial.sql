@@ -43,7 +43,8 @@ CREATE TABLE publishing_editorial_operations_manuscript (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (manuscript_id));
 
 CREATE TABLE publishing_editorial_operations_editorial_task (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -131,7 +132,8 @@ CREATE TABLE publishing_editorial_operations_edition (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (manuscript_id) REFERENCES publishing_editorial_operations_manuscript(manuscript_id)
-);
+,
+  UNIQUE (edition_id));
 
 CREATE TABLE publishing_editorial_operations_production_schedule (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -216,7 +218,7 @@ CREATE TABLE publishing_editorial_operations_distribution_plan (
   FOREIGN KEY (edition_id) REFERENCES publishing_editorial_operations_edition(edition_id)
 );
 
-CREATE TABLE publishing_editorial_operations_publishing_editorial_operations_policy_rule (
+CREATE TABLE publishing_editorial_operations_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   rule_id VARCHAR(255) NOT NULL,
@@ -234,7 +236,7 @@ CREATE TABLE publishing_editorial_operations_publishing_editorial_operations_pol
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE publishing_editorial_operations_publishing_editorial_operations_runtime_parameter (
+CREATE TABLE publishing_editorial_operations_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_name VARCHAR(255) NOT NULL,
@@ -248,7 +250,7 @@ CREATE TABLE publishing_editorial_operations_publishing_editorial_operations_run
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE publishing_editorial_operations_publishing_editorial_operations_schema_extension (
+CREATE TABLE publishing_editorial_operations_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -262,7 +264,7 @@ CREATE TABLE publishing_editorial_operations_publishing_editorial_operations_sch
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE publishing_editorial_operations_publishing_editorial_operations_control_assertion (
+CREATE TABLE publishing_editorial_operations_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -277,7 +279,7 @@ CREATE TABLE publishing_editorial_operations_publishing_editorial_operations_con
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE publishing_editorial_operations_publishing_editorial_operations_governed_model (
+CREATE TABLE publishing_editorial_operations_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

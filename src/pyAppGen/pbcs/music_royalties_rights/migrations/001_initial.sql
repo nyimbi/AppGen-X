@@ -22,7 +22,8 @@ CREATE TABLE music_royalties_rights_musical_work (
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
-);
+,
+  UNIQUE (musical_work_id));
 
 CREATE TABLE music_royalties_rights_recording (
   id INTEGER PRIMARY KEY NOT NULL,
@@ -47,7 +48,8 @@ CREATE TABLE music_royalties_rights_recording (
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
   FOREIGN KEY (musical_work_id) REFERENCES music_royalties_rights_musical_work(musical_work_id)
-);
+,
+  UNIQUE (recording_id));
 
 CREATE TABLE music_royalties_rights_rights_split (
   id INTEGER PRIMARY KEY NOT NULL,
