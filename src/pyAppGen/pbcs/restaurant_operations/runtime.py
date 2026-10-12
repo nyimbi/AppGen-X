@@ -130,25 +130,40 @@ def restaurant_operations_run_advanced_assessment(state, payload=None):
 def restaurant_operations_parse_document_instruction(document, instruction):
     return {'ok': True, 'candidate_tables': RESTAURANT_OPERATIONS_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+RESTAURANT_OPERATIONS_TABLE_FIELDS = {
+    'restaurant_operations_menu_item': ('id', 'tenant', 'menu_item_id', 'name', 'concept', 'site_id', 'daypart', 'channel', 'menu_state', 'price_amount', 'currency', 'recipe_version', 'dietary_flags', 'allergen_declaration', 'availability_state', 'effective_from', 'effective_to', 'status', 'version', 'created_at', 'updated_at'),
+    'restaurant_operations_recipe': ('id', 'tenant', 'recipe_id', 'menu_item_id', 'recipe_version', 'target_yield', 'portion_size', 'yield_unit', 'prep_method', 'store_override', 'effective_from', 'effective_to', 'locked_for_service', 'status', 'version', 'created_at', 'updated_at'),
+    'restaurant_operations_kitchen_ticket': ('id', 'tenant', 'kitchen_ticket_id', 'reservation_id', 'table_id', 'station_id', 'course_group', 'fire_offset_seconds', 'hold_instruction', 'ticket_state', 'allergen_marking', 'fired_at', 'plated_at', 'handed_off_at', 'recalled', 'status', 'version', 'created_at', 'updated_at'),
+    'restaurant_operations_reservation': ('id', 'tenant', 'reservation_id', 'guest_name', 'party_size', 'table_id', 'daypart', 'service_phase', 'turn_minutes', 'accessibility_needs', 'waitlist_state', 'quoted_wait_minutes', 'seated_at', 'channel', 'status', 'version', 'created_at', 'updated_at'),
+    'restaurant_operations_inventory_prep': ('id', 'tenant', 'prep_batch_id', 'recipe_id', 'station_id', 'batch_quantity', 'unit', 'production_at', 'expiration_at', 'holding_method', 'temperature_checked', 'approved', 'discard_reason', 'status', 'version', 'created_at', 'updated_at'),
+    'restaurant_operations_food_waste': ('id', 'tenant', 'waste_event_id', 'prep_batch_id', 'menu_item_id', 'station_id', 'waste_reason', 'quantity', 'unit', 'cost_amount', 'currency', 'recorded_by', 'recorded_at', 'status', 'version', 'created_at', 'updated_at'),
+    'restaurant_operations_labor_shift': ('id', 'tenant', 'labor_shift_id', 'employee_id', 'station_id', 'role_name', 'daypart', 'starts_at', 'ends_at', 'readiness_confirmed', 'sanitizer_checked', 'labor_minutes', 'status', 'version', 'created_at', 'updated_at'),
+    'restaurant_operations_restaurant_operations_policy_rule': ('id', 'tenant', 'rule_id', 'rule_name', 'predicate_text', 'ambiguity_flag', 'approver_role', 'effective_from', 'effective_to', 'compiled_hash', 'status', 'version', 'created_at', 'updated_at'),
+    'restaurant_operations_restaurant_operations_runtime_parameter': ('id', 'tenant', 'parameter_name', 'parameter_value', 'scope', 'bounded', 'effective_from', 'status', 'version', 'created_at', 'updated_at'),
+    'restaurant_operations_restaurant_operations_schema_extension': ('id', 'tenant', 'extension_id', 'target_table', 'field_name', 'field_type', 'registered_at', 'status', 'version', 'created_at', 'updated_at'),
+    'restaurant_operations_restaurant_operations_control_assertion': ('id', 'tenant', 'assertion_id', 'control_name', 'assertion_result', 'severity', 'remediation_task', 'evaluated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'restaurant_operations_restaurant_operations_governed_model': ('id', 'tenant', 'model_id', 'model_name', 'model_version', 'governance_state', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'restaurant_operations_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'restaurant_operations_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'restaurant_operations_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_RESTAURANT_OPERATIONS_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _restaurant_operations_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return RESTAURANT_OPERATIONS_TABLE_FIELDS.get(table, _RESTAURANT_OPERATIONS_DEFAULT_FIELDS)
+
+
 def restaurant_operations_build_schema_contract():
-    table_contracts = (
-        {'table': 'restaurant_operations_menu_item', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'restaurant_operations_recipe', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'restaurant_operations_kitchen_ticket', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'restaurant_operations_reservation', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'restaurant_operations_inventory_prep', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'restaurant_operations_food_waste', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'restaurant_operations_labor_shift', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'restaurant_operations_restaurant_operations_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'restaurant_operations_restaurant_operations_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'restaurant_operations_restaurant_operations_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'restaurant_operations_restaurant_operations_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'restaurant_operations_restaurant_operations_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'restaurant_operations_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'restaurant_operations_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'restaurant_operations_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table, 'fields': _restaurant_operations_table_fields(table), 'primary_key': ('id',), 'owned_by': PBC_KEY}
+        for table in RESTAURANT_OPERATIONS_OWNED_TABLES
     )
-    return {'format': 'appgen.restaurant-operations-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/restaurant_operations/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': RESTAURANT_OPERATIONS_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': RESTAURANT_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'database_backends': RESTAURANT_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': RESTAURANT_OPERATIONS_OWNED_TABLES}
+    return {'format': 'appgen.restaurant-operations-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/restaurant_operations/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': RESTAURANT_OPERATIONS_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(RESTAURANT_OPERATIONS_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _restaurant_operations_table_fields(table)} for table in RESTAURANT_OPERATIONS_OWNED_TABLES), 'datastore_backends': RESTAURANT_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'database_backends': RESTAURANT_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': RESTAURANT_OPERATIONS_OWNED_TABLES}
 
 def restaurant_operations_build_service_contract():
     return {'format': 'appgen.restaurant-operations-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_menu_item','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
