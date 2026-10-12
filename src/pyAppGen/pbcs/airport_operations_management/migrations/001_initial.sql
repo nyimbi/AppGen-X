@@ -1,15 +1,309 @@
-CREATE TABLE airport_operations_management_gate_assignment (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE airport_operations_management_stand_allocation (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE airport_operations_management_slot (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE airport_operations_management_turndown_task (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE airport_operations_management_baggage_belt (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE airport_operations_management_passenger_flow (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE airport_operations_management_airport_disruption (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE airport_operations_management_airport_operations_management_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE airport_operations_management_airport_operations_management_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE airport_operations_management_airport_operations_management_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE airport_operations_management_airport_operations_management_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE airport_operations_management_airport_operations_management_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE airport_operations_management_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE airport_operations_management_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE airport_operations_management_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS airport_operations_management;
+
+CREATE TABLE airport_operations_management_gate_assignment (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  gate_assignment_id VARCHAR(255) NOT NULL,
+  flight_number VARCHAR(255) NOT NULL,
+  airline_code VARCHAR(255) NOT NULL,
+  gate_code VARCHAR(255) NOT NULL,
+  stand_code VARCHAR(255),
+  aircraft_type VARCHAR(255) NOT NULL,
+  aircraft_family VARCHAR(255) NOT NULL,
+  wingspan_code VARCHAR(255) NOT NULL,
+  processing_type VARCHAR(255) NOT NULL,
+  bussing_required BOOLEAN NOT NULL,
+  hydrant_fuel_access BOOLEAN NOT NULL,
+  pca_available BOOLEAN NOT NULL,
+  gpu_available BOOLEAN NOT NULL,
+  adjacent_shadow_restricted BOOLEAN NOT NULL,
+  decision VARCHAR(255) NOT NULL,
+  reason_codes VARCHAR(255) NOT NULL,
+  warning_codes VARCHAR(255) NOT NULL,
+  holdroom_capacity INTEGER NOT NULL,
+  boarding_readiness VARCHAR(255) NOT NULL,
+  assigned_at TIMESTAMP,
+  released_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE airport_operations_management_stand_allocation (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  stand_allocation_id VARCHAR(255) NOT NULL,
+  gate_assignment_id VARCHAR(255),
+  flight_number VARCHAR(255) NOT NULL,
+  stand_code VARCHAR(255) NOT NULL,
+  stand_topology VARCHAR(255) NOT NULL,
+  aircraft_type VARCHAR(255) NOT NULL,
+  remote_stand BOOLEAN NOT NULL,
+  bus_required BOOLEAN NOT NULL,
+  bus_fleet_window VARCHAR(255),
+  dispatch_lead_minutes INTEGER NOT NULL,
+  tow_required BOOLEAN NOT NULL,
+  tow_corridor VARCHAR(255),
+  closure_window_start TIMESTAMP,
+  closure_window_end TIMESTAMP,
+  apron_possession_zone VARCHAR(255),
+  capacity_state VARCHAR(255) NOT NULL,
+  occupied_from TIMESTAMP,
+  occupied_to TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (gate_assignment_id) REFERENCES airport_operations_management_gate_assignment(gate_assignment_id)
+);
+
+CREATE TABLE airport_operations_management_slot (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  slot_id VARCHAR(255) NOT NULL,
+  flight_number VARCHAR(255) NOT NULL,
+  airline_code VARCHAR(255) NOT NULL,
+  runway_code VARCHAR(255),
+  scheduled_off_block TIMESTAMP,
+  target_off_block TIMESTAMP,
+  target_startup_approval TIMESTAMP,
+  calculated_takeoff TIMESTAMP,
+  slot_mismatch_reason VARCHAR(255),
+  resynchronization_action VARCHAR(255),
+  a_cdm_milestone VARCHAR(255) NOT NULL,
+  runway_state VARCHAR(255) NOT NULL,
+  low_visibility_procedure BOOLEAN NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE airport_operations_management_turndown_task (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  turndown_task_id VARCHAR(255) NOT NULL,
+  flight_number VARCHAR(255) NOT NULL,
+  gate_assignment_id VARCHAR(255),
+  stand_allocation_id VARCHAR(255),
+  handler_code VARCHAR(255) NOT NULL,
+  service_scope VARCHAR(255) NOT NULL,
+  shift_code VARCHAR(255) NOT NULL,
+  milestone_name VARCHAR(255) NOT NULL,
+  predecessor_milestone VARCHAR(255),
+  planned_at TIMESTAMP,
+  estimated_at TIMESTAMP,
+  actual_at TIMESTAMP,
+  predicted_at TIMESTAMP,
+  on_block_at TIMESTAMP,
+  off_block_at TIMESTAMP,
+  critical_path BOOLEAN NOT NULL,
+  assisted_travel_required BOOLEAN NOT NULL,
+  deicing_required BOOLEAN NOT NULL,
+  delay_minutes INTEGER NOT NULL,
+  recovery_action VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (gate_assignment_id) REFERENCES airport_operations_management_gate_assignment(gate_assignment_id),
+  FOREIGN KEY (stand_allocation_id) REFERENCES airport_operations_management_stand_allocation(stand_allocation_id)
+);
+
+CREATE TABLE airport_operations_management_baggage_belt (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  baggage_belt_id VARCHAR(255) NOT NULL,
+  belt_code VARCHAR(255) NOT NULL,
+  terminal_code VARCHAR(255) NOT NULL,
+  belt_direction VARCHAR(255) NOT NULL,
+  make_up_position VARCHAR(255),
+  reclaim_allocation VARCHAR(255),
+  odd_size_routing VARCHAR(255),
+  early_bag_storage VARCHAR(255),
+  flight_number VARCHAR(255),
+  belt_state VARCHAR(255) NOT NULL,
+  occupancy_percent DECIMAL(18, 4),
+  overflow_detected BOOLEAN NOT NULL,
+  outage_started_at TIMESTAMP,
+  outage_ended_at TIMESTAMP,
+  reroute_recommendation VARCHAR(255),
+  sla_breach BOOLEAN NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE airport_operations_management_passenger_flow (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  passenger_flow_id VARCHAR(255) NOT NULL,
+  process_stage VARCHAR(255) NOT NULL,
+  passenger_segment VARCHAR(255) NOT NULL,
+  terminal_code VARCHAR(255) NOT NULL,
+  flight_number VARCHAR(255),
+  gate_code VARCHAR(255),
+  queue_length INTEGER NOT NULL,
+  throughput_per_hour INTEGER NOT NULL,
+  dwell_minutes INTEGER NOT NULL,
+  forecast_headcount INTEGER NOT NULL,
+  actual_headcount INTEGER NOT NULL,
+  prm_count INTEGER NOT NULL,
+  unaccompanied_minor_count INTEGER NOT NULL,
+  resource_outage BOOLEAN NOT NULL,
+  redirection_plan VARCHAR(255),
+  capacity_breach BOOLEAN NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE airport_operations_management_airport_disruption (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  airport_disruption_id VARCHAR(255) NOT NULL,
+  disruption_type VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  playbook_name VARCHAR(255),
+  affected_stand_code VARCHAR(255),
+  affected_belt_code VARCHAR(255),
+  weather_state VARCHAR(255),
+  deicing_pad_code VARCHAR(255),
+  fluid_stock_percent DECIMAL(18, 4),
+  holdover_expires_at TIMESTAMP,
+  primary_cause VARCHAR(255),
+  contributing_cause VARCHAR(255),
+  recovery_minutes INTEGER NOT NULL,
+  contained BOOLEAN NOT NULL,
+  closure_notes TEXT,
+  opened_at TIMESTAMP,
+  closed_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE airport_operations_management_airport_operations_management_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text VARCHAR(255) NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  approver_role VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE airport_operations_management_airport_operations_management_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  effective_from TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE airport_operations_management_airport_operations_management_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE airport_operations_management_airport_operations_management_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  inspection_reference VARCHAR(255),
+  evidence_location VARCHAR(255),
+  inspector_identity VARCHAR(255),
+  remediation_task VARCHAR(255),
+  evaluated_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE airport_operations_management_airport_operations_management_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  risk_band VARCHAR(255),
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE airport_operations_management_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE airport_operations_management_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE airport_operations_management_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

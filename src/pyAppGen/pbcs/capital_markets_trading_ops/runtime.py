@@ -184,23 +184,38 @@ def capital_markets_trading_ops_run_advanced_assessment(state, payload=None):
 def capital_markets_trading_ops_parse_document_instruction(document, instruction):
     return {'ok': True, 'candidate_tables': CAPITAL_MARKETS_TRADING_OPS_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+CAPITAL_MARKETS_TRADING_OPS_TABLE_FIELDS = {
+    'capital_markets_trading_ops_trade_order': ('id', 'tenant', 'trade_order_id', 'parent_trade_order_id', 'instrument_id', 'product_type', 'asset_class', 'trading_account', 'legal_entity', 'desk', 'trader', 'book', 'broker', 'venue', 'settlement_model', 'regulatory_classification', 'side', 'quantity', 'limit_price', 'notional', 'currency', 'lifecycle_state', 'approval_state', 'market_data_snapshot_id', 'market_data_source', 'quote_at', 'venue_timezone', 'trade_date', 'settlement_date', 'release_ready', 'risk_gate_status', 'compliance_hold_state', 'best_execution_reference', 'workbench_queue', 'status_badge', 'submitted_at', 'status', 'version', 'created_at', 'updated_at'),
+    'capital_markets_trading_ops_execution': ('id', 'tenant', 'execution_id', 'trade_order_id', 'instrument_id', 'trading_account', 'venue', 'executing_broker', 'clearing_broker', 'venue_execution_id', 'side', 'quantity', 'price', 'gross_amount', 'net_amount', 'commission_amount', 'fee_amount', 'tax_amount', 'currency', 'fill_type', 'correction_type', 'corrected_execution_id', 'source_channel', 'broker_time', 'venue_time', 'status', 'version', 'created_at', 'updated_at'),
+    'capital_markets_trading_ops_allocation': ('id', 'tenant', 'allocation_id', 'execution_id', 'trade_order_id', 'block_execution_id', 'fund_id', 'sleeve_id', 'legal_entity', 'trading_account', 'settlement_model', 'allocated_quantity', 'allocated_amount', 'residual_quantity', 'residual_policy', 'rounding_policy', 'eligibility_state', 'limit_check_state', 'allocator', 'reason_code', 'allocated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'capital_markets_trading_ops_confirmation': ('id', 'tenant', 'confirmation_id', 'execution_id', 'trade_order_id', 'counterparty', 'confirmation_channel', 'source_reference', 'side', 'confirmed_quantity', 'confirmed_price', 'confirmed_commission', 'confirmed_tax', 'currency', 'settlement_date', 'affirmation_state', 'mismatch_class', 'mismatch_fields', 'materiality_amount', 'analyst', 'received_at', 'affirmed_at', 'status', 'version', 'created_at', 'updated_at'),
+    'capital_markets_trading_ops_settlement_instruction': ('id', 'tenant', 'settlement_instruction_id', 'trading_account', 'counterparty', 'custodian', 'settlement_agent', 'market', 'place_of_settlement', 'depository_code', 'local_market_account', 'payment_model', 'currency', 'settlement_model', 'effective_from', 'effective_to', 'superseded_by', 'approval_state', 'instruction_state', 'external_status', 'penalty_exposure', 'buy_in_triggered', 'accountable_owner', 'instructed_at', 'settled_at', 'status', 'version', 'created_at', 'updated_at'),
+    'capital_markets_trading_ops_trade_break': ('id', 'tenant', 'trade_break_id', 'trade_order_id', 'execution_id', 'allocation_id', 'confirmation_id', 'settlement_instruction_id', 'break_category', 'break_severity', 'root_cause', 'upstream_event_ref', 'discrepancy_amount', 'currency', 'opened_at', 'cutoff_at', 'sla_due_at', 'escalation_state', 'remediation_action', 'resolved_by', 'resolved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'capital_markets_trading_ops_position_snapshot': ('id', 'tenant', 'position_snapshot_id', 'trading_account', 'book', 'instrument_id', 'asset_class', 'position_quantity', 'average_price', 'market_value', 'currency', 'source_cut', 'valuation_at', 'data_completeness', 'correction_state', 'snapshot_basis', 'status', 'version', 'created_at', 'updated_at'),
+    'capital_markets_trading_ops_capital_markets_trading_ops_policy_rule': ('id', 'tenant', 'rule_id', 'rule_name', 'predicate_text', 'ambiguity_flag', 'approver_role', 'effective_from', 'effective_to', 'compiled_hash', 'status', 'version', 'created_at', 'updated_at'),
+    'capital_markets_trading_ops_capital_markets_trading_ops_runtime_parameter': ('id', 'tenant', 'parameter_name', 'parameter_value', 'scope', 'bounded', 'effective_from', 'status', 'version', 'created_at', 'updated_at'),
+    'capital_markets_trading_ops_capital_markets_trading_ops_schema_extension': ('id', 'tenant', 'extension_id', 'target_table', 'field_name', 'field_type', 'registered_at', 'status', 'version', 'created_at', 'updated_at'),
+    'capital_markets_trading_ops_capital_markets_trading_ops_control_assertion': ('id', 'tenant', 'assertion_id', 'control_name', 'assertion_result', 'severity', 'remediation_task', 'evaluated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'capital_markets_trading_ops_capital_markets_trading_ops_governed_model': ('id', 'tenant', 'model_id', 'model_name', 'model_version', 'governance_state', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'capital_markets_trading_ops_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'capital_markets_trading_ops_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'capital_markets_trading_ops_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_CAPITAL_MARKETS_TRADING_OPS_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _capital_markets_trading_ops_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return CAPITAL_MARKETS_TRADING_OPS_TABLE_FIELDS.get(table, _CAPITAL_MARKETS_TRADING_OPS_DEFAULT_FIELDS)
+
+
 def capital_markets_trading_ops_build_schema_contract():
-    table_contracts = (
-        {'table': 'capital_markets_trading_ops_trade_order', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at','lifecycle_state','status_badge','workbench_queue','release_ready','trade_order_signature','validation_payload','actionable_remediation'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'capital_markets_trading_ops_execution', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'capital_markets_trading_ops_allocation', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'capital_markets_trading_ops_confirmation', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'capital_markets_trading_ops_settlement_instruction', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'capital_markets_trading_ops_trade_break', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'capital_markets_trading_ops_position_snapshot', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'capital_markets_trading_ops_capital_markets_trading_ops_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'capital_markets_trading_ops_capital_markets_trading_ops_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'capital_markets_trading_ops_capital_markets_trading_ops_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'capital_markets_trading_ops_capital_markets_trading_ops_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'capital_markets_trading_ops_capital_markets_trading_ops_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'capital_markets_trading_ops_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'capital_markets_trading_ops_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'capital_markets_trading_ops_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table, 'fields': _capital_markets_trading_ops_table_fields(table), 'primary_key': ('id',), 'owned_by': PBC_KEY}
+        for table in CAPITAL_MARKETS_TRADING_OPS_OWNED_TABLES
     )
     migrations = (
         {'path': 'pbcs/capital_markets_trading_ops/migrations/001_initial.sql', 'operation': 'create_owned_tables', 'backend_allowlist': CAPITAL_MARKETS_TRADING_OPS_ALLOWED_DATABASE_BACKENDS},
@@ -208,8 +223,8 @@ def capital_markets_trading_ops_build_schema_contract():
     )
     models = (
         {'class_name': 'TradeOrderFormModel', 'table': 'capital_markets_trading_ops_trade_order', 'fields': ('tenant', 'instrument_id', 'product_type', 'trading_account', 'desk', 'trader', 'book', 'broker', 'venue', 'settlement_model', 'regulatory_classification', 'side', 'quantity', 'limit_price', 'submitted_at', 'approval_state')},
-        {'class_name': 'TradeOrderRecordModel', 'table': 'capital_markets_trading_ops_trade_order', 'fields': table_contracts[0]['fields']},
-    ) + tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts[1:])
+        {'class_name': 'TradeOrderRecordModel', 'table': 'capital_markets_trading_ops_trade_order', 'fields': _capital_markets_trading_ops_table_fields('capital_markets_trading_ops_trade_order')},
+    ) + tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _capital_markets_trading_ops_table_fields(table)} for table in CAPITAL_MARKETS_TRADING_OPS_OWNED_TABLES[1:])
     return {'format': 'appgen.capital-markets-trading-ops-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': migrations, 'models': models, 'datastore_backends': CAPITAL_MARKETS_TRADING_OPS_ALLOWED_DATABASE_BACKENDS, 'database_backends': CAPITAL_MARKETS_TRADING_OPS_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': CAPITAL_MARKETS_TRADING_OPS_OWNED_TABLES}
 
 def capital_markets_trading_ops_build_service_contract():

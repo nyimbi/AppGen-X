@@ -141,25 +141,40 @@ def clinical_care_coordination_run_advanced_assessment(state, payload=None):
 def clinical_care_coordination_parse_document_instruction(document, instruction):
     return {'ok': True, 'candidate_tables': CLINICAL_CARE_COORDINATION_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+CLINICAL_CARE_COORDINATION_TABLE_FIELDS = {
+    'clinical_care_coordination_patient_care_plan': ('id', 'tenant', 'patient_care_plan_id', 'patient_id', 'plan_title', 'care_setting', 'problem_reference', 'goal_hierarchy', 'planned_intervention', 'responsible_discipline', 'patient_preference', 'preferred_language', 'target_date', 'review_cadence', 'barrier_summary', 'variance_reason', 'closure_reason', 'plan_state', 'risk_tier', 'last_reviewed_at', 'legal_hold', 'retention_category', 'status', 'version', 'created_at', 'updated_at'),
+    'clinical_care_coordination_care_team': ('id', 'tenant', 'care_team_id', 'patient_id', 'participant_name', 'participant_role', 'clinical_authority', 'communication_channel', 'consent_scope', 'coverage_start', 'coverage_end', 'backup_contact', 'escalation_route', 'protected_detail_access', 'active_member', 'status', 'version', 'created_at', 'updated_at'),
+    'clinical_care_coordination_referral': ('id', 'tenant', 'referral_id', 'patient_id', 'patient_care_plan_id', 'specialty', 'urgency', 'referral_reason', 'receiving_organization', 'expected_turnaround_hours', 'authorization_evidence', 'appointment_at', 'result_document_pointer', 'closure_accountability', 'referral_state', 'priority_reason', 'sent_at', 'result_received_at', 'reconciled_at', 'status', 'version', 'created_at', 'updated_at'),
+    'clinical_care_coordination_encounter': ('id', 'tenant', 'encounter_id', 'patient_id', 'patient_care_plan_id', 'encounter_type', 'encounter_at', 'source_note_span', 'clinical_priority', 'follow_up_required', 'task_count', 'responsible_role', 'outreach_required', 'discharge_disposition', 'status', 'version', 'created_at', 'updated_at'),
+    'clinical_care_coordination_care_gap': ('id', 'tenant', 'care_gap_id', 'patient_id', 'patient_care_plan_id', 'gap_type', 'severity', 'gap_source', 'guideline_basis', 'guideline_version', 'denominator_eligible', 'exclusion_reason', 'exclusion_expires_at', 'closure_evidence', 'gap_state', 'detected_at', 'closed_at', 'status', 'version', 'created_at', 'updated_at'),
+    'clinical_care_coordination_transition_plan': ('id', 'tenant', 'transition_plan_id', 'patient_id', 'patient_care_plan_id', 'discharge_source', 'receiving_setting', 'medication_reconciliation_status', 'pending_test_results', 'follow_up_appointment_at', 'durable_equipment', 'home_services', 'patient_instructions', 'caregiver_confirmation', 'transportation_plan', 'readmission_risk', 'packet_completeness_score', 'readiness_checklist', 'watchlist_state', 'status', 'version', 'created_at', 'updated_at'),
+    'clinical_care_coordination_outcome_measure': ('id', 'tenant', 'outcome_measure_id', 'patient_id', 'patient_care_plan_id', 'measure_name', 'measure_owner', 'measure_unit', 'baseline_value', 'target_value', 'current_value', 'collection_cadence', 'measure_source', 'numerator', 'denominator', 'patient_reported', 'confidence', 'trend_classification', 'measured_at', 'status', 'version', 'created_at', 'updated_at'),
+    'clinical_care_coordination_clinical_care_coordination_policy_rule': ('id', 'tenant', 'rule_id', 'rule_name', 'predicate_text', 'ambiguity_flag', 'approver_role', 'effective_from', 'effective_to', 'compiled_hash', 'status', 'version', 'created_at', 'updated_at'),
+    'clinical_care_coordination_clinical_care_coordination_runtime_parameter': ('id', 'tenant', 'parameter_name', 'parameter_value', 'scope', 'bounded', 'effective_from', 'status', 'version', 'created_at', 'updated_at'),
+    'clinical_care_coordination_clinical_care_coordination_schema_extension': ('id', 'tenant', 'extension_id', 'target_table', 'field_name', 'field_type', 'registered_at', 'status', 'version', 'created_at', 'updated_at'),
+    'clinical_care_coordination_clinical_care_coordination_control_assertion': ('id', 'tenant', 'assertion_id', 'control_name', 'assertion_result', 'severity', 'remediation_task', 'evaluated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'clinical_care_coordination_clinical_care_coordination_governed_model': ('id', 'tenant', 'model_id', 'model_name', 'model_version', 'governance_state', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'clinical_care_coordination_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'clinical_care_coordination_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'clinical_care_coordination_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_CLINICAL_CARE_COORDINATION_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _clinical_care_coordination_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return CLINICAL_CARE_COORDINATION_TABLE_FIELDS.get(table, _CLINICAL_CARE_COORDINATION_DEFAULT_FIELDS)
+
+
 def clinical_care_coordination_build_schema_contract():
-    table_contracts = (
-        {'table': 'clinical_care_coordination_patient_care_plan', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'clinical_care_coordination_care_team', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'clinical_care_coordination_referral', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'clinical_care_coordination_encounter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'clinical_care_coordination_care_gap', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'clinical_care_coordination_transition_plan', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'clinical_care_coordination_outcome_measure', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'clinical_care_coordination_clinical_care_coordination_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'clinical_care_coordination_clinical_care_coordination_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'clinical_care_coordination_clinical_care_coordination_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'clinical_care_coordination_clinical_care_coordination_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'clinical_care_coordination_clinical_care_coordination_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'clinical_care_coordination_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'clinical_care_coordination_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'clinical_care_coordination_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table, 'fields': _clinical_care_coordination_table_fields(table), 'primary_key': ('id',), 'owned_by': PBC_KEY}
+        for table in CLINICAL_CARE_COORDINATION_OWNED_TABLES
     )
-    return {'format': 'appgen.clinical-care-coordination-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/clinical_care_coordination/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': CLINICAL_CARE_COORDINATION_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': CLINICAL_CARE_COORDINATION_ALLOWED_DATABASE_BACKENDS, 'database_backends': CLINICAL_CARE_COORDINATION_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': CLINICAL_CARE_COORDINATION_OWNED_TABLES}
+    return {'format': 'appgen.clinical-care-coordination-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/clinical_care_coordination/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': CLINICAL_CARE_COORDINATION_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(CLINICAL_CARE_COORDINATION_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _clinical_care_coordination_table_fields(table)} for table in CLINICAL_CARE_COORDINATION_OWNED_TABLES), 'datastore_backends': CLINICAL_CARE_COORDINATION_ALLOWED_DATABASE_BACKENDS, 'database_backends': CLINICAL_CARE_COORDINATION_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': CLINICAL_CARE_COORDINATION_OWNED_TABLES}
 
 def clinical_care_coordination_build_service_contract():
     return {'format': 'appgen.clinical-care-coordination-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_patient_care_plan','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}

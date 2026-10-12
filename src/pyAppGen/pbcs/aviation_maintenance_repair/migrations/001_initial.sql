@@ -1,15 +1,312 @@
-CREATE TABLE aviation_maintenance_repair_aircraft (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE aviation_maintenance_repair_component (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE aviation_maintenance_repair_work_card (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE aviation_maintenance_repair_maintenance_visit (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE aviation_maintenance_repair_airworthiness_directive (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE aviation_maintenance_repair_deferred_defect (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE aviation_maintenance_repair_compliance_release (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE aviation_maintenance_repair_aviation_maintenance_repair_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE aviation_maintenance_repair_aviation_maintenance_repair_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE aviation_maintenance_repair_aviation_maintenance_repair_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE aviation_maintenance_repair_aviation_maintenance_repair_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE aviation_maintenance_repair_aviation_maintenance_repair_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE aviation_maintenance_repair_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE aviation_maintenance_repair_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE aviation_maintenance_repair_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS aviation_maintenance_repair;
+
+CREATE TABLE aviation_maintenance_repair_aircraft (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  tail_number VARCHAR(255) NOT NULL,
+  manufacturer_serial_number VARCHAR(255) NOT NULL,
+  aircraft_type VARCHAR(255) NOT NULL,
+  fleet_subtype VARCHAR(255) NOT NULL,
+  operator_code VARCHAR(255) NOT NULL,
+  option_codes VARCHAR(255) NOT NULL,
+  configuration_baseline VARCHAR(255) NOT NULL,
+  embodiment_status VARCHAR(255) NOT NULL,
+  effectivity_ata_chapter VARCHAR(255) NOT NULL,
+  mod_standard VARCHAR(255) NOT NULL,
+  flight_hours DECIMAL(18, 4) NOT NULL,
+  flight_cycles INTEGER NOT NULL,
+  parking_status VARCHAR(255) NOT NULL,
+  route_assignment VARCHAR(255) NOT NULL,
+  aog_state BOOLEAN NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE aviation_maintenance_repair_component (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  component_id VARCHAR(255) NOT NULL,
+  aircraft_tail_number VARCHAR(255) NOT NULL,
+  parent_position VARCHAR(255) NOT NULL,
+  position_path VARCHAR(255) NOT NULL,
+  serial_number VARCHAR(255) NOT NULL,
+  part_number VARCHAR(255) NOT NULL,
+  component_family VARCHAR(255) NOT NULL,
+  install_reason VARCHAR(255) NOT NULL,
+  removal_reason VARCHAR(255) NOT NULL,
+  condition_at_movement VARCHAR(255) NOT NULL,
+  time_since_new DECIMAL(18, 4) NOT NULL,
+  cycles_since_new INTEGER NOT NULL,
+  time_since_overhaul DECIMAL(18, 4) NOT NULL,
+  cycles_since_overhaul INTEGER NOT NULL,
+  hard_time_limit DECIMAL(18, 4) NOT NULL,
+  soft_alert_threshold DECIMAL(18, 4) NOT NULL,
+  shop_visit_reset_at TIMESTAMP,
+  release_certificate VARCHAR(255) NOT NULL,
+  batch_number VARCHAR(255) NOT NULL,
+  source_chain VARCHAR(255) NOT NULL,
+  quarantine_state VARCHAR(255) NOT NULL,
+  rotable_state VARCHAR(255) NOT NULL,
+  warranty_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (aircraft_tail_number) REFERENCES aviation_maintenance_repair_aircraft(tail_number)
+);
+
+CREATE TABLE aviation_maintenance_repair_work_card (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  work_card_id VARCHAR(255) NOT NULL,
+  aircraft_tail_number VARCHAR(255) NOT NULL,
+  component_id VARCHAR(255) NOT NULL,
+  maintenance_visit_id VARCHAR(255),
+  task_family VARCHAR(255) NOT NULL,
+  task_skill_code VARCHAR(255) NOT NULL,
+  card_revision VARCHAR(255) NOT NULL,
+  reference_document_revision VARCHAR(255) NOT NULL,
+  source_manual VARCHAR(255) NOT NULL,
+  access_requirements VARCHAR(255) NOT NULL,
+  effectivity_rule VARCHAR(255) NOT NULL,
+  independent_inspection_required BOOLEAN NOT NULL,
+  duplicate_inspection_required BOOLEAN NOT NULL,
+  critical_task BOOLEAN NOT NULL,
+  required_signoff_roles VARCHAR(255) NOT NULL,
+  non_routine_origin_card_id VARCHAR(255),
+  inspection_zone VARCHAR(255) NOT NULL,
+  inspection_result VARCHAR(255) NOT NULL,
+  tooling_required VARCHAR(255) NOT NULL,
+  consumables_required VARCHAR(255) NOT NULL,
+  card_state VARCHAR(255) NOT NULL,
+  planned_start_at TIMESTAMP,
+  completed_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (aircraft_tail_number) REFERENCES aviation_maintenance_repair_aircraft(tail_number)
+);
+
+CREATE TABLE aviation_maintenance_repair_maintenance_visit (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  visit_number VARCHAR(255) NOT NULL,
+  aircraft_tail_number VARCHAR(255) NOT NULL,
+  check_package VARCHAR(255) NOT NULL,
+  planned_scope VARCHAR(255) NOT NULL,
+  visit_milestones VARCHAR(255) NOT NULL,
+  dock_bay_assignment VARCHAR(255) NOT NULL,
+  critical_path_tasks VARCHAR(255) NOT NULL,
+  access_dependencies VARCHAR(255) NOT NULL,
+  ground_time_hours DECIMAL(18, 4) NOT NULL,
+  material_blockers VARCHAR(255) NOT NULL,
+  non_routine_scope_count INTEGER NOT NULL,
+  planned_start_at TIMESTAMP,
+  planned_release_at TIMESTAMP,
+  actual_release_at TIMESTAMP,
+  milestone_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (aircraft_tail_number) REFERENCES aviation_maintenance_repair_aircraft(tail_number)
+);
+
+CREATE TABLE aviation_maintenance_repair_airworthiness_directive (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  ad_number VARCHAR(255) NOT NULL,
+  directive_reference VARCHAR(255) NOT NULL,
+  applicability_logic VARCHAR(255) NOT NULL,
+  compliance_method VARCHAR(255) NOT NULL,
+  repeat_interval VARCHAR(255) NOT NULL,
+  terminating_action VARCHAR(255) NOT NULL,
+  amoc_reference VARCHAR(255) NOT NULL,
+  embodiment_evidence VARCHAR(255) NOT NULL,
+  applicable_population VARCHAR(255) NOT NULL,
+  next_due_at TIMESTAMP,
+  overdue_exposure_days INTEGER NOT NULL,
+  compliance_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE aviation_maintenance_repair_deferred_defect (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  defect_number VARCHAR(255) NOT NULL,
+  aircraft_tail_number VARCHAR(255) NOT NULL,
+  component_id VARCHAR(255),
+  work_card_id VARCHAR(255),
+  mel_cdl_category VARCHAR(255) NOT NULL,
+  pilot_report TEXT NOT NULL,
+  maintenance_observation TEXT NOT NULL,
+  troubleshooting_steps TEXT NOT NULL,
+  rectification_attempts TEXT NOT NULL,
+  deferral_decision VARCHAR(255) NOT NULL,
+  deferral_basis VARCHAR(255) NOT NULL,
+  operational_limitations VARCHAR(255) NOT NULL,
+  maintenance_procedures VARCHAR(255) NOT NULL,
+  placard_requirements VARCHAR(255) NOT NULL,
+  station_limitations VARCHAR(255) NOT NULL,
+  expiry_basis VARCHAR(255) NOT NULL,
+  deferred_at TIMESTAMP,
+  expires_at TIMESTAMP,
+  closeout_statement VARCHAR(255) NOT NULL,
+  recurrence_count INTEGER NOT NULL,
+  repeat_interval_days INTEGER NOT NULL,
+  defect_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (aircraft_tail_number) REFERENCES aviation_maintenance_repair_aircraft(tail_number)
+);
+
+CREATE TABLE aviation_maintenance_repair_compliance_release (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  release_number VARCHAR(255) NOT NULL,
+  aircraft_tail_number VARCHAR(255) NOT NULL,
+  maintenance_visit_id VARCHAR(255),
+  certificate_type VARCHAR(255) NOT NULL,
+  release_statement TEXT NOT NULL,
+  completed_work_cards VARCHAR(255) NOT NULL,
+  required_inspections VARCHAR(255) NOT NULL,
+  defect_disposition VARCHAR(255) NOT NULL,
+  deferred_item_status VARCHAR(255) NOT NULL,
+  tooling_checks VARCHAR(255) NOT NULL,
+  part_traceability VARCHAR(255) NOT NULL,
+  certifier_technician_id VARCHAR(255) NOT NULL,
+  certifier_authorization BOOLEAN NOT NULL,
+  release_conditions VARCHAR(255) NOT NULL,
+  issued_at TIMESTAMP,
+  release_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (aircraft_tail_number) REFERENCES aviation_maintenance_repair_aircraft(tail_number)
+);
+
+CREATE TABLE aviation_maintenance_repair_aviation_maintenance_repair_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  approver_role VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE aviation_maintenance_repair_aviation_maintenance_repair_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  effective_from TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE aviation_maintenance_repair_aviation_maintenance_repair_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE aviation_maintenance_repair_aviation_maintenance_repair_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  remediation_task VARCHAR(255) NOT NULL,
+  evaluated_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE aviation_maintenance_repair_aviation_maintenance_repair_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE aviation_maintenance_repair_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE aviation_maintenance_repair_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE aviation_maintenance_repair_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

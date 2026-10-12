@@ -1,15 +1,341 @@
-CREATE TABLE capital_markets_trading_ops_trade_order (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE capital_markets_trading_ops_execution (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE capital_markets_trading_ops_allocation (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE capital_markets_trading_ops_confirmation (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE capital_markets_trading_ops_settlement_instruction (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE capital_markets_trading_ops_trade_break (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE capital_markets_trading_ops_position_snapshot (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE capital_markets_trading_ops_capital_markets_trading_ops_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE capital_markets_trading_ops_capital_markets_trading_ops_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE capital_markets_trading_ops_capital_markets_trading_ops_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE capital_markets_trading_ops_capital_markets_trading_ops_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE capital_markets_trading_ops_capital_markets_trading_ops_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE capital_markets_trading_ops_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE capital_markets_trading_ops_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE capital_markets_trading_ops_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS capital_markets_trading_ops;
+
+CREATE TABLE capital_markets_trading_ops_trade_order (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  trade_order_id VARCHAR(255) NOT NULL,
+  parent_trade_order_id VARCHAR(255),
+  instrument_id VARCHAR(255) NOT NULL,
+  product_type VARCHAR(255) NOT NULL,
+  asset_class VARCHAR(255) NOT NULL,
+  trading_account VARCHAR(255) NOT NULL,
+  legal_entity VARCHAR(255) NOT NULL,
+  desk VARCHAR(255) NOT NULL,
+  trader VARCHAR(255) NOT NULL,
+  book VARCHAR(255) NOT NULL,
+  broker VARCHAR(255) NOT NULL,
+  venue VARCHAR(255) NOT NULL,
+  settlement_model VARCHAR(255) NOT NULL,
+  regulatory_classification VARCHAR(255) NOT NULL,
+  side VARCHAR(255) NOT NULL,
+  quantity DECIMAL(18, 4) NOT NULL,
+  limit_price DECIMAL(18, 4),
+  notional DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  lifecycle_state VARCHAR(255) NOT NULL,
+  approval_state VARCHAR(255) NOT NULL,
+  market_data_snapshot_id VARCHAR(255),
+  market_data_source VARCHAR(255),
+  quote_at TIMESTAMP,
+  venue_timezone VARCHAR(255) NOT NULL,
+  trade_date TIMESTAMP NOT NULL,
+  settlement_date TIMESTAMP,
+  release_ready BOOLEAN NOT NULL,
+  risk_gate_status VARCHAR(255) NOT NULL,
+  compliance_hold_state VARCHAR(255) NOT NULL,
+  best_execution_reference VARCHAR(255),
+  workbench_queue VARCHAR(255) NOT NULL,
+  status_badge VARCHAR(255) NOT NULL,
+  submitted_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE capital_markets_trading_ops_execution (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  execution_id VARCHAR(255) NOT NULL,
+  trade_order_id VARCHAR(255) NOT NULL,
+  instrument_id VARCHAR(255) NOT NULL,
+  trading_account VARCHAR(255) NOT NULL,
+  venue VARCHAR(255) NOT NULL,
+  executing_broker VARCHAR(255) NOT NULL,
+  clearing_broker VARCHAR(255) NOT NULL,
+  venue_execution_id VARCHAR(255) NOT NULL,
+  side VARCHAR(255) NOT NULL,
+  quantity DECIMAL(18, 4) NOT NULL,
+  price DECIMAL(18, 4) NOT NULL,
+  gross_amount DECIMAL(18, 4) NOT NULL,
+  net_amount DECIMAL(18, 4) NOT NULL,
+  commission_amount DECIMAL(18, 4) NOT NULL,
+  fee_amount DECIMAL(18, 4) NOT NULL,
+  tax_amount DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  fill_type VARCHAR(255) NOT NULL,
+  correction_type VARCHAR(255) NOT NULL,
+  corrected_execution_id VARCHAR(255),
+  source_channel VARCHAR(255) NOT NULL,
+  broker_time TIMESTAMP NOT NULL,
+  venue_time TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (trade_order_id) REFERENCES capital_markets_trading_ops_trade_order(trade_order_id)
+);
+
+CREATE TABLE capital_markets_trading_ops_allocation (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  allocation_id VARCHAR(255) NOT NULL,
+  execution_id VARCHAR(255) NOT NULL,
+  trade_order_id VARCHAR(255) NOT NULL,
+  block_execution_id VARCHAR(255),
+  fund_id VARCHAR(255) NOT NULL,
+  sleeve_id VARCHAR(255) NOT NULL,
+  legal_entity VARCHAR(255) NOT NULL,
+  trading_account VARCHAR(255) NOT NULL,
+  settlement_model VARCHAR(255) NOT NULL,
+  allocated_quantity DECIMAL(18, 4) NOT NULL,
+  allocated_amount DECIMAL(18, 4) NOT NULL,
+  residual_quantity DECIMAL(18, 4) NOT NULL,
+  residual_policy VARCHAR(255) NOT NULL,
+  rounding_policy VARCHAR(255) NOT NULL,
+  eligibility_state VARCHAR(255) NOT NULL,
+  limit_check_state VARCHAR(255) NOT NULL,
+  allocator VARCHAR(255) NOT NULL,
+  reason_code VARCHAR(255),
+  allocated_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (execution_id) REFERENCES capital_markets_trading_ops_execution(execution_id),
+  FOREIGN KEY (trade_order_id) REFERENCES capital_markets_trading_ops_trade_order(trade_order_id)
+);
+
+CREATE TABLE capital_markets_trading_ops_confirmation (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  confirmation_id VARCHAR(255) NOT NULL,
+  execution_id VARCHAR(255) NOT NULL,
+  trade_order_id VARCHAR(255) NOT NULL,
+  counterparty VARCHAR(255) NOT NULL,
+  confirmation_channel VARCHAR(255) NOT NULL,
+  source_reference VARCHAR(255) NOT NULL,
+  side VARCHAR(255) NOT NULL,
+  confirmed_quantity DECIMAL(18, 4) NOT NULL,
+  confirmed_price DECIMAL(18, 4) NOT NULL,
+  confirmed_commission DECIMAL(18, 4) NOT NULL,
+  confirmed_tax DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  settlement_date TIMESTAMP,
+  affirmation_state VARCHAR(255) NOT NULL,
+  mismatch_class VARCHAR(255) NOT NULL,
+  mismatch_fields VARCHAR(255),
+  materiality_amount DECIMAL(18, 4),
+  analyst VARCHAR(255),
+  received_at TIMESTAMP NOT NULL,
+  affirmed_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (execution_id) REFERENCES capital_markets_trading_ops_execution(execution_id),
+  FOREIGN KEY (trade_order_id) REFERENCES capital_markets_trading_ops_trade_order(trade_order_id)
+);
+
+CREATE TABLE capital_markets_trading_ops_settlement_instruction (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  settlement_instruction_id VARCHAR(255) NOT NULL,
+  trading_account VARCHAR(255) NOT NULL,
+  counterparty VARCHAR(255) NOT NULL,
+  custodian VARCHAR(255) NOT NULL,
+  settlement_agent VARCHAR(255) NOT NULL,
+  market VARCHAR(255) NOT NULL,
+  place_of_settlement VARCHAR(255) NOT NULL,
+  depository_code VARCHAR(255) NOT NULL,
+  local_market_account VARCHAR(255) NOT NULL,
+  payment_model VARCHAR(255) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  settlement_model VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  superseded_by VARCHAR(255),
+  approval_state VARCHAR(255) NOT NULL,
+  instruction_state VARCHAR(255) NOT NULL,
+  external_status VARCHAR(255) NOT NULL,
+  penalty_exposure DECIMAL(18, 4) NOT NULL,
+  buy_in_triggered BOOLEAN NOT NULL,
+  accountable_owner VARCHAR(255),
+  instructed_at TIMESTAMP,
+  settled_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE capital_markets_trading_ops_trade_break (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  trade_break_id VARCHAR(255) NOT NULL,
+  trade_order_id VARCHAR(255),
+  execution_id VARCHAR(255),
+  allocation_id VARCHAR(255),
+  confirmation_id VARCHAR(255),
+  settlement_instruction_id VARCHAR(255),
+  break_category VARCHAR(255) NOT NULL,
+  break_severity VARCHAR(255) NOT NULL,
+  root_cause VARCHAR(255) NOT NULL,
+  upstream_event_ref VARCHAR(255) NOT NULL,
+  discrepancy_amount DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  opened_at TIMESTAMP NOT NULL,
+  cutoff_at TIMESTAMP,
+  sla_due_at TIMESTAMP,
+  escalation_state VARCHAR(255) NOT NULL,
+  remediation_action VARCHAR(255),
+  resolved_by VARCHAR(255),
+  resolved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (trade_order_id) REFERENCES capital_markets_trading_ops_trade_order(trade_order_id),
+  FOREIGN KEY (execution_id) REFERENCES capital_markets_trading_ops_execution(execution_id),
+  FOREIGN KEY (settlement_instruction_id) REFERENCES capital_markets_trading_ops_settlement_instruction(settlement_instruction_id)
+);
+
+CREATE TABLE capital_markets_trading_ops_position_snapshot (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  position_snapshot_id VARCHAR(255) NOT NULL,
+  trading_account VARCHAR(255) NOT NULL,
+  book VARCHAR(255) NOT NULL,
+  instrument_id VARCHAR(255) NOT NULL,
+  asset_class VARCHAR(255) NOT NULL,
+  position_quantity DECIMAL(18, 4) NOT NULL,
+  average_price DECIMAL(18, 4) NOT NULL,
+  market_value DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  source_cut VARCHAR(255) NOT NULL,
+  valuation_at TIMESTAMP NOT NULL,
+  data_completeness VARCHAR(255) NOT NULL,
+  correction_state VARCHAR(255) NOT NULL,
+  snapshot_basis VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE capital_markets_trading_ops_capital_markets_trading_ops_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  approver_role VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE capital_markets_trading_ops_capital_markets_trading_ops_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  effective_from TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE capital_markets_trading_ops_capital_markets_trading_ops_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE capital_markets_trading_ops_capital_markets_trading_ops_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  remediation_task VARCHAR(255) NOT NULL,
+  evaluated_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE capital_markets_trading_ops_capital_markets_trading_ops_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE capital_markets_trading_ops_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE capital_markets_trading_ops_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE capital_markets_trading_ops_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

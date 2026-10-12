@@ -1,15 +1,336 @@
-CREATE TABLE bank_payments_clearing_payment_instruction (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE bank_payments_clearing_clearing_batch (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE bank_payments_clearing_settlement_file (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE bank_payments_clearing_return_item (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE bank_payments_clearing_exception_case (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE bank_payments_clearing_bank_reconciliation (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE bank_payments_clearing_participant_bank (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE bank_payments_clearing_bank_payments_clearing_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE bank_payments_clearing_bank_payments_clearing_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE bank_payments_clearing_bank_payments_clearing_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE bank_payments_clearing_bank_payments_clearing_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE bank_payments_clearing_bank_payments_clearing_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE bank_payments_clearing_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE bank_payments_clearing_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE bank_payments_clearing_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS bank_payments_clearing;
+
+CREATE TABLE bank_payments_clearing_payment_instruction (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  instruction_id VARCHAR(255) NOT NULL,
+  rail VARCHAR(255) NOT NULL,
+  scheme_profile VARCHAR(255) NOT NULL,
+  message_format VARCHAR(255) NOT NULL,
+  settlement_basis VARCHAR(255) NOT NULL,
+  cutoff_calendar VARCHAR(255) NOT NULL,
+  value_limit DECIMAL(18, 4) NOT NULL,
+  supported_currency VARCHAR(255) NOT NULL,
+  repair_rule VARCHAR(255) NOT NULL,
+  originator_name VARCHAR(255) NOT NULL,
+  originator_account VARCHAR(255) NOT NULL,
+  originator_authorized BOOLEAN NOT NULL,
+  beneficiary_name VARCHAR(255) NOT NULL,
+  beneficiary_account VARCHAR(255) NOT NULL,
+  beneficiary_bank_id VARCHAR(255) NOT NULL,
+  beneficiary_address VARCHAR(255) NOT NULL,
+  purpose_code VARCHAR(255) NOT NULL,
+  amount DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  value_date TIMESTAMP,
+  instruction_state VARCHAR(255) NOT NULL,
+  priority VARCHAR(255) NOT NULL,
+  external_reference VARCHAR(255),
+  duplicate_score DECIMAL(18, 4) NOT NULL,
+  screening_decision VARCHAR(255) NOT NULL,
+  screening_score DECIMAL(18, 4) NOT NULL,
+  screening_match_reason VARCHAR(255) NOT NULL,
+  screening_freshness VARCHAR(255) NOT NULL,
+  screening_hold_decision VARCHAR(255) NOT NULL,
+  screening_override_evidence TEXT NOT NULL,
+  finality_state VARCHAR(255) NOT NULL,
+  uncertain_outcome BOOLEAN NOT NULL,
+  timeout_at TIMESTAMP,
+  approved_by VARCHAR(255) NOT NULL,
+  released_by VARCHAR(255) NOT NULL,
+  batch_id VARCHAR(255),
+  liquidity_projection DECIMAL(18, 4) NOT NULL,
+  liquidity_freshness VARCHAR(255) NOT NULL,
+  release_hold BOOLEAN NOT NULL,
+  cancellation_state VARCHAR(255) NOT NULL,
+  recall_message VARCHAR(255) NOT NULL,
+  regulatory_report_flag BOOLEAN NOT NULL,
+  charge_bearer VARCHAR(255) NOT NULL,
+  correspondent_chain VARCHAR(255) NOT NULL,
+  fx_quote_projection DECIMAL(18, 4) NOT NULL,
+  fx_rate_timestamp TIMESTAMP,
+  fx_spread DECIMAL(18, 4) NOT NULL,
+  fx_expiry TIMESTAMP,
+  notification_template VARCHAR(255) NOT NULL,
+  notification_deadline TIMESTAMP,
+  audit_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (beneficiary_bank_id) REFERENCES bank_payments_clearing_participant_bank(participant_bank_id)
+);
+
+CREATE TABLE bank_payments_clearing_clearing_batch (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  batch_id VARCHAR(255) NOT NULL,
+  rail VARCHAR(255) NOT NULL,
+  participant_bank_id VARCHAR(255) NOT NULL,
+  batch_profile VARCHAR(255) NOT NULL,
+  inclusion_rule VARCHAR(255) NOT NULL,
+  effective_date TIMESTAMP,
+  currency VARCHAR(255) NOT NULL,
+  priority VARCHAR(255) NOT NULL,
+  settlement_window VARCHAR(255) NOT NULL,
+  item_count INTEGER NOT NULL,
+  total_amount DECIMAL(18, 4) NOT NULL,
+  hash_total VARCHAR(255) NOT NULL,
+  cutoff_at TIMESTAMP,
+  missed_cutoff BOOLEAN NOT NULL,
+  release_approval VARCHAR(255) NOT NULL,
+  finalization_lock BOOLEAN NOT NULL,
+  finalized_at TIMESTAMP,
+  instruction_ids TEXT NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (participant_bank_id) REFERENCES bank_payments_clearing_participant_bank(participant_bank_id)
+);
+
+CREATE TABLE bank_payments_clearing_settlement_file (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  file_id VARCHAR(255) NOT NULL,
+  batch_id VARCHAR(255) NOT NULL,
+  file_sequence INTEGER NOT NULL,
+  rail_profile VARCHAR(255) NOT NULL,
+  control_total DECIMAL(18, 4) NOT NULL,
+  item_hash VARCHAR(255) NOT NULL,
+  item_count INTEGER NOT NULL,
+  generated_checksum VARCHAR(255) NOT NULL,
+  signature VARCHAR(255) NOT NULL,
+  encryption_status VARCHAR(255) NOT NULL,
+  key_version VARCHAR(255) NOT NULL,
+  transmission_channel VARCHAR(255) NOT NULL,
+  transmission_endpoint VARCHAR(255) NOT NULL,
+  transmission_status VARCHAR(255) NOT NULL,
+  acknowledgement_type VARCHAR(255) NOT NULL,
+  acknowledgement_at TIMESTAMP,
+  accepted_count INTEGER NOT NULL,
+  rejected_count INTEGER NOT NULL,
+  reject_reason VARCHAR(255) NOT NULL,
+  repair_resubmit_path VARCHAR(255) NOT NULL,
+  access_log_evidence TEXT NOT NULL,
+  generated_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (batch_id) REFERENCES bank_payments_clearing_clearing_batch(batch_id)
+);
+
+CREATE TABLE bank_payments_clearing_return_item (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  return_id VARCHAR(255) NOT NULL,
+  instruction_id VARCHAR(255) NOT NULL,
+  return_reason VARCHAR(255) NOT NULL,
+  reason_code VARCHAR(255) NOT NULL,
+  effective_date TIMESTAMP,
+  return_deadline_days INTEGER NOT NULL,
+  financial_impact DECIMAL(18, 4) NOT NULL,
+  repair_eligible BOOLEAN NOT NULL,
+  representment_state VARCHAR(255) NOT NULL,
+  notification_required BOOLEAN NOT NULL,
+  customer_impact VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (instruction_id) REFERENCES bank_payments_clearing_payment_instruction(instruction_id)
+);
+
+CREATE TABLE bank_payments_clearing_exception_case (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  exception_id VARCHAR(255) NOT NULL,
+  exception_type VARCHAR(255) NOT NULL,
+  object_id VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  owner_queue VARCHAR(255) NOT NULL,
+  due_at TIMESTAMP,
+  financial_exposure DECIMAL(18, 4) NOT NULL,
+  blocked_items INTEGER NOT NULL,
+  findings TEXT NOT NULL,
+  remediation_action VARCHAR(255) NOT NULL,
+  root_cause_category VARCHAR(255) NOT NULL,
+  closure_requires_evidence BOOLEAN NOT NULL,
+  closure_evidence TEXT NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE bank_payments_clearing_bank_reconciliation (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  reconciliation_id VARCHAR(255) NOT NULL,
+  account_identifier VARCHAR(255) NOT NULL,
+  statement_source VARCHAR(255) NOT NULL,
+  match_type VARCHAR(255) NOT NULL,
+  match_count INTEGER NOT NULL,
+  fee_count INTEGER NOT NULL,
+  exception_count INTEGER NOT NULL,
+  tolerance DECIMAL(18, 4) NOT NULL,
+  unmatched_amount DECIMAL(18, 4) NOT NULL,
+  aging_days INTEGER NOT NULL,
+  break_reason VARCHAR(255) NOT NULL,
+  resolution_action VARCHAR(255) NOT NULL,
+  balance_projection DECIMAL(18, 4) NOT NULL,
+  projection_freshness VARCHAR(255) NOT NULL,
+  reconciled_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE bank_payments_clearing_participant_bank (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  participant_bank_id VARCHAR(255) NOT NULL,
+  bank_name VARCHAR(255) NOT NULL,
+  routing_identifier VARCHAR(255) NOT NULL,
+  settlement_account_projection VARCHAR(255) NOT NULL,
+  supported_rails VARCHAR(255) NOT NULL,
+  active_windows VARCHAR(255) NOT NULL,
+  return_contact VARCHAR(255) NOT NULL,
+  cutoff_at TIMESTAMP,
+  suspension_state VARCHAR(255) NOT NULL,
+  health_state VARCHAR(255) NOT NULL,
+  acknowledgement_latency_minutes INTEGER NOT NULL,
+  reject_rate DECIMAL(18, 4) NOT NULL,
+  outage_state VARCHAR(255) NOT NULL,
+  fallback_rule VARCHAR(255) NOT NULL,
+  escalation_owner VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE bank_payments_clearing_bank_payments_clearing_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  approver_role VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE bank_payments_clearing_bank_payments_clearing_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  effective_from TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE bank_payments_clearing_bank_payments_clearing_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE bank_payments_clearing_bank_payments_clearing_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  population INTEGER NOT NULL,
+  threshold DECIMAL(18, 4) NOT NULL,
+  failing_items INTEGER NOT NULL,
+  owner VARCHAR(255) NOT NULL,
+  remediation_task VARCHAR(255) NOT NULL,
+  recurrence VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  evaluated_at TIMESTAMP,
+  closure_evidence TEXT NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE bank_payments_clearing_bank_payments_clearing_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE bank_payments_clearing_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE bank_payments_clearing_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE bank_payments_clearing_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
