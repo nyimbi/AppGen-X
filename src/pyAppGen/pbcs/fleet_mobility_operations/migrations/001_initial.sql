@@ -1,15 +1,333 @@
-CREATE TABLE fleet_mobility_operations_vehicle (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE fleet_mobility_operations_driver_assignment (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE fleet_mobility_operations_telematics_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE fleet_mobility_operations_route_plan (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE fleet_mobility_operations_fuel_transaction (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE fleet_mobility_operations_maintenance_schedule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE fleet_mobility_operations_safety_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE fleet_mobility_operations_fleet_mobility_operations_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE fleet_mobility_operations_fleet_mobility_operations_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE fleet_mobility_operations_fleet_mobility_operations_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE fleet_mobility_operations_fleet_mobility_operations_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE fleet_mobility_operations_fleet_mobility_operations_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE fleet_mobility_operations_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE fleet_mobility_operations_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE fleet_mobility_operations_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS fleet_mobility_operations;
+
+CREATE TABLE fleet_mobility_operations_vehicle (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  vehicle_id VARCHAR(255) NOT NULL,
+  registration_number VARCHAR(255) NOT NULL,
+  vin VARCHAR(255) NOT NULL,
+  vehicle_class VARCHAR(255) NOT NULL,
+  body_type VARCHAR(255) NOT NULL,
+  depot_code VARCHAR(255) NOT NULL,
+  energy_type VARCHAR(255) NOT NULL,
+  odometer_reading DECIMAL(18, 4) NOT NULL,
+  engine_hours DECIMAL(18, 4) NOT NULL,
+  fuel_level_pct DECIMAL(18, 4) NOT NULL,
+  state_of_charge_pct DECIMAL(18, 4) NOT NULL,
+  telematics_device_id VARCHAR(255) NOT NULL,
+  readiness_state VARCHAR(255) NOT NULL,
+  dispatchable BOOLEAN NOT NULL,
+  last_seen_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE fleet_mobility_operations_driver_assignment (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  driver_assignment_id VARCHAR(255) NOT NULL,
+  vehicle_id VARCHAR(255) NOT NULL,
+  driver_id VARCHAR(255) NOT NULL,
+  route_plan_id VARCHAR(255) NOT NULL,
+  shift_code VARCHAR(255) NOT NULL,
+  shift_start_at TIMESTAMP,
+  shift_end_at TIMESTAMP,
+  rest_window_hours DECIMAL(18, 4) NOT NULL,
+  overlap_flag BOOLEAN NOT NULL,
+  licence_class VARCHAR(255) NOT NULL,
+  licence_expires_at TIMESTAMP,
+  medical_expires_at TIMESTAMP,
+  endorsements TEXT NOT NULL,
+  credential_state VARCHAR(255) NOT NULL,
+  acknowledgement_state VARCHAR(255) NOT NULL,
+  decline_reason TEXT NOT NULL,
+  utilisation_pct DECIMAL(18, 4) NOT NULL,
+  accepted_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (vehicle_id) REFERENCES fleet_mobility_operations_vehicle(vehicle_id)
+);
+
+CREATE TABLE fleet_mobility_operations_telematics_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  telematics_event_id VARCHAR(255) NOT NULL,
+  vehicle_id VARCHAR(255) NOT NULL,
+  device_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  event_at TIMESTAMP,
+  latitude DECIMAL(18, 4) NOT NULL,
+  longitude DECIMAL(18, 4) NOT NULL,
+  speed_kph DECIMAL(18, 4) NOT NULL,
+  heading_degrees DECIMAL(18, 4) NOT NULL,
+  odometer_reading DECIMAL(18, 4) NOT NULL,
+  engine_hours DECIMAL(18, 4) NOT NULL,
+  fuel_level_pct DECIMAL(18, 4) NOT NULL,
+  state_of_charge_pct DECIMAL(18, 4) NOT NULL,
+  harsh_brake_count INTEGER NOT NULL,
+  harsh_accel_count INTEGER NOT NULL,
+  speeding_flag BOOLEAN NOT NULL,
+  idle_minutes INTEGER NOT NULL,
+  geofence_code VARCHAR(255) NOT NULL,
+  geofence_transition VARCHAR(255) NOT NULL,
+  sequence_number INTEGER NOT NULL,
+  ingestion_state VARCHAR(255) NOT NULL,
+  quarantine_reason TEXT NOT NULL,
+  source_timestamp TIMESTAMP,
+  received_at TIMESTAMP,
+  idempotency_key VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (vehicle_id) REFERENCES fleet_mobility_operations_vehicle(vehicle_id)
+);
+
+CREATE TABLE fleet_mobility_operations_route_plan (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  route_plan_id VARCHAR(255) NOT NULL,
+  vehicle_id VARCHAR(255) NOT NULL,
+  driver_id VARCHAR(255) NOT NULL,
+  route_code VARCHAR(255) NOT NULL,
+  route_name VARCHAR(255) NOT NULL,
+  origin_code VARCHAR(255) NOT NULL,
+  destination_code VARCHAR(255) NOT NULL,
+  depot_code VARCHAR(255) NOT NULL,
+  planned_start_at TIMESTAMP,
+  planned_end_at TIMESTAMP,
+  planned_distance_km DECIMAL(18, 4) NOT NULL,
+  planned_duration_minutes INTEGER NOT NULL,
+  stop_count INTEGER NOT NULL,
+  planned_stop_sequence TEXT NOT NULL,
+  eta_drift_minutes INTEGER NOT NULL,
+  dwell_overrun_minutes INTEGER NOT NULL,
+  missed_stop_count INTEGER NOT NULL,
+  completion_confidence DECIMAL(18, 4) NOT NULL,
+  variance_minutes INTEGER NOT NULL,
+  geofence_deviation BOOLEAN NOT NULL,
+  approval_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (vehicle_id) REFERENCES fleet_mobility_operations_vehicle(vehicle_id)
+);
+
+CREATE TABLE fleet_mobility_operations_fuel_transaction (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  fuel_transaction_id VARCHAR(255) NOT NULL,
+  vehicle_id VARCHAR(255) NOT NULL,
+  driver_id VARCHAR(255) NOT NULL,
+  transaction_at TIMESTAMP,
+  energy_type VARCHAR(255) NOT NULL,
+  quantity DECIMAL(18, 4) NOT NULL,
+  unit_cost DECIMAL(18, 4) NOT NULL,
+  total_cost DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  odometer_reading DECIMAL(18, 4) NOT NULL,
+  engine_hours DECIMAL(18, 4) NOT NULL,
+  station_code VARCHAR(255) NOT NULL,
+  geofence_code VARCHAR(255) NOT NULL,
+  fuel_card_reference VARCHAR(255) NOT NULL,
+  charge_session_id VARCHAR(255) NOT NULL,
+  charging_loss_kwh DECIMAL(18, 4) NOT NULL,
+  expected_quantity DECIMAL(18, 4) NOT NULL,
+  variance_quantity DECIMAL(18, 4) NOT NULL,
+  anomaly_flag BOOLEAN NOT NULL,
+  anomaly_reason VARCHAR(255) NOT NULL,
+  reconciliation_state VARCHAR(255) NOT NULL,
+  investigation_note TEXT NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (vehicle_id) REFERENCES fleet_mobility_operations_vehicle(vehicle_id)
+);
+
+CREATE TABLE fleet_mobility_operations_maintenance_schedule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  maintenance_schedule_id VARCHAR(255) NOT NULL,
+  vehicle_id VARCHAR(255) NOT NULL,
+  schedule_code VARCHAR(255) NOT NULL,
+  maintenance_type VARCHAR(255) NOT NULL,
+  trigger_type VARCHAR(255) NOT NULL,
+  trigger_source VARCHAR(255) NOT NULL,
+  trigger_odometer DECIMAL(18, 4) NOT NULL,
+  trigger_engine_hours DECIMAL(18, 4) NOT NULL,
+  due_at TIMESTAMP,
+  due_in_days INTEGER NOT NULL,
+  campaign_code VARCHAR(255) NOT NULL,
+  workshop_bay VARCHAR(255) NOT NULL,
+  parts_ready BOOLEAN NOT NULL,
+  parts_dependency VARCHAR(255) NOT NULL,
+  downtime_forecast_hours INTEGER NOT NULL,
+  forecast_cost DECIMAL(18, 4) NOT NULL,
+  deferral_state VARCHAR(255) NOT NULL,
+  readiness_impact VARCHAR(255) NOT NULL,
+  cleared_for_dispatch BOOLEAN NOT NULL,
+  completed_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (vehicle_id) REFERENCES fleet_mobility_operations_vehicle(vehicle_id)
+);
+
+CREATE TABLE fleet_mobility_operations_safety_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  safety_event_id VARCHAR(255) NOT NULL,
+  vehicle_id VARCHAR(255) NOT NULL,
+  driver_id VARCHAR(255) NOT NULL,
+  route_plan_id VARCHAR(255) NOT NULL,
+  event_at TIMESTAMP,
+  incident_type VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  location_description VARCHAR(255) NOT NULL,
+  latitude DECIMAL(18, 4) NOT NULL,
+  longitude DECIMAL(18, 4) NOT NULL,
+  driver_status VARCHAR(255) NOT NULL,
+  injury_flag BOOLEAN NOT NULL,
+  towing_required BOOLEAN NOT NULL,
+  replacement_vehicle_required BOOLEAN NOT NULL,
+  reroute_required BOOLEAN NOT NULL,
+  root_cause_code VARCHAR(255) NOT NULL,
+  repeat_failure_flag BOOLEAN NOT NULL,
+  containment_state VARCHAR(255) NOT NULL,
+  service_return_criteria TEXT NOT NULL,
+  resolution_note TEXT NOT NULL,
+  resolved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (vehicle_id) REFERENCES fleet_mobility_operations_vehicle(vehicle_id),
+  FOREIGN KEY (route_plan_id) REFERENCES fleet_mobility_operations_route_plan(route_plan_id)
+);
+
+CREATE TABLE fleet_mobility_operations_fleet_mobility_operations_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  rule_scope VARCHAR(255) NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  approver_role VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE fleet_mobility_operations_fleet_mobility_operations_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  effective_from TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE fleet_mobility_operations_fleet_mobility_operations_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE fleet_mobility_operations_fleet_mobility_operations_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  remediation_task TEXT NOT NULL,
+  evaluated_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE fleet_mobility_operations_fleet_mobility_operations_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE fleet_mobility_operations_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE fleet_mobility_operations_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE fleet_mobility_operations_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

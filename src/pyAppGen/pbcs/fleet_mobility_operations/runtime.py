@@ -73,6 +73,33 @@ FLEET_MOBILITY_OPERATIONS_BUSINESS_TABLES = ('fleet_mobility_operations_vehicle'
  'fleet_mobility_operations_fleet_mobility_operations_schema_extension',
  'fleet_mobility_operations_fleet_mobility_operations_control_assertion',
  'fleet_mobility_operations_fleet_mobility_operations_governed_model')
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+FLEET_MOBILITY_OPERATIONS_TABLE_FIELDS = {
+    'fleet_mobility_operations_vehicle': ('id', 'tenant', 'vehicle_id', 'registration_number', 'vin', 'vehicle_class', 'body_type', 'depot_code', 'energy_type', 'odometer_reading', 'engine_hours', 'fuel_level_pct', 'state_of_charge_pct', 'telematics_device_id', 'readiness_state', 'dispatchable', 'last_seen_at', 'status', 'version', 'created_at', 'updated_at'),
+    'fleet_mobility_operations_driver_assignment': ('id', 'tenant', 'driver_assignment_id', 'vehicle_id', 'driver_id', 'route_plan_id', 'shift_code', 'shift_start_at', 'shift_end_at', 'rest_window_hours', 'overlap_flag', 'licence_class', 'licence_expires_at', 'medical_expires_at', 'endorsements', 'credential_state', 'acknowledgement_state', 'decline_reason', 'utilisation_pct', 'accepted_at', 'status', 'version', 'created_at', 'updated_at'),
+    'fleet_mobility_operations_telematics_event': ('id', 'tenant', 'telematics_event_id', 'vehicle_id', 'device_id', 'event_type', 'event_at', 'latitude', 'longitude', 'speed_kph', 'heading_degrees', 'odometer_reading', 'engine_hours', 'fuel_level_pct', 'state_of_charge_pct', 'harsh_brake_count', 'harsh_accel_count', 'speeding_flag', 'idle_minutes', 'geofence_code', 'geofence_transition', 'sequence_number', 'ingestion_state', 'quarantine_reason', 'source_timestamp', 'received_at', 'idempotency_key', 'status', 'version', 'created_at', 'updated_at'),
+    'fleet_mobility_operations_route_plan': ('id', 'tenant', 'route_plan_id', 'vehicle_id', 'driver_id', 'route_code', 'route_name', 'origin_code', 'destination_code', 'depot_code', 'planned_start_at', 'planned_end_at', 'planned_distance_km', 'planned_duration_minutes', 'stop_count', 'planned_stop_sequence', 'eta_drift_minutes', 'dwell_overrun_minutes', 'missed_stop_count', 'completion_confidence', 'variance_minutes', 'geofence_deviation', 'approval_state', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'fleet_mobility_operations_fuel_transaction': ('id', 'tenant', 'fuel_transaction_id', 'vehicle_id', 'driver_id', 'transaction_at', 'energy_type', 'quantity', 'unit_cost', 'total_cost', 'currency', 'odometer_reading', 'engine_hours', 'station_code', 'geofence_code', 'fuel_card_reference', 'charge_session_id', 'charging_loss_kwh', 'expected_quantity', 'variance_quantity', 'anomaly_flag', 'anomaly_reason', 'reconciliation_state', 'investigation_note', 'status', 'version', 'created_at', 'updated_at'),
+    'fleet_mobility_operations_maintenance_schedule': ('id', 'tenant', 'maintenance_schedule_id', 'vehicle_id', 'schedule_code', 'maintenance_type', 'trigger_type', 'trigger_source', 'trigger_odometer', 'trigger_engine_hours', 'due_at', 'due_in_days', 'campaign_code', 'workshop_bay', 'parts_ready', 'parts_dependency', 'downtime_forecast_hours', 'forecast_cost', 'deferral_state', 'readiness_impact', 'cleared_for_dispatch', 'completed_at', 'status', 'version', 'created_at', 'updated_at'),
+    'fleet_mobility_operations_safety_event': ('id', 'tenant', 'safety_event_id', 'vehicle_id', 'driver_id', 'route_plan_id', 'event_at', 'incident_type', 'severity', 'location_description', 'latitude', 'longitude', 'driver_status', 'injury_flag', 'towing_required', 'replacement_vehicle_required', 'reroute_required', 'root_cause_code', 'repeat_failure_flag', 'containment_state', 'service_return_criteria', 'resolution_note', 'resolved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'fleet_mobility_operations_fleet_mobility_operations_policy_rule': ('id', 'tenant', 'rule_id', 'rule_name', 'predicate_text', 'rule_scope', 'ambiguity_flag', 'approver_role', 'effective_from', 'effective_to', 'compiled_hash', 'status', 'version', 'created_at', 'updated_at'),
+    'fleet_mobility_operations_fleet_mobility_operations_runtime_parameter': ('id', 'tenant', 'parameter_name', 'parameter_value', 'scope', 'bounded', 'effective_from', 'status', 'version', 'created_at', 'updated_at'),
+    'fleet_mobility_operations_fleet_mobility_operations_schema_extension': ('id', 'tenant', 'extension_id', 'target_table', 'field_name', 'field_type', 'registered_at', 'status', 'version', 'created_at', 'updated_at'),
+    'fleet_mobility_operations_fleet_mobility_operations_control_assertion': ('id', 'tenant', 'assertion_id', 'control_name', 'assertion_result', 'severity', 'remediation_task', 'evaluated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'fleet_mobility_operations_fleet_mobility_operations_governed_model': ('id', 'tenant', 'model_id', 'model_name', 'model_version', 'governance_state', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'fleet_mobility_operations_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'fleet_mobility_operations_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'fleet_mobility_operations_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_FLEET_MOBILITY_OPERATIONS_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _fleet_mobility_operations_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return FLEET_MOBILITY_OPERATIONS_TABLE_FIELDS.get(table, _FLEET_MOBILITY_OPERATIONS_DEFAULT_FIELDS)
+
 
 def fleet_mobility_operations_empty_state():
     return {'records': {}, 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
@@ -131,24 +158,11 @@ def fleet_mobility_operations_parse_document_instruction(document, instruction):
     return {'ok': True, 'candidate_tables': FLEET_MOBILITY_OPERATIONS_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
 def fleet_mobility_operations_build_schema_contract():
-    table_contracts = (
-        {'table': 'fleet_mobility_operations_vehicle', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'fleet_mobility_operations_driver_assignment', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'fleet_mobility_operations_telematics_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'fleet_mobility_operations_route_plan', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'fleet_mobility_operations_fuel_transaction', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'fleet_mobility_operations_maintenance_schedule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'fleet_mobility_operations_safety_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'fleet_mobility_operations_fleet_mobility_operations_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'fleet_mobility_operations_fleet_mobility_operations_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'fleet_mobility_operations_fleet_mobility_operations_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'fleet_mobility_operations_fleet_mobility_operations_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'fleet_mobility_operations_fleet_mobility_operations_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'fleet_mobility_operations_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'fleet_mobility_operations_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'fleet_mobility_operations_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table, 'fields': _fleet_mobility_operations_table_fields(table), 'primary_key': ('id',), 'owned_by': PBC_KEY}
+        for table in FLEET_MOBILITY_OPERATIONS_OWNED_TABLES
     )
-    return {'format': 'appgen.fleet-mobility-operations-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/fleet_mobility_operations/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': FLEET_MOBILITY_OPERATIONS_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': FLEET_MOBILITY_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'database_backends': FLEET_MOBILITY_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': FLEET_MOBILITY_OPERATIONS_OWNED_TABLES}
+    return {'format': 'appgen.fleet-mobility-operations-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/fleet_mobility_operations/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': FLEET_MOBILITY_OPERATIONS_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(FLEET_MOBILITY_OPERATIONS_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _fleet_mobility_operations_table_fields(table)} for table in FLEET_MOBILITY_OPERATIONS_OWNED_TABLES), 'datastore_backends': FLEET_MOBILITY_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'database_backends': FLEET_MOBILITY_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': FLEET_MOBILITY_OPERATIONS_OWNED_TABLES}
 
 def fleet_mobility_operations_build_service_contract():
     return {'format': 'appgen.fleet-mobility-operations-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_vehicle','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}

@@ -1,15 +1,353 @@
-CREATE TABLE facility_energy_management_energy_meter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE facility_energy_management_load_profile (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE facility_energy_management_equipment_schedule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE facility_energy_management_demand_response_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE facility_energy_management_energy_optimization (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE facility_energy_management_tariff_signal (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE facility_energy_management_energy_baseline (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE facility_energy_management_facility_energy_management_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE facility_energy_management_facility_energy_management_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE facility_energy_management_facility_energy_management_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE facility_energy_management_facility_energy_management_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE facility_energy_management_facility_energy_management_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE facility_energy_management_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE facility_energy_management_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE facility_energy_management_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS facility_energy_management;
+
+CREATE TABLE facility_energy_management_energy_meter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  energy_meter_id VARCHAR(255) NOT NULL,
+  meter_name VARCHAR(255) NOT NULL,
+  site_id VARCHAR(255) NOT NULL,
+  meter_role VARCHAR(255) NOT NULL,
+  parent_meter_id VARCHAR(255),
+  virtual_formula TEXT,
+  feeder_identifier VARCHAR(255),
+  tenant_tag VARCHAR(255),
+  service_point VARCHAR(255),
+  service_account_id VARCHAR(255),
+  premise_id VARCHAR(255),
+  tariff_eligibility VARCHAR(255),
+  utility_ownership VARCHAR(255),
+  transformer_reference VARCHAR(255),
+  point_of_delivery VARCHAR(255),
+  commissioning_date TIMESTAMP,
+  decommission_date TIMESTAMP,
+  heartbeat_cadence_minutes INTEGER,
+  health_status VARCHAR(255) NOT NULL,
+  failed_read_count INTEGER NOT NULL,
+  calibration_evidence VARCHAR(255),
+  replaced_meter_id VARCHAR(255),
+  allocation_scope VARCHAR(255),
+  allocation_fallback VARCHAR(255),
+  vacancy_treatment VARCHAR(255),
+  lease_effective_date TIMESTAMP,
+  rollup_validated BOOLEAN NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE facility_energy_management_load_profile (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  load_profile_id VARCHAR(255) NOT NULL,
+  energy_meter_id VARCHAR(255) NOT NULL,
+  channel VARCHAR(255) NOT NULL,
+  interval_width_minutes INTEGER NOT NULL,
+  interval_start TIMESTAMP NOT NULL,
+  interval_end TIMESTAMP NOT NULL,
+  timezone VARCHAR(255) NOT NULL,
+  dst_crossover BOOLEAN NOT NULL,
+  read_quality VARCHAR(255) NOT NULL,
+  estimated_read BOOLEAN NOT NULL,
+  observed_read BOOLEAN NOT NULL,
+  consumption_value DECIMAL(18, 4) NOT NULL,
+  demand_value DECIMAL(18, 4),
+  provenance_code VARCHAR(255) NOT NULL,
+  correction_reason VARCHAR(255),
+  source_document VARCHAR(255),
+  superseded_interval BOOLEAN NOT NULL,
+  criticality_class VARCHAR(255) NOT NULL,
+  backup_power_available BOOLEAN NOT NULL,
+  transfer_status VARCHAR(255),
+  shed_eligible BOOLEAN NOT NULL,
+  common_area_residual DECIMAL(18, 4),
+  loss_tolerance DECIMAL(18, 4),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (energy_meter_id) REFERENCES facility_energy_management_energy_meter(energy_meter_id)
+);
+
+CREATE TABLE facility_energy_management_equipment_schedule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  equipment_schedule_id VARCHAR(255) NOT NULL,
+  schedule_name VARCHAR(255) NOT NULL,
+  hierarchy_level VARCHAR(255) NOT NULL,
+  parent_schedule_id VARCHAR(255),
+  zone_id VARCHAR(255),
+  equipment_group VARCHAR(255) NOT NULL,
+  schedule_inherited BOOLEAN NOT NULL,
+  holiday_calendar VARCHAR(255),
+  occupancy_linked BOOLEAN NOT NULL,
+  override_trigger VARCHAR(255),
+  weather_threshold DECIMAL(18, 4),
+  precool_enabled BOOLEAN NOT NULL,
+  preheat_enabled BOOLEAN NOT NULL,
+  lock_window_start TIMESTAMP,
+  lock_window_end TIMESTAMP,
+  maintenance_blackout BOOLEAN NOT NULL,
+  conflict_detected BOOLEAN NOT NULL,
+  conflict_resolution VARCHAR(255),
+  reviewer_signoff VARCHAR(255),
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE facility_energy_management_demand_response_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  demand_response_event_id VARCHAR(255) NOT NULL,
+  program_id VARCHAR(255) NOT NULL,
+  enrollment_status VARCHAR(255) NOT NULL,
+  shed_capacity_kw DECIMAL(18, 4) NOT NULL,
+  opt_out_rule VARCHAR(255),
+  notice_required_minutes INTEGER NOT NULL,
+  excluded_tenant VARCHAR(255),
+  fallback_asset VARCHAR(255),
+  dispatch_state VARCHAR(255) NOT NULL,
+  notified_at TIMESTAMP,
+  acknowledged_at TIMESTAMP,
+  active_at TIMESTAMP,
+  completed_at TIMESTAMP,
+  responsible_role VARCHAR(255),
+  baseline_id VARCHAR(255),
+  performance_kwh DECIMAL(18, 4),
+  exclusion_window VARCHAR(255),
+  weather_adjustment DECIMAL(18, 4),
+  settlement_summary TEXT,
+  rebound_limit_kw DECIMAL(18, 4),
+  recovery_strategy VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (baseline_id) REFERENCES facility_energy_management_energy_baseline(energy_baseline_id)
+);
+
+CREATE TABLE facility_energy_management_energy_optimization (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  energy_optimization_id VARCHAR(255) NOT NULL,
+  scenario_name VARCHAR(255) NOT NULL,
+  tariff_option VARCHAR(255),
+  seasonal_rate_change VARCHAR(255),
+  rider_reference VARCHAR(255),
+  dynamic_price_exposure DECIMAL(18, 4),
+  cost_outcome DECIMAL(18, 4),
+  demand_outcome DECIMAL(18, 4),
+  proposed_setpoint VARCHAR(255),
+  proposed_schedule_change VARCHAR(255),
+  load_shed_action VARCHAR(255),
+  approval_state VARCHAR(255) NOT NULL,
+  handoff_status VARCHAR(255) NOT NULL,
+  objective_weight_cost DECIMAL(18, 4) NOT NULL,
+  objective_weight_carbon DECIMAL(18, 4) NOT NULL,
+  objective_weight_comfort DECIMAL(18, 4) NOT NULL,
+  measure_type VARCHAR(255),
+  affected_meter_id VARCHAR(255),
+  expected_savings DECIMAL(18, 4),
+  capex_amount DECIMAL(18, 4),
+  retrofit_dependency VARCHAR(255),
+  retrofit_state VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (affected_meter_id) REFERENCES facility_energy_management_energy_meter(energy_meter_id)
+);
+
+CREATE TABLE facility_energy_management_tariff_signal (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  tariff_signal_id VARCHAR(255) NOT NULL,
+  tariff_name VARCHAR(255) NOT NULL,
+  season VARCHAR(255) NOT NULL,
+  weekday_class VARCHAR(255) NOT NULL,
+  time_band VARCHAR(255) NOT NULL,
+  holiday_override BOOLEAN NOT NULL,
+  coincident_peak_marker BOOLEAN NOT NULL,
+  tariff_effective_date TIMESTAMP NOT NULL,
+  ratchet_rule VARCHAR(255),
+  rolling_demand_window_minutes INTEGER,
+  contract_demand_kw DECIMAL(18, 4),
+  non_coincident_peak_kw DECIMAL(18, 4),
+  coincident_peak_kw DECIMAL(18, 4),
+  minimum_bill_amount DECIMAL(18, 4),
+  energy_rate DECIMAL(18, 4) NOT NULL,
+  demand_rate DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE facility_energy_management_energy_baseline (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  energy_baseline_id VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  baseline_version INTEGER NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  baseline_method VARCHAR(255) NOT NULL,
+  reviewer_approval VARCHAR(255),
+  superseded_baseline_id VARCHAR(255),
+  degree_day_normalized BOOLEAN NOT NULL,
+  weather_source VARCHAR(255),
+  expected_load_curve TEXT,
+  adjusted_actual_delta DECIMAL(18, 4),
+  persistence_month VARCHAR(255),
+  savings_decay_threshold DECIMAL(18, 4),
+  trigger_event VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE facility_energy_management_facility_energy_management_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  rule_scope VARCHAR(255) NOT NULL,
+  override_category VARCHAR(255),
+  override_expires_at TIMESTAMP,
+  override_rationale TEXT,
+  approver_role VARCHAR(255) NOT NULL,
+  auto_reversion BOOLEAN NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE facility_energy_management_facility_energy_management_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  parameter_group VARCHAR(255) NOT NULL,
+  parameter_scope VARCHAR(255) NOT NULL,
+  safe_lower_bound DECIMAL(18, 4),
+  safe_upper_bound DECIMAL(18, 4),
+  approval_required BOOLEAN NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  effective_from TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE facility_energy_management_facility_energy_management_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  owner_team VARCHAR(255),
+  compatibility_rule VARCHAR(255),
+  backfill_required BOOLEAN NOT NULL,
+  ui_placement VARCHAR(255),
+  registered_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE facility_energy_management_facility_energy_management_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  guardrail_type VARCHAR(255) NOT NULL,
+  comfort_band_low DECIMAL(18, 4),
+  comfort_band_high DECIMAL(18, 4),
+  ventilation_minimum DECIMAL(18, 4),
+  pressure_relationship VARCHAR(255),
+  life_safety_constraint VARCHAR(255),
+  blocked_action VARCHAR(255),
+  remediation_task VARCHAR(255),
+  evaluated_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE facility_energy_management_facility_energy_management_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  champion_model_id VARCHAR(255),
+  challenger_model_id VARCHAR(255),
+  comparison_metric VARCHAR(255),
+  rollback_version VARCHAR(255),
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE facility_energy_management_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE facility_energy_management_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE facility_energy_management_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

@@ -1,15 +1,351 @@
-CREATE TABLE energy_trading_risk_energy_contract (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE energy_trading_risk_trade_position (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE energy_trading_risk_nomination (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE energy_trading_risk_schedule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE energy_trading_risk_settlement (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE energy_trading_risk_exposure_limit (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE energy_trading_risk_market_price_curve (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE energy_trading_risk_energy_trading_risk_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE energy_trading_risk_energy_trading_risk_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE energy_trading_risk_energy_trading_risk_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE energy_trading_risk_energy_trading_risk_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE energy_trading_risk_energy_trading_risk_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE energy_trading_risk_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE energy_trading_risk_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE energy_trading_risk_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS energy_trading_risk;
+
+CREATE TABLE energy_trading_risk_energy_contract (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  energy_contract_id VARCHAR(255) NOT NULL,
+  contract_reference VARCHAR(255) NOT NULL,
+  counterparty VARCHAR(255) NOT NULL,
+  product_type VARCHAR(255) NOT NULL,
+  commodity VARCHAR(255) NOT NULL,
+  hub VARCHAR(255) NOT NULL,
+  delivery_start TIMESTAMP NOT NULL,
+  delivery_end TIMESTAMP NOT NULL,
+  contracted_volume DECIMAL(18, 4) NOT NULL,
+  volume_unit VARCHAR(255) NOT NULL,
+  price_formula VARCHAR(255) NOT NULL,
+  pricing_index VARCHAR(255),
+  currency VARCHAR(255) NOT NULL,
+  payment_terms VARCHAR(255) NOT NULL,
+  settlement_timeline VARCHAR(255) NOT NULL,
+  credit_limit_amount DECIMAL(18, 4),
+  collateral_required BOOLEAN NOT NULL,
+  collateral_status VARCHAR(255) NOT NULL,
+  tolerance_band DECIMAL(18, 4),
+  optionality_flag BOOLEAN NOT NULL,
+  position_type VARCHAR(255) NOT NULL,
+  terms_version VARCHAR(255) NOT NULL,
+  contract_state VARCHAR(255) NOT NULL,
+  approval_state VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE energy_trading_risk_trade_position (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  trade_position_id VARCHAR(255) NOT NULL,
+  trade_reference VARCHAR(255) NOT NULL,
+  energy_contract_id VARCHAR(255),
+  trade_date TIMESTAMP NOT NULL,
+  book VARCHAR(255) NOT NULL,
+  trader VARCHAR(255) NOT NULL,
+  strategy VARCHAR(255) NOT NULL,
+  side VARCHAR(255) NOT NULL,
+  product_type VARCHAR(255) NOT NULL,
+  commodity VARCHAR(255) NOT NULL,
+  hub VARCHAR(255) NOT NULL,
+  delivery_start TIMESTAMP NOT NULL,
+  delivery_end TIMESTAMP NOT NULL,
+  traded_volume DECIMAL(18, 4) NOT NULL,
+  volume_unit VARCHAR(255) NOT NULL,
+  price_formula VARCHAR(255) NOT NULL,
+  traded_price DECIMAL(18, 4),
+  notional DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  position_type VARCHAR(255) NOT NULL,
+  linked_position_group VARCHAR(255),
+  amendment_reference VARCHAR(255),
+  superseded_by VARCHAR(255),
+  amendment_reason VARCHAR(255),
+  confirmation_state VARCHAR(255) NOT NULL,
+  market_date TIMESTAMP,
+  valuation_cut_at TIMESTAMP,
+  limit_check_state VARCHAR(255) NOT NULL,
+  lifecycle_state VARCHAR(255) NOT NULL,
+  approval_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (energy_contract_id) REFERENCES energy_trading_risk_energy_contract(energy_contract_id)
+);
+
+CREATE TABLE energy_trading_risk_nomination (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  nomination_id VARCHAR(255) NOT NULL,
+  trade_position_id VARCHAR(255) NOT NULL,
+  energy_contract_id VARCHAR(255),
+  nomination_version INTEGER NOT NULL,
+  delivery_point VARCHAR(255) NOT NULL,
+  counterparty VARCHAR(255) NOT NULL,
+  product_type VARCHAR(255) NOT NULL,
+  interval_start TIMESTAMP NOT NULL,
+  interval_end TIMESTAMP NOT NULL,
+  nominated_volume DECIMAL(18, 4) NOT NULL,
+  volume_unit VARCHAR(255) NOT NULL,
+  market_timezone VARCHAR(255) NOT NULL,
+  cutoff_at TIMESTAMP NOT NULL,
+  lifecycle_state VARCHAR(255) NOT NULL,
+  superseded_by VARCHAR(255),
+  reason_code VARCHAR(255),
+  exception_evidence VARCHAR(255),
+  submitted_at TIMESTAMP,
+  accepted_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (trade_position_id) REFERENCES energy_trading_risk_trade_position(trade_position_id)
+);
+
+CREATE TABLE energy_trading_risk_schedule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  schedule_id VARCHAR(255) NOT NULL,
+  nomination_id VARCHAR(255) NOT NULL,
+  trade_position_id VARCHAR(255),
+  schedule_version INTEGER NOT NULL,
+  delivery_point VARCHAR(255) NOT NULL,
+  delivery_path VARCHAR(255) NOT NULL,
+  counterparty VARCHAR(255) NOT NULL,
+  product_type VARCHAR(255) NOT NULL,
+  interval_start TIMESTAMP NOT NULL,
+  interval_end TIMESTAMP NOT NULL,
+  scheduled_volume DECIMAL(18, 4) NOT NULL,
+  volume_unit VARCHAR(255) NOT NULL,
+  capacity_limit DECIMAL(18, 4),
+  ramp_rate DECIMAL(18, 4),
+  imbalance_volume DECIMAL(18, 4),
+  feasibility_state VARCHAR(255) NOT NULL,
+  feasibility_rule VARCHAR(255),
+  market_timezone VARCHAR(255) NOT NULL,
+  approval_state VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (nomination_id) REFERENCES energy_trading_risk_nomination(nomination_id)
+);
+
+CREATE TABLE energy_trading_risk_settlement (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  settlement_id VARCHAR(255) NOT NULL,
+  energy_contract_id VARCHAR(255) NOT NULL,
+  schedule_id VARCHAR(255),
+  nomination_id VARCHAR(255),
+  counterparty VARCHAR(255) NOT NULL,
+  settlement_period_start TIMESTAMP NOT NULL,
+  settlement_period_end TIMESTAMP NOT NULL,
+  settlement_date TIMESTAMP NOT NULL,
+  due_date TIMESTAMP,
+  delivered_volume DECIMAL(18, 4) NOT NULL,
+  volume_unit VARCHAR(255) NOT NULL,
+  contracted_price DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  gross_amount DECIMAL(18, 4) NOT NULL,
+  fee_amount DECIMAL(18, 4) NOT NULL,
+  imbalance_adjustment DECIMAL(18, 4) NOT NULL,
+  prior_period_correction DECIMAL(18, 4) NOT NULL,
+  net_amount DECIMAL(18, 4) NOT NULL,
+  pnl_state VARCHAR(255) NOT NULL,
+  hold_code VARCHAR(255),
+  release_code VARCHAR(255),
+  dispute_state VARCHAR(255) NOT NULL,
+  conversion_set_reference VARCHAR(255),
+  approval_state VARCHAR(255) NOT NULL,
+  settled_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (energy_contract_id) REFERENCES energy_trading_risk_energy_contract(energy_contract_id),
+  FOREIGN KEY (schedule_id) REFERENCES energy_trading_risk_schedule(schedule_id)
+);
+
+CREATE TABLE energy_trading_risk_exposure_limit (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  exposure_limit_id VARCHAR(255) NOT NULL,
+  limit_name VARCHAR(255) NOT NULL,
+  limit_scope VARCHAR(255) NOT NULL,
+  parent_limit_id VARCHAR(255),
+  desk VARCHAR(255),
+  book VARCHAR(255),
+  trader VARCHAR(255),
+  counterparty VARCHAR(255),
+  commodity VARCHAR(255),
+  limit_type VARCHAR(255) NOT NULL,
+  limit_amount DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  utilization_amount DECIMAL(18, 4) NOT NULL,
+  headroom_amount DECIMAL(18, 4) NOT NULL,
+  breach_state VARCHAR(255) NOT NULL,
+  breach_severity VARCHAR(255),
+  case_owner VARCHAR(255),
+  required_action VARCHAR(255),
+  waiver_window_end TIMESTAMP,
+  remediation_plan VARCHAR(255),
+  liquidity_horizon_days INTEGER,
+  override_state VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE energy_trading_risk_market_price_curve (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  market_price_curve_id VARCHAR(255) NOT NULL,
+  curve_name VARCHAR(255) NOT NULL,
+  commodity VARCHAR(255) NOT NULL,
+  hub VARCHAR(255) NOT NULL,
+  node VARCHAR(255),
+  strip_code VARCHAR(255) NOT NULL,
+  as_of_at TIMESTAMP NOT NULL,
+  price DECIMAL(18, 4) NOT NULL,
+  basis_price DECIMAL(18, 4),
+  currency VARCHAR(255) NOT NULL,
+  price_unit VARCHAR(255) NOT NULL,
+  gap_state VARCHAR(255) NOT NULL,
+  gap_fill_policy VARCHAR(255),
+  proxy_hub VARCHAR(255),
+  materiality_amount DECIMAL(18, 4),
+  validation_state VARCHAR(255) NOT NULL,
+  source_system VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE energy_trading_risk_energy_trading_risk_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  example_text TEXT,
+  approver_role VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE energy_trading_risk_energy_trading_risk_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE energy_trading_risk_energy_trading_risk_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE energy_trading_risk_energy_trading_risk_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  remediation_task VARCHAR(255),
+  evaluated_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE energy_trading_risk_energy_trading_risk_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  model_type VARCHAR(255) NOT NULL,
+  coverage_scope VARCHAR(255) NOT NULL,
+  backtest_exception_count INTEGER NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE energy_trading_risk_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE energy_trading_risk_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE energy_trading_risk_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

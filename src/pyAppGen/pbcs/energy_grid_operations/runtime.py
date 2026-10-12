@@ -130,25 +130,43 @@ def energy_grid_operations_run_advanced_assessment(state, payload=None):
 def energy_grid_operations_parse_document_instruction(document, instruction):
     return {'ok': True, 'candidate_tables': ENERGY_GRID_OPERATIONS_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+ENERGY_GRID_OPERATIONS_TABLE_FIELDS = {
+    'energy_grid_operations_grid_asset': ('id', 'tenant', 'grid_asset_id', 'asset_name', 'device_class', 'parent_asset_id', 'substation_id', 'feeder_id', 'voltage_class', 'phasing', 'normal_state', 'protection_zone', 'interrupting_rating', 'operating_mode', 'gis_reference', 'scada_tag', 'commissioning_evidence', 'is_der_intertie', 'status', 'version', 'created_at', 'updated_at'),
+    'energy_grid_operations_load_forecast': ('id', 'tenant', 'load_forecast_id', 'grid_asset_id', 'substation_id', 'feeder_id', 'segment_id', 'source_system', 'forecast_horizon_hours', 'interval_minutes', 'native_load_mw', 'der_contribution_mw', 'net_load_mw', 'weather_sensitivity', 'confidence_band', 'contingency_variant', 'weather_station', 'der_availability_assumption', 'is_operator_override', 'override_reason', 'forecast_at', 'status', 'version', 'created_at', 'updated_at'),
+    'energy_grid_operations_switching_order': ('id', 'tenant', 'switching_order_id', 'grid_asset_id', 'substation_id', 'feeder_id', 'order_type', 'sequence_number', 'step_count', 'hold_point_count', 'precondition_text', 'hold_point_text', 'telemetry_confirmation', 'clearance_reference', 'reversal_instruction', 'simulation_state', 'impacted_feeder_count', 'backfeed_risk', 'required_approver_role', 'planned_start', 'planned_end', 'executed_at', 'status', 'version', 'created_at', 'updated_at'),
+    'energy_grid_operations_dispatch_instruction': ('id', 'tenant', 'dispatch_instruction_id', 'grid_asset_id', 'substation_id', 'feeder_id', 'objective_type', 'control_target', 'target_interval_minutes', 'expected_load_movement_mw', 'voltage_support_intent', 'der_participation', 'reason_code', 'rollback_condition', 'constraint_conflict', 'telemetry_freshness_state', 'issued_at', 'status', 'version', 'created_at', 'updated_at'),
+    'energy_grid_operations_outage_event': ('id', 'tenant', 'outage_event_id', 'grid_asset_id', 'initiating_device_id', 'feeder_id', 'section_ids', 'cause_code', 'lifecycle_state', 'customers_at_risk', 'load_at_risk_mw', 'crew_eta', 'restoration_hypothesis', 'correlation_id', 'reported_at', 'isolated_at', 'restored_at', 'restoration_clock_minutes', 'status', 'version', 'created_at', 'updated_at'),
+    'energy_grid_operations_reliability_constraint': ('id', 'tenant', 'reliability_constraint_id', 'grid_asset_id', 'constraint_type', 'scope', 'severity', 'threshold_value', 'threshold_unit', 'governed_asset_id', 'owner_role', 'expires_at', 'is_active', 'status', 'version', 'created_at', 'updated_at'),
+    'energy_grid_operations_grid_topology': ('id', 'tenant', 'grid_topology_id', 'grid_asset_id', 'topology_version', 'segment_id', 'from_node_id', 'to_node_id', 'connection_state', 'is_normally_open', 'is_backfeed_path', 'is_der_island', 'phase_code', 'directional_connectivity', 'restoration_rank', 'projected_switching_count', 'verified_at', 'status', 'version', 'created_at', 'updated_at'),
+    'energy_grid_operations_energy_grid_operations_policy_rule': ('id', 'tenant', 'rule_id', 'rule_name', 'scope', 'predicate_text', 'ambiguity_flag', 'example_text', 'approver_role', 'effective_from', 'effective_to', 'compiled_hash', 'status', 'version', 'created_at', 'updated_at'),
+    'energy_grid_operations_energy_grid_operations_runtime_parameter': ('id', 'tenant', 'parameter_name', 'parameter_value', 'scope', 'bounded', 'effective_from', 'status', 'version', 'created_at', 'updated_at'),
+    'energy_grid_operations_energy_grid_operations_schema_extension': ('id', 'tenant', 'extension_id', 'target_table', 'field_name', 'field_type', 'registered_at', 'status', 'version', 'created_at', 'updated_at'),
+    'energy_grid_operations_energy_grid_operations_control_assertion': ('id', 'tenant', 'assertion_id', 'control_name', 'assertion_result', 'severity', 'remediation_task', 'evaluated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'energy_grid_operations_energy_grid_operations_governed_model': ('id', 'tenant', 'model_id', 'model_name', 'model_version', 'governance_state', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'energy_grid_operations_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'energy_grid_operations_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'energy_grid_operations_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_ENERGY_GRID_OPERATIONS_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _energy_grid_operations_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return ENERGY_GRID_OPERATIONS_TABLE_FIELDS.get(table, _ENERGY_GRID_OPERATIONS_DEFAULT_FIELDS)
+
+
 def energy_grid_operations_build_schema_contract():
-    table_contracts = (
-        {'table': 'energy_grid_operations_grid_asset', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_grid_operations_load_forecast', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_grid_operations_switching_order', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_grid_operations_dispatch_instruction', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_grid_operations_outage_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_grid_operations_reliability_constraint', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_grid_operations_grid_topology', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_grid_operations_energy_grid_operations_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_grid_operations_energy_grid_operations_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_grid_operations_energy_grid_operations_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_grid_operations_energy_grid_operations_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_grid_operations_energy_grid_operations_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_grid_operations_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_grid_operations_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_grid_operations_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table,
+         'fields': _energy_grid_operations_table_fields(table),
+         'primary_key': ('id',),
+         'owned_by': PBC_KEY}
+        for table in ENERGY_GRID_OPERATIONS_OWNED_TABLES
     )
-    return {'format': 'appgen.energy-grid-operations-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/energy_grid_operations/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': ENERGY_GRID_OPERATIONS_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': ENERGY_GRID_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'database_backends': ENERGY_GRID_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': ENERGY_GRID_OPERATIONS_OWNED_TABLES}
+    return {'format': 'appgen.energy-grid-operations-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/energy_grid_operations/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': ENERGY_GRID_OPERATIONS_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(ENERGY_GRID_OPERATIONS_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _energy_grid_operations_table_fields(table)} for table in ENERGY_GRID_OPERATIONS_OWNED_TABLES), 'datastore_backends': ENERGY_GRID_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'database_backends': ENERGY_GRID_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': ENERGY_GRID_OPERATIONS_OWNED_TABLES}
 
 def energy_grid_operations_build_service_contract():
     return {'format': 'appgen.energy-grid-operations-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_grid_asset','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}

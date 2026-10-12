@@ -71,6 +71,33 @@ ENERGY_TRADING_RISK_BUSINESS_TABLES = ('energy_trading_risk_energy_contract',
  'energy_trading_risk_energy_trading_risk_schema_extension',
  'energy_trading_risk_energy_trading_risk_control_assertion',
  'energy_trading_risk_energy_trading_risk_governed_model')
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+ENERGY_TRADING_RISK_TABLE_FIELDS = {
+    'energy_trading_risk_energy_contract': ('id', 'tenant', 'energy_contract_id', 'contract_reference', 'counterparty', 'product_type', 'commodity', 'hub', 'delivery_start', 'delivery_end', 'contracted_volume', 'volume_unit', 'price_formula', 'pricing_index', 'currency', 'payment_terms', 'settlement_timeline', 'credit_limit_amount', 'collateral_required', 'collateral_status', 'tolerance_band', 'optionality_flag', 'position_type', 'terms_version', 'contract_state', 'approval_state', 'effective_from', 'effective_to', 'status', 'version', 'created_at', 'updated_at'),
+    'energy_trading_risk_trade_position': ('id', 'tenant', 'trade_position_id', 'trade_reference', 'energy_contract_id', 'trade_date', 'book', 'trader', 'strategy', 'side', 'product_type', 'commodity', 'hub', 'delivery_start', 'delivery_end', 'traded_volume', 'volume_unit', 'price_formula', 'traded_price', 'notional', 'currency', 'position_type', 'linked_position_group', 'amendment_reference', 'superseded_by', 'amendment_reason', 'confirmation_state', 'market_date', 'valuation_cut_at', 'limit_check_state', 'lifecycle_state', 'approval_state', 'status', 'version', 'created_at', 'updated_at'),
+    'energy_trading_risk_nomination': ('id', 'tenant', 'nomination_id', 'trade_position_id', 'energy_contract_id', 'nomination_version', 'delivery_point', 'counterparty', 'product_type', 'interval_start', 'interval_end', 'nominated_volume', 'volume_unit', 'market_timezone', 'cutoff_at', 'lifecycle_state', 'superseded_by', 'reason_code', 'exception_evidence', 'submitted_at', 'accepted_at', 'status', 'version', 'created_at', 'updated_at'),
+    'energy_trading_risk_schedule': ('id', 'tenant', 'schedule_id', 'nomination_id', 'trade_position_id', 'schedule_version', 'delivery_point', 'delivery_path', 'counterparty', 'product_type', 'interval_start', 'interval_end', 'scheduled_volume', 'volume_unit', 'capacity_limit', 'ramp_rate', 'imbalance_volume', 'feasibility_state', 'feasibility_rule', 'market_timezone', 'approval_state', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'energy_trading_risk_settlement': ('id', 'tenant', 'settlement_id', 'energy_contract_id', 'schedule_id', 'nomination_id', 'counterparty', 'settlement_period_start', 'settlement_period_end', 'settlement_date', 'due_date', 'delivered_volume', 'volume_unit', 'contracted_price', 'currency', 'gross_amount', 'fee_amount', 'imbalance_adjustment', 'prior_period_correction', 'net_amount', 'pnl_state', 'hold_code', 'release_code', 'dispute_state', 'conversion_set_reference', 'approval_state', 'settled_at', 'status', 'version', 'created_at', 'updated_at'),
+    'energy_trading_risk_exposure_limit': ('id', 'tenant', 'exposure_limit_id', 'limit_name', 'limit_scope', 'parent_limit_id', 'desk', 'book', 'trader', 'counterparty', 'commodity', 'limit_type', 'limit_amount', 'currency', 'utilization_amount', 'headroom_amount', 'breach_state', 'breach_severity', 'case_owner', 'required_action', 'waiver_window_end', 'remediation_plan', 'liquidity_horizon_days', 'override_state', 'effective_from', 'effective_to', 'status', 'version', 'created_at', 'updated_at'),
+    'energy_trading_risk_market_price_curve': ('id', 'tenant', 'market_price_curve_id', 'curve_name', 'commodity', 'hub', 'node', 'strip_code', 'as_of_at', 'price', 'basis_price', 'currency', 'price_unit', 'gap_state', 'gap_fill_policy', 'proxy_hub', 'materiality_amount', 'validation_state', 'source_system', 'status', 'version', 'created_at', 'updated_at'),
+    'energy_trading_risk_energy_trading_risk_policy_rule': ('id', 'tenant', 'rule_id', 'rule_name', 'predicate_text', 'ambiguity_flag', 'example_text', 'approver_role', 'effective_from', 'effective_to', 'compiled_hash', 'status', 'version', 'created_at', 'updated_at'),
+    'energy_trading_risk_energy_trading_risk_runtime_parameter': ('id', 'tenant', 'parameter_name', 'parameter_value', 'scope', 'bounded', 'effective_from', 'status', 'version', 'created_at', 'updated_at'),
+    'energy_trading_risk_energy_trading_risk_schema_extension': ('id', 'tenant', 'extension_id', 'target_table', 'field_name', 'field_type', 'registered_at', 'status', 'version', 'created_at', 'updated_at'),
+    'energy_trading_risk_energy_trading_risk_control_assertion': ('id', 'tenant', 'assertion_id', 'control_name', 'assertion_result', 'severity', 'remediation_task', 'evaluated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'energy_trading_risk_energy_trading_risk_governed_model': ('id', 'tenant', 'model_id', 'model_name', 'model_version', 'model_type', 'coverage_scope', 'backtest_exception_count', 'governance_state', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'energy_trading_risk_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'energy_trading_risk_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'energy_trading_risk_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_ENERGY_TRADING_RISK_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _energy_trading_risk_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return ENERGY_TRADING_RISK_TABLE_FIELDS.get(table, _ENERGY_TRADING_RISK_DEFAULT_FIELDS)
+
 
 def energy_trading_risk_empty_state():
     return {'records': {}, 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
@@ -129,24 +156,11 @@ def energy_trading_risk_parse_document_instruction(document, instruction):
     return {'ok': True, 'candidate_tables': ENERGY_TRADING_RISK_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
 def energy_trading_risk_build_schema_contract():
-    table_contracts = (
-        {'table': 'energy_trading_risk_energy_contract', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_trading_risk_trade_position', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_trading_risk_nomination', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_trading_risk_schedule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_trading_risk_settlement', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_trading_risk_exposure_limit', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_trading_risk_market_price_curve', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_trading_risk_energy_trading_risk_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_trading_risk_energy_trading_risk_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_trading_risk_energy_trading_risk_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_trading_risk_energy_trading_risk_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_trading_risk_energy_trading_risk_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_trading_risk_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_trading_risk_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'energy_trading_risk_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table, 'fields': _energy_trading_risk_table_fields(table), 'primary_key': ('id',), 'owned_by': PBC_KEY}
+        for table in ENERGY_TRADING_RISK_OWNED_TABLES
     )
-    return {'format': 'appgen.energy-trading-risk-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/energy_trading_risk/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': ENERGY_TRADING_RISK_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': ENERGY_TRADING_RISK_ALLOWED_DATABASE_BACKENDS, 'database_backends': ENERGY_TRADING_RISK_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': ENERGY_TRADING_RISK_OWNED_TABLES}
+    return {'format': 'appgen.energy-trading-risk-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/energy_trading_risk/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': ENERGY_TRADING_RISK_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(ENERGY_TRADING_RISK_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _energy_trading_risk_table_fields(table)} for table in ENERGY_TRADING_RISK_OWNED_TABLES), 'datastore_backends': ENERGY_TRADING_RISK_ALLOWED_DATABASE_BACKENDS, 'database_backends': ENERGY_TRADING_RISK_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': ENERGY_TRADING_RISK_OWNED_TABLES}
 
 def energy_trading_risk_build_service_contract():
     return {'format': 'appgen.energy-trading-risk-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_energy_contract','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
