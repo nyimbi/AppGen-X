@@ -1,15 +1,346 @@
-CREATE TABLE wealth_portfolio_management_client_portfolio (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE wealth_portfolio_management_investment_mandate (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE wealth_portfolio_management_suitability_profile (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE wealth_portfolio_management_rebalance_order (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE wealth_portfolio_management_performance_snapshot (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE wealth_portfolio_management_fee_schedule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE wealth_portfolio_management_advisory_review (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE wealth_portfolio_management_wealth_portfolio_management_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE wealth_portfolio_management_wealth_portfolio_management_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE wealth_portfolio_management_wealth_portfolio_management_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE wealth_portfolio_management_wealth_portfolio_management_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE wealth_portfolio_management_wealth_portfolio_management_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE wealth_portfolio_management_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE wealth_portfolio_management_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE wealth_portfolio_management_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS wealth_portfolio_management;
+
+CREATE TABLE wealth_portfolio_management_client_portfolio (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  client_portfolio_id VARCHAR(255) NOT NULL,
+  portfolio_name VARCHAR(255) NOT NULL,
+  portfolio_type VARCHAR(255) NOT NULL,
+  client_reference VARCHAR(255) NOT NULL,
+  household_reference VARCHAR(255),
+  relationship_role VARCHAR(255),
+  authority_type VARCHAR(255),
+  jurisdiction VARCHAR(255) NOT NULL,
+  tax_profile VARCHAR(255),
+  projection_freshness TIMESTAMP,
+  lifecycle_state VARCHAR(255) NOT NULL,
+  transition_reason VARCHAR(255),
+  responsible_advisor VARCHAR(255) NOT NULL,
+  allowed_commands VARCHAR(255),
+  opened_date TIMESTAMP,
+  funded_date TIMESTAMP,
+  base_currency VARCHAR(255) NOT NULL,
+  total_market_value DECIMAL(18, 4) NOT NULL,
+  cash_balance DECIMAL(18, 4) NOT NULL,
+  target_risk_band VARCHAR(255) NOT NULL,
+  mandate_id VARCHAR(255),
+  drift_percent DECIMAL(18, 4) NOT NULL,
+  concentration_severity VARCHAR(255),
+  liquidity_bucket VARCHAR(255),
+  review_due_date TIMESTAMP,
+  data_quality_score DECIMAL(18, 4) NOT NULL,
+  open_exception_count INTEGER NOT NULL,
+  portfolio_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE wealth_portfolio_management_investment_mandate (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  investment_mandate_id VARCHAR(255) NOT NULL,
+  client_portfolio_id VARCHAR(255) NOT NULL,
+  mandate_reference VARCHAR(255) NOT NULL,
+  mandate_objective VARCHAR(255) NOT NULL,
+  benchmark_reference VARCHAR(255) NOT NULL,
+  model_portfolio_reference VARCHAR(255),
+  model_version VARCHAR(255),
+  target_risk_level VARCHAR(255) NOT NULL,
+  target_return DECIMAL(18, 4),
+  liquidity_reserve_percent DECIMAL(18, 4) NOT NULL,
+  time_horizon_years INTEGER NOT NULL,
+  tax_treatment VARCHAR(255) NOT NULL,
+  allowed_asset_classes VARCHAR(255) NOT NULL,
+  permitted_strategies VARCHAR(255),
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  consent_evidence_reference VARCHAR(255),
+  supersession_reason VARCHAR(255),
+  approved_by VARCHAR(255),
+  approval_date TIMESTAMP,
+  mandate_state VARCHAR(255) NOT NULL,
+  mandate_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (client_portfolio_id) REFERENCES wealth_portfolio_management_client_portfolio(client_portfolio_id)
+);
+
+CREATE TABLE wealth_portfolio_management_suitability_profile (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  suitability_profile_id VARCHAR(255) NOT NULL,
+  client_portfolio_id VARCHAR(255) NOT NULL,
+  risk_tolerance_score DECIMAL(18, 4) NOT NULL,
+  risk_capacity_score DECIMAL(18, 4) NOT NULL,
+  knowledge_score DECIMAL(18, 4) NOT NULL,
+  experience_score DECIMAL(18, 4) NOT NULL,
+  objectives_summary TEXT NOT NULL,
+  liquidity_needs VARCHAR(255),
+  investment_constraints VARCHAR(255),
+  recommended_risk_band VARCHAR(255) NOT NULL,
+  reconciliation_result VARCHAR(255) NOT NULL,
+  source_evidence_reference VARCHAR(255),
+  missing_items VARCHAR(255),
+  review_date TIMESTAMP NOT NULL,
+  review_due_date TIMESTAMP,
+  advisor_attestation VARCHAR(255),
+  attestation_date TIMESTAMP,
+  profile_state VARCHAR(255) NOT NULL,
+  suitability_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (client_portfolio_id) REFERENCES wealth_portfolio_management_client_portfolio(client_portfolio_id)
+);
+
+CREATE TABLE wealth_portfolio_management_rebalance_order (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rebalance_order_id VARCHAR(255) NOT NULL,
+  client_portfolio_id VARCHAR(255) NOT NULL,
+  order_reference VARCHAR(255) NOT NULL,
+  trigger_type VARCHAR(255) NOT NULL,
+  lifecycle_state VARCHAR(255) NOT NULL,
+  proposed_trades TEXT,
+  recommendation_rationale TEXT,
+  restriction_check_result VARCHAR(255) NOT NULL,
+  suitability_check_result VARCHAR(255) NOT NULL,
+  pre_trade_check_result VARCHAR(255) NOT NULL,
+  approval_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255),
+  approval_date TIMESTAMP,
+  handoff_event_reference VARCHAR(255),
+  validation_status VARCHAR(255),
+  tax_impact_estimate DECIMAL(18, 4) NOT NULL,
+  realized_gain_estimate DECIMAL(18, 4) NOT NULL,
+  loss_harvesting_candidate BOOLEAN NOT NULL,
+  wash_sale_risk VARCHAR(255),
+  tax_budget DECIMAL(18, 4),
+  override_rationale VARCHAR(255),
+  cash_constraint_result VARCHAR(255),
+  trade_date TIMESTAMP,
+  order_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (client_portfolio_id) REFERENCES wealth_portfolio_management_client_portfolio(client_portfolio_id)
+);
+
+CREATE TABLE wealth_portfolio_management_performance_snapshot (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  performance_snapshot_id VARCHAR(255) NOT NULL,
+  client_portfolio_id VARCHAR(255) NOT NULL,
+  period_start TIMESTAMP NOT NULL,
+  period_end TIMESTAMP NOT NULL,
+  return_method VARCHAR(255) NOT NULL,
+  benchmark_reference VARCHAR(255) NOT NULL,
+  benchmark_blend_weights VARCHAR(255),
+  beginning_value DECIMAL(18, 4) NOT NULL,
+  ending_value DECIMAL(18, 4) NOT NULL,
+  net_cash_flow DECIMAL(18, 4) NOT NULL,
+  gross_return DECIMAL(18, 4) NOT NULL,
+  net_return DECIMAL(18, 4) NOT NULL,
+  fee_impact DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  benchmark_return DECIMAL(18, 4) NOT NULL,
+  excess_return DECIMAL(18, 4) NOT NULL,
+  annualized_return DECIMAL(18, 4),
+  volatility DECIMAL(18, 4),
+  approval_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255),
+  certified_at TIMESTAMP,
+  benchmark_evidence_reference VARCHAR(255),
+  snapshot_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (client_portfolio_id) REFERENCES wealth_portfolio_management_client_portfolio(client_portfolio_id)
+);
+
+CREATE TABLE wealth_portfolio_management_fee_schedule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  fee_schedule_id VARCHAR(255) NOT NULL,
+  client_portfolio_id VARCHAR(255) NOT NULL,
+  schedule_name VARCHAR(255) NOT NULL,
+  fee_basis VARCHAR(255) NOT NULL,
+  fee_rate DECIMAL(18, 4) NOT NULL,
+  tier_rules VARCHAR(255),
+  household_aggregation BOOLEAN NOT NULL,
+  exclusions VARCHAR(255),
+  billing_frequency VARCHAR(255) NOT NULL,
+  waiver_state VARCHAR(255),
+  waiver_evidence_reference VARCHAR(255),
+  minimum_fee DECIMAL(18, 4),
+  performance_fee BOOLEAN NOT NULL,
+  billed_amount DECIMAL(18, 4) NOT NULL,
+  paid_status VARCHAR(255),
+  adjustment_amount DECIMAL(18, 4),
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  fee_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (client_portfolio_id) REFERENCES wealth_portfolio_management_client_portfolio(client_portfolio_id)
+);
+
+CREATE TABLE wealth_portfolio_management_advisory_review (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  advisory_review_id VARCHAR(255) NOT NULL,
+  client_portfolio_id VARCHAR(255) NOT NULL,
+  review_type VARCHAR(255) NOT NULL,
+  review_state VARCHAR(255) NOT NULL,
+  due_date TIMESTAMP NOT NULL,
+  completed_date TIMESTAMP,
+  review_agenda TEXT,
+  findings_summary TEXT,
+  client_contact_evidence_reference VARCHAR(255),
+  recommendations TEXT,
+  follow_up_actions VARCHAR(255),
+  fiduciary_rationale TEXT,
+  best_interest_rationale TEXT,
+  cost_comparison TEXT,
+  alternatives_considered TEXT,
+  conflicts_disclosure TEXT,
+  disclosure_evidence_reference VARCHAR(255),
+  next_review_date TIMESTAMP,
+  reviewed_by VARCHAR(255),
+  review_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (client_portfolio_id) REFERENCES wealth_portfolio_management_client_portfolio(client_portfolio_id)
+);
+
+CREATE TABLE wealth_portfolio_management_wealth_portfolio_management_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  example_text TEXT,
+  approver_role VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE wealth_portfolio_management_wealth_portfolio_management_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE wealth_portfolio_management_wealth_portfolio_management_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE wealth_portfolio_management_wealth_portfolio_management_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  remediation_task VARCHAR(255),
+  evaluated_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE wealth_portfolio_management_wealth_portfolio_management_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  model_type VARCHAR(255) NOT NULL,
+  coverage_scope VARCHAR(255) NOT NULL,
+  backtest_exception_count INTEGER NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE wealth_portfolio_management_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE wealth_portfolio_management_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE wealth_portfolio_management_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

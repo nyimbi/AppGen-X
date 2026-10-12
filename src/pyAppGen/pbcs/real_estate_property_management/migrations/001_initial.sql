@@ -1,15 +1,322 @@
-CREATE TABLE real_estate_property_management_property (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE real_estate_property_management_tenant (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE real_estate_property_management_lease (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE real_estate_property_management_rent_charge (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE real_estate_property_management_maintenance_request (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE real_estate_property_management_inspection (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE real_estate_property_management_security_deposit (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE real_estate_property_management_real_estate_property_management_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE real_estate_property_management_real_estate_property_management_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE real_estate_property_management_real_estate_property_management_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE real_estate_property_management_real_estate_property_management_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE real_estate_property_management_real_estate_property_management_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE real_estate_property_management_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE real_estate_property_management_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE real_estate_property_management_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS real_estate_property_management;
+
+CREATE TABLE real_estate_property_management_property (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  property_id VARCHAR(255) NOT NULL,
+  property_name VARCHAR(255) NOT NULL,
+  property_type VARCHAR(255) NOT NULL,
+  address_line VARCHAR(255) NOT NULL,
+  city VARCHAR(255) NOT NULL,
+  region VARCHAR(255),
+  postal_code VARCHAR(255),
+  country VARCHAR(255) NOT NULL,
+  jurisdiction VARCHAR(255) NOT NULL,
+  ownership_entity VARCHAR(255) NOT NULL,
+  managing_entity VARCHAR(255),
+  building_count INTEGER NOT NULL,
+  unit_count INTEGER NOT NULL,
+  rentable_area_sqft DECIMAL(18, 4),
+  market_rent_total DECIMAL(18, 4),
+  occupancy_rate DECIMAL(18, 4),
+  utility_responsibility VARCHAR(255),
+  amenity_set VARCHAR(255),
+  attribute_completeness_score DECIMAL(18, 4) NOT NULL,
+  leaseable BOOLEAN NOT NULL,
+  compliance_state VARCHAR(255) NOT NULL,
+  property_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE real_estate_property_management_tenant (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  tenant_id VARCHAR(255) NOT NULL,
+  person_name VARCHAR(255) NOT NULL,
+  household_role VARCHAR(255) NOT NULL,
+  contact_email VARCHAR(255),
+  contact_phone VARCHAR(255),
+  identity_verification_state VARCHAR(255) NOT NULL,
+  move_in_date TIMESTAMP,
+  move_out_date TIMESTAMP,
+  household_size INTEGER NOT NULL,
+  communication_preference VARCHAR(255),
+  emergency_contact_name VARCHAR(255),
+  emergency_contact_phone VARCHAR(255),
+  screening_score DECIMAL(18, 4),
+  guarantor_flag BOOLEAN NOT NULL,
+  tenant_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE real_estate_property_management_lease (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  lease_id VARCHAR(255) NOT NULL,
+  property_id VARCHAR(255) NOT NULL,
+  unit_reference VARCHAR(255) NOT NULL,
+  lease_type VARCHAR(255) NOT NULL,
+  lease_start_date TIMESTAMP NOT NULL,
+  lease_end_date TIMESTAMP NOT NULL,
+  renewal_option VARCHAR(255),
+  break_clause_state VARCHAR(255),
+  notice_window_days INTEGER NOT NULL,
+  base_rent_amount DECIMAL(18, 4) NOT NULL,
+  rent_currency VARCHAR(255) NOT NULL,
+  rent_step_schedule VARCHAR(255),
+  deposit_amount DECIMAL(18, 4),
+  pet_clause VARCHAR(255),
+  service_obligation VARCHAR(255),
+  concession_amount DECIMAL(18, 4),
+  rent_ready_date TIMESTAMP,
+  renewal_stage VARCHAR(255),
+  notice_required BOOLEAN NOT NULL,
+  amendment_version INTEGER NOT NULL,
+  lease_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (property_id) REFERENCES real_estate_property_management_property(property_id)
+);
+
+CREATE TABLE real_estate_property_management_rent_charge (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rent_charge_id VARCHAR(255) NOT NULL,
+  lease_id VARCHAR(255) NOT NULL,
+  charge_type VARCHAR(255) NOT NULL,
+  charge_period VARCHAR(255) NOT NULL,
+  charge_due_date TIMESTAMP NOT NULL,
+  charge_amount DECIMAL(18, 4) NOT NULL,
+  charge_currency VARCHAR(255) NOT NULL,
+  proration_factor DECIMAL(18, 4),
+  concession_applied DECIMAL(18, 4),
+  amount_paid DECIMAL(18, 4) NOT NULL,
+  balance_amount DECIMAL(18, 4) NOT NULL,
+  aging_bucket VARCHAR(255),
+  payment_exception_type VARCHAR(255),
+  payment_plan_state VARCHAR(255),
+  late_fee_amount DECIMAL(18, 4),
+  write_off_amount DECIMAL(18, 4),
+  collector_assignment VARCHAR(255),
+  next_action_date TIMESTAMP,
+  charge_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (lease_id) REFERENCES real_estate_property_management_lease(lease_id)
+);
+
+CREATE TABLE real_estate_property_management_maintenance_request (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  maintenance_request_id VARCHAR(255) NOT NULL,
+  property_id VARCHAR(255) NOT NULL,
+  unit_reference VARCHAR(255),
+  request_category VARCHAR(255) NOT NULL,
+  request_severity VARCHAR(255) NOT NULL,
+  habitability_flag BOOLEAN NOT NULL,
+  affected_asset VARCHAR(255),
+  resident_access_constraint VARCHAR(255),
+  after_hours_flag BOOLEAN NOT NULL,
+  reported_at TIMESTAMP NOT NULL,
+  triage_state VARCHAR(255) NOT NULL,
+  assigned_trade VARCHAR(255),
+  assigned_vendor VARCHAR(255),
+  vendor_eligible BOOLEAN NOT NULL,
+  scheduled_window VARCHAR(255),
+  estimated_labor_cost DECIMAL(18, 4),
+  estimated_material_cost DECIMAL(18, 4),
+  actual_cost DECIMAL(18, 4),
+  completion_state VARCHAR(255),
+  closed_at TIMESTAMP,
+  request_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (property_id) REFERENCES real_estate_property_management_property(property_id)
+);
+
+CREATE TABLE real_estate_property_management_inspection (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  inspection_id VARCHAR(255) NOT NULL,
+  property_id VARCHAR(255) NOT NULL,
+  unit_reference VARCHAR(255),
+  inspection_type VARCHAR(255) NOT NULL,
+  checklist_template VARCHAR(255) NOT NULL,
+  inspector_name VARCHAR(255) NOT NULL,
+  scheduled_date TIMESTAMP NOT NULL,
+  completed_date TIMESTAMP,
+  failed_item_count INTEGER NOT NULL,
+  failed_item_severity VARCHAR(255),
+  remediation_required BOOLEAN NOT NULL,
+  reinspection_due_date TIMESTAMP,
+  resident_acknowledged BOOLEAN NOT NULL,
+  meter_read_reference VARCHAR(255),
+  condition_score DECIMAL(18, 4),
+  photo_evidence_count INTEGER NOT NULL,
+  inspection_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (property_id) REFERENCES real_estate_property_management_property(property_id)
+);
+
+CREATE TABLE real_estate_property_management_security_deposit (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  security_deposit_id VARCHAR(255) NOT NULL,
+  lease_id VARCHAR(255) NOT NULL,
+  deposit_invoice_reference VARCHAR(255) NOT NULL,
+  deposit_received_amount DECIMAL(18, 4) NOT NULL,
+  deposit_currency VARCHAR(255) NOT NULL,
+  trust_account_reference VARCHAR(255),
+  interest_accrued DECIMAL(18, 4),
+  holdback_amount DECIMAL(18, 4) NOT NULL,
+  refund_amount DECIMAL(18, 4),
+  deposit_state VARCHAR(255) NOT NULL,
+  refund_approved_by VARCHAR(255),
+  refund_approved_at TIMESTAMP,
+  dispute_flag BOOLEAN NOT NULL,
+  disposition_reason VARCHAR(255),
+  received_date TIMESTAMP,
+  disposition_date TIMESTAMP,
+  deposit_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (lease_id) REFERENCES real_estate_property_management_lease(lease_id)
+);
+
+CREATE TABLE real_estate_property_management_real_estate_property_management_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  example_text TEXT,
+  approver_role VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE real_estate_property_management_real_estate_property_management_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE real_estate_property_management_real_estate_property_management_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE real_estate_property_management_real_estate_property_management_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  remediation_task VARCHAR(255),
+  evaluated_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE real_estate_property_management_real_estate_property_management_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  model_type VARCHAR(255) NOT NULL,
+  coverage_scope VARCHAR(255) NOT NULL,
+  backtest_exception_count INTEGER NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE real_estate_property_management_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE real_estate_property_management_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE real_estate_property_management_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

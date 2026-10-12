@@ -1,15 +1,366 @@
-CREATE TABLE provider_revenue_cycle_patient_account (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE provider_revenue_cycle_charge_capture (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE provider_revenue_cycle_coding_workqueue (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE provider_revenue_cycle_claim_batch (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE provider_revenue_cycle_denial_case (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE provider_revenue_cycle_payment_posting (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE provider_revenue_cycle_collection_account (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE provider_revenue_cycle_provider_revenue_cycle_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE provider_revenue_cycle_provider_revenue_cycle_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE provider_revenue_cycle_provider_revenue_cycle_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE provider_revenue_cycle_provider_revenue_cycle_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE provider_revenue_cycle_provider_revenue_cycle_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE provider_revenue_cycle_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE provider_revenue_cycle_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE provider_revenue_cycle_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS provider_revenue_cycle;
+
+CREATE TABLE provider_revenue_cycle_patient_account (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  patient_account_id VARCHAR(255) NOT NULL,
+  medical_record_number VARCHAR(255) NOT NULL,
+  patient_name VARCHAR(255) NOT NULL,
+  date_of_birth TIMESTAMP,
+  financial_class VARCHAR(255) NOT NULL,
+  account_state VARCHAR(255) NOT NULL,
+  guarantor_name VARCHAR(255) NOT NULL,
+  coverage_priority INTEGER NOT NULL,
+  subscriber_relationship VARCHAR(255) NOT NULL,
+  identity_confidence DECIMAL(18, 4) NOT NULL,
+  accident_indicator VARCHAR(255) NOT NULL,
+  consent_state VARCHAR(255) NOT NULL,
+  registration_deficiency_state VARCHAR(255) NOT NULL,
+  eligibility_status VARCHAR(255) NOT NULL,
+  eligibility_response_at TIMESTAMP,
+  authorization_required BOOLEAN NOT NULL,
+  authorization_number VARCHAR(255) NOT NULL,
+  authorization_units_remaining INTEGER NOT NULL,
+  authorization_expires_at TIMESTAMP,
+  charge_pending_count INTEGER NOT NULL,
+  coding_pending_count INTEGER NOT NULL,
+  claim_ready_state VARCHAR(255) NOT NULL,
+  patient_balance_amount DECIMAL(18, 4) NOT NULL,
+  balance_segment VARCHAR(255) NOT NULL,
+  assistance_status VARCHAR(255) NOT NULL,
+  dispute_status VARCHAR(255) NOT NULL,
+  collection_hold BOOLEAN NOT NULL,
+  timely_filing_deadline TIMESTAMP,
+  last_statement_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE provider_revenue_cycle_charge_capture (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  charge_capture_id VARCHAR(255) NOT NULL,
+  patient_account_id VARCHAR(255) NOT NULL,
+  encounter_reference VARCHAR(255) NOT NULL,
+  charge_trigger VARCHAR(255) NOT NULL,
+  service_date TIMESTAMP,
+  department VARCHAR(255) NOT NULL,
+  performing_clinician VARCHAR(255) NOT NULL,
+  charge_code VARCHAR(255) NOT NULL,
+  revenue_code VARCHAR(255) NOT NULL,
+  modifier_codes VARCHAR(255) NOT NULL,
+  charge_master_version VARCHAR(255) NOT NULL,
+  units_captured INTEGER NOT NULL,
+  expected_charge_amount DECIMAL(18, 4) NOT NULL,
+  captured_charge_amount DECIMAL(18, 4) NOT NULL,
+  charge_variance_amount DECIMAL(18, 4) NOT NULL,
+  missing_charge_flag BOOLEAN NOT NULL,
+  late_charge_flag BOOLEAN NOT NULL,
+  duplicate_charge_flag BOOLEAN NOT NULL,
+  billing_hold_state VARCHAR(255) NOT NULL,
+  rebill_required BOOLEAN NOT NULL,
+  posted_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (patient_account_id) REFERENCES provider_revenue_cycle_patient_account(patient_account_id)
+);
+
+CREATE TABLE provider_revenue_cycle_coding_workqueue (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  coding_workqueue_id VARCHAR(255) NOT NULL,
+  patient_account_id VARCHAR(255) NOT NULL,
+  charge_capture_id VARCHAR(255) NOT NULL,
+  coding_case_type VARCHAR(255) NOT NULL,
+  required_documentation TEXT NOT NULL,
+  diagnosis_codes VARCHAR(255) NOT NULL,
+  procedure_codes VARCHAR(255) NOT NULL,
+  assigned_coder VARCHAR(255) NOT NULL,
+  query_needed BOOLEAN NOT NULL,
+  query_reason VARCHAR(255) NOT NULL,
+  query_due_at TIMESTAMP,
+  clinician_response TEXT NOT NULL,
+  coding_status VARCHAR(255) NOT NULL,
+  final_code_set TEXT NOT NULL,
+  coder_quality_score DECIMAL(18, 4) NOT NULL,
+  compliance_flag VARCHAR(255) NOT NULL,
+  documentation_deficiency TEXT NOT NULL,
+  finalized_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (patient_account_id) REFERENCES provider_revenue_cycle_patient_account(patient_account_id),
+  FOREIGN KEY (charge_capture_id) REFERENCES provider_revenue_cycle_charge_capture(charge_capture_id)
+);
+
+CREATE TABLE provider_revenue_cycle_claim_batch (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  claim_batch_id VARCHAR(255) NOT NULL,
+  payer_name VARCHAR(255) NOT NULL,
+  batch_type VARCHAR(255) NOT NULL,
+  clearinghouse_route VARCHAR(255) NOT NULL,
+  facility_code VARCHAR(255) NOT NULL,
+  claim_type VARCHAR(255) NOT NULL,
+  submitter_id VARCHAR(255) NOT NULL,
+  sequence_number INTEGER NOT NULL,
+  included_account_count INTEGER NOT NULL,
+  batch_total_amount DECIMAL(18, 4) NOT NULL,
+  validation_status VARCHAR(255) NOT NULL,
+  submission_status VARCHAR(255) NOT NULL,
+  acknowledgement_state VARCHAR(255) NOT NULL,
+  rejection_reason VARCHAR(255) NOT NULL,
+  affected_claim_count INTEGER NOT NULL,
+  correction_action TEXT NOT NULL,
+  resubmission_state VARCHAR(255) NOT NULL,
+  timely_filing_deadline TIMESTAMP,
+  follow_up_due_at TIMESTAMP,
+  last_payer_status VARCHAR(255) NOT NULL,
+  submitted_at TIMESTAMP,
+  acknowledged_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE provider_revenue_cycle_denial_case (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  denial_case_id VARCHAR(255) NOT NULL,
+  patient_account_id VARCHAR(255) NOT NULL,
+  claim_batch_id VARCHAR(255) NOT NULL,
+  denial_category VARCHAR(255) NOT NULL,
+  payer_reason_code VARCHAR(255) NOT NULL,
+  internal_root_cause VARCHAR(255) NOT NULL,
+  preventable_flag BOOLEAN NOT NULL,
+  denial_amount DECIMAL(18, 4) NOT NULL,
+  appeal_level INTEGER NOT NULL,
+  appeal_path VARCHAR(255) NOT NULL,
+  appeal_deadline TIMESTAMP,
+  packet_checklist TEXT NOT NULL,
+  owner VARCHAR(255) NOT NULL,
+  decision_state VARCHAR(255) NOT NULL,
+  underpayment_reference VARCHAR(255) NOT NULL,
+  prevention_recommendation TEXT NOT NULL,
+  closure_reason VARCHAR(255) NOT NULL,
+  opened_at TIMESTAMP,
+  closed_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (patient_account_id) REFERENCES provider_revenue_cycle_patient_account(patient_account_id),
+  FOREIGN KEY (claim_batch_id) REFERENCES provider_revenue_cycle_claim_batch(claim_batch_id)
+);
+
+CREATE TABLE provider_revenue_cycle_payment_posting (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  payment_posting_id VARCHAR(255) NOT NULL,
+  patient_account_id VARCHAR(255) NOT NULL,
+  claim_batch_id VARCHAR(255) NOT NULL,
+  remittance_source VARCHAR(255) NOT NULL,
+  payer_trace_number VARCHAR(255) NOT NULL,
+  claim_line_count INTEGER NOT NULL,
+  allowed_amount DECIMAL(18, 4) NOT NULL,
+  payment_amount DECIMAL(18, 4) NOT NULL,
+  adjustment_amount DECIMAL(18, 4) NOT NULL,
+  denial_amount DECIMAL(18, 4) NOT NULL,
+  patient_responsibility_amount DECIMAL(18, 4) NOT NULL,
+  expected_reimbursement_amount DECIMAL(18, 4) NOT NULL,
+  variance_amount DECIMAL(18, 4) NOT NULL,
+  variance_reason VARCHAR(255) NOT NULL,
+  contract_basis VARCHAR(255) NOT NULL,
+  recovery_status VARCHAR(255) NOT NULL,
+  unmatched_cash BOOLEAN NOT NULL,
+  credit_balance_amount DECIMAL(18, 4) NOT NULL,
+  refund_eligibility VARCHAR(255) NOT NULL,
+  posted_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (patient_account_id) REFERENCES provider_revenue_cycle_patient_account(patient_account_id),
+  FOREIGN KEY (claim_batch_id) REFERENCES provider_revenue_cycle_claim_batch(claim_batch_id)
+);
+
+CREATE TABLE provider_revenue_cycle_collection_account (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  collection_account_id VARCHAR(255) NOT NULL,
+  patient_account_id VARCHAR(255) NOT NULL,
+  account_age_days INTEGER NOT NULL,
+  balance_amount DECIMAL(18, 4) NOT NULL,
+  balance_segment VARCHAR(255) NOT NULL,
+  contact_restriction VARCHAR(255) NOT NULL,
+  dispute_status VARCHAR(255) NOT NULL,
+  assistance_status VARCHAR(255) NOT NULL,
+  agency_eligibility VARCHAR(255) NOT NULL,
+  outreach_attempt_count INTEGER NOT NULL,
+  last_outreach_at TIMESTAMP,
+  write_off_type VARCHAR(255) NOT NULL,
+  write_off_amount DECIMAL(18, 4) NOT NULL,
+  write_off_approver VARCHAR(255) NOT NULL,
+  closure_reason VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (patient_account_id) REFERENCES provider_revenue_cycle_patient_account(patient_account_id)
+);
+
+CREATE TABLE provider_revenue_cycle_provider_revenue_cycle_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  policy_rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  rule_scope VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  approval_source VARCHAR(255) NOT NULL,
+  operational_impact_summary TEXT NOT NULL,
+  compiled_hash VARCHAR(255) NOT NULL,
+  source_span TEXT NOT NULL,
+  prior_version_reference VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE provider_revenue_cycle_provider_revenue_cycle_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  runtime_parameter_id VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value DECIMAL(18, 4) NOT NULL,
+  parameter_scope VARCHAR(255) NOT NULL,
+  lower_bound DECIMAL(18, 4) NOT NULL,
+  upper_bound DECIMAL(18, 4) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  tenant_override BOOLEAN NOT NULL,
+  approval_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  effective_from TIMESTAMP,
+  rollback_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE provider_revenue_cycle_provider_revenue_cycle_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  schema_extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  ui_placement VARCHAR(255) NOT NULL,
+  compatibility_state VARCHAR(255) NOT NULL,
+  backfill_plan TEXT NOT NULL,
+  backfill_state VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP,
+  activated_at TIMESTAMP,
+  deprecated_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE provider_revenue_cycle_provider_revenue_cycle_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  control_assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  control_scope VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  population_count INTEGER NOT NULL,
+  failing_sample_count INTEGER NOT NULL,
+  owner VARCHAR(255) NOT NULL,
+  failing_evidence TEXT NOT NULL,
+  remediation_task TEXT NOT NULL,
+  recurrence_count INTEGER NOT NULL,
+  closure_evidence TEXT NOT NULL,
+  evaluated_at TIMESTAMP,
+  evaluated_by VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE provider_revenue_cycle_provider_revenue_cycle_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  governed_model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  model_purpose VARCHAR(255) NOT NULL,
+  use_case VARCHAR(255) NOT NULL,
+  evaluation_set TEXT NOT NULL,
+  threshold_value DECIMAL(18, 4) NOT NULL,
+  drift_check_state VARCHAR(255) NOT NULL,
+  human_feedback_state VARCHAR(255) NOT NULL,
+  feature_inputs TEXT NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  retirement_policy TEXT NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE provider_revenue_cycle_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE provider_revenue_cycle_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE provider_revenue_cycle_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

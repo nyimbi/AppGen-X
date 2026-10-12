@@ -74,6 +74,34 @@ REAL_ESTATE_PROPERTY_MANAGEMENT_BUSINESS_TABLES = ('real_estate_property_managem
  'real_estate_property_management_real_estate_property_management_control_assertion',
  'real_estate_property_management_real_estate_property_management_governed_model')
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+REAL_ESTATE_PROPERTY_MANAGEMENT_TABLE_FIELDS = {
+    'real_estate_property_management_property': ('id', 'tenant', 'property_id', 'property_name', 'property_type', 'address_line', 'city', 'region', 'postal_code', 'country', 'jurisdiction', 'ownership_entity', 'managing_entity', 'building_count', 'unit_count', 'rentable_area_sqft', 'market_rent_total', 'occupancy_rate', 'utility_responsibility', 'amenity_set', 'attribute_completeness_score', 'leaseable', 'compliance_state', 'property_notes', 'status', 'version', 'created_at', 'updated_at'),
+    'real_estate_property_management_tenant': ('id', 'tenant', 'tenant_id', 'person_name', 'household_role', 'contact_email', 'contact_phone', 'identity_verification_state', 'move_in_date', 'move_out_date', 'household_size', 'communication_preference', 'emergency_contact_name', 'emergency_contact_phone', 'screening_score', 'guarantor_flag', 'tenant_notes', 'status', 'version', 'created_at', 'updated_at'),
+    'real_estate_property_management_lease': ('id', 'tenant', 'lease_id', 'property_id', 'unit_reference', 'lease_type', 'lease_start_date', 'lease_end_date', 'renewal_option', 'break_clause_state', 'notice_window_days', 'base_rent_amount', 'rent_currency', 'rent_step_schedule', 'deposit_amount', 'pet_clause', 'service_obligation', 'concession_amount', 'rent_ready_date', 'renewal_stage', 'notice_required', 'amendment_version', 'lease_notes', 'status', 'version', 'created_at', 'updated_at'),
+    'real_estate_property_management_rent_charge': ('id', 'tenant', 'rent_charge_id', 'lease_id', 'charge_type', 'charge_period', 'charge_due_date', 'charge_amount', 'charge_currency', 'proration_factor', 'concession_applied', 'amount_paid', 'balance_amount', 'aging_bucket', 'payment_exception_type', 'payment_plan_state', 'late_fee_amount', 'write_off_amount', 'collector_assignment', 'next_action_date', 'charge_notes', 'status', 'version', 'created_at', 'updated_at'),
+    'real_estate_property_management_maintenance_request': ('id', 'tenant', 'maintenance_request_id', 'property_id', 'unit_reference', 'request_category', 'request_severity', 'habitability_flag', 'affected_asset', 'resident_access_constraint', 'after_hours_flag', 'reported_at', 'triage_state', 'assigned_trade', 'assigned_vendor', 'vendor_eligible', 'scheduled_window', 'estimated_labor_cost', 'estimated_material_cost', 'actual_cost', 'completion_state', 'closed_at', 'request_notes', 'status', 'version', 'created_at', 'updated_at'),
+    'real_estate_property_management_inspection': ('id', 'tenant', 'inspection_id', 'property_id', 'unit_reference', 'inspection_type', 'checklist_template', 'inspector_name', 'scheduled_date', 'completed_date', 'failed_item_count', 'failed_item_severity', 'remediation_required', 'reinspection_due_date', 'resident_acknowledged', 'meter_read_reference', 'condition_score', 'photo_evidence_count', 'inspection_notes', 'status', 'version', 'created_at', 'updated_at'),
+    'real_estate_property_management_security_deposit': ('id', 'tenant', 'security_deposit_id', 'lease_id', 'deposit_invoice_reference', 'deposit_received_amount', 'deposit_currency', 'trust_account_reference', 'interest_accrued', 'holdback_amount', 'refund_amount', 'deposit_state', 'refund_approved_by', 'refund_approved_at', 'dispute_flag', 'disposition_reason', 'received_date', 'disposition_date', 'deposit_notes', 'status', 'version', 'created_at', 'updated_at'),
+    'real_estate_property_management_real_estate_property_management_policy_rule': ('id', 'tenant', 'rule_id', 'rule_name', 'predicate_text', 'ambiguity_flag', 'example_text', 'approver_role', 'effective_from', 'effective_to', 'compiled_hash', 'status', 'version', 'created_at', 'updated_at'),
+    'real_estate_property_management_real_estate_property_management_runtime_parameter': ('id', 'tenant', 'parameter_name', 'parameter_value', 'scope', 'bounded', 'effective_from', 'status', 'version', 'created_at', 'updated_at'),
+    'real_estate_property_management_real_estate_property_management_schema_extension': ('id', 'tenant', 'extension_id', 'target_table', 'field_name', 'field_type', 'registered_at', 'status', 'version', 'created_at', 'updated_at'),
+    'real_estate_property_management_real_estate_property_management_control_assertion': ('id', 'tenant', 'assertion_id', 'control_name', 'assertion_result', 'severity', 'remediation_task', 'evaluated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'real_estate_property_management_real_estate_property_management_governed_model': ('id', 'tenant', 'model_id', 'model_name', 'model_version', 'model_type', 'coverage_scope', 'backtest_exception_count', 'governance_state', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'real_estate_property_management_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'real_estate_property_management_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'real_estate_property_management_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_REAL_ESTATE_PROPERTY_MANAGEMENT_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _real_estate_property_management_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return REAL_ESTATE_PROPERTY_MANAGEMENT_TABLE_FIELDS.get(table, _REAL_ESTATE_PROPERTY_MANAGEMENT_DEFAULT_FIELDS)
+
+
 def real_estate_property_management_empty_state():
     return {'records': {}, 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
 
@@ -131,24 +159,11 @@ def real_estate_property_management_parse_document_instruction(document, instruc
     return {'ok': True, 'candidate_tables': REAL_ESTATE_PROPERTY_MANAGEMENT_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
 def real_estate_property_management_build_schema_contract():
-    table_contracts = (
-        {'table': 'real_estate_property_management_property', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'real_estate_property_management_tenant', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'real_estate_property_management_lease', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'real_estate_property_management_rent_charge', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'real_estate_property_management_maintenance_request', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'real_estate_property_management_inspection', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'real_estate_property_management_security_deposit', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'real_estate_property_management_real_estate_property_management_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'real_estate_property_management_real_estate_property_management_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'real_estate_property_management_real_estate_property_management_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'real_estate_property_management_real_estate_property_management_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'real_estate_property_management_real_estate_property_management_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'real_estate_property_management_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'real_estate_property_management_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'real_estate_property_management_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table, 'fields': _real_estate_property_management_table_fields(table), 'primary_key': ('id',), 'owned_by': PBC_KEY}
+        for table in REAL_ESTATE_PROPERTY_MANAGEMENT_OWNED_TABLES
     )
-    return {'format': 'appgen.real-estate-property-management-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/real_estate_property_management/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': REAL_ESTATE_PROPERTY_MANAGEMENT_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': REAL_ESTATE_PROPERTY_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'database_backends': REAL_ESTATE_PROPERTY_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': REAL_ESTATE_PROPERTY_MANAGEMENT_OWNED_TABLES}
+    return {'format': 'appgen.real-estate-property-management-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/real_estate_property_management/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': REAL_ESTATE_PROPERTY_MANAGEMENT_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(REAL_ESTATE_PROPERTY_MANAGEMENT_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _real_estate_property_management_table_fields(table)} for table in REAL_ESTATE_PROPERTY_MANAGEMENT_OWNED_TABLES), 'datastore_backends': REAL_ESTATE_PROPERTY_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'database_backends': REAL_ESTATE_PROPERTY_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': REAL_ESTATE_PROPERTY_MANAGEMENT_OWNED_TABLES}
 
 def real_estate_property_management_build_service_contract():
     return {'format': 'appgen.real-estate-property-management-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_property','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}

@@ -74,6 +74,34 @@ RESEARCH_GRANTS_MANAGEMENT_BUSINESS_TABLES = ('research_grants_management_grant_
  'research_grants_management_research_grants_management_control_assertion',
  'research_grants_management_research_grants_management_governed_model')
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+RESEARCH_GRANTS_MANAGEMENT_TABLE_FIELDS = {
+    'research_grants_management_grant_proposal': ('id', 'tenant', 'grant_proposal_id', 'opportunity_reference', 'sponsor_program_code', 'notice_version', 'proposal_type', 'principal_investigator', 'department', 'sponsor_deadline', 'internal_routing_deadline', 'submission_state', 'required_section_count', 'approved_section_count', 'compliance_matrix_state', 'cost_share_required', 'cost_share_amount', 'total_budget_requested', 'budget_currency', 'routing_state', 'risk_score', 'proposal_notes', 'status', 'version', 'created_at', 'updated_at'),
+    'research_grants_management_research_award': ('id', 'tenant', 'research_award_id', 'grant_proposal_id', 'sponsor_name', 'award_number', 'award_type', 'project_period_start', 'project_period_end', 'award_amount', 'obligated_amount', 'award_currency', 'amendment_count', 'readiness_state', 'pre_award_spending_approved', 'compliance_dependency_count', 'closeout_readiness_score', 'award_notes', 'status', 'version', 'created_at', 'updated_at'),
+    'research_grants_management_sponsor_budget': ('id', 'tenant', 'sponsor_budget_id', 'research_award_id', 'template_version', 'budget_period_number', 'budget_category', 'budgeted_amount', 'committed_amount', 'actual_amount', 'indirect_cost_rate', 'cost_share_amount', 'rebudget_pending', 'prior_approval_required', 'budget_currency', 'budget_notes', 'status', 'version', 'created_at', 'updated_at'),
+    'research_grants_management_compliance_requirement': ('id', 'tenant', 'compliance_requirement_id', 'research_award_id', 'requirement_type', 'obligation_source', 'due_date', 'gating_effect', 'ethics_boundary_state', 'protocol_status_source', 'expiration_date', 'responsible_role', 'resolved_at', 'compliance_notes', 'status', 'version', 'created_at', 'updated_at'),
+    'research_grants_management_subaward': ('id', 'tenant', 'subaward_id', 'research_award_id', 'subrecipient_name', 'subrecipient_identifier', 'risk_tier', 'scope_of_work', 'subaward_amount', 'indirect_cost_treatment', 'issuance_state', 'monitoring_cadence', 'audit_status', 'foreign_subrecipient', 'monitoring_notes', 'status', 'version', 'created_at', 'updated_at'),
+    'research_grants_management_milestone_report': ('id', 'tenant', 'milestone_report_id', 'research_award_id', 'deliverable_name', 'report_type', 'reporting_period', 'due_date', 'submitted_at', 'predecessor_deliverable_id', 'report_state', 'progress_percent', 'sponsor_acceptance_state', 'report_notes', 'status', 'version', 'created_at', 'updated_at'),
+    'research_grants_management_effort_certification': ('id', 'tenant', 'effort_certification_id', 'research_award_id', 'certifier_name', 'certification_period', 'committed_effort_percent', 'certified_effort_percent', 'salary_cap_amount', 'certification_state', 'overdue_flag', 'exception_reason', 'certified_at', 'status', 'version', 'created_at', 'updated_at'),
+    'research_grants_management_research_grants_management_policy_rule': ('id', 'tenant', 'rule_id', 'rule_name', 'predicate_text', 'ambiguity_flag', 'example_text', 'approver_role', 'effective_from', 'effective_to', 'compiled_hash', 'status', 'version', 'created_at', 'updated_at'),
+    'research_grants_management_research_grants_management_runtime_parameter': ('id', 'tenant', 'parameter_name', 'parameter_value', 'scope', 'bounded', 'effective_from', 'status', 'version', 'created_at', 'updated_at'),
+    'research_grants_management_research_grants_management_schema_extension': ('id', 'tenant', 'extension_id', 'target_table', 'field_name', 'field_type', 'registered_at', 'status', 'version', 'created_at', 'updated_at'),
+    'research_grants_management_research_grants_management_control_assertion': ('id', 'tenant', 'assertion_id', 'control_name', 'assertion_result', 'severity', 'remediation_task', 'evaluated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'research_grants_management_research_grants_management_governed_model': ('id', 'tenant', 'model_id', 'model_name', 'model_version', 'model_type', 'coverage_scope', 'backtest_exception_count', 'governance_state', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'research_grants_management_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'research_grants_management_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'research_grants_management_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_RESEARCH_GRANTS_MANAGEMENT_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _research_grants_management_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return RESEARCH_GRANTS_MANAGEMENT_TABLE_FIELDS.get(table, _RESEARCH_GRANTS_MANAGEMENT_DEFAULT_FIELDS)
+
+
 def research_grants_management_empty_state():
     return {'records': {}, 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
 
@@ -131,24 +159,11 @@ def research_grants_management_parse_document_instruction(document, instruction)
     return {'ok': True, 'candidate_tables': RESEARCH_GRANTS_MANAGEMENT_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
 def research_grants_management_build_schema_contract():
-    table_contracts = (
-        {'table': 'research_grants_management_grant_proposal', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'research_grants_management_research_award', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'research_grants_management_sponsor_budget', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'research_grants_management_compliance_requirement', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'research_grants_management_subaward', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'research_grants_management_milestone_report', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'research_grants_management_effort_certification', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'research_grants_management_research_grants_management_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'research_grants_management_research_grants_management_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'research_grants_management_research_grants_management_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'research_grants_management_research_grants_management_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'research_grants_management_research_grants_management_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'research_grants_management_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'research_grants_management_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'research_grants_management_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table, 'fields': _research_grants_management_table_fields(table), 'primary_key': ('id',), 'owned_by': PBC_KEY}
+        for table in RESEARCH_GRANTS_MANAGEMENT_OWNED_TABLES
     )
-    return {'format': 'appgen.research-grants-management-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/research_grants_management/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': RESEARCH_GRANTS_MANAGEMENT_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': RESEARCH_GRANTS_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'database_backends': RESEARCH_GRANTS_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': RESEARCH_GRANTS_MANAGEMENT_OWNED_TABLES}
+    return {'format': 'appgen.research-grants-management-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/research_grants_management/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': RESEARCH_GRANTS_MANAGEMENT_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(RESEARCH_GRANTS_MANAGEMENT_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _research_grants_management_table_fields(table)} for table in RESEARCH_GRANTS_MANAGEMENT_OWNED_TABLES), 'datastore_backends': RESEARCH_GRANTS_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'database_backends': RESEARCH_GRANTS_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': RESEARCH_GRANTS_MANAGEMENT_OWNED_TABLES}
 
 def research_grants_management_build_service_contract():
     return {'format': 'appgen.research-grants-management-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_grant_proposal','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}

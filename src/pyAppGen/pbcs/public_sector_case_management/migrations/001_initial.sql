@@ -1,15 +1,347 @@
-CREATE TABLE public_sector_case_management_citizen_case (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_sector_case_management_eligibility_determination (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_sector_case_management_benefit_decision (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_sector_case_management_inspection (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_sector_case_management_notice (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_sector_case_management_appeal (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_sector_case_management_service_outcome (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_sector_case_management_public_sector_case_management_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_sector_case_management_public_sector_case_management_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_sector_case_management_public_sector_case_management_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_sector_case_management_public_sector_case_management_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_sector_case_management_public_sector_case_management_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_sector_case_management_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_sector_case_management_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_sector_case_management_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS public_sector_case_management;
+
+CREATE TABLE public_sector_case_management_citizen_case (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  citizen_case_id VARCHAR(255) NOT NULL,
+  case_number VARCHAR(255) NOT NULL,
+  applicant_party_reference VARCHAR(255) NOT NULL,
+  household_reference VARCHAR(255) NOT NULL,
+  representative_party_reference VARCHAR(255) NOT NULL,
+  program_code VARCHAR(255) NOT NULL,
+  intake_channel VARCHAR(255) NOT NULL,
+  intake_worker_reference VARCHAR(255) NOT NULL,
+  submitted_at TIMESTAMP,
+  preferred_language VARCHAR(255) NOT NULL,
+  interpreter_needed_flag BOOLEAN NOT NULL,
+  urgency_marker VARCHAR(255) NOT NULL,
+  jurisdiction_code VARCHAR(255) NOT NULL,
+  service_office_code VARCHAR(255) NOT NULL,
+  residency_verified_flag BOOLEAN NOT NULL,
+  confidentiality_marker VARCHAR(255) NOT NULL,
+  protected_population_flag BOOLEAN NOT NULL,
+  case_stage VARCHAR(255) NOT NULL,
+  sla_clock_state VARCHAR(255) NOT NULL,
+  paused_reason VARCHAR(255) NOT NULL,
+  duplicate_case_reference VARCHAR(255) NOT NULL,
+  retention_class VARCHAR(255) NOT NULL,
+  legal_hold_flag BOOLEAN NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE public_sector_case_management_eligibility_determination (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  eligibility_determination_id VARCHAR(255) NOT NULL,
+  citizen_case_id VARCHAR(255) NOT NULL,
+  determination_basis VARCHAR(255) NOT NULL,
+  program_code VARCHAR(255) NOT NULL,
+  rule_version_reference VARCHAR(255) NOT NULL,
+  effective_start_date TIMESTAMP,
+  retroactive_start_date TIMESTAMP,
+  effective_end_date TIMESTAMP,
+  recertification_date TIMESTAMP,
+  adverse_action_lead_days INTEGER NOT NULL,
+  income_amount DECIMAL(18, 4) NOT NULL,
+  household_size INTEGER NOT NULL,
+  verification_state VARCHAR(255) NOT NULL,
+  missing_information_state VARCHAR(255) NOT NULL,
+  evidence_sufficiency_state VARCHAR(255) NOT NULL,
+  overpayment_amount DECIMAL(18, 4) NOT NULL,
+  determination_result VARCHAR(255) NOT NULL,
+  override_reason VARCHAR(255) NOT NULL,
+  decision_explanation TEXT,
+  decided_by VARCHAR(255) NOT NULL,
+  decided_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (citizen_case_id) REFERENCES public_sector_case_management_citizen_case(citizen_case_id)
+);
+
+CREATE TABLE public_sector_case_management_benefit_decision (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  benefit_decision_id VARCHAR(255) NOT NULL,
+  citizen_case_id VARCHAR(255) NOT NULL,
+  program_code VARCHAR(255) NOT NULL,
+  decision_type VARCHAR(255) NOT NULL,
+  benefit_amount DECIMAL(18, 4) NOT NULL,
+  benefit_frequency VARCHAR(255) NOT NULL,
+  benefit_duration_days INTEGER NOT NULL,
+  service_obligation_text TEXT,
+  package_conflict_state VARCHAR(255) NOT NULL,
+  fact_snapshot_reference VARCHAR(255) NOT NULL,
+  rule_citation_reference VARCHAR(255) NOT NULL,
+  reduction_flag BOOLEAN NOT NULL,
+  closure_flag BOOLEAN NOT NULL,
+  effective_date TIMESTAMP,
+  adverse_action_notice_due_at TIMESTAMP,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (citizen_case_id) REFERENCES public_sector_case_management_citizen_case(citizen_case_id)
+);
+
+CREATE TABLE public_sector_case_management_inspection (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  inspection_id VARCHAR(255) NOT NULL,
+  citizen_case_id VARCHAR(255) NOT NULL,
+  inspection_type VARCHAR(255) NOT NULL,
+  inspection_scope VARCHAR(255) NOT NULL,
+  inspector_reference VARCHAR(255) NOT NULL,
+  scheduled_at TIMESTAMP,
+  performed_at TIMESTAMP,
+  site_address_reference VARCHAR(255) NOT NULL,
+  jurisdiction_code VARCHAR(255) NOT NULL,
+  findings_summary TEXT,
+  compliance_state VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  corrective_action_required_flag BOOLEAN NOT NULL,
+  corrective_action_due_at TIMESTAMP,
+  follow_up_state VARCHAR(255) NOT NULL,
+  control_assertion_reference VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (citizen_case_id) REFERENCES public_sector_case_management_citizen_case(citizen_case_id)
+);
+
+CREATE TABLE public_sector_case_management_notice (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  notice_id VARCHAR(255) NOT NULL,
+  citizen_case_id VARCHAR(255) NOT NULL,
+  notice_type VARCHAR(255) NOT NULL,
+  template_code VARCHAR(255) NOT NULL,
+  delivery_channel VARCHAR(255) NOT NULL,
+  generated_language VARCHAR(255) NOT NULL,
+  alternate_format_state VARCHAR(255) NOT NULL,
+  fact_snapshot_reference VARCHAR(255) NOT NULL,
+  rule_citation_text TEXT,
+  issued_at TIMESTAMP,
+  delivered_at TIMESTAMP,
+  response_due_at TIMESTAMP,
+  barcode VARCHAR(255) NOT NULL,
+  inbound_match_state VARCHAR(255) NOT NULL,
+  confidentiality_marker VARCHAR(255) NOT NULL,
+  redaction_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (citizen_case_id) REFERENCES public_sector_case_management_citizen_case(citizen_case_id)
+);
+
+CREATE TABLE public_sector_case_management_appeal (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  appeal_id VARCHAR(255) NOT NULL,
+  citizen_case_id VARCHAR(255) NOT NULL,
+  appealed_action_reference VARCHAR(255) NOT NULL,
+  contested_period VARCHAR(255) NOT NULL,
+  contested_rule_reference VARCHAR(255) NOT NULL,
+  requested_remedy TEXT,
+  filing_date TIMESTAMP,
+  timeliness_state VARCHAR(255) NOT NULL,
+  standing_state VARCHAR(255) NOT NULL,
+  continuation_of_benefits_flag BOOLEAN NOT NULL,
+  evidence_scope_reference VARCHAR(255) NOT NULL,
+  hearing_venue_type VARCHAR(255) NOT NULL,
+  hearing_scheduled_at TIMESTAMP,
+  interpreter_language VARCHAR(255) NOT NULL,
+  accessibility_accommodation VARCHAR(255) NOT NULL,
+  packet_completeness_state VARCHAR(255) NOT NULL,
+  hearing_outcome VARCHAR(255) NOT NULL,
+  remand_scope_reference VARCHAR(255) NOT NULL,
+  implementation_due_at TIMESTAMP,
+  rejection_reason_code VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (citizen_case_id) REFERENCES public_sector_case_management_citizen_case(citizen_case_id)
+);
+
+CREATE TABLE public_sector_case_management_service_outcome (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  service_outcome_id VARCHAR(255) NOT NULL,
+  citizen_case_id VARCHAR(255) NOT NULL,
+  referral_reference VARCHAR(255) NOT NULL,
+  service_program_code VARCHAR(255) NOT NULL,
+  outcome_code VARCHAR(255) NOT NULL,
+  outcome_reason_code VARCHAR(255) NOT NULL,
+  receiving_organization_reference VARCHAR(255) NOT NULL,
+  referral_opened_at TIMESTAMP,
+  first_contact_at TIMESTAMP,
+  closed_at TIMESTAMP,
+  response_window_days INTEGER NOT NULL,
+  provider_closure_code VARCHAR(255) NOT NULL,
+  follow_up_required_flag BOOLEAN NOT NULL,
+  narrative_text TEXT,
+  privacy_redaction_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (citizen_case_id) REFERENCES public_sector_case_management_citizen_case(citizen_case_id)
+);
+
+CREATE TABLE public_sector_case_management_public_sector_case_management_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  policy_rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  rule_scope VARCHAR(255) NOT NULL,
+  program_code VARCHAR(255) NOT NULL,
+  jurisdiction_code VARCHAR(255) NOT NULL,
+  predicate_text TEXT,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  emergency_supersession_flag BOOLEAN NOT NULL,
+  migration_note TEXT,
+  ambiguity_flag BOOLEAN NOT NULL,
+  approver_role VARCHAR(255) NOT NULL,
+  compiled_hash VARCHAR(255) NOT NULL,
+  source_span VARCHAR(255) NOT NULL,
+  prior_version_reference VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE public_sector_case_management_public_sector_case_management_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  runtime_parameter_id VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  parameter_scope VARCHAR(255) NOT NULL,
+  lower_bound DECIMAL(18, 4) NOT NULL,
+  upper_bound DECIMAL(18, 4) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  tenant_override BOOLEAN NOT NULL,
+  approval_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  effective_from TIMESTAMP,
+  rollback_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE public_sector_case_management_public_sector_case_management_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  schema_extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  ui_placement VARCHAR(255) NOT NULL,
+  compatibility_state VARCHAR(255) NOT NULL,
+  backfill_plan TEXT,
+  backfill_state VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP,
+  activated_at TIMESTAMP,
+  deprecated_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE public_sector_case_management_public_sector_case_management_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  control_assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  control_scope VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  segregation_violation BOOLEAN NOT NULL,
+  affected_record_reference VARCHAR(255) NOT NULL,
+  failing_evidence TEXT,
+  remediation_task VARCHAR(255) NOT NULL,
+  evaluated_at TIMESTAMP,
+  evaluated_by VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE public_sector_case_management_public_sector_case_management_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  governed_model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  authority_role VARCHAR(255) NOT NULL,
+  certification_state VARCHAR(255) NOT NULL,
+  certification_expires_at TIMESTAMP,
+  jurisdiction_code VARCHAR(255) NOT NULL,
+  allowed_actions VARCHAR(255) NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  proof_chain_hash VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE public_sector_case_management_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE public_sector_case_management_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE public_sector_case_management_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

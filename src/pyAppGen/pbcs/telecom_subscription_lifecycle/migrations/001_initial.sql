@@ -1,15 +1,360 @@
-CREATE TABLE telecom_subscription_lifecycle_subscriber_account (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_subscription_lifecycle_service_plan (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_subscription_lifecycle_sim_profile (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_subscription_lifecycle_activation_request (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_subscription_lifecycle_usage_session (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_subscription_lifecycle_roaming_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_subscription_lifecycle_churn_risk (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_subscription_lifecycle_telecom_subscription_lifecycle_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_subscription_lifecycle_telecom_subscription_lifecycle_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_subscription_lifecycle_telecom_subscription_lifecycle_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_subscription_lifecycle_telecom_subscription_lifecycle_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_subscription_lifecycle_telecom_subscription_lifecycle_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_subscription_lifecycle_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_subscription_lifecycle_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_subscription_lifecycle_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS telecom_subscription_lifecycle;
+
+CREATE TABLE telecom_subscription_lifecycle_subscriber_account (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  subscriber_account_id VARCHAR(255) NOT NULL,
+  msisdn VARCHAR(255) NOT NULL,
+  imsi VARCHAR(255),
+  subscription_reference VARCHAR(255) NOT NULL,
+  customer_party_reference VARCHAR(255) NOT NULL,
+  billing_party_reference VARCHAR(255),
+  account_owner_role VARCHAR(255),
+  payer_role VARCHAR(255),
+  subscription_type VARCHAR(255) NOT NULL,
+  lifecycle_state VARCHAR(255) NOT NULL,
+  market_code VARCHAR(255),
+  brand_code VARCHAR(255),
+  current_plan_id VARCHAR(255),
+  active_sim_profile_id VARCHAR(255),
+  service_line_count INTEGER NOT NULL,
+  monthly_recurring_charge DECIMAL(18, 4) NOT NULL,
+  currency_code VARCHAR(255) NOT NULL,
+  churn_score DECIMAL(18, 4) NOT NULL,
+  balance_bucket_balance DECIMAL(18, 4),
+  credit_exposure_flag BOOLEAN NOT NULL,
+  activation_date TIMESTAMP,
+  last_lifecycle_change_at TIMESTAMP,
+  suspension_reason VARCHAR(255),
+  account_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE telecom_subscription_lifecycle_service_plan (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  service_plan_id VARCHAR(255) NOT NULL,
+  plan_code VARCHAR(255) NOT NULL,
+  plan_name VARCHAR(255) NOT NULL,
+  plan_version INTEGER NOT NULL,
+  market_code VARCHAR(255) NOT NULL,
+  channel_code VARCHAR(255),
+  customer_segment VARCHAR(255),
+  commercial_model VARCHAR(255) NOT NULL,
+  network_technology VARCHAR(255),
+  effective_date TIMESTAMP NOT NULL,
+  retirement_date TIMESTAMP,
+  renewal_cadence VARCHAR(255),
+  contract_term_months INTEGER,
+  included_voice_minutes INTEGER NOT NULL,
+  included_sms_count INTEGER NOT NULL,
+  included_data_mb INTEGER NOT NULL,
+  monthly_recurring_charge DECIMAL(18, 4) NOT NULL,
+  currency_code VARCHAR(255) NOT NULL,
+  roaming_eligible BOOLEAN NOT NULL,
+  esim_supported BOOLEAN NOT NULL,
+  credit_check_required BOOLEAN NOT NULL,
+  plan_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE telecom_subscription_lifecycle_sim_profile (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  sim_profile_id VARCHAR(255) NOT NULL,
+  subscriber_account_id VARCHAR(255) NOT NULL,
+  iccid VARCHAR(255) NOT NULL,
+  imsi VARCHAR(255),
+  eid VARCHAR(255),
+  activation_code VARCHAR(255),
+  sim_type VARCHAR(255) NOT NULL,
+  profile_state VARCHAR(255) NOT NULL,
+  inventory_state VARCHAR(255) NOT NULL,
+  reserved_at TIMESTAMP,
+  shipped_at TIMESTAMP,
+  delivered_at TIMESTAMP,
+  installed_at TIMESTAMP,
+  activated_at TIMESTAMP,
+  swapped_out_at TIMESTAMP,
+  prior_sim_profile_id VARCHAR(255),
+  swap_reason VARCHAR(255),
+  fraud_alert_flag BOOLEAN NOT NULL,
+  download_attempt_count INTEGER NOT NULL,
+  installation_token_expires_at TIMESTAMP,
+  fulfillment_reference VARCHAR(255),
+  profile_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (subscriber_account_id) REFERENCES telecom_subscription_lifecycle_subscriber_account(subscriber_account_id)
+);
+
+CREATE TABLE telecom_subscription_lifecycle_activation_request (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  activation_request_id VARCHAR(255) NOT NULL,
+  subscriber_account_id VARCHAR(255) NOT NULL,
+  sim_profile_id VARCHAR(255),
+  service_plan_id VARCHAR(255),
+  request_channel VARCHAR(255) NOT NULL,
+  activation_stage VARCHAR(255) NOT NULL,
+  identity_verification_state VARCHAR(255) NOT NULL,
+  plan_lock_state VARCHAR(255),
+  sim_binding_state VARCHAR(255),
+  provisioning_order_reference VARCHAR(255),
+  provisioning_status VARCHAR(255),
+  service_test_state VARCHAR(255),
+  requested_at TIMESTAMP NOT NULL,
+  identity_approved_at TIMESTAMP,
+  activated_at TIMESTAMP,
+  rollback_state VARCHAR(255),
+  rollback_reason VARCHAR(255),
+  welcome_notification_state VARCHAR(255),
+  billing_handoff_state VARCHAR(255),
+  blocking_dependency VARCHAR(255),
+  activation_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (subscriber_account_id) REFERENCES telecom_subscription_lifecycle_subscriber_account(subscriber_account_id),
+  FOREIGN KEY (sim_profile_id) REFERENCES telecom_subscription_lifecycle_sim_profile(sim_profile_id),
+  FOREIGN KEY (service_plan_id) REFERENCES telecom_subscription_lifecycle_service_plan(service_plan_id)
+);
+
+CREATE TABLE telecom_subscription_lifecycle_usage_session (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  usage_session_id VARCHAR(255) NOT NULL,
+  subscriber_account_id VARCHAR(255) NOT NULL,
+  sim_profile_id VARCHAR(255),
+  usage_type VARCHAR(255) NOT NULL,
+  usage_source VARCHAR(255),
+  session_started_at TIMESTAMP NOT NULL,
+  session_ended_at TIMESTAMP,
+  session_time_zone VARCHAR(255),
+  duration_seconds INTEGER NOT NULL,
+  volume_mb DECIMAL(18, 4) NOT NULL,
+  message_count INTEGER NOT NULL,
+  rated_unit_count INTEGER NOT NULL,
+  threshold_percent DECIMAL(18, 4) NOT NULL,
+  threshold_breached BOOLEAN NOT NULL,
+  pool_member_reference VARCHAR(255),
+  duplicate_detected BOOLEAN NOT NULL,
+  charge_advice_reference VARCHAR(255),
+  network_element VARCHAR(255),
+  usage_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (subscriber_account_id) REFERENCES telecom_subscription_lifecycle_subscriber_account(subscriber_account_id),
+  FOREIGN KEY (sim_profile_id) REFERENCES telecom_subscription_lifecycle_sim_profile(sim_profile_id)
+);
+
+CREATE TABLE telecom_subscription_lifecycle_roaming_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  roaming_event_id VARCHAR(255) NOT NULL,
+  subscriber_account_id VARCHAR(255) NOT NULL,
+  sim_profile_id VARCHAR(255),
+  visited_network VARCHAR(255) NOT NULL,
+  visited_country VARCHAR(255) NOT NULL,
+  roaming_zone VARCHAR(255),
+  roaming_type VARCHAR(255) NOT NULL,
+  entitlement_state VARCHAR(255) NOT NULL,
+  provisioning_state VARCHAR(255) NOT NULL,
+  pass_reference VARCHAR(255),
+  pass_expires_at TIMESTAMP,
+  spend_cap_amount DECIMAL(18, 4),
+  spend_to_date DECIMAL(18, 4) NOT NULL,
+  currency_code VARCHAR(255) NOT NULL,
+  spend_block_active BOOLEAN NOT NULL,
+  partner_exception_code VARCHAR(255),
+  event_started_at TIMESTAMP NOT NULL,
+  event_ended_at TIMESTAMP,
+  remediation_owner VARCHAR(255),
+  roaming_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (subscriber_account_id) REFERENCES telecom_subscription_lifecycle_subscriber_account(subscriber_account_id),
+  FOREIGN KEY (sim_profile_id) REFERENCES telecom_subscription_lifecycle_sim_profile(sim_profile_id)
+);
+
+CREATE TABLE telecom_subscription_lifecycle_churn_risk (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  churn_risk_id VARCHAR(255) NOT NULL,
+  subscriber_account_id VARCHAR(255) NOT NULL,
+  churn_score DECIMAL(18, 4) NOT NULL,
+  churn_reason_code VARCHAR(255) NOT NULL,
+  risk_band VARCHAR(255) NOT NULL,
+  assessed_at TIMESTAMP NOT NULL,
+  forecast_horizon_days INTEGER NOT NULL,
+  retention_offer_code VARCHAR(255),
+  retention_offer_state VARCHAR(255),
+  offer_approved_by VARCHAR(255),
+  offer_approved_at TIMESTAMP,
+  save_outcome VARCHAR(255),
+  win_back_eligible BOOLEAN NOT NULL,
+  cancellation_requested_at TIMESTAMP,
+  grace_period_ends_at TIMESTAMP,
+  churn_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (subscriber_account_id) REFERENCES telecom_subscription_lifecycle_subscriber_account(subscriber_account_id)
+);
+
+CREATE TABLE telecom_subscription_lifecycle_telecom_subscription_lifecycle_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  telecom_subscription_lifecycle_policy_rule_id VARCHAR(255) NOT NULL,
+  rule_code VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  policy_scope VARCHAR(255) NOT NULL,
+  rule_expression TEXT NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  compiled_hash VARCHAR(255),
+  effective_date TIMESTAMP NOT NULL,
+  retirement_date TIMESTAMP,
+  approval_role VARCHAR(255),
+  last_reviewed_at TIMESTAMP,
+  rule_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE telecom_subscription_lifecycle_telecom_subscription_lifecycle_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  telecom_subscription_lifecycle_runtime_parameter_id VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  parameter_scope VARCHAR(255) NOT NULL,
+  value_unit VARCHAR(255),
+  minimum_value DECIMAL(18, 4),
+  maximum_value DECIMAL(18, 4),
+  effective_date TIMESTAMP NOT NULL,
+  change_control_reference VARCHAR(255),
+  last_changed_at TIMESTAMP,
+  parameter_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE telecom_subscription_lifecycle_telecom_subscription_lifecycle_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  telecom_subscription_lifecycle_schema_extension_id VARCHAR(255) NOT NULL,
+  extension_table VARCHAR(255) NOT NULL,
+  extension_field VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  required_flag BOOLEAN NOT NULL,
+  default_value VARCHAR(255),
+  applied_at TIMESTAMP,
+  rollback_reference VARCHAR(255),
+  extension_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE telecom_subscription_lifecycle_telecom_subscription_lifecycle_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  telecom_subscription_lifecycle_control_assertion_id VARCHAR(255) NOT NULL,
+  assertion_code VARCHAR(255) NOT NULL,
+  control_domain VARCHAR(255) NOT NULL,
+  assertion_statement TEXT NOT NULL,
+  test_procedure TEXT,
+  result_state VARCHAR(255) NOT NULL,
+  tested_at TIMESTAMP,
+  tested_by VARCHAR(255),
+  evidence_hash VARCHAR(255),
+  remediation_reference VARCHAR(255),
+  assertion_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE telecom_subscription_lifecycle_telecom_subscription_lifecycle_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  telecom_subscription_lifecycle_governed_model_id VARCHAR(255) NOT NULL,
+  model_code VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_purpose VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  training_data_reference VARCHAR(255),
+  approval_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  last_evaluated_at TIMESTAMP,
+  performance_score DECIMAL(18, 4),
+  bias_review_state VARCHAR(255),
+  model_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE telecom_subscription_lifecycle_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE telecom_subscription_lifecycle_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE telecom_subscription_lifecycle_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

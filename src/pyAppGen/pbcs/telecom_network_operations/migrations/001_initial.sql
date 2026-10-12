@@ -1,15 +1,345 @@
-CREATE TABLE telecom_network_operations_network_element (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_network_operations_capacity_segment (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_network_operations_network_incident (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_network_operations_alarm_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_network_operations_service_assurance_case (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_network_operations_maintenance_window (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_network_operations_sla_impact (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_network_operations_telecom_network_operations_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_network_operations_telecom_network_operations_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_network_operations_telecom_network_operations_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_network_operations_telecom_network_operations_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_network_operations_telecom_network_operations_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_network_operations_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_network_operations_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE telecom_network_operations_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS telecom_network_operations;
+
+CREATE TABLE telecom_network_operations_network_element (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  network_element_id VARCHAR(255) NOT NULL,
+  element_name VARCHAR(255) NOT NULL,
+  element_type VARCHAR(255) NOT NULL,
+  site_code VARCHAR(255) NOT NULL,
+  parent_site_code VARCHAR(255) NOT NULL,
+  market_code VARCHAR(255) NOT NULL,
+  latitude DECIMAL(18, 4) NOT NULL,
+  longitude DECIMAL(18, 4) NOT NULL,
+  access_restriction VARCHAR(255) NOT NULL,
+  shelter_type VARCHAR(255) NOT NULL,
+  power_plant_state VARCHAR(255) NOT NULL,
+  mains_state VARCHAR(255) NOT NULL,
+  generator_run_state VARCHAR(255) NOT NULL,
+  battery_autonomy_minutes INTEGER NOT NULL,
+  hvac_alarm_state VARCHAR(255) NOT NULL,
+  intrusion_alarm_state VARCHAR(255) NOT NULL,
+  vendor_code VARCHAR(255) NOT NULL,
+  technology_generation VARCHAR(255) NOT NULL,
+  radio_band VARCHAR(255) NOT NULL,
+  physical_cell_id VARCHAR(255) NOT NULL,
+  sector_code VARCHAR(255) NOT NULL,
+  antenna_azimuth_deg DECIMAL(18, 4) NOT NULL,
+  antenna_tilt_deg DECIMAL(18, 4) NOT NULL,
+  neighbor_relation_count INTEGER NOT NULL,
+  lifecycle_state VARCHAR(255) NOT NULL,
+  last_seen_at TIMESTAMP,
+  reference_validation_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE telecom_network_operations_capacity_segment (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  capacity_segment_id VARCHAR(255) NOT NULL,
+  circuit_id VARCHAR(255) NOT NULL,
+  segment_class VARCHAR(255) NOT NULL,
+  a_end_site_code VARCHAR(255) NOT NULL,
+  z_end_site_code VARCHAR(255) NOT NULL,
+  vlan_id VARCHAR(255) NOT NULL,
+  protection_group VARCHAR(255) NOT NULL,
+  protection_state VARCHAR(255) NOT NULL,
+  route_diversity_state VARCHAR(255) NOT NULL,
+  installed_capacity_mbps DECIMAL(18, 4) NOT NULL,
+  reserved_capacity_mbps DECIMAL(18, 4) NOT NULL,
+  used_capacity_mbps DECIMAL(18, 4) NOT NULL,
+  forecast_capacity_mbps DECIMAL(18, 4) NOT NULL,
+  emergency_headroom_mbps DECIMAL(18, 4) NOT NULL,
+  utilization_pct DECIMAL(18, 4) NOT NULL,
+  congestion_state VARCHAR(255) NOT NULL,
+  bottleneck_domain VARCHAR(255) NOT NULL,
+  forecast_horizon_days INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE telecom_network_operations_network_incident (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  network_incident_id VARCHAR(255) NOT NULL,
+  incident_class VARCHAR(255) NOT NULL,
+  outage_state VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  primary_site_code VARCHAR(255) NOT NULL,
+  bridge_commander VARCHAR(255) NOT NULL,
+  detected_at TIMESTAMP,
+  declared_at TIMESTAMP,
+  restoration_eta TIMESTAMP,
+  service_restored_at TIMESTAMP,
+  impacted_service_count INTEGER NOT NULL,
+  impacted_customer_count INTEGER NOT NULL,
+  suspected_root_cause VARCHAR(255) NOT NULL,
+  root_cause_code VARCHAR(255) NOT NULL,
+  customer_communication_state VARCHAR(255) NOT NULL,
+  last_customer_update_at TIMESTAMP,
+  reopen_count INTEGER NOT NULL,
+  risk_score DECIMAL(18, 4) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE telecom_network_operations_alarm_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  alarm_event_id VARCHAR(255) NOT NULL,
+  source_vendor_code VARCHAR(255) NOT NULL,
+  source_alarm_code VARCHAR(255) NOT NULL,
+  alarm_family VARCHAR(255) NOT NULL,
+  perceived_severity VARCHAR(255) NOT NULL,
+  probable_cause VARCHAR(255) NOT NULL,
+  object_class VARCHAR(255) NOT NULL,
+  managed_object_id VARCHAR(255) NOT NULL,
+  clear_condition VARCHAR(255) NOT NULL,
+  suppressible BOOLEAN NOT NULL,
+  correlated_parent_id VARCHAR(255) NOT NULL,
+  suppression_state VARCHAR(255) NOT NULL,
+  event_sequence INTEGER NOT NULL,
+  raised_at TIMESTAMP,
+  cleared_at TIMESTAMP,
+  raw_alarm_text TEXT NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE telecom_network_operations_service_assurance_case (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  service_assurance_case_id VARCHAR(255) NOT NULL,
+  ticket_number VARCHAR(255) NOT NULL,
+  external_ticket_reference VARCHAR(255) NOT NULL,
+  ticket_origin VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  customer_impact_state VARCHAR(255) NOT NULL,
+  customer_class VARCHAR(255) NOT NULL,
+  handoff_state VARCHAR(255) NOT NULL,
+  dispatch_state VARCHAR(255) NOT NULL,
+  alarm_event_id VARCHAR(255) NOT NULL,
+  network_incident_id VARCHAR(255) NOT NULL,
+  affected_service_id VARCHAR(255) NOT NULL,
+  sla_clock_state VARCHAR(255) NOT NULL,
+  next_action VARCHAR(255) NOT NULL,
+  opened_at TIMESTAMP,
+  acknowledged_at TIMESTAMP,
+  resolved_at TIMESTAMP,
+  field_evidence_summary TEXT NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (alarm_event_id) REFERENCES telecom_network_operations_alarm_event(alarm_event_id),
+  FOREIGN KEY (network_incident_id) REFERENCES telecom_network_operations_network_incident(network_incident_id)
+);
+
+CREATE TABLE telecom_network_operations_maintenance_window (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  maintenance_window_id VARCHAR(255) NOT NULL,
+  planned_work_class VARCHAR(255) NOT NULL,
+  mop_version VARCHAR(255) NOT NULL,
+  mop_reference TEXT NOT NULL,
+  change_owner VARCHAR(255) NOT NULL,
+  freeze_window_state VARCHAR(255) NOT NULL,
+  rollback_plan TEXT NOT NULL,
+  rollback_criteria TEXT NOT NULL,
+  rollback_timeout_minutes INTEGER NOT NULL,
+  expected_service_impact VARCHAR(255) NOT NULL,
+  scope_site_code VARCHAR(255) NOT NULL,
+  scope_cell_id VARCHAR(255) NOT NULL,
+  scope_circuit_id VARCHAR(255) NOT NULL,
+  planned_start_at TIMESTAMP,
+  planned_end_at TIMESTAMP,
+  actual_start_at TIMESTAMP,
+  actual_end_at TIMESTAMP,
+  approval_state VARCHAR(255) NOT NULL,
+  approver_role VARCHAR(255) NOT NULL,
+  emergency_override BOOLEAN NOT NULL,
+  dependent_work_count INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE telecom_network_operations_sla_impact (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  sla_impact_id VARCHAR(255) NOT NULL,
+  service_assurance_case_id VARCHAR(255) NOT NULL,
+  network_incident_id VARCHAR(255) NOT NULL,
+  service_class VARCHAR(255) NOT NULL,
+  customer_contract_reference VARCHAR(255) NOT NULL,
+  clock_state VARCHAR(255) NOT NULL,
+  clock_started_at TIMESTAMP,
+  clock_paused_at TIMESTAMP,
+  clock_resumed_at TIMESTAMP,
+  clock_stopped_at TIMESTAMP,
+  elapsed_minutes INTEGER NOT NULL,
+  excluded_minutes INTEGER NOT NULL,
+  breach_threshold_minutes INTEGER NOT NULL,
+  breach_forecast_state VARCHAR(255) NOT NULL,
+  breach_risk_score DECIMAL(18, 4) NOT NULL,
+  pause_reason TEXT NOT NULL,
+  exclusion_authority VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (service_assurance_case_id) REFERENCES telecom_network_operations_service_assurance_case(service_assurance_case_id),
+  FOREIGN KEY (network_incident_id) REFERENCES telecom_network_operations_network_incident(network_incident_id)
+);
+
+CREATE TABLE telecom_network_operations_telecom_network_operations_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  policy_rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  rule_scope VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  approval_source VARCHAR(255) NOT NULL,
+  operational_impact_summary TEXT NOT NULL,
+  compiled_hash VARCHAR(255) NOT NULL,
+  source_span TEXT NOT NULL,
+  prior_version_reference VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE telecom_network_operations_telecom_network_operations_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  runtime_parameter_id VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value DECIMAL(18, 4) NOT NULL,
+  parameter_scope VARCHAR(255) NOT NULL,
+  lower_bound DECIMAL(18, 4) NOT NULL,
+  upper_bound DECIMAL(18, 4) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  tenant_override BOOLEAN NOT NULL,
+  approval_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  effective_from TIMESTAMP,
+  rollback_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE telecom_network_operations_telecom_network_operations_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  schema_extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  ui_placement VARCHAR(255) NOT NULL,
+  compatibility_state VARCHAR(255) NOT NULL,
+  backfill_plan TEXT NOT NULL,
+  backfill_state VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP,
+  activated_at TIMESTAMP,
+  deprecated_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE telecom_network_operations_telecom_network_operations_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  control_assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  control_scope VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  topology_boundary_violation BOOLEAN NOT NULL,
+  affected_record_reference VARCHAR(255) NOT NULL,
+  failing_evidence TEXT NOT NULL,
+  remediation_task TEXT NOT NULL,
+  evaluated_at TIMESTAMP,
+  evaluated_by VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE telecom_network_operations_telecom_network_operations_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  governed_model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  model_purpose VARCHAR(255) NOT NULL,
+  feature_inputs TEXT NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  retirement_policy TEXT NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE telecom_network_operations_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE telecom_network_operations_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE telecom_network_operations_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
