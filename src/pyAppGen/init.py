@@ -85,6 +85,8 @@ from app.erp_templates import register_erp_templates
 from app.project_management import register_project_management
 from app.devtools import register_devtools
 from app.studio import register_studio
+from app.code_review import register_code_review
+from app.i18n import register_i18n
 from app.wizards import register_wizards
 from app.branding import register_branding
 from app.extensions import register_extensions
@@ -175,6 +177,8 @@ register_erp_templates(appbuilder)
 register_project_management(appbuilder)
 register_devtools(appbuilder)
 register_studio(appbuilder)
+register_code_review(appbuilder)
+register_i18n(appbuilder)
 register_wizards(appbuilder)
 register_branding(appbuilder)
 register_extensions(appbuilder)
