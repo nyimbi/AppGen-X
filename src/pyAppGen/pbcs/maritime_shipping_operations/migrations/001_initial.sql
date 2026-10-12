@@ -1,15 +1,347 @@
-CREATE TABLE maritime_shipping_operations_voyage (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE maritime_shipping_operations_vessel (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE maritime_shipping_operations_cargo_booking (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE maritime_shipping_operations_charter_party (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE maritime_shipping_operations_port_call (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE maritime_shipping_operations_demurrage_claim (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE maritime_shipping_operations_bunker_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE maritime_shipping_operations_maritime_shipping_operations_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE maritime_shipping_operations_maritime_shipping_operations_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE maritime_shipping_operations_maritime_shipping_operations_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE maritime_shipping_operations_maritime_shipping_operations_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE maritime_shipping_operations_maritime_shipping_operations_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE maritime_shipping_operations_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE maritime_shipping_operations_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE maritime_shipping_operations_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS maritime_shipping_operations;
+
+CREATE TABLE maritime_shipping_operations_voyage (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  voyage_id VARCHAR(255) NOT NULL,
+  service_string VARCHAR(255) NOT NULL,
+  trade_lane VARCHAR(255) NOT NULL,
+  vessel_id VARCHAR(255) NOT NULL,
+  charter_party_id VARCHAR(255) NOT NULL,
+  voyage_phase VARCHAR(255) NOT NULL,
+  laden_status VARCHAR(255) NOT NULL,
+  voyage_leg_count INTEGER NOT NULL,
+  load_port_code VARCHAR(255) NOT NULL,
+  discharge_port_code VARCHAR(255) NOT NULL,
+  canal_transit_count INTEGER NOT NULL,
+  proforma_eta TIMESTAMP,
+  revised_eta TIMESTAMP,
+  actual_eta TIMESTAMP,
+  proforma_etd TIMESTAMP,
+  revised_etd TIMESTAMP,
+  actual_etd TIMESTAMP,
+  schedule_reliability_pct DECIMAL(18, 4) NOT NULL,
+  carbon_intensity DECIMAL(18, 4) NOT NULL,
+  risk_score DECIMAL(18, 4) NOT NULL,
+  compliance_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE maritime_shipping_operations_vessel (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  vessel_id VARCHAR(255) NOT NULL,
+  vessel_name VARCHAR(255) NOT NULL,
+  imo_number VARCHAR(255) NOT NULL,
+  call_sign VARCHAR(255) NOT NULL,
+  flag_state VARCHAR(255) NOT NULL,
+  vessel_type VARCHAR(255) NOT NULL,
+  deadweight_tonnage DECIMAL(18, 4) NOT NULL,
+  teu_capacity INTEGER NOT NULL,
+  reefer_plug_count INTEGER NOT NULL,
+  built_year INTEGER NOT NULL,
+  schedule_reliability_pct DECIMAL(18, 4) NOT NULL,
+  crew_readiness_state VARCHAR(255) NOT NULL,
+  reference_validation_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE maritime_shipping_operations_cargo_booking (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  cargo_booking_id VARCHAR(255) NOT NULL,
+  voyage_id VARCHAR(255) NOT NULL,
+  shipper_party VARCHAR(255) NOT NULL,
+  consignee_party VARCHAR(255) NOT NULL,
+  notify_party VARCHAR(255) NOT NULL,
+  commodity_code VARCHAR(255) NOT NULL,
+  commodity_description TEXT NOT NULL,
+  equipment_type VARCHAR(255) NOT NULL,
+  container_count INTEGER NOT NULL,
+  teu_count INTEGER NOT NULL,
+  cargo_tonnage DECIMAL(18, 4) NOT NULL,
+  stowage_bay VARCHAR(255) NOT NULL,
+  stowage_row VARCHAR(255) NOT NULL,
+  stowage_tier VARCHAR(255) NOT NULL,
+  discharge_sequence INTEGER NOT NULL,
+  reefer_plug_required BOOLEAN NOT NULL,
+  reefer_setpoint_c DECIMAL(18, 4) NOT NULL,
+  dangerous_goods_class VARCHAR(255) NOT NULL,
+  imdg_segregation_group VARCHAR(255) NOT NULL,
+  out_of_gauge BOOLEAN NOT NULL,
+  cut_off_state VARCHAR(255) NOT NULL,
+  bill_of_lading_state VARCHAR(255) NOT NULL,
+  freight_term VARCHAR(255) NOT NULL,
+  allocation_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (voyage_id) REFERENCES maritime_shipping_operations_voyage(voyage_id)
+);
+
+CREATE TABLE maritime_shipping_operations_charter_party (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  charter_party_id VARCHAR(255) NOT NULL,
+  vessel_id VARCHAR(255) NOT NULL,
+  charter_type VARCHAR(255) NOT NULL,
+  charterer_party VARCHAR(255) NOT NULL,
+  owner_party VARCHAR(255) NOT NULL,
+  laycan_start TIMESTAMP,
+  laycan_end TIMESTAMP,
+  loading_rate DECIMAL(18, 4) NOT NULL,
+  discharge_rate DECIMAL(18, 4) NOT NULL,
+  demurrage_rate DECIMAL(18, 4) NOT NULL,
+  despatch_rate DECIMAL(18, 4) NOT NULL,
+  off_hire_trigger VARCHAR(255) NOT NULL,
+  bunker_quality_obligation VARCHAR(255) NOT NULL,
+  speed_warranty_knots DECIMAL(18, 4) NOT NULL,
+  consumption_warranty_mt DECIMAL(18, 4) NOT NULL,
+  notice_requirement_hours INTEGER NOT NULL,
+  clause_version VARCHAR(255) NOT NULL,
+  clause_library_reference TEXT NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (vessel_id) REFERENCES maritime_shipping_operations_vessel(vessel_id)
+);
+
+CREATE TABLE maritime_shipping_operations_port_call (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  port_call_id VARCHAR(255) NOT NULL,
+  voyage_id VARCHAR(255) NOT NULL,
+  port_code VARCHAR(255) NOT NULL,
+  terminal_code VARCHAR(255) NOT NULL,
+  berth_window_start TIMESTAMP,
+  berth_window_end TIMESTAMP,
+  pilot_ordered_at TIMESTAMP,
+  pilot_boarded_at TIMESTAMP,
+  tug_arrangement VARCHAR(255) NOT NULL,
+  gang_requested_count INTEGER NOT NULL,
+  gang_confirmed_count INTEGER NOT NULL,
+  crane_intensity DECIMAL(18, 4) NOT NULL,
+  nor_tendered_at TIMESTAMP,
+  all_fast_at TIMESTAMP,
+  cargo_ops_start_at TIMESTAMP,
+  cargo_ops_end_at TIMESTAMP,
+  weather_interruption_hours DECIMAL(18, 4) NOT NULL,
+  shifting_count INTEGER NOT NULL,
+  laytime_used_hours DECIMAL(18, 4) NOT NULL,
+  laytime_remaining_hours DECIMAL(18, 4) NOT NULL,
+  demurrage_exposure_amount DECIMAL(18, 4) NOT NULL,
+  statement_of_facts_state VARCHAR(255) NOT NULL,
+  port_restriction_state VARCHAR(255) NOT NULL,
+  omission_reason VARCHAR(255) NOT NULL,
+  berth_rollover_reason VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (voyage_id) REFERENCES maritime_shipping_operations_voyage(voyage_id)
+);
+
+CREATE TABLE maritime_shipping_operations_demurrage_claim (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  demurrage_claim_id VARCHAR(255) NOT NULL,
+  voyage_id VARCHAR(255) NOT NULL,
+  port_call_id VARCHAR(255) NOT NULL,
+  claim_type VARCHAR(255) NOT NULL,
+  responsible_party VARCHAR(255) NOT NULL,
+  claim_amount DECIMAL(18, 4) NOT NULL,
+  invoiced_amount DECIMAL(18, 4) NOT NULL,
+  contested_amount DECIMAL(18, 4) NOT NULL,
+  collected_amount DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  dispute_state VARCHAR(255) NOT NULL,
+  dossier_state VARCHAR(255) NOT NULL,
+  laytime_reference TEXT NOT NULL,
+  supporting_evidence TEXT NOT NULL,
+  filed_at TIMESTAMP,
+  settled_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (voyage_id) REFERENCES maritime_shipping_operations_voyage(voyage_id),
+  FOREIGN KEY (port_call_id) REFERENCES maritime_shipping_operations_port_call(port_call_id)
+);
+
+CREATE TABLE maritime_shipping_operations_bunker_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  bunker_event_id VARCHAR(255) NOT NULL,
+  voyage_id VARCHAR(255) NOT NULL,
+  port_code VARCHAR(255) NOT NULL,
+  supplier_party VARCHAR(255) NOT NULL,
+  bunker_grade VARCHAR(255) NOT NULL,
+  quantity_mt DECIMAL(18, 4) NOT NULL,
+  density_kg_m3 DECIMAL(18, 4) NOT NULL,
+  sulfur_pct DECIMAL(18, 4) NOT NULL,
+  price_basis_amount DECIMAL(18, 4) NOT NULL,
+  barge_window_start TIMESTAMP,
+  barge_window_end TIMESTAMP,
+  rob_at_departure_mt DECIMAL(18, 4) NOT NULL,
+  rob_at_arrival_mt DECIMAL(18, 4) NOT NULL,
+  consumption_mt DECIMAL(18, 4) NOT NULL,
+  speed_consumption_deviation_pct DECIMAL(18, 4) NOT NULL,
+  carbon_emission_tonnes DECIMAL(18, 4) NOT NULL,
+  eca_fuel_switch BOOLEAN NOT NULL,
+  variance_reason VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (voyage_id) REFERENCES maritime_shipping_operations_voyage(voyage_id)
+);
+
+CREATE TABLE maritime_shipping_operations_maritime_shipping_operations_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  policy_rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  rule_scope VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  approval_source VARCHAR(255) NOT NULL,
+  operational_impact_summary TEXT NOT NULL,
+  compiled_hash VARCHAR(255) NOT NULL,
+  source_span TEXT NOT NULL,
+  prior_version_reference VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE maritime_shipping_operations_maritime_shipping_operations_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  runtime_parameter_id VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value DECIMAL(18, 4) NOT NULL,
+  parameter_scope VARCHAR(255) NOT NULL,
+  lower_bound DECIMAL(18, 4) NOT NULL,
+  upper_bound DECIMAL(18, 4) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  tenant_override BOOLEAN NOT NULL,
+  approval_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  effective_from TIMESTAMP,
+  rollback_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE maritime_shipping_operations_maritime_shipping_operations_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  schema_extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  ui_placement VARCHAR(255) NOT NULL,
+  compatibility_state VARCHAR(255) NOT NULL,
+  backfill_plan TEXT NOT NULL,
+  backfill_state VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP,
+  activated_at TIMESTAMP,
+  deprecated_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE maritime_shipping_operations_maritime_shipping_operations_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  control_assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  control_scope VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  segregation_violation BOOLEAN NOT NULL,
+  affected_record_reference VARCHAR(255) NOT NULL,
+  failing_evidence TEXT NOT NULL,
+  remediation_task TEXT NOT NULL,
+  evaluated_at TIMESTAMP,
+  evaluated_by VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE maritime_shipping_operations_maritime_shipping_operations_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  governed_model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  model_purpose VARCHAR(255) NOT NULL,
+  feature_inputs TEXT NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  retirement_policy TEXT NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE maritime_shipping_operations_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE maritime_shipping_operations_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE maritime_shipping_operations_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

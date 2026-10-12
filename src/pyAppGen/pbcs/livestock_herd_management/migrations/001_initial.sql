@@ -1,15 +1,342 @@
-CREATE TABLE livestock_herd_management_animal (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE livestock_herd_management_herd_group (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE livestock_herd_management_health_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE livestock_herd_management_breeding_record (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE livestock_herd_management_feed_ration (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE livestock_herd_management_movement_permit (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE livestock_herd_management_treatment (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE livestock_herd_management_livestock_herd_management_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE livestock_herd_management_livestock_herd_management_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE livestock_herd_management_livestock_herd_management_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE livestock_herd_management_livestock_herd_management_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE livestock_herd_management_livestock_herd_management_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE livestock_herd_management_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE livestock_herd_management_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE livestock_herd_management_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS livestock_herd_management;
+
+CREATE TABLE livestock_herd_management_animal (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  animal_id VARCHAR(255) NOT NULL,
+  primary_identifier VARCHAR(255) NOT NULL,
+  identifier_type VARCHAR(255) NOT NULL,
+  alternate_identifiers TEXT NOT NULL,
+  tag_issued_at TIMESTAMP,
+  tag_retired_at TIMESTAMP,
+  duplicate_identifier_flag BOOLEAN NOT NULL,
+  species_code VARCHAR(255) NOT NULL,
+  breed_code VARCHAR(255) NOT NULL,
+  production_type VARCHAR(255) NOT NULL,
+  sex VARCHAR(255) NOT NULL,
+  birth_date TIMESTAMP,
+  source_provenance VARCHAR(255) NOT NULL,
+  dam_id VARCHAR(255) NOT NULL,
+  sire_id VARCHAR(255) NOT NULL,
+  acquisition_reference VARCHAR(255) NOT NULL,
+  origin_premises_code VARCHAR(255) NOT NULL,
+  arrival_condition VARCHAR(255) NOT NULL,
+  quarantine_required_flag BOOLEAN NOT NULL,
+  lifecycle_state VARCHAR(255) NOT NULL,
+  herd_group_id VARCHAR(255) NOT NULL,
+  location_code VARCHAR(255) NOT NULL,
+  weight_kg DECIMAL(18, 4) NOT NULL,
+  body_condition_score DECIMAL(18, 4) NOT NULL,
+  withdrawal_until TIMESTAMP,
+  deceased_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE livestock_herd_management_herd_group (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  herd_group_id VARCHAR(255) NOT NULL,
+  group_name VARCHAR(255) NOT NULL,
+  group_purpose VARCHAR(255) NOT NULL,
+  species_code VARCHAR(255) NOT NULL,
+  production_type VARCHAR(255) NOT NULL,
+  location_code VARCHAR(255) NOT NULL,
+  membership_start_at TIMESTAMP,
+  membership_end_at TIMESTAMP,
+  entry_reason VARCHAR(255) NOT NULL,
+  exit_reason VARCHAR(255) NOT NULL,
+  stocking_density DECIMAL(18, 4) NOT NULL,
+  animal_unit_count INTEGER NOT NULL,
+  responsible_handler VARCHAR(255) NOT NULL,
+  overlap_flag BOOLEAN NOT NULL,
+  membership_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE livestock_herd_management_health_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  health_event_id VARCHAR(255) NOT NULL,
+  animal_id VARCHAR(255) NOT NULL,
+  herd_group_id VARCHAR(255) NOT NULL,
+  observed_at TIMESTAMP,
+  symptom_code VARCHAR(255) NOT NULL,
+  diagnosis_code VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  body_system VARCHAR(255) NOT NULL,
+  infectious_risk VARCHAR(255) NOT NULL,
+  observation_method VARCHAR(255) NOT NULL,
+  veterinarian_involved BOOLEAN NOT NULL,
+  reportable_flag BOOLEAN NOT NULL,
+  outbreak_case_reference VARCHAR(255) NOT NULL,
+  clinical_note TEXT NOT NULL,
+  resolution_state VARCHAR(255) NOT NULL,
+  resolved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (animal_id) REFERENCES livestock_herd_management_animal(animal_id)
+);
+
+CREATE TABLE livestock_herd_management_breeding_record (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  breeding_record_id VARCHAR(255) NOT NULL,
+  dam_id VARCHAR(255) NOT NULL,
+  sire_id VARCHAR(255) NOT NULL,
+  breeding_objective VARCHAR(255) NOT NULL,
+  service_method VARCHAR(255) NOT NULL,
+  service_at TIMESTAMP,
+  technician VARCHAR(255) NOT NULL,
+  semen_batch_reference VARCHAR(255) NOT NULL,
+  heat_detection_evidence TEXT NOT NULL,
+  synchronisation_protocol VARCHAR(255) NOT NULL,
+  repeat_service_flag BOOLEAN NOT NULL,
+  eligibility_state VARCHAR(255) NOT NULL,
+  failed_eligibility_rule VARCHAR(255) NOT NULL,
+  rule_version VARCHAR(255) NOT NULL,
+  pregnancy_result VARCHAR(255) NOT NULL,
+  pregnancy_checked_at TIMESTAMP,
+  expected_due_date TIMESTAMP,
+  parturition_at TIMESTAMP,
+  offspring_count INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (dam_id) REFERENCES livestock_herd_management_animal(animal_id)
+);
+
+CREATE TABLE livestock_herd_management_feed_ration (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  feed_ration_id VARCHAR(255) NOT NULL,
+  herd_group_id VARCHAR(255) NOT NULL,
+  ration_name VARCHAR(255) NOT NULL,
+  ingredient_summary TEXT NOT NULL,
+  dry_matter_pct DECIMAL(18, 4) NOT NULL,
+  energy_content DECIMAL(18, 4) NOT NULL,
+  protein_pct DECIMAL(18, 4) NOT NULL,
+  mineral_balance DECIMAL(18, 4) NOT NULL,
+  unit_cost DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  planned_quantity DECIMAL(18, 4) NOT NULL,
+  delivered_quantity DECIMAL(18, 4) NOT NULL,
+  refusal_quantity DECIMAL(18, 4) NOT NULL,
+  intake_variance DECIMAL(18, 4) NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  formulation_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (herd_group_id) REFERENCES livestock_herd_management_herd_group(herd_group_id)
+);
+
+CREATE TABLE livestock_herd_management_movement_permit (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  movement_permit_id VARCHAR(255) NOT NULL,
+  animal_id VARCHAR(255) NOT NULL,
+  permit_reference VARCHAR(255) NOT NULL,
+  origin_premises_code VARCHAR(255) NOT NULL,
+  destination_premises_code VARCHAR(255) NOT NULL,
+  transport_party VARCHAR(255) NOT NULL,
+  transport_document_reference VARCHAR(255) NOT NULL,
+  certificate_reference VARCHAR(255) NOT NULL,
+  inspection_state VARCHAR(255) NOT NULL,
+  route_description TEXT NOT NULL,
+  departure_at TIMESTAMP,
+  arrival_at TIMESTAMP,
+  arrival_confirmed BOOLEAN NOT NULL,
+  permit_state VARCHAR(255) NOT NULL,
+  block_reason TEXT NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (animal_id) REFERENCES livestock_herd_management_animal(animal_id)
+);
+
+CREATE TABLE livestock_herd_management_treatment (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  treatment_id VARCHAR(255) NOT NULL,
+  animal_id VARCHAR(255) NOT NULL,
+  health_event_id VARCHAR(255) NOT NULL,
+  medication_name VARCHAR(255) NOT NULL,
+  drug_class VARCHAR(255) NOT NULL,
+  dose DECIMAL(18, 4) NOT NULL,
+  dose_unit VARCHAR(255) NOT NULL,
+  administration_route VARCHAR(255) NOT NULL,
+  frequency VARCHAR(255) NOT NULL,
+  administered_at TIMESTAMP,
+  administrator VARCHAR(255) NOT NULL,
+  prescribing_party VARCHAR(255) NOT NULL,
+  prescription_reference VARCHAR(255) NOT NULL,
+  product_lot VARCHAR(255) NOT NULL,
+  treatment_reason TEXT NOT NULL,
+  restricted_treatment_flag BOOLEAN NOT NULL,
+  adverse_reaction TEXT NOT NULL,
+  response_state VARCHAR(255) NOT NULL,
+  withdrawal_until TIMESTAMP,
+  completion_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (animal_id) REFERENCES livestock_herd_management_animal(animal_id)
+);
+
+CREATE TABLE livestock_herd_management_livestock_herd_management_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  policy_rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  rule_scope VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  approver_role VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  source_span TEXT NOT NULL,
+  prior_version_reference VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE livestock_herd_management_livestock_herd_management_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  runtime_parameter_id VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value DECIMAL(18, 4) NOT NULL,
+  parameter_scope VARCHAR(255) NOT NULL,
+  lower_bound DECIMAL(18, 4) NOT NULL,
+  upper_bound DECIMAL(18, 4) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  tenant_override BOOLEAN NOT NULL,
+  approval_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  effective_from TIMESTAMP,
+  rollback_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE livestock_herd_management_livestock_herd_management_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  schema_extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  ui_placement VARCHAR(255) NOT NULL,
+  compatibility_state VARCHAR(255) NOT NULL,
+  backfill_plan TEXT NOT NULL,
+  backfill_state VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP,
+  activated_at TIMESTAMP,
+  deprecated_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE livestock_herd_management_livestock_herd_management_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  control_assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  control_scope VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  segregation_violation BOOLEAN NOT NULL,
+  affected_record_reference VARCHAR(255) NOT NULL,
+  failing_evidence TEXT NOT NULL,
+  remediation_task TEXT NOT NULL,
+  evaluated_at TIMESTAMP,
+  evaluated_by VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE livestock_herd_management_livestock_herd_management_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  governed_model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  authority_role VARCHAR(255) NOT NULL,
+  certification_state VARCHAR(255) NOT NULL,
+  certification_expires_at TIMESTAMP,
+  jurisdiction_code VARCHAR(255) NOT NULL,
+  allowed_actions TEXT NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  proof_chain_hash VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE livestock_herd_management_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE livestock_herd_management_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE livestock_herd_management_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

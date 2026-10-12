@@ -1,15 +1,324 @@
-CREATE TABLE lending_origination_servicing_loan_application (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lending_origination_servicing_borrower_profile (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lending_origination_servicing_underwriting_decision (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lending_origination_servicing_loan_offer (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lending_origination_servicing_disbursement (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lending_origination_servicing_repayment_schedule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lending_origination_servicing_servicing_case (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lending_origination_servicing_lending_origination_servicing_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lending_origination_servicing_lending_origination_servicing_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lending_origination_servicing_lending_origination_servicing_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lending_origination_servicing_lending_origination_servicing_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lending_origination_servicing_lending_origination_servicing_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lending_origination_servicing_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lending_origination_servicing_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lending_origination_servicing_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS lending_origination_servicing;
+
+CREATE TABLE lending_origination_servicing_loan_application (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  loan_application_id VARCHAR(255) NOT NULL,
+  application_number VARCHAR(255) NOT NULL,
+  product_code VARCHAR(255) NOT NULL,
+  application_purpose VARCHAR(255) NOT NULL,
+  channel_code VARCHAR(255) NOT NULL,
+  requested_amount DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  requested_term_months INTEGER NOT NULL,
+  borrower_role VARCHAR(255) NOT NULL,
+  occupancy_type VARCHAR(255) NOT NULL,
+  consent_received BOOLEAN NOT NULL,
+  identity_verification_state VARCHAR(255) NOT NULL,
+  fraud_review_state VARCHAR(255) NOT NULL,
+  stipulation_state VARCHAR(255) NOT NULL,
+  decision_readiness_state VARCHAR(255) NOT NULL,
+  risk_score DECIMAL(18, 4) NOT NULL,
+  submitted_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE lending_origination_servicing_borrower_profile (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  borrower_profile_id VARCHAR(255) NOT NULL,
+  loan_application_id VARCHAR(255) NOT NULL,
+  party_role VARCHAR(255) NOT NULL,
+  legal_name VARCHAR(255) NOT NULL,
+  tax_identifier VARCHAR(255) NOT NULL,
+  date_of_birth TIMESTAMP,
+  borrower_type VARCHAR(255) NOT NULL,
+  employment_type VARCHAR(255) NOT NULL,
+  declared_income_amount DECIMAL(18, 4) NOT NULL,
+  verified_income_amount DECIMAL(18, 4) NOT NULL,
+  stable_income_amount DECIMAL(18, 4) NOT NULL,
+  income_variance_flag BOOLEAN NOT NULL,
+  verification_state VARCHAR(255) NOT NULL,
+  kyc_state VARCHAR(255) NOT NULL,
+  watchlist_hit BOOLEAN NOT NULL,
+  duplicate_identity_flag BOOLEAN NOT NULL,
+  credit_score INTEGER NOT NULL,
+  bureau_pull_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (loan_application_id) REFERENCES lending_origination_servicing_loan_application(loan_application_id)
+);
+
+CREATE TABLE lending_origination_servicing_underwriting_decision (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  underwriting_decision_id VARCHAR(255) NOT NULL,
+  loan_application_id VARCHAR(255) NOT NULL,
+  decision_outcome VARCHAR(255) NOT NULL,
+  decision_reason_code VARCHAR(255) NOT NULL,
+  policy_version VARCHAR(255) NOT NULL,
+  rule_bundle_hash VARCHAR(255) NOT NULL,
+  debt_to_income_ratio DECIMAL(18, 4) NOT NULL,
+  debt_service_coverage_ratio DECIMAL(18, 4) NOT NULL,
+  residual_income_amount DECIMAL(18, 4) NOT NULL,
+  affordability_state VARCHAR(255) NOT NULL,
+  credit_score_used INTEGER NOT NULL,
+  bureau_snapshot_reference VARCHAR(255) NOT NULL,
+  collateral_value_amount DECIMAL(18, 4) NOT NULL,
+  lien_position INTEGER NOT NULL,
+  override_flag BOOLEAN NOT NULL,
+  second_review_required BOOLEAN NOT NULL,
+  explanation_bundle TEXT NOT NULL,
+  adverse_action_reasons TEXT NOT NULL,
+  decided_by VARCHAR(255) NOT NULL,
+  decided_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (loan_application_id) REFERENCES lending_origination_servicing_loan_application(loan_application_id)
+);
+
+CREATE TABLE lending_origination_servicing_loan_offer (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  loan_offer_id VARCHAR(255) NOT NULL,
+  loan_application_id VARCHAR(255) NOT NULL,
+  underwriting_decision_id VARCHAR(255) NOT NULL,
+  approved_amount DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  interest_rate DECIMAL(18, 4) NOT NULL,
+  rate_basis VARCHAR(255) NOT NULL,
+  term_months INTEGER NOT NULL,
+  amortization_method VARCHAR(255) NOT NULL,
+  payment_frequency VARCHAR(255) NOT NULL,
+  origination_fee_amount DECIMAL(18, 4) NOT NULL,
+  pricing_exception_flag BOOLEAN NOT NULL,
+  lock_expires_at TIMESTAMP,
+  conditions_precedent TEXT NOT NULL,
+  permitted_variance DECIMAL(18, 4) NOT NULL,
+  accepted_by VARCHAR(255) NOT NULL,
+  accepted_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (loan_application_id) REFERENCES lending_origination_servicing_loan_application(loan_application_id),
+  FOREIGN KEY (underwriting_decision_id) REFERENCES lending_origination_servicing_underwriting_decision(underwriting_decision_id)
+);
+
+CREATE TABLE lending_origination_servicing_disbursement (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  disbursement_id VARCHAR(255) NOT NULL,
+  loan_offer_id VARCHAR(255) NOT NULL,
+  funding_readiness_state VARCHAR(255) NOT NULL,
+  gross_funded_amount DECIMAL(18, 4) NOT NULL,
+  net_borrower_proceeds DECIMAL(18, 4) NOT NULL,
+  payoff_to_prior_lender_amount DECIMAL(18, 4) NOT NULL,
+  reserve_hold_amount DECIMAL(18, 4) NOT NULL,
+  fee_deduction_amount DECIMAL(18, 4) NOT NULL,
+  settlement_account_reference VARCHAR(255) NOT NULL,
+  settlement_acknowledged BOOLEAN NOT NULL,
+  reconciliation_state VARCHAR(255) NOT NULL,
+  disbursed_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (loan_offer_id) REFERENCES lending_origination_servicing_loan_offer(loan_offer_id)
+);
+
+CREATE TABLE lending_origination_servicing_repayment_schedule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  repayment_schedule_id VARCHAR(255) NOT NULL,
+  loan_offer_id VARCHAR(255) NOT NULL,
+  amortization_method VARCHAR(255) NOT NULL,
+  interest_basis VARCHAR(255) NOT NULL,
+  accrual_start_rule VARCHAR(255) NOT NULL,
+  day_count_convention VARCHAR(255) NOT NULL,
+  installment_amount DECIMAL(18, 4) NOT NULL,
+  installment_count INTEGER NOT NULL,
+  first_payment_date TIMESTAMP,
+  maturity_date TIMESTAMP,
+  balloon_balance_amount DECIMAL(18, 4) NOT NULL,
+  escrow_requirement_amount DECIMAL(18, 4) NOT NULL,
+  late_charge_basis VARCHAR(255) NOT NULL,
+  grace_period_days INTEGER NOT NULL,
+  schedule_version INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (loan_offer_id) REFERENCES lending_origination_servicing_loan_offer(loan_offer_id)
+);
+
+CREATE TABLE lending_origination_servicing_servicing_case (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  servicing_case_id VARCHAR(255) NOT NULL,
+  loan_offer_id VARCHAR(255) NOT NULL,
+  case_type VARCHAR(255) NOT NULL,
+  case_severity VARCHAR(255) NOT NULL,
+  delinquency_bucket VARCHAR(255) NOT NULL,
+  days_past_due INTEGER NOT NULL,
+  promise_to_pay_amount DECIMAL(18, 4) NOT NULL,
+  promise_due_date TIMESTAMP,
+  commitment_outcome VARCHAR(255) NOT NULL,
+  contact_channel VARCHAR(255) NOT NULL,
+  contact_attempt_count INTEGER NOT NULL,
+  hardship_cause VARCHAR(255) NOT NULL,
+  modification_state VARCHAR(255) NOT NULL,
+  charge_off_trigger_date TIMESTAMP,
+  legal_hold_flag BOOLEAN NOT NULL,
+  complaint_due_date TIMESTAMP,
+  assigned_owner VARCHAR(255) NOT NULL,
+  resolution_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (loan_offer_id) REFERENCES lending_origination_servicing_loan_offer(loan_offer_id)
+);
+
+CREATE TABLE lending_origination_servicing_lending_origination_servicing_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  rule_scope VARCHAR(255) NOT NULL,
+  risk_tier VARCHAR(255) NOT NULL,
+  target_product_code VARCHAR(255) NOT NULL,
+  override_authority VARCHAR(255) NOT NULL,
+  supersedes_rule_id VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE lending_origination_servicing_lending_origination_servicing_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_id VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  parameter_scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  product_code VARCHAR(255) NOT NULL,
+  tenant_scope VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE lending_origination_servicing_lending_origination_servicing_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  compatibility_rule VARCHAR(255) NOT NULL,
+  migration_note TEXT NOT NULL,
+  registered_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE lending_origination_servicing_lending_origination_servicing_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  control_family VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  rule_reference VARCHAR(255) NOT NULL,
+  date_range_start TIMESTAMP,
+  date_range_end TIMESTAMP,
+  sealed_proof_hash VARCHAR(255) NOT NULL,
+  remediation_task VARCHAR(255) NOT NULL,
+  evaluated_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE lending_origination_servicing_lending_origination_servicing_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  model_purpose VARCHAR(255) NOT NULL,
+  feature_inputs TEXT NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  fair_lending_review_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  retirement_policy VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE lending_origination_servicing_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE lending_origination_servicing_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE lending_origination_servicing_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

@@ -1,15 +1,333 @@
-CREATE TABLE lease_lending_equipment_finance_equipment_lease (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lease_lending_equipment_finance_leased_asset (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lease_lending_equipment_finance_payment_schedule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lease_lending_equipment_finance_residual_value (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lease_lending_equipment_finance_buyout_quote (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lease_lending_equipment_finance_repo_case (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lease_lending_equipment_finance_lease_servicing_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lease_lending_equipment_finance_lease_lending_equipment_finance_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lease_lending_equipment_finance_lease_lending_equipment_finance_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lease_lending_equipment_finance_lease_lending_equipment_finance_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lease_lending_equipment_finance_lease_lending_equipment_finance_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lease_lending_equipment_finance_lease_lending_equipment_finance_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lease_lending_equipment_finance_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lease_lending_equipment_finance_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE lease_lending_equipment_finance_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS lease_lending_equipment_finance;
+
+CREATE TABLE lease_lending_equipment_finance_equipment_lease (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  equipment_lease_id VARCHAR(255) NOT NULL,
+  lease_number VARCHAR(255) NOT NULL,
+  contract_family VARCHAR(255) NOT NULL,
+  booking_basis VARCHAR(255) NOT NULL,
+  purchase_option_type VARCHAR(255),
+  title_transfer_path VARCHAR(255),
+  residual_bearing BOOLEAN NOT NULL,
+  usage_billing BOOLEAN NOT NULL,
+  servicing_playbook VARCHAR(255),
+  prebook_status VARCHAR(255) NOT NULL,
+  opportunity_source VARCHAR(255),
+  obligor_party_reference VARCHAR(255) NOT NULL,
+  guarantor_party_reference VARCHAR(255),
+  master_agreement_reference VARCHAR(255),
+  contract_classification VARCHAR(255),
+  tax_owner VARCHAR(255),
+  property_tax_billing_method VARCHAR(255),
+  depreciation_beneficiary VARCHAR(255),
+  revenue_treatment VARCHAR(255),
+  commencement_trigger VARCHAR(255),
+  commencement_date TIMESTAMP,
+  maturity_date TIMESTAMP,
+  currency VARCHAR(255) NOT NULL,
+  financed_amount DECIMAL(18, 4) NOT NULL,
+  term_months INTEGER NOT NULL,
+  residual_amount DECIMAL(18, 4),
+  advance_rate_pct DECIMAL(18, 4),
+  implicit_rate_pct DECIMAL(18, 4),
+  money_factor DECIMAL(18, 4),
+  payment_timing VARCHAR(255),
+  day_count_convention VARCHAR(255),
+  funding_source VARCHAR(255),
+  syndication_channel VARCHAR(255),
+  syndicated_share_pct DECIMAL(18, 4),
+  reserve_balance DECIMAL(18, 4),
+  usage_allowance DECIMAL(18, 4),
+  overage_rate DECIMAL(18, 4),
+  meter_source VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE lease_lending_equipment_finance_leased_asset (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  leased_asset_id VARCHAR(255) NOT NULL,
+  equipment_lease_id VARCHAR(255) NOT NULL,
+  manufacturer VARCHAR(255) NOT NULL,
+  model VARCHAR(255) NOT NULL,
+  serial_number VARCHAR(255) NOT NULL,
+  asset_class VARCHAR(255) NOT NULL,
+  identity_type VARCHAR(255),
+  mobility_status VARCHAR(255),
+  location_reference VARCHAR(255),
+  installation_date TIMESTAMP,
+  in_service_date TIMESTAMP,
+  title_identifier VARCHAR(255),
+  registration_identifier VARCHAR(255),
+  substitution_lineage VARCHAR(255),
+  parent_asset_id VARCHAR(255),
+  condition_score DECIMAL(18, 4),
+  title_status VARCHAR(255),
+  is_insured BOOLEAN NOT NULL,
+  insurance_expires_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (equipment_lease_id) REFERENCES lease_lending_equipment_finance_equipment_lease(equipment_lease_id)
+);
+
+CREATE TABLE lease_lending_equipment_finance_payment_schedule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  payment_schedule_id VARCHAR(255) NOT NULL,
+  equipment_lease_id VARCHAR(255) NOT NULL,
+  schedule_version INTEGER NOT NULL,
+  payment_timing VARCHAR(255) NOT NULL,
+  day_count_convention VARCHAR(255) NOT NULL,
+  first_period_days INTEGER,
+  installment_count INTEGER NOT NULL,
+  installment_amount DECIMAL(18, 4) NOT NULL,
+  balloon_amount DECIMAL(18, 4),
+  step_payment_flag BOOLEAN NOT NULL,
+  seasonal_skip_flag BOOLEAN NOT NULL,
+  grace_period_days INTEGER,
+  late_fee_rate DECIMAL(18, 4),
+  late_fee_cap DECIMAL(18, 4),
+  default_interest_rate DECIMAL(18, 4),
+  cure_period_days INTEGER,
+  generated_from_acceptance BOOLEAN NOT NULL,
+  schedule_start_date TIMESTAMP,
+  schedule_end_date TIMESTAMP,
+  correction_lineage VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (equipment_lease_id) REFERENCES lease_lending_equipment_finance_equipment_lease(equipment_lease_id)
+);
+
+CREATE TABLE lease_lending_equipment_finance_residual_value (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  residual_value_id VARCHAR(255) NOT NULL,
+  equipment_lease_id VARCHAR(255) NOT NULL,
+  leased_asset_id VARCHAR(255),
+  residual_curve_version VARCHAR(255) NOT NULL,
+  booked_residual DECIMAL(18, 4) NOT NULL,
+  current_estimated_residual DECIMAL(18, 4),
+  stressed_residual DECIMAL(18, 4),
+  appraisal_source VARCHAR(255),
+  market_comp_reference VARCHAR(255),
+  review_cadence_months INTEGER,
+  review_due_at TIMESTAMP,
+  downgrade_trigger VARCHAR(255),
+  realized_proceeds DECIMAL(18, 4),
+  selling_cost DECIMAL(18, 4),
+  condition_score DECIMAL(18, 4),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (equipment_lease_id) REFERENCES lease_lending_equipment_finance_equipment_lease(equipment_lease_id)
+);
+
+CREATE TABLE lease_lending_equipment_finance_buyout_quote (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  buyout_quote_id VARCHAR(255) NOT NULL,
+  equipment_lease_id VARCHAR(255) NOT NULL,
+  quote_type VARCHAR(255) NOT NULL,
+  effective_date TIMESTAMP NOT NULL,
+  expires_at TIMESTAMP,
+  principal_component DECIMAL(18, 4) NOT NULL,
+  accrued_rent_component DECIMAL(18, 4),
+  fee_component DECIMAL(18, 4),
+  tax_component DECIMAL(18, 4),
+  reserve_adjustment DECIMAL(18, 4),
+  title_charge DECIMAL(18, 4),
+  total_payoff_amount DECIMAL(18, 4) NOT NULL,
+  policy_version VARCHAR(255),
+  assumption_notes TEXT,
+  is_expired BOOLEAN NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (equipment_lease_id) REFERENCES lease_lending_equipment_finance_equipment_lease(equipment_lease_id)
+);
+
+CREATE TABLE lease_lending_equipment_finance_repo_case (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  repo_case_id VARCHAR(255) NOT NULL,
+  equipment_lease_id VARCHAR(255) NOT NULL,
+  leased_asset_id VARCHAR(255),
+  case_stage VARCHAR(255) NOT NULL,
+  notice_generated_at TIMESTAMP,
+  notice_deadline TIMESTAMP,
+  vendor_reference VARCHAR(255),
+  legal_hold_flag BOOLEAN NOT NULL,
+  bankruptcy_hold_flag BOOLEAN NOT NULL,
+  cure_period_days INTEGER,
+  cure_deadline TIMESTAMP,
+  voluntary_surrender_flag BOOLEAN NOT NULL,
+  asset_location_reference VARCHAR(255),
+  condition_grade VARCHAR(255),
+  chain_of_custody_reference VARCHAR(255),
+  gross_proceeds DECIMAL(18, 4),
+  storage_cost DECIMAL(18, 4),
+  transport_cost DECIMAL(18, 4),
+  net_proceeds DECIMAL(18, 4),
+  deficiency_amount DECIMAL(18, 4),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (equipment_lease_id) REFERENCES lease_lending_equipment_finance_equipment_lease(equipment_lease_id)
+);
+
+CREATE TABLE lease_lending_equipment_finance_lease_servicing_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  lease_servicing_event_id VARCHAR(255) NOT NULL,
+  equipment_lease_id VARCHAR(255) NOT NULL,
+  event_category VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  actor_reference VARCHAR(255),
+  policy_version VARCHAR(255),
+  sequence_number INTEGER NOT NULL,
+  before_economic_summary TEXT,
+  after_economic_summary TEXT,
+  recorded_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (equipment_lease_id) REFERENCES lease_lending_equipment_finance_equipment_lease(equipment_lease_id)
+);
+
+CREATE TABLE lease_lending_equipment_finance_lease_lending_equipment_finance_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  example_text TEXT,
+  approver_role VARCHAR(255),
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE lease_lending_equipment_finance_lease_lending_equipment_finance_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  effective_from TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE lease_lending_equipment_finance_lease_lending_equipment_finance_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE lease_lending_equipment_finance_lease_lending_equipment_finance_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  population_count INTEGER NOT NULL,
+  threshold_value DECIMAL(18, 4),
+  failing_record_count INTEGER NOT NULL,
+  owner_role VARCHAR(255),
+  remediation_task TEXT,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255),
+  is_recurrence BOOLEAN NOT NULL,
+  closure_evidence TEXT,
+  evaluated_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE lease_lending_equipment_finance_lease_lending_equipment_finance_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  feature_set TEXT,
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE lease_lending_equipment_finance_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE lease_lending_equipment_finance_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE lease_lending_equipment_finance_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
