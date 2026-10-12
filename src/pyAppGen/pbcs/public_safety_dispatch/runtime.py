@@ -130,25 +130,42 @@ def public_safety_dispatch_run_advanced_assessment(state, payload=None):
 def public_safety_dispatch_parse_document_instruction(document, instruction):
     return {'ok': True, 'candidate_tables': PUBLIC_SAFETY_DISPATCH_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+PUBLIC_SAFETY_DISPATCH_TABLE_FIELDS = {
+    'public_safety_dispatch_emergency_call': ('id', 'tenant', 'emergency_call_id', 'call_received_at', 'call_source', 'ani', 'ali', 'callback_number', 'callback_validated', 'callback_attempts', 'callback_failure_reason', 'preferred_language', 'interpreter_required', 'tty_tdd_flag', 'text_session', 'abandoned', 'wireless_phase', 'chief_complaint_code', 'discipline', 'protocol_family', 'determinant_code', 'subdeterminant_code', 'caller_reported_hazards', 'primary_geocode', 'fallback_geocode', 'location_confidence', 'premise_type', 'address_validation_status', 'status', 'version', 'created_at', 'updated_at'),
+    'public_safety_dispatch_response_unit': ('id', 'tenant', 'response_unit_id', 'unit_designator', 'agency_identifier', 'discipline', 'unit_type', 'cad_status', 'cad_status_changed_at', 'staffing_count', 'minimum_staffing', 'medic_level', 'apparatus_state', 'response_area', 'specialty_team', 'temporary_restriction', 'assignment_load', 'cross_staffed', 'last_known_location', 'status', 'version', 'created_at', 'updated_at'),
+    'public_safety_dispatch_incident': ('id', 'tenant', 'incident_id', 'emergency_call_id', 'incident_number', 'reported_at', 'incident_location', 'location_confidence', 'priority_code', 'priority_assigned_at', 'priority_trace', 'duplicate_of_incident_id', 'duplicate_score', 'merge_justification', 'jurisdiction_code', 'jurisdiction_override', 'override_reason', 'command_designation', 'staging_area', 'tactical_channel', 'division_structure', 'officer_safety_note', 'ems_exposure_note', 'fireground_hazard_note', 'status', 'version', 'created_at', 'updated_at'),
+    'public_safety_dispatch_dispatch_assignment': ('id', 'tenant', 'dispatch_assignment_id', 'incident_id', 'response_unit_id', 'assignment_role', 'assignment_mode', 'recommendation_rank', 'recommendation_score', 'recommendation_explanation', 'coverage_impact', 'move_up_recommended', 'conflict_state', 'staging_location', 'staging_reason', 'override_reason', 'approved_by', 'approved_at', 'assigned_at', 'status', 'version', 'created_at', 'updated_at'),
+    'public_safety_dispatch_mutual_aid': ('id', 'tenant', 'mutual_aid_id', 'incident_id', 'requesting_agency', 'responding_agency', 'requested_resource', 'aid_type', 'response_deadline_at', 'acknowledged_at', 'estimated_arrival_at', 'jurisdictional_condition', 'interoperability_plan', 'demobilized_at', 'release_reason', 'status', 'version', 'created_at', 'updated_at'),
+    'public_safety_dispatch_response_milestone': ('id', 'tenant', 'response_milestone_id', 'incident_id', 'response_unit_id', 'milestone_type', 'milestone_code', 'discipline', 'recorded_at', 'benchmark_target_seconds', 'overdue', 'protocol_step_code', 'instruction_delivered', 'caller_compliance', 'interruption_reason', 'transport_destination', 'diversion_flag', 'status', 'version', 'created_at', 'updated_at'),
+    'public_safety_dispatch_case_disposition': ('id', 'tenant', 'case_disposition_id', 'incident_id', 'disposition_code', 'disposition_discipline', 'final_classification', 'units_assigned', 'arrival_at', 'cleared_at', 'narrative_summary', 'radio_log_reference', 'unresolved_exceptions', 'handoff_completeness', 'handoff_completed_at', 'closed_by', 'status', 'version', 'created_at', 'updated_at'),
+    'public_safety_dispatch_public_safety_dispatch_policy_rule': ('id', 'tenant', 'policy_rule_id', 'policy_id', 'rule_name', 'predicate_text', 'jurisdiction_scope', 'approval_required', 'effective_from', 'effective_to', 'compiled_hash', 'status', 'version', 'created_at', 'updated_at'),
+    'public_safety_dispatch_public_safety_dispatch_runtime_parameter': ('id', 'tenant', 'runtime_parameter_id', 'parameter_name', 'parameter_value', 'scope', 'bounded', 'effective_from', 'status', 'version', 'created_at', 'updated_at'),
+    'public_safety_dispatch_public_safety_dispatch_schema_extension': ('id', 'tenant', 'schema_extension_id', 'target_table', 'field_name', 'field_type', 'registered_at', 'status', 'version', 'created_at', 'updated_at'),
+    'public_safety_dispatch_public_safety_dispatch_control_assertion': ('id', 'tenant', 'control_assertion_id', 'control_name', 'assertion_result', 'severity', 'remediation_task', 'evaluated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'public_safety_dispatch_public_safety_dispatch_governed_model': ('id', 'tenant', 'governed_model_id', 'model_name', 'model_version', 'governance_state', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'public_safety_dispatch_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'public_safety_dispatch_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'public_safety_dispatch_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_PUBLIC_SAFETY_DISPATCH_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _public_safety_dispatch_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return PUBLIC_SAFETY_DISPATCH_TABLE_FIELDS.get(table, _PUBLIC_SAFETY_DISPATCH_DEFAULT_FIELDS)
+
 def public_safety_dispatch_build_schema_contract():
-    table_contracts = (
-        {'table': 'public_safety_dispatch_emergency_call', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'public_safety_dispatch_response_unit', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'public_safety_dispatch_incident', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'public_safety_dispatch_dispatch_assignment', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'public_safety_dispatch_mutual_aid', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'public_safety_dispatch_response_milestone', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'public_safety_dispatch_case_disposition', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'public_safety_dispatch_public_safety_dispatch_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'public_safety_dispatch_public_safety_dispatch_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'public_safety_dispatch_public_safety_dispatch_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'public_safety_dispatch_public_safety_dispatch_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'public_safety_dispatch_public_safety_dispatch_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'public_safety_dispatch_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'public_safety_dispatch_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'public_safety_dispatch_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table,
+         'fields': _public_safety_dispatch_table_fields(table),
+         'primary_key': ('id',),
+         'owned_by': PBC_KEY}
+        for table in PUBLIC_SAFETY_DISPATCH_OWNED_TABLES
     )
-    return {'format': 'appgen.public-safety-dispatch-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/public_safety_dispatch/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': PUBLIC_SAFETY_DISPATCH_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': PUBLIC_SAFETY_DISPATCH_ALLOWED_DATABASE_BACKENDS, 'database_backends': PUBLIC_SAFETY_DISPATCH_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': PUBLIC_SAFETY_DISPATCH_OWNED_TABLES}
+    return {'format': 'appgen.public-safety-dispatch-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/public_safety_dispatch/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': PUBLIC_SAFETY_DISPATCH_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(PUBLIC_SAFETY_DISPATCH_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _public_safety_dispatch_table_fields(table)} for table in PUBLIC_SAFETY_DISPATCH_OWNED_TABLES), 'datastore_backends': PUBLIC_SAFETY_DISPATCH_ALLOWED_DATABASE_BACKENDS, 'database_backends': PUBLIC_SAFETY_DISPATCH_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': PUBLIC_SAFETY_DISPATCH_OWNED_TABLES}
 
 def public_safety_dispatch_build_service_contract():
     return {'format': 'appgen.public-safety-dispatch-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_emergency_call','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}

@@ -1,15 +1,360 @@
-CREATE TABLE rail_operations_management_train_plan (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE rail_operations_management_consist (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE rail_operations_management_track_window (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE rail_operations_management_yard_move (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE rail_operations_management_crew_assignment (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE rail_operations_management_rail_incident (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE rail_operations_management_service_performance (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE rail_operations_management_rail_operations_management_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE rail_operations_management_rail_operations_management_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE rail_operations_management_rail_operations_management_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE rail_operations_management_rail_operations_management_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE rail_operations_management_rail_operations_management_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE rail_operations_management_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE rail_operations_management_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE rail_operations_management_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS rail_operations_management;
+
+CREATE TABLE rail_operations_management_train_plan (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  train_plan_id VARCHAR(255) NOT NULL,
+  reporting_number VARCHAR(255) NOT NULL,
+  service_code VARCHAR(255) NOT NULL,
+  service_class VARCHAR(255) NOT NULL,
+  route_graph_reference VARCHAR(255) NOT NULL,
+  line_segment_reference VARCHAR(255) NOT NULL,
+  running_direction VARCHAR(255) NOT NULL,
+  ruling_gradient_pct DECIMAL(18, 4) NOT NULL,
+  loop_availability VARCHAR(255) NOT NULL,
+  preferred_path_reference VARCHAR(255) NOT NULL,
+  diversionary_path_reference VARCHAR(255) NOT NULL,
+  published_departure_at TIMESTAMP,
+  published_arrival_at TIMESTAMP,
+  working_departure_at TIMESTAMP,
+  working_arrival_at TIMESTAMP,
+  control_adjusted_departure_at TIMESTAMP,
+  control_adjusted_arrival_at TIMESTAMP,
+  timetable_validity_from TIMESTAMP,
+  timetable_validity_to TIMESTAMP,
+  timetable_divergence_reason VARCHAR(255) NOT NULL,
+  headway_check_state VARCHAR(255) NOT NULL,
+  junction_conflict_state VARCHAR(255) NOT NULL,
+  pathing_validation_state VARCHAR(255) NOT NULL,
+  station_call_count INTEGER NOT NULL,
+  delay_exposure_minutes DECIMAL(18, 4) NOT NULL,
+  risk_score DECIMAL(18, 4) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE rail_operations_management_consist (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  consist_id VARCHAR(255) NOT NULL,
+  train_plan_id VARCHAR(255) NOT NULL,
+  consist_code VARCHAR(255) NOT NULL,
+  formation_revision INTEGER NOT NULL,
+  locomotive_class VARCHAR(255) NOT NULL,
+  vehicle_order TEXT NOT NULL,
+  brake_type VARCHAR(255) NOT NULL,
+  coupler_compatibility VARCHAR(255) NOT NULL,
+  change_reason VARCHAR(255) NOT NULL,
+  traction_type VARCHAR(255) NOT NULL,
+  train_protection_fitment VARCHAR(255) NOT NULL,
+  axle_load_tonnes DECIMAL(18, 4) NOT NULL,
+  maximum_trailing_load_tonnes DECIMAL(18, 4) NOT NULL,
+  route_class_restriction VARCHAR(255) NOT NULL,
+  loading_gauge_state VARCHAR(255) NOT NULL,
+  wagon_count INTEGER NOT NULL,
+  trailing_tonnage DECIMAL(18, 4) NOT NULL,
+  brake_percentage DECIMAL(18, 4) NOT NULL,
+  hazardous_load_position VARCHAR(255) NOT NULL,
+  train_length_metres DECIMAL(18, 4) NOT NULL,
+  load_ready_state VARCHAR(255) NOT NULL,
+  seat_count INTEGER NOT NULL,
+  accessibility_space_count INTEGER NOT NULL,
+  selective_door_operation_state VARCHAR(255) NOT NULL,
+  platform_fit_state VARCHAR(255) NOT NULL,
+  restriction_check_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (train_plan_id) REFERENCES rail_operations_management_train_plan(train_plan_id)
+);
+
+CREATE TABLE rail_operations_management_track_window (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  track_window_id VARCHAR(255) NOT NULL,
+  possession_reference VARCHAR(255) NOT NULL,
+  section_limit_from VARCHAR(255) NOT NULL,
+  section_limit_to VARCHAR(255) NOT NULL,
+  blocked_track_reference VARCHAR(255) NOT NULL,
+  worksite_authority VARCHAR(255) NOT NULL,
+  isolation_state VARCHAR(255) NOT NULL,
+  pilotman_required BOOLEAN NOT NULL,
+  possession_start_at TIMESTAMP,
+  possession_end_at TIMESTAMP,
+  negotiation_state VARCHAR(255) NOT NULL,
+  partial_section_availability VARCHAR(255) NOT NULL,
+  handback_milestone_at TIMESTAMP,
+  conditional_release_rule TEXT NOT NULL,
+  temporary_speed_limit_kph DECIMAL(18, 4) NOT NULL,
+  tsr_effective_from TIMESTAMP,
+  tsr_effective_to TIMESTAMP,
+  tsr_reason_code VARCHAR(255) NOT NULL,
+  affected_service_count INTEGER NOT NULL,
+  conflict_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE rail_operations_management_yard_move (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  yard_move_id VARCHAR(255) NOT NULL,
+  yard_reference VARCHAR(255) NOT NULL,
+  origin_track VARCHAR(255) NOT NULL,
+  destination_track VARCHAR(255) NOT NULL,
+  shunt_route_path TEXT NOT NULL,
+  foul_point_protection VARCHAR(255) NOT NULL,
+  point_set_requirements TEXT NOT NULL,
+  propelling_movement BOOLEAN NOT NULL,
+  supervising_signaller VARCHAR(255) NOT NULL,
+  authority_limit VARCHAR(255) NOT NULL,
+  hand_signaller_present BOOLEAN NOT NULL,
+  radio_channel VARCHAR(255) NOT NULL,
+  brake_continuity_confirmed BOOLEAN NOT NULL,
+  ground_staff_confirmation BOOLEAN NOT NULL,
+  safety_checklist_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE rail_operations_management_crew_assignment (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  crew_assignment_id VARCHAR(255) NOT NULL,
+  train_plan_id VARCHAR(255) NOT NULL,
+  crew_role VARCHAR(255) NOT NULL,
+  depot_code VARCHAR(255) NOT NULL,
+  signing_on_point VARCHAR(255) NOT NULL,
+  route_knowledge_district VARCHAR(255) NOT NULL,
+  handover_station VARCHAR(255) NOT NULL,
+  relief_boundary_reference VARCHAR(255) NOT NULL,
+  relief_window_start TIMESTAMP,
+  relief_window_end TIMESTAMP,
+  transport_link VARCHAR(255) NOT NULL,
+  sign_on_at TIMESTAMP,
+  preparation_minutes INTEGER NOT NULL,
+  route_time_minutes INTEGER NOT NULL,
+  maximum_continuous_driving_minutes INTEGER NOT NULL,
+  minimum_rest_hours DECIMAL(18, 4) NOT NULL,
+  meal_break_state VARCHAR(255) NOT NULL,
+  fatigue_escalation_state VARCHAR(255) NOT NULL,
+  remaining_legal_minutes INTEGER NOT NULL,
+  legality_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (train_plan_id) REFERENCES rail_operations_management_train_plan(train_plan_id)
+);
+
+CREATE TABLE rail_operations_management_rail_incident (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rail_incident_id VARCHAR(255) NOT NULL,
+  incident_location VARCHAR(255) NOT NULL,
+  control_area VARCHAR(255) NOT NULL,
+  incident_severity VARCHAR(255) NOT NULL,
+  incident_subtype VARCHAR(255) NOT NULL,
+  detection_at TIMESTAMP,
+  first_protection_at TIMESTAMP,
+  control_escalation_at TIMESTAMP,
+  site_attendance_at TIMESTAMP,
+  recovery_estimate_at TIMESTAMP,
+  partial_reopening_at TIMESTAMP,
+  full_reopening_at TIMESTAMP,
+  protection_state VARCHAR(255) NOT NULL,
+  affected_train_count INTEGER NOT NULL,
+  delay_attribution_category VARCHAR(255) NOT NULL,
+  delay_attribution_subcode VARCHAR(255) NOT NULL,
+  reactionary_link_reference VARCHAR(255) NOT NULL,
+  causation_confidence DECIMAL(18, 4) NOT NULL,
+  safety_critical BOOLEAN NOT NULL,
+  evidence_seal_state VARCHAR(255) NOT NULL,
+  witness_role VARCHAR(255) NOT NULL,
+  signal_or_route_identifier VARCHAR(255) NOT NULL,
+  track_worker_protection_state VARCHAR(255) NOT NULL,
+  review_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE rail_operations_management_service_performance (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  service_performance_id VARCHAR(255) NOT NULL,
+  train_plan_id VARCHAR(255) NOT NULL,
+  reporting_period_start TIMESTAMP,
+  reporting_period_end TIMESTAMP,
+  primary_delay_cause VARCHAR(255) NOT NULL,
+  reactionary_delay_cause VARCHAR(255) NOT NULL,
+  shared_contributor VARCHAR(255) NOT NULL,
+  delay_minutes DECIMAL(18, 4) NOT NULL,
+  attribution_confidence DECIMAL(18, 4) NOT NULL,
+  source_evidence TEXT NOT NULL,
+  on_time_arrival_pct DECIMAL(18, 4) NOT NULL,
+  punctuality_band VARCHAR(255) NOT NULL,
+  predicted_delay_minutes DECIMAL(18, 4) NOT NULL,
+  predicted_connection_risk DECIMAL(18, 4) NOT NULL,
+  terminal_slot_breach_risk DECIMAL(18, 4) NOT NULL,
+  forecast_horizon_hours INTEGER NOT NULL,
+  carbon_intensity DECIMAL(18, 4) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (train_plan_id) REFERENCES rail_operations_management_train_plan(train_plan_id)
+);
+
+CREATE TABLE rail_operations_management_rail_operations_management_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  policy_rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  rule_scope VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  approval_source VARCHAR(255) NOT NULL,
+  operational_impact_summary TEXT NOT NULL,
+  compiled_hash VARCHAR(255) NOT NULL,
+  source_span TEXT NOT NULL,
+  prior_version_reference VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE rail_operations_management_rail_operations_management_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  runtime_parameter_id VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value DECIMAL(18, 4) NOT NULL,
+  parameter_scope VARCHAR(255) NOT NULL,
+  lower_bound DECIMAL(18, 4) NOT NULL,
+  upper_bound DECIMAL(18, 4) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  tenant_override BOOLEAN NOT NULL,
+  approval_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  effective_from TIMESTAMP,
+  rollback_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE rail_operations_management_rail_operations_management_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  schema_extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  ui_placement VARCHAR(255) NOT NULL,
+  compatibility_state VARCHAR(255) NOT NULL,
+  backfill_plan TEXT NOT NULL,
+  backfill_state VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP,
+  activated_at TIMESTAMP,
+  deprecated_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE rail_operations_management_rail_operations_management_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  control_assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  control_scope VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  crew_legality_violation BOOLEAN NOT NULL,
+  route_restriction_breach BOOLEAN NOT NULL,
+  possession_overlap_detected BOOLEAN NOT NULL,
+  missing_evidence_seal BOOLEAN NOT NULL,
+  affected_record_reference VARCHAR(255) NOT NULL,
+  failing_evidence TEXT NOT NULL,
+  remediation_task TEXT NOT NULL,
+  evaluated_at TIMESTAMP,
+  evaluated_by VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE rail_operations_management_rail_operations_management_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  governed_model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  model_purpose VARCHAR(255) NOT NULL,
+  feature_inputs TEXT NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  retirement_policy TEXT NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE rail_operations_management_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE rail_operations_management_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE rail_operations_management_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

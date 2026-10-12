@@ -1,15 +1,314 @@
-CREATE TABLE public_safety_dispatch_emergency_call (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_safety_dispatch_response_unit (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_safety_dispatch_incident (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_safety_dispatch_dispatch_assignment (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_safety_dispatch_mutual_aid (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_safety_dispatch_response_milestone (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_safety_dispatch_case_disposition (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_safety_dispatch_public_safety_dispatch_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_safety_dispatch_public_safety_dispatch_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_safety_dispatch_public_safety_dispatch_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_safety_dispatch_public_safety_dispatch_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_safety_dispatch_public_safety_dispatch_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_safety_dispatch_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_safety_dispatch_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE public_safety_dispatch_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS public_safety_dispatch;
+
+CREATE TABLE public_safety_dispatch_emergency_call (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  emergency_call_id VARCHAR(255) NOT NULL,
+  call_received_at TIMESTAMP NOT NULL,
+  call_source VARCHAR(255) NOT NULL,
+  ani VARCHAR(255),
+  ali VARCHAR(255),
+  callback_number VARCHAR(255),
+  callback_validated BOOLEAN NOT NULL,
+  callback_attempts INTEGER NOT NULL,
+  callback_failure_reason VARCHAR(255),
+  preferred_language VARCHAR(255),
+  interpreter_required BOOLEAN NOT NULL,
+  tty_tdd_flag BOOLEAN NOT NULL,
+  text_session BOOLEAN NOT NULL,
+  abandoned BOOLEAN NOT NULL,
+  wireless_phase VARCHAR(255),
+  chief_complaint_code VARCHAR(255) NOT NULL,
+  discipline VARCHAR(255) NOT NULL,
+  protocol_family VARCHAR(255),
+  determinant_code VARCHAR(255),
+  subdeterminant_code VARCHAR(255),
+  caller_reported_hazards TEXT,
+  primary_geocode VARCHAR(255),
+  fallback_geocode VARCHAR(255),
+  location_confidence DECIMAL(18, 4),
+  premise_type VARCHAR(255),
+  address_validation_status VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE public_safety_dispatch_response_unit (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  response_unit_id VARCHAR(255) NOT NULL,
+  unit_designator VARCHAR(255) NOT NULL,
+  agency_identifier VARCHAR(255) NOT NULL,
+  discipline VARCHAR(255) NOT NULL,
+  unit_type VARCHAR(255) NOT NULL,
+  cad_status VARCHAR(255) NOT NULL,
+  cad_status_changed_at TIMESTAMP,
+  staffing_count INTEGER NOT NULL,
+  minimum_staffing INTEGER NOT NULL,
+  medic_level VARCHAR(255),
+  apparatus_state VARCHAR(255),
+  response_area VARCHAR(255),
+  specialty_team BOOLEAN NOT NULL,
+  temporary_restriction VARCHAR(255),
+  assignment_load INTEGER NOT NULL,
+  cross_staffed BOOLEAN NOT NULL,
+  last_known_location VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE public_safety_dispatch_incident (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  incident_id VARCHAR(255) NOT NULL,
+  emergency_call_id VARCHAR(255) NOT NULL,
+  incident_number VARCHAR(255) NOT NULL,
+  reported_at TIMESTAMP NOT NULL,
+  incident_location VARCHAR(255) NOT NULL,
+  location_confidence DECIMAL(18, 4),
+  priority_code VARCHAR(255) NOT NULL,
+  priority_assigned_at TIMESTAMP,
+  priority_trace TEXT,
+  duplicate_of_incident_id VARCHAR(255),
+  duplicate_score DECIMAL(18, 4),
+  merge_justification TEXT,
+  jurisdiction_code VARCHAR(255) NOT NULL,
+  jurisdiction_override BOOLEAN NOT NULL,
+  override_reason TEXT,
+  command_designation VARCHAR(255),
+  staging_area VARCHAR(255),
+  tactical_channel VARCHAR(255),
+  division_structure TEXT,
+  officer_safety_note TEXT,
+  ems_exposure_note TEXT,
+  fireground_hazard_note TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (emergency_call_id) REFERENCES public_safety_dispatch_emergency_call(emergency_call_id)
+);
+
+CREATE TABLE public_safety_dispatch_dispatch_assignment (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  dispatch_assignment_id VARCHAR(255) NOT NULL,
+  incident_id VARCHAR(255) NOT NULL,
+  response_unit_id VARCHAR(255) NOT NULL,
+  assignment_role VARCHAR(255) NOT NULL,
+  assignment_mode VARCHAR(255) NOT NULL,
+  recommendation_rank INTEGER,
+  recommendation_score DECIMAL(18, 4),
+  recommendation_explanation TEXT,
+  coverage_impact VARCHAR(255),
+  move_up_recommended BOOLEAN NOT NULL,
+  conflict_state VARCHAR(255),
+  staging_location VARCHAR(255),
+  staging_reason VARCHAR(255),
+  override_reason TEXT,
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  assigned_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (incident_id) REFERENCES public_safety_dispatch_incident(incident_id),
+  FOREIGN KEY (response_unit_id) REFERENCES public_safety_dispatch_response_unit(response_unit_id)
+);
+
+CREATE TABLE public_safety_dispatch_mutual_aid (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  mutual_aid_id VARCHAR(255) NOT NULL,
+  incident_id VARCHAR(255),
+  requesting_agency VARCHAR(255) NOT NULL,
+  responding_agency VARCHAR(255) NOT NULL,
+  requested_resource VARCHAR(255) NOT NULL,
+  aid_type VARCHAR(255) NOT NULL,
+  response_deadline_at TIMESTAMP,
+  acknowledged_at TIMESTAMP,
+  estimated_arrival_at TIMESTAMP,
+  jurisdictional_condition VARCHAR(255),
+  interoperability_plan VARCHAR(255),
+  demobilized_at TIMESTAMP,
+  release_reason VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (incident_id) REFERENCES public_safety_dispatch_incident(incident_id)
+);
+
+CREATE TABLE public_safety_dispatch_response_milestone (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  response_milestone_id VARCHAR(255) NOT NULL,
+  incident_id VARCHAR(255) NOT NULL,
+  response_unit_id VARCHAR(255),
+  milestone_type VARCHAR(255) NOT NULL,
+  milestone_code VARCHAR(255) NOT NULL,
+  discipline VARCHAR(255) NOT NULL,
+  recorded_at TIMESTAMP NOT NULL,
+  benchmark_target_seconds INTEGER,
+  overdue BOOLEAN NOT NULL,
+  protocol_step_code VARCHAR(255),
+  instruction_delivered TEXT,
+  caller_compliance VARCHAR(255),
+  interruption_reason VARCHAR(255),
+  transport_destination VARCHAR(255),
+  diversion_flag BOOLEAN NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (incident_id) REFERENCES public_safety_dispatch_incident(incident_id),
+  FOREIGN KEY (response_unit_id) REFERENCES public_safety_dispatch_response_unit(response_unit_id)
+);
+
+CREATE TABLE public_safety_dispatch_case_disposition (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  case_disposition_id VARCHAR(255) NOT NULL,
+  incident_id VARCHAR(255) NOT NULL,
+  disposition_code VARCHAR(255) NOT NULL,
+  disposition_discipline VARCHAR(255) NOT NULL,
+  final_classification VARCHAR(255) NOT NULL,
+  units_assigned TEXT,
+  arrival_at TIMESTAMP,
+  cleared_at TIMESTAMP,
+  narrative_summary TEXT,
+  radio_log_reference VARCHAR(255),
+  unresolved_exceptions TEXT,
+  handoff_completeness VARCHAR(255) NOT NULL,
+  handoff_completed_at TIMESTAMP,
+  closed_by VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (incident_id) REFERENCES public_safety_dispatch_incident(incident_id)
+);
+
+CREATE TABLE public_safety_dispatch_public_safety_dispatch_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  policy_rule_id VARCHAR(255) NOT NULL,
+  policy_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  jurisdiction_scope VARCHAR(255) NOT NULL,
+  approval_required BOOLEAN NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE public_safety_dispatch_public_safety_dispatch_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  runtime_parameter_id VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE public_safety_dispatch_public_safety_dispatch_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  schema_extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE public_safety_dispatch_public_safety_dispatch_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  control_assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  remediation_task VARCHAR(255),
+  evaluated_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE public_safety_dispatch_public_safety_dispatch_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  governed_model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE public_safety_dispatch_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE public_safety_dispatch_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE public_safety_dispatch_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

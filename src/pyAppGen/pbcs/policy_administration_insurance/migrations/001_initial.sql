@@ -1,15 +1,357 @@
-CREATE TABLE policy_administration_insurance_insurance_policy (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE policy_administration_insurance_coverage_item (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE policy_administration_insurance_endorsement (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE policy_administration_insurance_renewal_notice (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE policy_administration_insurance_cancellation_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE policy_administration_insurance_billing_status (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE policy_administration_insurance_policy_document (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE policy_administration_insurance_policy_administration_insurance_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE policy_administration_insurance_policy_administration_insurance_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE policy_administration_insurance_policy_administration_insurance_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE policy_administration_insurance_policy_administration_insurance_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE policy_administration_insurance_policy_administration_insurance_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE policy_administration_insurance_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE policy_administration_insurance_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE policy_administration_insurance_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS policy_administration_insurance;
+
+CREATE TABLE policy_administration_insurance_insurance_policy (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  insurance_policy_id VARCHAR(255) NOT NULL,
+  policy_number VARCHAR(255) NOT NULL,
+  policyholder_reference VARCHAR(255) NOT NULL,
+  product_projection VARCHAR(255) NOT NULL,
+  jurisdiction VARCHAR(255) NOT NULL,
+  book_of_business VARCHAR(255) NOT NULL,
+  program_code VARCHAR(255) NOT NULL,
+  term_number INTEGER NOT NULL,
+  transaction_type VARCHAR(255) NOT NULL,
+  predecessor_policy_id VARCHAR(255) NOT NULL,
+  successor_policy_id VARCHAR(255) NOT NULL,
+  effective_date TIMESTAMP,
+  expiration_date TIMESTAMP,
+  transaction_effective_date TIMESTAMP,
+  processing_date TIMESTAMP,
+  supersession_reason VARCHAR(255) NOT NULL,
+  lifecycle_state VARCHAR(255) NOT NULL,
+  bound_quote_reference VARCHAR(255) NOT NULL,
+  underwriting_projection VARCHAR(255) NOT NULL,
+  billing_status_projection VARCHAR(255) NOT NULL,
+  claims_status_projection VARCHAR(255) NOT NULL,
+  producer_projection VARCHAR(255) NOT NULL,
+  total_premium DECIMAL(18, 4) NOT NULL,
+  premium_currency VARCHAR(255) NOT NULL,
+  coverage_schedule_state VARCHAR(255) NOT NULL,
+  required_document_count INTEGER NOT NULL,
+  received_document_count INTEGER NOT NULL,
+  issuance_ready BOOLEAN NOT NULL,
+  data_quality_score DECIMAL(18, 4) NOT NULL,
+  backdated_transaction BOOLEAN NOT NULL,
+  backdate_days INTEGER NOT NULL,
+  cancellation_pending BOOLEAN NOT NULL,
+  non_renewal_flag BOOLEAN NOT NULL,
+  moratorium_hold BOOLEAN NOT NULL,
+  exception_reason VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE policy_administration_insurance_coverage_item (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  coverage_item_id VARCHAR(255) NOT NULL,
+  insurance_policy_id VARCHAR(255) NOT NULL,
+  coverage_type VARCHAR(255) NOT NULL,
+  covered_object VARCHAR(255) NOT NULL,
+  covered_interest VARCHAR(255) NOT NULL,
+  coverage_limit DECIMAL(18, 4) NOT NULL,
+  deductible_amount DECIMAL(18, 4) NOT NULL,
+  limit_structure VARCHAR(255) NOT NULL,
+  form_reference VARCHAR(255) NOT NULL,
+  form_edition VARCHAR(255) NOT NULL,
+  exclusion_reference VARCHAR(255) NOT NULL,
+  location_reference VARCHAR(255) NOT NULL,
+  rating_attribute TEXT NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  coverage_state VARCHAR(255) NOT NULL,
+  gap_detected BOOLEAN NOT NULL,
+  overlap_detected BOOLEAN NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (insurance_policy_id) REFERENCES policy_administration_insurance_insurance_policy(insurance_policy_id)
+);
+
+CREATE TABLE policy_administration_insurance_endorsement (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  endorsement_id VARCHAR(255) NOT NULL,
+  insurance_policy_id VARCHAR(255) NOT NULL,
+  endorsement_number VARCHAR(255) NOT NULL,
+  transaction_type VARCHAR(255) NOT NULL,
+  change_set TEXT NOT NULL,
+  requested_effective_date TIMESTAMP,
+  accepted_effective_date TIMESTAMP,
+  premium_delta DECIMAL(18, 4) NOT NULL,
+  changed_coverage_item_count INTEGER NOT NULL,
+  eligibility_state VARCHAR(255) NOT NULL,
+  ineligibility_reason VARCHAR(255) NOT NULL,
+  rule_version VARCHAR(255) NOT NULL,
+  underwriting_approval_state VARCHAR(255) NOT NULL,
+  approval_required BOOLEAN NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  backdated BOOLEAN NOT NULL,
+  backdate_days INTEGER NOT NULL,
+  impact_simulation_hash VARCHAR(255) NOT NULL,
+  document_output_state VARCHAR(255) NOT NULL,
+  billing_handoff_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (insurance_policy_id) REFERENCES policy_administration_insurance_insurance_policy(insurance_policy_id)
+);
+
+CREATE TABLE policy_administration_insurance_renewal_notice (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  renewal_notice_id VARCHAR(255) NOT NULL,
+  insurance_policy_id VARCHAR(255) NOT NULL,
+  renewal_cycle VARCHAR(255) NOT NULL,
+  review_state VARCHAR(255) NOT NULL,
+  data_refresh_required BOOLEAN NOT NULL,
+  data_refresh_state VARCHAR(255) NOT NULL,
+  offer_terms TEXT NOT NULL,
+  offer_premium DECIMAL(18, 4) NOT NULL,
+  premium_change_amount DECIMAL(18, 4) NOT NULL,
+  non_renewal_option BOOLEAN NOT NULL,
+  non_renewal_reason VARCHAR(255) NOT NULL,
+  notice_deadline TIMESTAMP,
+  notice_generated_at TIMESTAMP,
+  mailing_evidence VARCHAR(255) NOT NULL,
+  delivery_method VARCHAR(255) NOT NULL,
+  jurisdiction VARCHAR(255) NOT NULL,
+  comparison_evidence_hash VARCHAR(255) NOT NULL,
+  batch_reference VARCHAR(255) NOT NULL,
+  moratorium_hold BOOLEAN NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (insurance_policy_id) REFERENCES policy_administration_insurance_insurance_policy(insurance_policy_id)
+);
+
+CREATE TABLE policy_administration_insurance_cancellation_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  cancellation_event_id VARCHAR(255) NOT NULL,
+  insurance_policy_id VARCHAR(255) NOT NULL,
+  cancellation_type VARCHAR(255) NOT NULL,
+  initiated_by VARCHAR(255) NOT NULL,
+  initiator_role VARCHAR(255) NOT NULL,
+  cancellation_reason VARCHAR(255) NOT NULL,
+  legal_basis VARCHAR(255) NOT NULL,
+  notice_deadline TIMESTAMP,
+  effective_date TIMESTAMP,
+  refund_projection DECIMAL(18, 4) NOT NULL,
+  earned_premium_projection DECIMAL(18, 4) NOT NULL,
+  grace_date TIMESTAMP,
+  cure_evidence VARCHAR(255) NOT NULL,
+  rescission_window_end TIMESTAMP,
+  approval_required BOOLEAN NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  proof_of_mailing VARCHAR(255) NOT NULL,
+  stop_conditions TEXT NOT NULL,
+  moratorium_hold BOOLEAN NOT NULL,
+  cancellation_outcome VARCHAR(255) NOT NULL,
+  document_set_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (insurance_policy_id) REFERENCES policy_administration_insurance_insurance_policy(insurance_policy_id)
+);
+
+CREATE TABLE policy_administration_insurance_billing_status (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  billing_status_id VARCHAR(255) NOT NULL,
+  insurance_policy_id VARCHAR(255) NOT NULL,
+  billing_account_reference VARCHAR(255) NOT NULL,
+  account_state VARCHAR(255) NOT NULL,
+  amount_due DECIMAL(18, 4) NOT NULL,
+  amount_paid DECIMAL(18, 4) NOT NULL,
+  delinquency_date TIMESTAMP,
+  last_payment_at TIMESTAMP,
+  last_payment_amount DECIMAL(18, 4) NOT NULL,
+  invoice_status VARCHAR(255) NOT NULL,
+  installment_plan_state VARCHAR(255) NOT NULL,
+  grace_period_days INTEGER NOT NULL,
+  nonpayment_cancellation_eligible BOOLEAN NOT NULL,
+  receivable_handoff_state VARCHAR(255) NOT NULL,
+  projection_freshness TIMESTAMP,
+  projection_source VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (insurance_policy_id) REFERENCES policy_administration_insurance_insurance_policy(insurance_policy_id)
+);
+
+CREATE TABLE policy_administration_insurance_policy_document (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  policy_document_id VARCHAR(255) NOT NULL,
+  insurance_policy_id VARCHAR(255) NOT NULL,
+  document_type VARCHAR(255) NOT NULL,
+  template_version VARCHAR(255) NOT NULL,
+  included_forms TEXT NOT NULL,
+  jurisdiction VARCHAR(255) NOT NULL,
+  language VARCHAR(255) NOT NULL,
+  render_hash VARCHAR(255) NOT NULL,
+  delivery_status VARCHAR(255) NOT NULL,
+  delivered_at TIMESTAMP,
+  delivery_method VARCHAR(255) NOT NULL,
+  correction_link VARCHAR(255) NOT NULL,
+  superseded_document_id VARCHAR(255) NOT NULL,
+  reissue_reason VARCHAR(255) NOT NULL,
+  certificate_holder VARCHAR(255) NOT NULL,
+  binder_expires_at TIMESTAMP,
+  evidence_packet_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (insurance_policy_id) REFERENCES policy_administration_insurance_insurance_policy(insurance_policy_id)
+);
+
+CREATE TABLE policy_administration_insurance_policy_administration_insurance_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  policy_rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  example_text TEXT NOT NULL,
+  approver_role VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE policy_administration_insurance_policy_administration_insurance_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  runtime_parameter_id VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value DECIMAL(18, 4) NOT NULL,
+  value_min DECIMAL(18, 4) NOT NULL,
+  value_max DECIMAL(18, 4) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  approval_required BOOLEAN NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  rollback_value DECIMAL(18, 4) NOT NULL,
+  activated_at TIMESTAMP,
+  effective_from TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE policy_administration_insurance_policy_administration_insurance_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  schema_extension_id VARCHAR(255) NOT NULL,
+  table_name VARCHAR(255) NOT NULL,
+  extension_scope VARCHAR(255) NOT NULL,
+  field_definition TEXT NOT NULL,
+  field_count INTEGER NOT NULL,
+  applied BOOLEAN NOT NULL,
+  applied_at TIMESTAMP,
+  compatibility_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE policy_administration_insurance_policy_administration_insurance_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  control_assertion_id VARCHAR(255) NOT NULL,
+  control_code VARCHAR(255) NOT NULL,
+  control_family VARCHAR(255) NOT NULL,
+  assertion_scope VARCHAR(255) NOT NULL,
+  evaluation_state VARCHAR(255) NOT NULL,
+  evidence_hash VARCHAR(255) NOT NULL,
+  last_evaluated_at TIMESTAMP,
+  failure_count INTEGER NOT NULL,
+  remediation_owner VARCHAR(255) NOT NULL,
+  remediation_due_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE policy_administration_insurance_policy_administration_insurance_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  governed_model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  model_purpose VARCHAR(255) NOT NULL,
+  drift_indicator DECIMAL(18, 4) NOT NULL,
+  false_positive_rate DECIMAL(18, 4) NOT NULL,
+  analyst_feedback TEXT NOT NULL,
+  retraining_decision VARCHAR(255) NOT NULL,
+  rollback_decision VARCHAR(255) NOT NULL,
+  deployed_at TIMESTAMP,
+  evaluated_at TIMESTAMP,
+  approval_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE policy_administration_insurance_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE policy_administration_insurance_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE policy_administration_insurance_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

@@ -1,15 +1,339 @@
-CREATE TABLE sports_venue_event_operations_venue_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE sports_venue_event_operations_seating_manifest (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE sports_venue_event_operations_concession_plan (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE sports_venue_event_operations_security_post (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE sports_venue_event_operations_event_staff (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE sports_venue_event_operations_fan_issue (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE sports_venue_event_operations_event_settlement (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE sports_venue_event_operations_sports_venue_event_operations_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE sports_venue_event_operations_sports_venue_event_operations_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE sports_venue_event_operations_sports_venue_event_operations_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE sports_venue_event_operations_sports_venue_event_operations_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE sports_venue_event_operations_sports_venue_event_operations_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE sports_venue_event_operations_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE sports_venue_event_operations_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE sports_venue_event_operations_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS sports_venue_event_operations;
+
+CREATE TABLE sports_venue_event_operations_venue_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  venue_event_id VARCHAR(255) NOT NULL,
+  event_name VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  event_category VARCHAR(255) NOT NULL,
+  promoter_or_owner VARCHAR(255) NOT NULL,
+  competition_code VARCHAR(255),
+  priority_rank INTEGER NOT NULL,
+  venue_space_scope VARCHAR(255) NOT NULL,
+  hold_type VARCHAR(255) NOT NULL,
+  broadcast_window VARCHAR(255),
+  load_in_start TIMESTAMP,
+  rehearsal_start TIMESTAMP,
+  doors_open_time TIMESTAMP,
+  event_start_time TIMESTAMP NOT NULL,
+  event_end_time TIMESTAMP NOT NULL,
+  load_out_end TIMESTAMP,
+  changeover_min_hours DECIMAL(18, 4) NOT NULL,
+  blackout_window_start TIMESTAMP,
+  blackout_window_end TIMESTAMP,
+  curfew_cutoff TIMESTAMP,
+  crew_rest_hours DECIMAL(18, 4),
+  expected_attendance INTEGER NOT NULL,
+  venue_capacity INTEGER NOT NULL,
+  weather_risk_state VARCHAR(255),
+  readiness_score DECIMAL(18, 4) NOT NULL,
+  risk_score DECIMAL(18, 4) NOT NULL,
+  cancellation_reason VARCHAR(255),
+  parent_event_id VARCHAR(255),
+  event_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE sports_venue_event_operations_seating_manifest (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  seating_manifest_id VARCHAR(255) NOT NULL,
+  venue_event_id VARCHAR(255) NOT NULL,
+  section_code VARCHAR(255) NOT NULL,
+  row_code VARCHAR(255) NOT NULL,
+  seat_range VARCHAR(255) NOT NULL,
+  seat_count INTEGER NOT NULL,
+  hold_type VARCHAR(255) NOT NULL,
+  hold_reason VARCHAR(255),
+  obstructed_view BOOLEAN NOT NULL,
+  accessible_seat BOOLEAN NOT NULL,
+  companion_seat_count INTEGER NOT NULL,
+  camera_platform BOOLEAN NOT NULL,
+  team_hold BOOLEAN NOT NULL,
+  comp_block BOOLEAN NOT NULL,
+  safety_closure BOOLEAN NOT NULL,
+  release_deadline TIMESTAMP,
+  approval_threshold DECIMAL(18, 4),
+  owner_role VARCHAR(255) NOT NULL,
+  supervisor_acknowledged BOOLEAN NOT NULL,
+  downstream_notified BOOLEAN NOT NULL,
+  manifest_state VARCHAR(255) NOT NULL,
+  manifest_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (venue_event_id) REFERENCES sports_venue_event_operations_venue_event(venue_event_id)
+);
+
+CREATE TABLE sports_venue_event_operations_concession_plan (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  concession_plan_id VARCHAR(255) NOT NULL,
+  venue_event_id VARCHAR(255) NOT NULL,
+  location_code VARCHAR(255) NOT NULL,
+  location_type VARCHAR(255) NOT NULL,
+  activation_state VARCHAR(255) NOT NULL,
+  menu_selection VARCHAR(255) NOT NULL,
+  expected_demand INTEGER NOT NULL,
+  labor_requirement INTEGER NOT NULL,
+  service_start_time TIMESTAMP,
+  service_end_time TIMESTAMP,
+  alcohol_service BOOLEAN NOT NULL,
+  last_call_time TIMESTAMP,
+  mobile_order_eligible BOOLEAN NOT NULL,
+  restock_trigger VARCHAR(255),
+  replenishment_runs INTEGER NOT NULL,
+  outage_state VARCHAR(255),
+  degrade_mode VARCHAR(255),
+  reroute_location_code VARCHAR(255),
+  readiness_score DECIMAL(18, 4) NOT NULL,
+  concession_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (venue_event_id) REFERENCES sports_venue_event_operations_venue_event(venue_event_id)
+);
+
+CREATE TABLE sports_venue_event_operations_security_post (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  security_post_id VARCHAR(255) NOT NULL,
+  venue_event_id VARCHAR(255) NOT NULL,
+  post_name VARCHAR(255) NOT NULL,
+  post_type VARCHAR(255) NOT NULL,
+  gate_code VARCHAR(255),
+  ingress_zone VARCHAR(255),
+  open_time TIMESTAMP,
+  expected_scan_rate DECIMAL(18, 4),
+  queue_capacity INTEGER,
+  population_served VARCHAR(255),
+  bag_policy VARCHAR(255),
+  magnetometer_required BOOLEAN NOT NULL,
+  fallback_gate_code VARCHAR(255),
+  egress_route VARCHAR(255),
+  choke_point_monitored BOOLEAN NOT NULL,
+  crowd_density_score DECIMAL(18, 4),
+  density_threshold DECIMAL(18, 4),
+  owning_team VARCHAR(255) NOT NULL,
+  escalation_target VARCHAR(255),
+  credential_class_required VARCHAR(255),
+  post_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (venue_event_id) REFERENCES sports_venue_event_operations_venue_event(venue_event_id)
+);
+
+CREATE TABLE sports_venue_event_operations_event_staff (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_staff_id VARCHAR(255) NOT NULL,
+  venue_event_id VARCHAR(255) NOT NULL,
+  security_post_id VARCHAR(255),
+  person_name VARCHAR(255) NOT NULL,
+  worker_type VARCHAR(255) NOT NULL,
+  role_name VARCHAR(255) NOT NULL,
+  zone_assignment VARCHAR(255) NOT NULL,
+  shift_start TIMESTAMP NOT NULL,
+  shift_end TIMESTAMP NOT NULL,
+  break_window VARCHAR(255),
+  check_in_time TIMESTAMP,
+  no_show BOOLEAN NOT NULL,
+  relief_assigned_to VARCHAR(255),
+  standby_pool BOOLEAN NOT NULL,
+  certification_type VARCHAR(255),
+  certification_expiry TIMESTAMP,
+  onboarding_id_verified BOOLEAN NOT NULL,
+  onboarding_orientation_complete BOOLEAN NOT NULL,
+  uniform_issued BOOLEAN NOT NULL,
+  deployable BOOLEAN NOT NULL,
+  attendance_state VARCHAR(255) NOT NULL,
+  staff_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (venue_event_id) REFERENCES sports_venue_event_operations_venue_event(venue_event_id),
+  FOREIGN KEY (security_post_id) REFERENCES sports_venue_event_operations_security_post(security_post_id)
+);
+
+CREATE TABLE sports_venue_event_operations_fan_issue (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  fan_issue_id VARCHAR(255) NOT NULL,
+  venue_event_id VARCHAR(255) NOT NULL,
+  issue_category VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  location_code VARCHAR(255),
+  location_precision VARCHAR(255),
+  affected_parties VARCHAR(255),
+  response_team VARCHAR(255) NOT NULL,
+  dispatch_state VARCHAR(255) NOT NULL,
+  service_level_target_hours DECIMAL(18, 4),
+  reported_at TIMESTAMP NOT NULL,
+  responded_at TIMESTAMP,
+  closed_at TIMESTAMP,
+  resolution_disposition VARCHAR(255),
+  closure_proof VARCHAR(255),
+  linked_incident_id VARCHAR(255),
+  issue_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (venue_event_id) REFERENCES sports_venue_event_operations_venue_event(venue_event_id)
+);
+
+CREATE TABLE sports_venue_event_operations_event_settlement (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_settlement_id VARCHAR(255) NOT NULL,
+  venue_event_id VARCHAR(255) NOT NULL,
+  settlement_period VARCHAR(255) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  staffing_variance_amount DECIMAL(18, 4) NOT NULL,
+  overtime_hours DECIMAL(18, 4) NOT NULL,
+  concession_outage_loss DECIMAL(18, 4) NOT NULL,
+  premium_recovery_spend DECIMAL(18, 4) NOT NULL,
+  weather_cost DECIMAL(18, 4) NOT NULL,
+  damage_claim_amount DECIMAL(18, 4) NOT NULL,
+  incident_reimbursement_amount DECIMAL(18, 4) NOT NULL,
+  total_event_cost DECIMAL(18, 4) NOT NULL,
+  reconciled BOOLEAN NOT NULL,
+  settlement_state VARCHAR(255) NOT NULL,
+  variance_notes TEXT,
+  settlement_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (venue_event_id) REFERENCES sports_venue_event_operations_venue_event(venue_event_id)
+);
+
+CREATE TABLE sports_venue_event_operations_sports_venue_event_operations_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  example_text TEXT,
+  approver_role VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE sports_venue_event_operations_sports_venue_event_operations_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE sports_venue_event_operations_sports_venue_event_operations_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE sports_venue_event_operations_sports_venue_event_operations_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  remediation_task VARCHAR(255),
+  evaluated_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE sports_venue_event_operations_sports_venue_event_operations_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  model_type VARCHAR(255) NOT NULL,
+  coverage_scope VARCHAR(255) NOT NULL,
+  backtest_exception_count INTEGER NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE sports_venue_event_operations_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE sports_venue_event_operations_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE sports_venue_event_operations_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

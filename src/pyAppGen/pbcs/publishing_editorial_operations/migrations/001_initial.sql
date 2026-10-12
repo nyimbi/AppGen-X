@@ -1,15 +1,338 @@
-CREATE TABLE publishing_editorial_operations_manuscript (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE publishing_editorial_operations_editorial_task (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE publishing_editorial_operations_author_contract (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE publishing_editorial_operations_edition (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE publishing_editorial_operations_production_schedule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE publishing_editorial_operations_rights_grant (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE publishing_editorial_operations_distribution_plan (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE publishing_editorial_operations_publishing_editorial_operations_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE publishing_editorial_operations_publishing_editorial_operations_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE publishing_editorial_operations_publishing_editorial_operations_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE publishing_editorial_operations_publishing_editorial_operations_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE publishing_editorial_operations_publishing_editorial_operations_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE publishing_editorial_operations_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE publishing_editorial_operations_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE publishing_editorial_operations_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS publishing_editorial_operations;
+
+CREATE TABLE publishing_editorial_operations_manuscript (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  manuscript_id VARCHAR(255) NOT NULL,
+  manuscript_title VARCHAR(255) NOT NULL,
+  subtitle VARCHAR(255),
+  acquisition_stage VARCHAR(255) NOT NULL,
+  proposal_reference VARCHAR(255),
+  sponsor_editor VARCHAR(255),
+  target_imprint VARCHAR(255) NOT NULL,
+  target_season VARCHAR(255) NOT NULL,
+  publication_type VARCHAR(255) NOT NULL,
+  author_name VARCHAR(255) NOT NULL,
+  contributor_authority_id VARCHAR(255),
+  series_name VARCHAR(255),
+  isbn VARCHAR(255),
+  doi VARCHAR(255),
+  subject_code VARCHAR(255),
+  audience VARCHAR(255),
+  language VARCHAR(255) NOT NULL,
+  manuscript_version VARCHAR(255) NOT NULL,
+  version_state VARCHAR(255) NOT NULL,
+  frozen_at TIMESTAMP,
+  word_count INTEGER,
+  completeness_state VARCHAR(255) NOT NULL,
+  package_evidence_reference VARCHAR(255),
+  peer_review_model VARCHAR(255),
+  review_state VARCHAR(255) NOT NULL,
+  editorial_decision VARCHAR(255) NOT NULL,
+  decision_bundle_reference VARCHAR(255),
+  rights_clearance_state VARCHAR(255) NOT NULL,
+  metadata_readiness_score DECIMAL(18, 4) NOT NULL,
+  accessibility_state VARCHAR(255) NOT NULL,
+  asset_manifest_reference VARCHAR(255),
+  author_communication_due_date TIMESTAMP,
+  readiness_score DECIMAL(18, 4) NOT NULL,
+  risk_score DECIMAL(18, 4) NOT NULL,
+  open_exception_count INTEGER NOT NULL,
+  manuscript_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE publishing_editorial_operations_editorial_task (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  editorial_task_id VARCHAR(255) NOT NULL,
+  manuscript_id VARCHAR(255) NOT NULL,
+  task_type VARCHAR(255) NOT NULL,
+  task_stage VARCHAR(255) NOT NULL,
+  task_description TEXT NOT NULL,
+  assignee_role VARCHAR(255) NOT NULL,
+  assignee_name VARCHAR(255),
+  priority VARCHAR(255) NOT NULL,
+  due_date TIMESTAMP NOT NULL,
+  completed_at TIMESTAMP,
+  capacity_load_percent DECIMAL(18, 4),
+  escalation_threshold_hours INTEGER,
+  style_sheet_reference VARCHAR(255),
+  meeting_note_reference VARCHAR(255),
+  blocker_reason TEXT,
+  progress_percent DECIMAL(18, 4) NOT NULL,
+  task_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (manuscript_id) REFERENCES publishing_editorial_operations_manuscript(manuscript_id)
+);
+
+CREATE TABLE publishing_editorial_operations_author_contract (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  author_contract_id VARCHAR(255) NOT NULL,
+  manuscript_id VARCHAR(255) NOT NULL,
+  author_name VARCHAR(255) NOT NULL,
+  contract_reference VARCHAR(255) NOT NULL,
+  contract_type VARCHAR(255) NOT NULL,
+  signature_date TIMESTAMP,
+  effective_date TIMESTAMP NOT NULL,
+  expiry_date TIMESTAMP,
+  delivery_due_date TIMESTAMP NOT NULL,
+  expected_word_count INTEGER,
+  advance_amount DECIMAL(18, 4),
+  royalty_rate DECIMAL(18, 4),
+  territory_scope VARCHAR(255) NOT NULL,
+  format_rights VARCHAR(255) NOT NULL,
+  option_clause_state VARCHAR(255) NOT NULL,
+  edition_commitment_count INTEGER NOT NULL,
+  drift_state VARCHAR(255) NOT NULL,
+  board_decision_reference VARCHAR(255),
+  contract_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (manuscript_id) REFERENCES publishing_editorial_operations_manuscript(manuscript_id)
+);
+
+CREATE TABLE publishing_editorial_operations_edition (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  edition_id VARCHAR(255) NOT NULL,
+  manuscript_id VARCHAR(255) NOT NULL,
+  parent_edition_id VARCHAR(255),
+  edition_number INTEGER NOT NULL,
+  edition_type VARCHAR(255) NOT NULL,
+  edition_label VARCHAR(255) NOT NULL,
+  format_type VARCHAR(255) NOT NULL,
+  isbn VARCHAR(255),
+  publication_date TIMESTAMP,
+  imprint VARCHAR(255) NOT NULL,
+  language VARCHAR(255) NOT NULL,
+  territory VARCHAR(255) NOT NULL,
+  rights_reuse_state VARCHAR(255) NOT NULL,
+  inherited_field_count INTEGER NOT NULL,
+  overridden_field_count INTEGER NOT NULL,
+  metadata_snapshot_reference VARCHAR(255),
+  accessibility_state VARCHAR(255) NOT NULL,
+  cover_freeze_state VARCHAR(255) NOT NULL,
+  interior_freeze_state VARCHAR(255) NOT NULL,
+  release_readiness_verdict VARCHAR(255) NOT NULL,
+  proof_signoff_reference VARCHAR(255),
+  edition_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (manuscript_id) REFERENCES publishing_editorial_operations_manuscript(manuscript_id)
+);
+
+CREATE TABLE publishing_editorial_operations_production_schedule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  production_schedule_id VARCHAR(255) NOT NULL,
+  edition_id VARCHAR(255) NOT NULL,
+  schedule_version VARCHAR(255) NOT NULL,
+  critical_path_state VARCHAR(255) NOT NULL,
+  milestone_type VARCHAR(255) NOT NULL,
+  milestone_name VARCHAR(255) NOT NULL,
+  planned_date TIMESTAMP NOT NULL,
+  forecast_date TIMESTAMP,
+  actual_date TIMESTAMP,
+  dependency_milestone_id VARCHAR(255),
+  slack_days INTEGER NOT NULL,
+  hard_gate BOOLEAN NOT NULL,
+  risk_state VARCHAR(255) NOT NULL,
+  handoff_packet_state VARCHAR(255) NOT NULL,
+  active_proof_round VARCHAR(255),
+  scenario_reference VARCHAR(255),
+  publication_date_risk DECIMAL(18, 4) NOT NULL,
+  schedule_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (edition_id) REFERENCES publishing_editorial_operations_edition(edition_id)
+);
+
+CREATE TABLE publishing_editorial_operations_rights_grant (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rights_grant_id VARCHAR(255) NOT NULL,
+  edition_id VARCHAR(255) NOT NULL,
+  manuscript_id VARCHAR(255) NOT NULL,
+  rights_holder VARCHAR(255) NOT NULL,
+  licensee VARCHAR(255) NOT NULL,
+  grant_type VARCHAR(255) NOT NULL,
+  territory_scope VARCHAR(255) NOT NULL,
+  language_scope VARCHAR(255) NOT NULL,
+  format_scope VARCHAR(255) NOT NULL,
+  exclusivity_state VARCHAR(255) NOT NULL,
+  granted_from TIMESTAMP NOT NULL,
+  granted_to TIMESTAMP,
+  embargo_until TIMESTAMP,
+  sublicensing_allowed BOOLEAN NOT NULL,
+  reversion_terms TEXT,
+  boundary_state VARCHAR(255) NOT NULL,
+  collision_state VARCHAR(255) NOT NULL,
+  license_fee_amount DECIMAL(18, 4),
+  currency VARCHAR(255),
+  rights_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (edition_id) REFERENCES publishing_editorial_operations_edition(edition_id)
+);
+
+CREATE TABLE publishing_editorial_operations_distribution_plan (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  distribution_plan_id VARCHAR(255) NOT NULL,
+  edition_id VARCHAR(255) NOT NULL,
+  channel_type VARCHAR(255) NOT NULL,
+  channel_name VARCHAR(255) NOT NULL,
+  territory VARCHAR(255) NOT NULL,
+  release_window_start TIMESTAMP NOT NULL,
+  release_window_end TIMESTAMP,
+  metadata_manifest_reference VARCHAR(255),
+  feed_state VARCHAR(255) NOT NULL,
+  export_timestamp TIMESTAMP,
+  units_planned INTEGER NOT NULL,
+  discount_percent DECIMAL(18, 4),
+  returns_policy VARCHAR(255),
+  embargo_date TIMESTAMP,
+  plan_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (edition_id) REFERENCES publishing_editorial_operations_edition(edition_id)
+);
+
+CREATE TABLE publishing_editorial_operations_publishing_editorial_operations_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  example_text TEXT,
+  approver_role VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE publishing_editorial_operations_publishing_editorial_operations_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE publishing_editorial_operations_publishing_editorial_operations_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE publishing_editorial_operations_publishing_editorial_operations_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  remediation_task TEXT,
+  evaluated_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE publishing_editorial_operations_publishing_editorial_operations_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  model_type VARCHAR(255) NOT NULL,
+  coverage_scope VARCHAR(255) NOT NULL,
+  backtest_exception_count INTEGER NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE publishing_editorial_operations_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE publishing_editorial_operations_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE publishing_editorial_operations_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

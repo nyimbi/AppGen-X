@@ -1,15 +1,336 @@
-CREATE TABLE smart_city_mobility_operations_transit_service (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE smart_city_mobility_operations_parking_asset (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE smart_city_mobility_operations_signal_plan (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE smart_city_mobility_operations_traffic_incident (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE smart_city_mobility_operations_curb_allocation (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE smart_city_mobility_operations_mobility_sensor (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE smart_city_mobility_operations_service_disruption (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE smart_city_mobility_operations_smart_city_mobility_operations_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE smart_city_mobility_operations_smart_city_mobility_operations_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE smart_city_mobility_operations_smart_city_mobility_operations_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE smart_city_mobility_operations_smart_city_mobility_operations_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE smart_city_mobility_operations_smart_city_mobility_operations_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE smart_city_mobility_operations_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE smart_city_mobility_operations_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE smart_city_mobility_operations_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS smart_city_mobility_operations;
+
+CREATE TABLE smart_city_mobility_operations_transit_service (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  transit_service_id VARCHAR(255) NOT NULL,
+  service_name VARCHAR(255) NOT NULL,
+  service_type VARCHAR(255) NOT NULL,
+  mode VARCHAR(255) NOT NULL,
+  corridor_code VARCHAR(255) NOT NULL,
+  route_code VARCHAR(255) NOT NULL,
+  direction VARCHAR(255) NOT NULL,
+  operating_hours VARCHAR(255) NOT NULL,
+  headway_target_minutes INTEGER NOT NULL,
+  vehicle_capacity INTEGER NOT NULL,
+  stop_count INTEGER NOT NULL,
+  reliability_target DECIMAL(18, 4) NOT NULL,
+  transit_priority_enabled BOOLEAN NOT NULL,
+  priority_lateness_threshold_seconds INTEGER NOT NULL,
+  school_zone_active BOOLEAN NOT NULL,
+  service_start_date TIMESTAMP,
+  service_end_date TIMESTAMP,
+  last_reviewed_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE smart_city_mobility_operations_parking_asset (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parking_asset_id VARCHAR(255) NOT NULL,
+  asset_name VARCHAR(255) NOT NULL,
+  asset_type VARCHAR(255) NOT NULL,
+  location_code VARCHAR(255) NOT NULL,
+  corridor_code VARCHAR(255) NOT NULL,
+  total_spaces INTEGER NOT NULL,
+  accessible_spaces INTEGER NOT NULL,
+  ev_spaces INTEGER NOT NULL,
+  occupancy_percent DECIMAL(18, 4) NOT NULL,
+  turnover_rate DECIMAL(18, 4) NOT NULL,
+  overstay_count INTEGER NOT NULL,
+  payment_compliance_percent DECIMAL(18, 4) NOT NULL,
+  accessible_integrity_state VARCHAR(255) NOT NULL,
+  guidance_enabled BOOLEAN NOT NULL,
+  guidance_updated_at TIMESTAMP,
+  spillover_zone VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE smart_city_mobility_operations_signal_plan (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  signal_plan_id VARCHAR(255) NOT NULL,
+  intersection_code VARCHAR(255) NOT NULL,
+  corridor_code VARCHAR(255) NOT NULL,
+  plan_version_label VARCHAR(255) NOT NULL,
+  control_mode VARCHAR(255) NOT NULL,
+  cycle_length_seconds INTEGER NOT NULL,
+  phase_split_seconds INTEGER NOT NULL,
+  offset_seconds INTEGER NOT NULL,
+  coordination_pattern VARCHAR(255) NOT NULL,
+  minimum_green_seconds INTEGER NOT NULL,
+  maximum_green_seconds INTEGER NOT NULL,
+  yellow_seconds INTEGER NOT NULL,
+  all_red_seconds INTEGER NOT NULL,
+  pedestrian_walk_seconds INTEGER NOT NULL,
+  pedestrian_clearance_seconds INTEGER NOT NULL,
+  leading_pedestrian_interval_seconds INTEGER NOT NULL,
+  accessible_timing_state VARCHAR(255) NOT NULL,
+  transit_priority_pack VARCHAR(255) NOT NULL,
+  preemption_separation_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  activated_at TIMESTAMP,
+  change_reason TEXT NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE smart_city_mobility_operations_traffic_incident (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  traffic_incident_id VARCHAR(255) NOT NULL,
+  intersection_code VARCHAR(255) NOT NULL,
+  corridor_code VARCHAR(255) NOT NULL,
+  taxonomy_code VARCHAR(255) NOT NULL,
+  response_playbook VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  detected_at TIMESTAMP,
+  verified_at TIMESTAMP,
+  dispatched_at TIMESTAMP,
+  mitigated_at TIMESTAMP,
+  lane_cleared_at TIMESTAMP,
+  resolved_at TIMESTAMP,
+  lanes_blocked INTEGER NOT NULL,
+  transit_impact VARCHAR(255) NOT NULL,
+  detour_status VARCHAR(255) NOT NULL,
+  freight_involved BOOLEAN NOT NULL,
+  command_team VARCHAR(255) NOT NULL,
+  post_review_outcome TEXT NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE smart_city_mobility_operations_curb_allocation (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  curb_allocation_id VARCHAR(255) NOT NULL,
+  block_face_code VARCHAR(255) NOT NULL,
+  corridor_code VARCHAR(255) NOT NULL,
+  use_type VARCHAR(255) NOT NULL,
+  zone_sequence INTEGER NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  time_band VARCHAR(255) NOT NULL,
+  recurrence_pattern VARCHAR(255) NOT NULL,
+  dynamic_window_state VARCHAR(255) NOT NULL,
+  planned_dwell_minutes INTEGER NOT NULL,
+  observed_dwell_minutes INTEGER NOT NULL,
+  vehicle_class VARCHAR(255) NOT NULL,
+  obstruction_flag BOOLEAN NOT NULL,
+  geofence_zone VARCHAR(255) NOT NULL,
+  fallback_behavior VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE smart_city_mobility_operations_mobility_sensor (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  mobility_sensor_id VARCHAR(255) NOT NULL,
+  sensor_name VARCHAR(255) NOT NULL,
+  sensor_type VARCHAR(255) NOT NULL,
+  feed_code VARCHAR(255) NOT NULL,
+  corridor_code VARCHAR(255) NOT NULL,
+  direction VARCHAR(255) NOT NULL,
+  location_code VARCHAR(255) NOT NULL,
+  quality_score DECIMAL(18, 4) NOT NULL,
+  freshness_seconds INTEGER NOT NULL,
+  completeness_percent DECIMAL(18, 4) NOT NULL,
+  quarantine_state VARCHAR(255) NOT NULL,
+  quarantine_reason VARCHAR(255) NOT NULL,
+  last_reading_at TIMESTAMP,
+  speed_reading DECIMAL(18, 4) NOT NULL,
+  queue_length_metres DECIMAL(18, 4) NOT NULL,
+  occupancy_percent DECIMAL(18, 4) NOT NULL,
+  confidence_score DECIMAL(18, 4) NOT NULL,
+  fusion_source_count INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE smart_city_mobility_operations_service_disruption (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  service_disruption_id VARCHAR(255) NOT NULL,
+  transit_service_id VARCHAR(255) NOT NULL,
+  corridor_code VARCHAR(255) NOT NULL,
+  disruption_class VARCHAR(255) NOT NULL,
+  disruption_source VARCHAR(255) NOT NULL,
+  accessibility_outage BOOLEAN NOT NULL,
+  elevator_outage BOOLEAN NOT NULL,
+  sidewalk_closure BOOLEAN NOT NULL,
+  alternative_path_published VARCHAR(255) NOT NULL,
+  detour_route_code VARCHAR(255) NOT NULL,
+  alert_template_code VARCHAR(255) NOT NULL,
+  alert_channel VARCHAR(255) NOT NULL,
+  weather_trigger VARCHAR(255) NOT NULL,
+  public_alert_state VARCHAR(255) NOT NULL,
+  started_at TIMESTAMP,
+  restored_at TIMESTAMP,
+  replacement_guidance TEXT NOT NULL,
+  exemption_reason VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (transit_service_id) REFERENCES smart_city_mobility_operations_transit_service(transit_service_id)
+);
+
+CREATE TABLE smart_city_mobility_operations_smart_city_mobility_operations_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  rule_scope VARCHAR(255) NOT NULL,
+  modal_priority VARCHAR(255) NOT NULL,
+  precedence_rank INTEGER NOT NULL,
+  maximum_pedestrian_delay_seconds INTEGER NOT NULL,
+  minimum_bike_crossing_protection VARCHAR(255) NOT NULL,
+  bus_reliability_target DECIMAL(18, 4) NOT NULL,
+  risk_tier VARCHAR(255) NOT NULL,
+  override_authority VARCHAR(255) NOT NULL,
+  supersedes_rule_id VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE smart_city_mobility_operations_smart_city_mobility_operations_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_id VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  parameter_scope VARCHAR(255) NOT NULL,
+  parameter_set_name VARCHAR(255) NOT NULL,
+  jurisdiction_code VARCHAR(255) NOT NULL,
+  season_profile VARCHAR(255) NOT NULL,
+  corridor_class VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  tenant_scope VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE smart_city_mobility_operations_smart_city_mobility_operations_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  compatibility_rule VARCHAR(255) NOT NULL,
+  migration_note TEXT NOT NULL,
+  registered_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE smart_city_mobility_operations_smart_city_mobility_operations_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  control_family VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  rule_reference VARCHAR(255) NOT NULL,
+  feed_dependency_reference VARCHAR(255) NOT NULL,
+  date_range_start TIMESTAMP,
+  date_range_end TIMESTAMP,
+  sealed_proof_hash VARCHAR(255) NOT NULL,
+  remediation_task TEXT NOT NULL,
+  evaluated_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE smart_city_mobility_operations_smart_city_mobility_operations_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  model_purpose TEXT NOT NULL,
+  feature_inputs TEXT NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  review_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  retirement_policy VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE smart_city_mobility_operations_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE smart_city_mobility_operations_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE smart_city_mobility_operations_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

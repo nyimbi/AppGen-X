@@ -74,6 +74,33 @@ WATER_WASTEWATER_OPERATIONS_BUSINESS_TABLES = ('water_wastewater_operations_trea
  'water_wastewater_operations_water_wastewater_operations_control_assertion',
  'water_wastewater_operations_water_wastewater_operations_governed_model')
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+WATER_WASTEWATER_OPERATIONS_TABLE_FIELDS = {
+    'water_wastewater_operations_treatment_plant': ('id', 'tenant', 'treatment_plant_id', 'plant_name', 'operating_mode', 'design_capacity_mgd', 'current_flow_mgd', 'capacity_utilization', 'operator_shift', 'required_checks', 'transition_reason', 'active_process_train', 'source_water_type', 'influent_turbidity_ntu', 'influent_flow_mgd', 'influent_ph', 'influent_temperature_c', 'influent_conductivity', 'rainfall_mm', 'industrial_load_note', 'anomaly_flag', 'commissioned_at', 'status', 'version', 'created_at', 'updated_at'),
+    'water_wastewater_operations_water_quality_sample': ('id', 'tenant', 'water_quality_sample_id', 'sample_point', 'collector', 'collection_method', 'preservation', 'collection_time', 'custody_transfer_count', 'custody_evidence_complete', 'lab_projection', 'parameter_name', 'result_value', 'result_unit', 'reporting_limit', 'method_version', 'holding_time_hours', 'holding_time_met', 'qualifier', 'discrepancy_flag', 'sampling_plan', 'approved_by', 'approved_at', 'treatment_plant_id', 'status', 'version', 'created_at', 'updated_at'),
+    'water_wastewater_operations_permit_limit': ('id', 'tenant', 'permit_limit_id', 'permit_number', 'parameter_name', 'limit_type', 'limit_value', 'limit_unit', 'averaging_period', 'sample_point', 'outfall', 'flow_condition', 'season', 'monitoring_frequency', 'exceedance_rule', 'effective_from', 'effective_to', 'treatment_plant_id', 'status', 'version', 'created_at', 'updated_at'),
+    'water_wastewater_operations_pump_asset': ('id', 'tenant', 'pump_asset_id', 'asset_tag', 'asset_name', 'asset_type', 'duty_role', 'operating_status', 'rated_flow', 'rated_head', 'runtime_hours', 'start_count', 'vibration_projection', 'maintenance_status', 'criticality_score', 'standby_available', 'last_service_at', 'wet_well_level', 'overflow_risk', 'generator_status', 'alarm_state', 'treatment_plant_id', 'status', 'version', 'created_at', 'updated_at'),
+    'water_wastewater_operations_service_interruption': ('id', 'tenant', 'service_interruption_id', 'interruption_type', 'planned', 'started_at', 'restored_at', 'affected_area', 'pressure_zone', 'customer_impact_count', 'critical_customer_count', 'cause', 'crew_assignment', 'advisory_status', 'valve_isolation_count', 'restoration_evidence', 'treatment_plant_id', 'status', 'version', 'created_at', 'updated_at'),
+    'water_wastewater_operations_field_work_order': ('id', 'tenant', 'field_work_order_id', 'work_type', 'asset_reference', 'priority', 'safety_controls', 'crew_assignment', 'materials_projection', 'traffic_control', 'valve_sequence', 'isolation_verified', 'scheduled_at', 'completed_at', 'completion_evidence', 'service_interruption_id', 'status', 'version', 'created_at', 'updated_at'),
+    'water_wastewater_operations_compliance_sample': ('id', 'tenant', 'compliance_sample_id', 'regulatory_purpose', 'reportable', 'approval_status', 'resample_required', 'certified_by', 'certified_at', 'report_period', 'exceedance_flag', 'exceedance_severity', 'notification_deadline', 'root_cause', 'corrective_action', 'closure_evidence', 'water_quality_sample_id', 'permit_limit_id', 'status', 'version', 'created_at', 'updated_at'),
+    'water_wastewater_operations_water_wastewater_operations_policy_rule': ('id', 'tenant', 'policy_rule_id', 'rule_name', 'predicate_text', 'ambiguity_flag', 'example_text', 'approver_role', 'effective_from', 'effective_to', 'compiled_hash', 'status', 'version', 'created_at', 'updated_at'),
+    'water_wastewater_operations_water_wastewater_operations_runtime_parameter': ('id', 'tenant', 'runtime_parameter_id', 'parameter_name', 'parameter_value', 'scope', 'bounded', 'value_min', 'value_max', 'rollback_value', 'change_rationale', 'approved_by', 'approved_at', 'effective_from', 'effective_to', 'status', 'version', 'created_at', 'updated_at'),
+    'water_wastewater_operations_water_wastewater_operations_schema_extension': ('id', 'tenant', 'extension_id', 'target_table', 'field_name', 'field_type', 'registered_at', 'status', 'version', 'created_at', 'updated_at'),
+    'water_wastewater_operations_water_wastewater_operations_control_assertion': ('id', 'tenant', 'assertion_id', 'control_name', 'assertion_result', 'severity', 'remediation_task', 'evaluated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'water_wastewater_operations_water_wastewater_operations_governed_model': ('id', 'tenant', 'model_id', 'model_name', 'model_version', 'model_type', 'coverage_scope', 'backtest_exception_count', 'governance_state', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'water_wastewater_operations_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'version', 'created_at', 'updated_at'),
+    'water_wastewater_operations_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'version', 'created_at', 'updated_at'),
+    'water_wastewater_operations_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'version', 'created_at', 'updated_at'),
+}
+_WATER_WASTEWATER_OPERATIONS_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _water_wastewater_operations_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return WATER_WASTEWATER_OPERATIONS_TABLE_FIELDS.get(table, _WATER_WASTEWATER_OPERATIONS_DEFAULT_FIELDS)
+
 def water_wastewater_operations_empty_state():
     return {'records': {}, 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
 
@@ -131,24 +158,11 @@ def water_wastewater_operations_parse_document_instruction(document, instruction
     return {'ok': True, 'candidate_tables': WATER_WASTEWATER_OPERATIONS_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
 def water_wastewater_operations_build_schema_contract():
-    table_contracts = (
-        {'table': 'water_wastewater_operations_treatment_plant', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'water_wastewater_operations_water_quality_sample', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'water_wastewater_operations_permit_limit', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'water_wastewater_operations_pump_asset', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'water_wastewater_operations_service_interruption', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'water_wastewater_operations_field_work_order', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'water_wastewater_operations_compliance_sample', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'water_wastewater_operations_water_wastewater_operations_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'water_wastewater_operations_water_wastewater_operations_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'water_wastewater_operations_water_wastewater_operations_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'water_wastewater_operations_water_wastewater_operations_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'water_wastewater_operations_water_wastewater_operations_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'water_wastewater_operations_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'water_wastewater_operations_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'water_wastewater_operations_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table, 'fields': _water_wastewater_operations_table_fields(table), 'primary_key': ('id',), 'owned_by': PBC_KEY}
+        for table in WATER_WASTEWATER_OPERATIONS_OWNED_TABLES
     )
-    return {'format': 'appgen.water-wastewater-operations-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/water_wastewater_operations/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': WATER_WASTEWATER_OPERATIONS_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': WATER_WASTEWATER_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'database_backends': WATER_WASTEWATER_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': WATER_WASTEWATER_OPERATIONS_OWNED_TABLES}
+    return {'format': 'appgen.water-wastewater-operations-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/water_wastewater_operations/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': WATER_WASTEWATER_OPERATIONS_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(WATER_WASTEWATER_OPERATIONS_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _water_wastewater_operations_table_fields(table)} for table in WATER_WASTEWATER_OPERATIONS_OWNED_TABLES), 'datastore_backends': WATER_WASTEWATER_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'database_backends': WATER_WASTEWATER_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': WATER_WASTEWATER_OPERATIONS_OWNED_TABLES}
 
 def water_wastewater_operations_build_service_contract():
     return {'format': 'appgen.water-wastewater-operations-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_treatment_plant','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}

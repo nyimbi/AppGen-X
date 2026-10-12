@@ -1,15 +1,356 @@
-CREATE TABLE reinsurance_management_reinsurance_treaty (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE reinsurance_management_facultative_placement (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE reinsurance_management_cession (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE reinsurance_management_bordereau (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE reinsurance_management_recoverable (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE reinsurance_management_claim_recovery (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE reinsurance_management_exposure_layer (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE reinsurance_management_reinsurance_management_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE reinsurance_management_reinsurance_management_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE reinsurance_management_reinsurance_management_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE reinsurance_management_reinsurance_management_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE reinsurance_management_reinsurance_management_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE reinsurance_management_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE reinsurance_management_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE reinsurance_management_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS reinsurance_management;
+
+CREATE TABLE reinsurance_management_reinsurance_treaty (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  reinsurance_treaty_id VARCHAR(255) NOT NULL,
+  treaty_reference VARCHAR(255) NOT NULL,
+  treaty_type VARCHAR(255) NOT NULL,
+  treaty_structure VARCHAR(255) NOT NULL,
+  covered_book VARCHAR(255) NOT NULL,
+  lines_of_business VARCHAR(255) NOT NULL,
+  attachment_basis VARCHAR(255),
+  attachment_point DECIMAL(18, 4),
+  treaty_limit DECIMAL(18, 4),
+  retention_amount DECIMAL(18, 4),
+  ceded_share DECIMAL(18, 4),
+  reinstatement_count INTEGER,
+  reinstatement_basis VARCHAR(255),
+  exclusions TEXT,
+  inception_date TIMESTAMP NOT NULL,
+  expiry_date TIMESTAMP,
+  effective_period VARCHAR(255),
+  wording_reference VARCHAR(255),
+  counterparty_reference VARCHAR(255),
+  broker_reference VARCHAR(255),
+  cedant_reference VARCHAR(255),
+  projection_freshness TIMESTAMP,
+  credit_rating VARCHAR(255),
+  domicile VARCHAR(255),
+  currency VARCHAR(255) NOT NULL,
+  lifecycle_state VARCHAR(255) NOT NULL,
+  transition_reason VARCHAR(255),
+  allowed_commands VARCHAR(255),
+  next_allowed_actions VARCHAR(255),
+  approval_role VARCHAR(255),
+  approved_by VARCHAR(255),
+  approval_date TIMESTAMP,
+  retrocession_flag BOOLEAN NOT NULL,
+  net_exposure_amount DECIMAL(18, 4),
+  treaty_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE reinsurance_management_facultative_placement (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  facultative_placement_id VARCHAR(255) NOT NULL,
+  reinsurance_treaty_id VARCHAR(255),
+  placement_reference VARCHAR(255) NOT NULL,
+  risk_reference VARCHAR(255) NOT NULL,
+  submission_package TEXT,
+  market_list TEXT,
+  quote_terms TEXT,
+  quoted_capacity DECIMAL(18, 4),
+  placed_capacity DECIMAL(18, 4),
+  subjectivities TEXT,
+  signed_line_percent DECIMAL(18, 4),
+  written_line_percent DECIMAL(18, 4),
+  declinations TEXT,
+  bind_status VARCHAR(255) NOT NULL,
+  bind_date TIMESTAMP,
+  placement_evidence_reference VARCHAR(255),
+  broker_reference VARCHAR(255),
+  currency VARCHAR(255) NOT NULL,
+  effective_date TIMESTAMP,
+  placement_state VARCHAR(255) NOT NULL,
+  placement_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (reinsurance_treaty_id) REFERENCES reinsurance_management_reinsurance_treaty(reinsurance_treaty_id)
+);
+
+CREATE TABLE reinsurance_management_cession (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  cession_id VARCHAR(255) NOT NULL,
+  reinsurance_treaty_id VARCHAR(255) NOT NULL,
+  facultative_placement_id VARCHAR(255),
+  source_projection_reference VARCHAR(255) NOT NULL,
+  policy_reference VARCHAR(255),
+  treaty_match_reference VARCHAR(255) NOT NULL,
+  inclusion_rules TEXT,
+  exclusion_rules TEXT,
+  attachment_test_result VARCHAR(255) NOT NULL,
+  limit_test_result VARCHAR(255) NOT NULL,
+  territory VARCHAR(255),
+  line_of_business VARCHAR(255),
+  effective_date TIMESTAMP NOT NULL,
+  gross_amount DECIMAL(18, 4) NOT NULL,
+  retention_amount DECIMAL(18, 4) NOT NULL,
+  ceded_share DECIMAL(18, 4) NOT NULL,
+  layer_reference VARCHAR(255),
+  reinstatement_amount DECIMAL(18, 4),
+  commission_amount DECIMAL(18, 4),
+  tax_amount DECIMAL(18, 4),
+  rounding_adjustment DECIMAL(18, 4),
+  manual_override_flag BOOLEAN NOT NULL,
+  override_rationale TEXT,
+  rule_version VARCHAR(255),
+  calculation_trace TEXT,
+  currency VARCHAR(255) NOT NULL,
+  cession_state VARCHAR(255) NOT NULL,
+  cession_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (reinsurance_treaty_id) REFERENCES reinsurance_management_reinsurance_treaty(reinsurance_treaty_id),
+  FOREIGN KEY (facultative_placement_id) REFERENCES reinsurance_management_facultative_placement(facultative_placement_id)
+);
+
+CREATE TABLE reinsurance_management_bordereau (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  bordereau_id VARCHAR(255) NOT NULL,
+  reinsurance_treaty_id VARCHAR(255) NOT NULL,
+  bordereau_type VARCHAR(255) NOT NULL,
+  reporting_period VARCHAR(255) NOT NULL,
+  schema_version VARCHAR(255) NOT NULL,
+  source_file_reference VARCHAR(255),
+  row_count INTEGER NOT NULL,
+  accepted_row_count INTEGER NOT NULL,
+  validation_failure_count INTEGER NOT NULL,
+  reject_queue TEXT,
+  duplicate_count INTEGER NOT NULL,
+  currency_mismatch_count INTEGER NOT NULL,
+  period_check_result VARCHAR(255),
+  treaty_mapping_result VARCHAR(255),
+  reconciliation_result VARCHAR(255),
+  variance_amount DECIMAL(18, 4),
+  variance_reason TEXT,
+  certification_status VARCHAR(255) NOT NULL,
+  certified_by VARCHAR(255),
+  certification_date TIMESTAMP,
+  approval_state VARCHAR(255) NOT NULL,
+  submission_status VARCHAR(255) NOT NULL,
+  source_evidence_reference VARCHAR(255),
+  bordereau_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (reinsurance_treaty_id) REFERENCES reinsurance_management_reinsurance_treaty(reinsurance_treaty_id)
+);
+
+CREATE TABLE reinsurance_management_recoverable (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  recoverable_id VARCHAR(255) NOT NULL,
+  cession_id VARCHAR(255) NOT NULL,
+  claim_recovery_id VARCHAR(255),
+  counterparty_reference VARCHAR(255) NOT NULL,
+  recoverable_amount DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  due_date TIMESTAMP NOT NULL,
+  billed_date TIMESTAMP,
+  aging_bucket VARCHAR(255),
+  aging_days INTEGER,
+  recoverable_state VARCHAR(255) NOT NULL,
+  impairment_flag BOOLEAN NOT NULL,
+  impairment_evidence_reference VARCHAR(255),
+  write_off_reason TEXT,
+  settlement_status VARCHAR(255),
+  cash_projection_reference VARCHAR(255),
+  recoverable_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (cession_id) REFERENCES reinsurance_management_cession(cession_id),
+  FOREIGN KEY (claim_recovery_id) REFERENCES reinsurance_management_claim_recovery(claim_recovery_id)
+);
+
+CREATE TABLE reinsurance_management_claim_recovery (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  claim_recovery_id VARCHAR(255) NOT NULL,
+  reinsurance_treaty_id VARCHAR(255) NOT NULL,
+  cession_id VARCHAR(255),
+  claim_projection_reference VARCHAR(255) NOT NULL,
+  notice_date TIMESTAMP NOT NULL,
+  required_documentation TEXT,
+  submission_package TEXT,
+  clause_reference VARCHAR(255),
+  reinsurer_response VARCHAR(255),
+  response_date TIMESTAMP,
+  dispute_reference VARCHAR(255),
+  recovery_amount DECIMAL(18, 4) NOT NULL,
+  collected_amount DECIMAL(18, 4),
+  currency VARCHAR(255) NOT NULL,
+  collection_date TIMESTAMP,
+  recovery_state VARCHAR(255) NOT NULL,
+  closure_evidence_reference VARCHAR(255),
+  recovery_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (reinsurance_treaty_id) REFERENCES reinsurance_management_reinsurance_treaty(reinsurance_treaty_id),
+  FOREIGN KEY (cession_id) REFERENCES reinsurance_management_cession(cession_id)
+);
+
+CREATE TABLE reinsurance_management_exposure_layer (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  exposure_layer_id VARCHAR(255) NOT NULL,
+  reinsurance_treaty_id VARCHAR(255) NOT NULL,
+  layer_reference VARCHAR(255) NOT NULL,
+  attachment_amount DECIMAL(18, 4) NOT NULL,
+  exhaustion_amount DECIMAL(18, 4) NOT NULL,
+  peril VARCHAR(255) NOT NULL,
+  territory VARCHAR(255),
+  portfolio_reference VARCHAR(255),
+  aggregation_basis VARCHAR(255) NOT NULL,
+  event_definition VARCHAR(255),
+  event_reference VARCHAR(255),
+  occurrence_window VARCHAR(255),
+  utilized_amount DECIMAL(18, 4) NOT NULL,
+  remaining_capacity DECIMAL(18, 4) NOT NULL,
+  utilization_percent DECIMAL(18, 4) NOT NULL,
+  aggregate_exhaustion_percent DECIMAL(18, 4),
+  breach_warning VARCHAR(255),
+  layer_state VARCHAR(255) NOT NULL,
+  layer_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (reinsurance_treaty_id) REFERENCES reinsurance_management_reinsurance_treaty(reinsurance_treaty_id)
+);
+
+CREATE TABLE reinsurance_management_reinsurance_management_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  example_text TEXT,
+  approver_role VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE reinsurance_management_reinsurance_management_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE reinsurance_management_reinsurance_management_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE reinsurance_management_reinsurance_management_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  remediation_task VARCHAR(255),
+  evaluated_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE reinsurance_management_reinsurance_management_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  model_type VARCHAR(255) NOT NULL,
+  coverage_scope VARCHAR(255) NOT NULL,
+  backtest_exception_count INTEGER NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE reinsurance_management_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE reinsurance_management_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE reinsurance_management_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

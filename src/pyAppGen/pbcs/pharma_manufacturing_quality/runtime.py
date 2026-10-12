@@ -74,6 +74,34 @@ PHARMA_MANUFACTURING_QUALITY_BUSINESS_TABLES = ('pharma_manufacturing_quality_ph
  'pharma_manufacturing_quality_pharma_manufacturing_quality_control_assertion',
  'pharma_manufacturing_quality_pharma_manufacturing_quality_governed_model')
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+PHARMA_MANUFACTURING_QUALITY_TABLE_FIELDS = {
+    'pharma_manufacturing_quality_pharma_batch': ('id', 'tenant', 'pharma_batch_id', 'product_name', 'product_strength', 'dosage_form', 'manufacturing_site', 'equipment_train_reference', 'process_version', 'master_batch_record_reference', 'batch_size_quantity', 'batch_size_unit', 'manufacturing_started_at', 'manufacturing_completed_at', 'hold_time_limit_hours', 'expiry_date', 'quality_state', 'genealogy_complete_flag', 'right_first_time_flag', 'release_blocker_count', 'release_risk_score', 'status', 'version', 'created_at', 'updated_at'),
+    'pharma_manufacturing_quality_master_batch_record': ('id', 'tenant', 'master_batch_record_id', 'record_version', 'product_name', 'product_strength', 'manufacturing_site', 'equipment_train_reference', 'process_stage', 'approved_instruction_reference', 'critical_parameter_text', 'hold_point_text', 'effective_from', 'effective_to', 'supersession_reason', 'approval_state', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'pharma_manufacturing_quality_validation_protocol': ('id', 'tenant', 'validation_protocol_id', 'validation_type', 'validation_objective', 'acceptance_criteria', 'sample_plan', 'execution_steps', 'observed_deviations', 'validation_summary', 'executed_at', 'approval_state', 'approved_by', 'approved_at', 'requalification_due_at', 'status', 'version', 'created_at', 'updated_at'),
+    'pharma_manufacturing_quality_deviation': ('id', 'tenant', 'deviation_id', 'pharma_batch_id', 'deviation_category', 'severity', 'detection_point', 'impacted_batch_reference', 'containment_action', 'immediate_correction', 'investigation_owner', 'due_date', 'root_cause_method', 'confirmed_root_cause', 'contributing_factors', 'recurrence_risk', 'capa_reference', 'closure_state', 'status', 'version', 'created_at', 'updated_at'),
+    'pharma_manufacturing_quality_capa': ('id', 'tenant', 'capa_id', 'deviation_id', 'action_type', 'corrective_action', 'preventive_action', 'capa_owner', 'due_date', 'implementation_evidence', 'effectiveness_check', 'effectiveness_review_at', 'overdue_escalation_state', 'closure_proof', 'closure_state', 'status', 'version', 'created_at', 'updated_at'),
+    'pharma_manufacturing_quality_quality_release': ('id', 'tenant', 'quality_release_id', 'pharma_batch_id', 'release_checklist_state', 'required_evidence_text', 'quality_reviewer', 'review_completed_at', 'conditional_release_flag', 'rejection_reason', 'release_certificate_reference', 'disposition_state', 'disposition_authority', 'affected_quantity', 'hold_location', 'rework_instruction', 'destruction_evidence', 'released_at', 'status', 'version', 'created_at', 'updated_at'),
+    'pharma_manufacturing_quality_serialization_event': ('id', 'tenant', 'serialization_event_id', 'pharma_batch_id', 'serial_number', 'serialization_action', 'aggregation_parent_serial', 'aggregation_state', 'pack_reference', 'ship_reference', 'decommission_state', 'exception_flag', 'destination_projection_reference', 'event_sequence', 'occurred_at', 'status', 'version', 'created_at', 'updated_at'),
+    'pharma_manufacturing_quality_pharma_manufacturing_quality_policy_rule': ('id', 'tenant', 'policy_rule_id', 'rule_name', 'rule_scope', 'predicate_text', 'ambiguity_flag', 'approver_role', 'effective_from', 'effective_to', 'compiled_hash', 'source_span', 'prior_version_reference', 'status', 'version', 'created_at', 'updated_at'),
+    'pharma_manufacturing_quality_pharma_manufacturing_quality_runtime_parameter': ('id', 'tenant', 'runtime_parameter_id', 'parameter_name', 'parameter_value', 'parameter_scope', 'lower_bound', 'upper_bound', 'bounded', 'tenant_override', 'approval_state', 'approved_by', 'approved_at', 'effective_from', 'rollback_state', 'status', 'version', 'created_at', 'updated_at'),
+    'pharma_manufacturing_quality_pharma_manufacturing_quality_schema_extension': ('id', 'tenant', 'schema_extension_id', 'target_table', 'field_name', 'field_type', 'ui_placement', 'compatibility_state', 'backfill_plan', 'backfill_state', 'registered_at', 'activated_at', 'deprecated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'pharma_manufacturing_quality_pharma_manufacturing_quality_control_assertion': ('id', 'tenant', 'control_assertion_id', 'control_name', 'control_scope', 'assertion_result', 'severity', 'segregation_violation', 'affected_record_reference', 'failing_evidence', 'remediation_task', 'evaluated_at', 'evaluated_by', 'status', 'version', 'created_at', 'updated_at'),
+    'pharma_manufacturing_quality_pharma_manufacturing_quality_governed_model': ('id', 'tenant', 'governed_model_id', 'model_name', 'model_version', 'authority_role', 'certification_state', 'certification_expires_at', 'jurisdiction_code', 'allowed_actions', 'governance_state', 'proof_chain_hash', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'pharma_manufacturing_quality_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'pharma_manufacturing_quality_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'pharma_manufacturing_quality_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_PHARMA_MANUFACTURING_QUALITY_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _pharma_manufacturing_quality_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return PHARMA_MANUFACTURING_QUALITY_TABLE_FIELDS.get(table, _PHARMA_MANUFACTURING_QUALITY_DEFAULT_FIELDS)
+
+
 def pharma_manufacturing_quality_empty_state():
     return {'records': {}, 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
 
@@ -131,24 +159,11 @@ def pharma_manufacturing_quality_parse_document_instruction(document, instructio
     return {'ok': True, 'candidate_tables': PHARMA_MANUFACTURING_QUALITY_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
 def pharma_manufacturing_quality_build_schema_contract():
-    table_contracts = (
-        {'table': 'pharma_manufacturing_quality_pharma_batch', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'pharma_manufacturing_quality_master_batch_record', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'pharma_manufacturing_quality_validation_protocol', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'pharma_manufacturing_quality_deviation', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'pharma_manufacturing_quality_capa', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'pharma_manufacturing_quality_quality_release', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'pharma_manufacturing_quality_serialization_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'pharma_manufacturing_quality_pharma_manufacturing_quality_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'pharma_manufacturing_quality_pharma_manufacturing_quality_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'pharma_manufacturing_quality_pharma_manufacturing_quality_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'pharma_manufacturing_quality_pharma_manufacturing_quality_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'pharma_manufacturing_quality_pharma_manufacturing_quality_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'pharma_manufacturing_quality_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'pharma_manufacturing_quality_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'pharma_manufacturing_quality_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table, 'fields': _pharma_manufacturing_quality_table_fields(table), 'primary_key': ('id',), 'owned_by': PBC_KEY}
+        for table in PHARMA_MANUFACTURING_QUALITY_OWNED_TABLES
     )
-    return {'format': 'appgen.pharma-manufacturing-quality-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/pharma_manufacturing_quality/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': PHARMA_MANUFACTURING_QUALITY_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': PHARMA_MANUFACTURING_QUALITY_ALLOWED_DATABASE_BACKENDS, 'database_backends': PHARMA_MANUFACTURING_QUALITY_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': PHARMA_MANUFACTURING_QUALITY_OWNED_TABLES}
+    return {'format': 'appgen.pharma-manufacturing-quality-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/pharma_manufacturing_quality/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': PHARMA_MANUFACTURING_QUALITY_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(PHARMA_MANUFACTURING_QUALITY_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _pharma_manufacturing_quality_table_fields(table)} for table in PHARMA_MANUFACTURING_QUALITY_OWNED_TABLES), 'datastore_backends': PHARMA_MANUFACTURING_QUALITY_ALLOWED_DATABASE_BACKENDS, 'database_backends': PHARMA_MANUFACTURING_QUALITY_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': PHARMA_MANUFACTURING_QUALITY_OWNED_TABLES}
 
 def pharma_manufacturing_quality_build_service_contract():
     return {'format': 'appgen.pharma-manufacturing-quality-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_pharma_batch','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}

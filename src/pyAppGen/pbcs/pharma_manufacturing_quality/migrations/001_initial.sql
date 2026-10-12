@@ -1,15 +1,319 @@
-CREATE TABLE pharma_manufacturing_quality_pharma_batch (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE pharma_manufacturing_quality_master_batch_record (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE pharma_manufacturing_quality_validation_protocol (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE pharma_manufacturing_quality_deviation (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE pharma_manufacturing_quality_capa (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE pharma_manufacturing_quality_quality_release (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE pharma_manufacturing_quality_serialization_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE pharma_manufacturing_quality_pharma_manufacturing_quality_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE pharma_manufacturing_quality_pharma_manufacturing_quality_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE pharma_manufacturing_quality_pharma_manufacturing_quality_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE pharma_manufacturing_quality_pharma_manufacturing_quality_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE pharma_manufacturing_quality_pharma_manufacturing_quality_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE pharma_manufacturing_quality_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE pharma_manufacturing_quality_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE pharma_manufacturing_quality_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS pharma_manufacturing_quality;
+
+CREATE TABLE pharma_manufacturing_quality_pharma_batch (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  pharma_batch_id VARCHAR(255) NOT NULL,
+  product_name VARCHAR(255) NOT NULL,
+  product_strength VARCHAR(255) NOT NULL,
+  dosage_form VARCHAR(255) NOT NULL,
+  manufacturing_site VARCHAR(255) NOT NULL,
+  equipment_train_reference VARCHAR(255) NOT NULL,
+  process_version VARCHAR(255) NOT NULL,
+  master_batch_record_reference VARCHAR(255) NOT NULL,
+  batch_size_quantity DECIMAL(18, 4) NOT NULL,
+  batch_size_unit VARCHAR(255) NOT NULL,
+  manufacturing_started_at TIMESTAMP,
+  manufacturing_completed_at TIMESTAMP,
+  hold_time_limit_hours INTEGER NOT NULL,
+  expiry_date TIMESTAMP,
+  quality_state VARCHAR(255) NOT NULL,
+  genealogy_complete_flag BOOLEAN NOT NULL,
+  right_first_time_flag BOOLEAN NOT NULL,
+  release_blocker_count INTEGER NOT NULL,
+  release_risk_score DECIMAL(18, 4) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE pharma_manufacturing_quality_master_batch_record (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  master_batch_record_id VARCHAR(255) NOT NULL,
+  record_version VARCHAR(255) NOT NULL,
+  product_name VARCHAR(255) NOT NULL,
+  product_strength VARCHAR(255) NOT NULL,
+  manufacturing_site VARCHAR(255) NOT NULL,
+  equipment_train_reference VARCHAR(255) NOT NULL,
+  process_stage VARCHAR(255) NOT NULL,
+  approved_instruction_reference VARCHAR(255) NOT NULL,
+  critical_parameter_text TEXT NOT NULL,
+  hold_point_text TEXT NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  supersession_reason TEXT NOT NULL,
+  approval_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE pharma_manufacturing_quality_validation_protocol (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  validation_protocol_id VARCHAR(255) NOT NULL,
+  validation_type VARCHAR(255) NOT NULL,
+  validation_objective TEXT NOT NULL,
+  acceptance_criteria TEXT NOT NULL,
+  sample_plan TEXT NOT NULL,
+  execution_steps TEXT NOT NULL,
+  observed_deviations TEXT NOT NULL,
+  validation_summary TEXT NOT NULL,
+  executed_at TIMESTAMP,
+  approval_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  requalification_due_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE pharma_manufacturing_quality_deviation (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  deviation_id VARCHAR(255) NOT NULL,
+  pharma_batch_id VARCHAR(255) NOT NULL,
+  deviation_category VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  detection_point VARCHAR(255) NOT NULL,
+  impacted_batch_reference VARCHAR(255) NOT NULL,
+  containment_action TEXT NOT NULL,
+  immediate_correction TEXT NOT NULL,
+  investigation_owner VARCHAR(255) NOT NULL,
+  due_date TIMESTAMP,
+  root_cause_method VARCHAR(255) NOT NULL,
+  confirmed_root_cause TEXT NOT NULL,
+  contributing_factors TEXT NOT NULL,
+  recurrence_risk VARCHAR(255) NOT NULL,
+  capa_reference VARCHAR(255) NOT NULL,
+  closure_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (pharma_batch_id) REFERENCES pharma_manufacturing_quality_pharma_batch(pharma_batch_id)
+);
+
+CREATE TABLE pharma_manufacturing_quality_capa (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  capa_id VARCHAR(255) NOT NULL,
+  deviation_id VARCHAR(255) NOT NULL,
+  action_type VARCHAR(255) NOT NULL,
+  corrective_action TEXT NOT NULL,
+  preventive_action TEXT NOT NULL,
+  capa_owner VARCHAR(255) NOT NULL,
+  due_date TIMESTAMP,
+  implementation_evidence TEXT NOT NULL,
+  effectiveness_check TEXT NOT NULL,
+  effectiveness_review_at TIMESTAMP,
+  overdue_escalation_state VARCHAR(255) NOT NULL,
+  closure_proof TEXT NOT NULL,
+  closure_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (deviation_id) REFERENCES pharma_manufacturing_quality_deviation(deviation_id)
+);
+
+CREATE TABLE pharma_manufacturing_quality_quality_release (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  quality_release_id VARCHAR(255) NOT NULL,
+  pharma_batch_id VARCHAR(255) NOT NULL,
+  release_checklist_state VARCHAR(255) NOT NULL,
+  required_evidence_text TEXT NOT NULL,
+  quality_reviewer VARCHAR(255) NOT NULL,
+  review_completed_at TIMESTAMP,
+  conditional_release_flag BOOLEAN NOT NULL,
+  rejection_reason TEXT NOT NULL,
+  release_certificate_reference VARCHAR(255) NOT NULL,
+  disposition_state VARCHAR(255) NOT NULL,
+  disposition_authority VARCHAR(255) NOT NULL,
+  affected_quantity DECIMAL(18, 4) NOT NULL,
+  hold_location VARCHAR(255) NOT NULL,
+  rework_instruction TEXT NOT NULL,
+  destruction_evidence TEXT NOT NULL,
+  released_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (pharma_batch_id) REFERENCES pharma_manufacturing_quality_pharma_batch(pharma_batch_id)
+);
+
+CREATE TABLE pharma_manufacturing_quality_serialization_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  serialization_event_id VARCHAR(255) NOT NULL,
+  pharma_batch_id VARCHAR(255) NOT NULL,
+  serial_number VARCHAR(255) NOT NULL,
+  serialization_action VARCHAR(255) NOT NULL,
+  aggregation_parent_serial VARCHAR(255) NOT NULL,
+  aggregation_state VARCHAR(255) NOT NULL,
+  pack_reference VARCHAR(255) NOT NULL,
+  ship_reference VARCHAR(255) NOT NULL,
+  decommission_state VARCHAR(255) NOT NULL,
+  exception_flag BOOLEAN NOT NULL,
+  destination_projection_reference VARCHAR(255) NOT NULL,
+  event_sequence INTEGER NOT NULL,
+  occurred_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (pharma_batch_id) REFERENCES pharma_manufacturing_quality_pharma_batch(pharma_batch_id)
+);
+
+CREATE TABLE pharma_manufacturing_quality_pharma_manufacturing_quality_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  policy_rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  rule_scope VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  approver_role VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  source_span TEXT NOT NULL,
+  prior_version_reference VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE pharma_manufacturing_quality_pharma_manufacturing_quality_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  runtime_parameter_id VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value DECIMAL(18, 4) NOT NULL,
+  parameter_scope VARCHAR(255) NOT NULL,
+  lower_bound DECIMAL(18, 4) NOT NULL,
+  upper_bound DECIMAL(18, 4) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  tenant_override BOOLEAN NOT NULL,
+  approval_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  effective_from TIMESTAMP,
+  rollback_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE pharma_manufacturing_quality_pharma_manufacturing_quality_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  schema_extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  ui_placement VARCHAR(255) NOT NULL,
+  compatibility_state VARCHAR(255) NOT NULL,
+  backfill_plan TEXT NOT NULL,
+  backfill_state VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP,
+  activated_at TIMESTAMP,
+  deprecated_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE pharma_manufacturing_quality_pharma_manufacturing_quality_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  control_assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  control_scope VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  segregation_violation BOOLEAN NOT NULL,
+  affected_record_reference VARCHAR(255) NOT NULL,
+  failing_evidence TEXT NOT NULL,
+  remediation_task TEXT NOT NULL,
+  evaluated_at TIMESTAMP,
+  evaluated_by VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE pharma_manufacturing_quality_pharma_manufacturing_quality_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  governed_model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  authority_role VARCHAR(255) NOT NULL,
+  certification_state VARCHAR(255) NOT NULL,
+  certification_expires_at TIMESTAMP,
+  jurisdiction_code VARCHAR(255) NOT NULL,
+  allowed_actions TEXT NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  proof_chain_hash VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE pharma_manufacturing_quality_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE pharma_manufacturing_quality_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE pharma_manufacturing_quality_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

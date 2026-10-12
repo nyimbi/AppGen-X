@@ -1,15 +1,355 @@
-CREATE TABLE tax_administration_public_sector_taxpayer_account (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE tax_administration_public_sector_tax_filing (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE tax_administration_public_sector_assessment (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE tax_administration_public_sector_audit_case (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE tax_administration_public_sector_collection_action (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE tax_administration_public_sector_appeal (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE tax_administration_public_sector_tax_notice (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE tax_administration_public_sector_tax_administration_public_sector_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE tax_administration_public_sector_tax_administration_public_sector_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE tax_administration_public_sector_tax_administration_public_sector_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE tax_administration_public_sector_tax_administration_public_sector_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE tax_administration_public_sector_tax_administration_public_sector_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE tax_administration_public_sector_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE tax_administration_public_sector_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE tax_administration_public_sector_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS tax_administration_public_sector;
+
+CREATE TABLE tax_administration_public_sector_taxpayer_account (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  taxpayer_account_id VARCHAR(255) NOT NULL,
+  taxpayer_name VARCHAR(255) NOT NULL,
+  legal_form VARCHAR(255) NOT NULL,
+  taxpayer_role VARCHAR(255) NOT NULL,
+  residency_status VARCHAR(255) NOT NULL,
+  tin VARCHAR(255) NOT NULL,
+  provisional_identifier VARCHAR(255),
+  identifier_state VARCHAR(255) NOT NULL,
+  registration_case_reference VARCHAR(255),
+  registration_effective_from TIMESTAMP,
+  cessation_date TIMESTAMP,
+  cessation_reason VARCHAR(255),
+  successor_liability_reference VARCHAR(255),
+  merged_into_account_id VARCHAR(255),
+  split_from_account_id VARCHAR(255),
+  parent_account_id VARCHAR(255),
+  jurisdiction VARCHAR(255) NOT NULL,
+  address_line TEXT,
+  contact_channel VARCHAR(255),
+  identity_effective_from TIMESTAMP,
+  identity_effective_to TIMESTAMP,
+  hold_type VARCHAR(255),
+  hold_reason VARCHAR(255),
+  hold_started_at TIMESTAMP,
+  hold_released_at TIMESTAMP,
+  compliance_risk_band VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE tax_administration_public_sector_tax_filing (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  tax_filing_id VARCHAR(255) NOT NULL,
+  taxpayer_account_id VARCHAR(255) NOT NULL,
+  tax_type VARCHAR(255) NOT NULL,
+  tax_period VARCHAR(255) NOT NULL,
+  period_start TIMESTAMP,
+  period_end TIMESTAMP,
+  filing_kind VARCHAR(255) NOT NULL,
+  filing_channel VARCHAR(255) NOT NULL,
+  preparer_reference VARCHAR(255),
+  currency VARCHAR(255) NOT NULL,
+  declared_amount DECIMAL(18, 4) NOT NULL,
+  schedule_total DECIMAL(18, 4),
+  attachment_reference VARCHAR(255),
+  supersedes_filing_id VARCHAR(255),
+  amendment_reason VARCHAR(255),
+  validation_state VARCHAR(255) NOT NULL,
+  rejection_reason VARCHAR(255),
+  is_nil_return BOOLEAN NOT NULL,
+  due_date TIMESTAMP,
+  grace_period_days INTEGER,
+  received_at TIMESTAMP NOT NULL,
+  statutory_cutoff TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (taxpayer_account_id) REFERENCES tax_administration_public_sector_taxpayer_account(taxpayer_account_id)
+);
+
+CREATE TABLE tax_administration_public_sector_assessment (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assessment_id VARCHAR(255) NOT NULL,
+  taxpayer_account_id VARCHAR(255) NOT NULL,
+  tax_filing_id VARCHAR(255),
+  tax_type VARCHAR(255) NOT NULL,
+  tax_period VARCHAR(255) NOT NULL,
+  assessment_type VARCHAR(255) NOT NULL,
+  basis_reference VARCHAR(255),
+  statutory_authority VARCHAR(255),
+  principal_amount DECIMAL(18, 4) NOT NULL,
+  penalty_amount DECIMAL(18, 4),
+  interest_amount DECIMAL(18, 4),
+  credit_amount DECIMAL(18, 4),
+  total_liability DECIMAL(18, 4) NOT NULL,
+  effective_date TIMESTAMP,
+  supersedes_assessment_id VARCHAR(255),
+  reversal_reference VARCHAR(255),
+  notice_reference VARCHAR(255),
+  assessed_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (taxpayer_account_id) REFERENCES tax_administration_public_sector_taxpayer_account(taxpayer_account_id),
+  FOREIGN KEY (tax_filing_id) REFERENCES tax_administration_public_sector_tax_filing(tax_filing_id)
+);
+
+CREATE TABLE tax_administration_public_sector_audit_case (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  audit_case_id VARCHAR(255) NOT NULL,
+  taxpayer_account_id VARCHAR(255) NOT NULL,
+  case_reference VARCHAR(255) NOT NULL,
+  selection_source VARCHAR(255) NOT NULL,
+  risk_factor TEXT,
+  third_party_discrepancy_reference VARCHAR(255),
+  campaign_reference VARCHAR(255),
+  random_sample_flag BOOLEAN NOT NULL,
+  materiality_score DECIMAL(18, 4),
+  risk_score DECIMAL(18, 4),
+  case_priority VARCHAR(255),
+  assigned_officer VARCHAR(255),
+  workpaper_reference VARCHAR(255),
+  evidence_chain_hash VARCHAR(255),
+  finding_summary TEXT,
+  adjustment_assessment_id VARCHAR(255),
+  opened_at TIMESTAMP NOT NULL,
+  closed_at TIMESTAMP,
+  outcome VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (taxpayer_account_id) REFERENCES tax_administration_public_sector_taxpayer_account(taxpayer_account_id)
+);
+
+CREATE TABLE tax_administration_public_sector_collection_action (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  collection_action_id VARCHAR(255) NOT NULL,
+  taxpayer_account_id VARCHAR(255) NOT NULL,
+  action_type VARCHAR(255) NOT NULL,
+  strategy_stage VARCHAR(255) NOT NULL,
+  debt_reference VARCHAR(255),
+  debt_age_days INTEGER,
+  outstanding_amount DECIMAL(18, 4) NOT NULL,
+  recoverability_score DECIMAL(18, 4),
+  treatment_recommendation VARCHAR(255),
+  installment_plan_reference VARCHAR(255),
+  prerequisite_service_evidence BOOLEAN NOT NULL,
+  prerequisite_debt_certified BOOLEAN NOT NULL,
+  legal_hold_flag BOOLEAN NOT NULL,
+  enforcement_blocked BOOLEAN NOT NULL,
+  blocked_reason VARCHAR(255),
+  approval_reference VARCHAR(255),
+  next_action_at TIMESTAMP,
+  write_off_recommendation VARCHAR(255),
+  issued_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (taxpayer_account_id) REFERENCES tax_administration_public_sector_taxpayer_account(taxpayer_account_id)
+);
+
+CREATE TABLE tax_administration_public_sector_appeal (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  appeal_id VARCHAR(255) NOT NULL,
+  taxpayer_account_id VARCHAR(255) NOT NULL,
+  disputed_decision_reference VARCHAR(255) NOT NULL,
+  appeal_level VARCHAR(255) NOT NULL,
+  forum_reference VARCHAR(255),
+  date_served TIMESTAMP,
+  date_received TIMESTAMP NOT NULL,
+  grounds TEXT NOT NULL,
+  requested_relief TEXT,
+  supporting_document_reference VARCHAR(255),
+  completeness_state VARCHAR(255) NOT NULL,
+  stay_of_collection BOOLEAN NOT NULL,
+  out_of_time_flag BOOLEAN NOT NULL,
+  deadline_at TIMESTAMP,
+  hearing_date TIMESTAMP,
+  decision VARCHAR(255),
+  decision_at TIMESTAMP,
+  remand_reference VARCHAR(255),
+  collection_posture VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (taxpayer_account_id) REFERENCES tax_administration_public_sector_taxpayer_account(taxpayer_account_id)
+);
+
+CREATE TABLE tax_administration_public_sector_tax_notice (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  tax_notice_id VARCHAR(255) NOT NULL,
+  taxpayer_account_id VARCHAR(255) NOT NULL,
+  assessment_id VARCHAR(255),
+  notice_type VARCHAR(255) NOT NULL,
+  template_reference VARCHAR(255) NOT NULL,
+  template_version VARCHAR(255) NOT NULL,
+  jurisdiction VARCHAR(255) NOT NULL,
+  statutory_clause TEXT,
+  notice_period VARCHAR(255),
+  balance_due DECIMAL(18, 4),
+  due_date TIMESTAMP,
+  delivery_channel VARCHAR(255) NOT NULL,
+  delivery_address TEXT,
+  service_state VARCHAR(255) NOT NULL,
+  delivery_attempts INTEGER,
+  delivered_at TIMESTAMP,
+  returned_at TIMESTAMP,
+  return_reason VARCHAR(255),
+  re_service_reference VARCHAR(255),
+  issued_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (taxpayer_account_id) REFERENCES tax_administration_public_sector_taxpayer_account(taxpayer_account_id)
+);
+
+CREATE TABLE tax_administration_public_sector_tax_administration_public_sector_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  policy_rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  rule_version VARCHAR(255) NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255),
+  impact_preview_reference VARCHAR(255),
+  rollback_of_version VARCHAR(255),
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE tax_administration_public_sector_tax_administration_public_sector_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  runtime_parameter_id VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  lower_bound DECIMAL(18, 4),
+  upper_bound DECIMAL(18, 4),
+  effective_from TIMESTAMP NOT NULL,
+  impact_simulation_reference VARCHAR(255),
+  approved_by VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE tax_administration_public_sector_tax_administration_public_sector_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  schema_extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE tax_administration_public_sector_tax_administration_public_sector_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  control_assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  control_family VARCHAR(255) NOT NULL,
+  population_size INTEGER NOT NULL,
+  threshold DECIMAL(18, 4) NOT NULL,
+  failing_record_count INTEGER NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  owner_role VARCHAR(255) NOT NULL,
+  remediation_task VARCHAR(255),
+  closure_evidence TEXT,
+  evaluated_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE tax_administration_public_sector_tax_administration_public_sector_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  governed_model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  method_type VARCHAR(255) NOT NULL,
+  feature_list TEXT,
+  validation_evidence TEXT,
+  calibration_report_reference VARCHAR(255),
+  limitation TEXT,
+  monitoring_threshold DECIMAL(18, 4),
+  drift_alert_state VARCHAR(255),
+  owner_role VARCHAR(255) NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE tax_administration_public_sector_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE tax_administration_public_sector_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE tax_administration_public_sector_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

@@ -1,15 +1,326 @@
-CREATE TABLE water_wastewater_operations_treatment_plant (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE water_wastewater_operations_water_quality_sample (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE water_wastewater_operations_permit_limit (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE water_wastewater_operations_pump_asset (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE water_wastewater_operations_service_interruption (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE water_wastewater_operations_field_work_order (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE water_wastewater_operations_compliance_sample (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE water_wastewater_operations_water_wastewater_operations_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE water_wastewater_operations_water_wastewater_operations_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE water_wastewater_operations_water_wastewater_operations_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE water_wastewater_operations_water_wastewater_operations_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE water_wastewater_operations_water_wastewater_operations_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE water_wastewater_operations_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE water_wastewater_operations_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE water_wastewater_operations_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS water_wastewater_operations;
+
+CREATE TABLE water_wastewater_operations_treatment_plant (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  treatment_plant_id VARCHAR(255) NOT NULL,
+  plant_name VARCHAR(255) NOT NULL,
+  operating_mode VARCHAR(255) NOT NULL,
+  design_capacity_mgd DECIMAL(18, 4),
+  current_flow_mgd DECIMAL(18, 4),
+  capacity_utilization DECIMAL(18, 4),
+  operator_shift VARCHAR(255),
+  required_checks TEXT,
+  transition_reason VARCHAR(255),
+  active_process_train VARCHAR(255),
+  source_water_type VARCHAR(255),
+  influent_turbidity_ntu DECIMAL(18, 4),
+  influent_flow_mgd DECIMAL(18, 4),
+  influent_ph DECIMAL(18, 4),
+  influent_temperature_c DECIMAL(18, 4),
+  influent_conductivity DECIMAL(18, 4),
+  rainfall_mm DECIMAL(18, 4),
+  industrial_load_note TEXT,
+  anomaly_flag BOOLEAN NOT NULL,
+  commissioned_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE water_wastewater_operations_water_quality_sample (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  water_quality_sample_id VARCHAR(255) NOT NULL,
+  sample_point VARCHAR(255) NOT NULL,
+  collector VARCHAR(255) NOT NULL,
+  collection_method VARCHAR(255),
+  preservation VARCHAR(255),
+  collection_time TIMESTAMP NOT NULL,
+  custody_transfer_count INTEGER,
+  custody_evidence_complete BOOLEAN NOT NULL,
+  lab_projection VARCHAR(255),
+  parameter_name VARCHAR(255) NOT NULL,
+  result_value DECIMAL(18, 4),
+  result_unit VARCHAR(255),
+  reporting_limit DECIMAL(18, 4),
+  method_version VARCHAR(255),
+  holding_time_hours INTEGER,
+  holding_time_met BOOLEAN NOT NULL,
+  qualifier VARCHAR(255),
+  discrepancy_flag BOOLEAN NOT NULL,
+  sampling_plan VARCHAR(255),
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  treatment_plant_id VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (treatment_plant_id) REFERENCES water_wastewater_operations_treatment_plant(treatment_plant_id)
+);
+
+CREATE TABLE water_wastewater_operations_permit_limit (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  permit_limit_id VARCHAR(255) NOT NULL,
+  permit_number VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  limit_type VARCHAR(255) NOT NULL,
+  limit_value DECIMAL(18, 4) NOT NULL,
+  limit_unit VARCHAR(255) NOT NULL,
+  averaging_period VARCHAR(255) NOT NULL,
+  sample_point VARCHAR(255),
+  outfall VARCHAR(255),
+  flow_condition VARCHAR(255),
+  season VARCHAR(255),
+  monitoring_frequency VARCHAR(255),
+  exceedance_rule TEXT,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  treatment_plant_id VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (treatment_plant_id) REFERENCES water_wastewater_operations_treatment_plant(treatment_plant_id)
+);
+
+CREATE TABLE water_wastewater_operations_pump_asset (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  pump_asset_id VARCHAR(255) NOT NULL,
+  asset_tag VARCHAR(255) NOT NULL,
+  asset_name VARCHAR(255) NOT NULL,
+  asset_type VARCHAR(255) NOT NULL,
+  duty_role VARCHAR(255),
+  operating_status VARCHAR(255) NOT NULL,
+  rated_flow DECIMAL(18, 4),
+  rated_head DECIMAL(18, 4),
+  runtime_hours INTEGER,
+  start_count INTEGER,
+  vibration_projection DECIMAL(18, 4),
+  maintenance_status VARCHAR(255),
+  criticality_score DECIMAL(18, 4),
+  standby_available BOOLEAN NOT NULL,
+  last_service_at TIMESTAMP,
+  wet_well_level DECIMAL(18, 4),
+  overflow_risk DECIMAL(18, 4),
+  generator_status VARCHAR(255),
+  alarm_state VARCHAR(255),
+  treatment_plant_id VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (treatment_plant_id) REFERENCES water_wastewater_operations_treatment_plant(treatment_plant_id)
+);
+
+CREATE TABLE water_wastewater_operations_service_interruption (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  service_interruption_id VARCHAR(255) NOT NULL,
+  interruption_type VARCHAR(255) NOT NULL,
+  planned BOOLEAN NOT NULL,
+  started_at TIMESTAMP NOT NULL,
+  restored_at TIMESTAMP,
+  affected_area VARCHAR(255),
+  pressure_zone VARCHAR(255),
+  customer_impact_count INTEGER,
+  critical_customer_count INTEGER,
+  cause VARCHAR(255),
+  crew_assignment VARCHAR(255),
+  advisory_status VARCHAR(255),
+  valve_isolation_count INTEGER,
+  restoration_evidence TEXT,
+  treatment_plant_id VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (treatment_plant_id) REFERENCES water_wastewater_operations_treatment_plant(treatment_plant_id)
+);
+
+CREATE TABLE water_wastewater_operations_field_work_order (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  field_work_order_id VARCHAR(255) NOT NULL,
+  work_type VARCHAR(255) NOT NULL,
+  asset_reference VARCHAR(255),
+  priority VARCHAR(255) NOT NULL,
+  safety_controls TEXT,
+  crew_assignment VARCHAR(255),
+  materials_projection TEXT,
+  traffic_control VARCHAR(255),
+  valve_sequence TEXT,
+  isolation_verified BOOLEAN NOT NULL,
+  scheduled_at TIMESTAMP,
+  completed_at TIMESTAMP,
+  completion_evidence TEXT,
+  service_interruption_id VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (service_interruption_id) REFERENCES water_wastewater_operations_service_interruption(service_interruption_id)
+);
+
+CREATE TABLE water_wastewater_operations_compliance_sample (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  compliance_sample_id VARCHAR(255) NOT NULL,
+  regulatory_purpose VARCHAR(255) NOT NULL,
+  reportable BOOLEAN NOT NULL,
+  approval_status VARCHAR(255) NOT NULL,
+  resample_required BOOLEAN NOT NULL,
+  certified_by VARCHAR(255),
+  certified_at TIMESTAMP,
+  report_period VARCHAR(255),
+  exceedance_flag BOOLEAN NOT NULL,
+  exceedance_severity VARCHAR(255),
+  notification_deadline TIMESTAMP,
+  root_cause VARCHAR(255),
+  corrective_action TEXT,
+  closure_evidence TEXT,
+  water_quality_sample_id VARCHAR(255),
+  permit_limit_id VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (water_quality_sample_id) REFERENCES water_wastewater_operations_water_quality_sample(water_quality_sample_id),
+  FOREIGN KEY (permit_limit_id) REFERENCES water_wastewater_operations_permit_limit(permit_limit_id)
+);
+
+CREATE TABLE water_wastewater_operations_water_wastewater_operations_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  policy_rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  example_text TEXT,
+  approver_role VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE water_wastewater_operations_water_wastewater_operations_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  runtime_parameter_id VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  value_min DECIMAL(18, 4),
+  value_max DECIMAL(18, 4),
+  rollback_value VARCHAR(255),
+  change_rationale TEXT,
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE water_wastewater_operations_water_wastewater_operations_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE water_wastewater_operations_water_wastewater_operations_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  remediation_task VARCHAR(255),
+  evaluated_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE water_wastewater_operations_water_wastewater_operations_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  model_type VARCHAR(255) NOT NULL,
+  coverage_scope VARCHAR(255) NOT NULL,
+  backtest_exception_count INTEGER NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE water_wastewater_operations_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE water_wastewater_operations_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE water_wastewater_operations_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

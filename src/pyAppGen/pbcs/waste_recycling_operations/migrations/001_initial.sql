@@ -1,15 +1,326 @@
-CREATE TABLE waste_recycling_operations_waste_route (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE waste_recycling_operations_bin_asset (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE waste_recycling_operations_pickup_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE waste_recycling_operations_material_stream (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE waste_recycling_operations_contamination_finding (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE waste_recycling_operations_disposal_ticket (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE waste_recycling_operations_recycling_yield (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE waste_recycling_operations_waste_recycling_operations_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE waste_recycling_operations_waste_recycling_operations_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE waste_recycling_operations_waste_recycling_operations_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE waste_recycling_operations_waste_recycling_operations_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE waste_recycling_operations_waste_recycling_operations_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE waste_recycling_operations_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE waste_recycling_operations_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE waste_recycling_operations_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS waste_recycling_operations;
+
+CREATE TABLE waste_recycling_operations_waste_route (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  waste_route_id VARCHAR(255) NOT NULL,
+  route_name VARCHAR(255) NOT NULL,
+  route_date TIMESTAMP NOT NULL,
+  service_stream VARCHAR(255) NOT NULL,
+  territory VARCHAR(255) NOT NULL,
+  service_day VARCHAR(255) NOT NULL,
+  service_frequency VARCHAR(255) NOT NULL,
+  lifecycle_state VARCHAR(255) NOT NULL,
+  dispatch_owner VARCHAR(255) NOT NULL,
+  vehicle_projection_id VARCHAR(255),
+  crew_projection_id VARCHAR(255),
+  service_window_start TIMESTAMP,
+  service_window_end TIMESTAMP,
+  stop_count INTEGER NOT NULL,
+  completed_stop_count INTEGER NOT NULL,
+  missed_stop_count INTEGER NOT NULL,
+  planned_distance_km DECIMAL(18, 4),
+  actual_distance_km DECIMAL(18, 4),
+  release_state VARCHAR(255) NOT NULL,
+  disruption_flag BOOLEAN NOT NULL,
+  disruption_cause VARCHAR(255),
+  supervisor_approval_state VARCHAR(255) NOT NULL,
+  emission_estimate_kg DECIMAL(18, 4),
+  route_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE waste_recycling_operations_bin_asset (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  bin_asset_id VARCHAR(255) NOT NULL,
+  serial_number VARCHAR(255) NOT NULL,
+  rfid_tag VARCHAR(255),
+  bin_size VARCHAR(255) NOT NULL,
+  material_stream VARCHAR(255) NOT NULL,
+  owner_projection_id VARCHAR(255),
+  location_reference VARCHAR(255) NOT NULL,
+  deployment_date TIMESTAMP,
+  condition_state VARCHAR(255) NOT NULL,
+  lifecycle_state VARCHAR(255) NOT NULL,
+  setout_status VARCHAR(255) NOT NULL,
+  gps_latitude DECIMAL(18, 4),
+  gps_longitude DECIMAL(18, 4),
+  placement_guidance VARCHAR(255),
+  blocked_access_reason VARCHAR(255),
+  photo_reference VARCHAR(255),
+  fill_level_percent DECIMAL(18, 4),
+  capacity_litres DECIMAL(18, 4),
+  repeat_issue_count INTEGER NOT NULL,
+  last_service_date TIMESTAMP,
+  retirement_date TIMESTAMP,
+  service_constraint VARCHAR(255),
+  bin_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE waste_recycling_operations_pickup_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  pickup_event_id VARCHAR(255) NOT NULL,
+  waste_route_id VARCHAR(255) NOT NULL,
+  bin_asset_id VARCHAR(255) NOT NULL,
+  stop_sequence INTEGER NOT NULL,
+  vehicle_projection_id VARCHAR(255),
+  pickup_timestamp TIMESTAMP NOT NULL,
+  gps_latitude DECIMAL(18, 4),
+  gps_longitude DECIMAL(18, 4),
+  lift_sensor_projection VARCHAR(255),
+  weight_estimate_kg DECIMAL(18, 4),
+  photo_reference VARCHAR(255),
+  outcome_code VARCHAR(255) NOT NULL,
+  exception_code VARCHAR(255),
+  missed_reason VARCHAR(255),
+  return_trip_eligible BOOLEAN NOT NULL,
+  recovery_scheduled_date TIMESTAMP,
+  hazardous_flag BOOLEAN NOT NULL,
+  safety_observation VARCHAR(255),
+  proof_packet_hash VARCHAR(255),
+  pickup_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (waste_route_id) REFERENCES waste_recycling_operations_waste_route(waste_route_id),
+  FOREIGN KEY (bin_asset_id) REFERENCES waste_recycling_operations_bin_asset(bin_asset_id)
+);
+
+CREATE TABLE waste_recycling_operations_material_stream (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  material_stream_id VARCHAR(255) NOT NULL,
+  stream_name VARCHAR(255) NOT NULL,
+  stream_category VARCHAR(255) NOT NULL,
+  accepted_materials TEXT,
+  prohibited_materials TEXT,
+  processing_destination VARCHAR(255) NOT NULL,
+  contamination_rule VARCHAR(255) NOT NULL,
+  contamination_threshold DECIMAL(18, 4),
+  pricing_basis VARCHAR(255) NOT NULL,
+  reporting_category VARCHAR(255) NOT NULL,
+  organics_moisture_estimate DECIMAL(18, 4),
+  odor_flag BOOLEAN NOT NULL,
+  prohibited_packaging VARCHAR(255),
+  compost_destination_projection VARCHAR(255),
+  quality_grade VARCHAR(255),
+  sample_method VARCHAR(255),
+  stream_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE waste_recycling_operations_contamination_finding (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  contamination_finding_id VARCHAR(255) NOT NULL,
+  bin_asset_id VARCHAR(255) NOT NULL,
+  waste_route_id VARCHAR(255),
+  pickup_event_id VARCHAR(255),
+  contaminant_type VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  photo_reference VARCHAR(255),
+  contamination_weight_kg DECIMAL(18, 4),
+  customer_notice_reference VARCHAR(255),
+  notice_sent_at TIMESTAMP,
+  repeat_threshold_exceeded BOOLEAN NOT NULL,
+  enforcement_option VARCHAR(255),
+  education_campaign_id VARCHAR(255),
+  corrective_action VARCHAR(255),
+  finding_timestamp TIMESTAMP NOT NULL,
+  finding_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (bin_asset_id) REFERENCES waste_recycling_operations_bin_asset(bin_asset_id),
+  FOREIGN KEY (pickup_event_id) REFERENCES waste_recycling_operations_pickup_event(pickup_event_id)
+);
+
+CREATE TABLE waste_recycling_operations_disposal_ticket (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  disposal_ticket_id VARCHAR(255) NOT NULL,
+  facility_projection_id VARCHAR(255) NOT NULL,
+  vehicle_projection_id VARCHAR(255),
+  ticket_number VARCHAR(255) NOT NULL,
+  material_stream_id VARCHAR(255) NOT NULL,
+  waste_route_id VARCHAR(255),
+  gross_weight_kg DECIMAL(18, 4) NOT NULL,
+  tare_weight_kg DECIMAL(18, 4) NOT NULL,
+  net_weight_kg DECIMAL(18, 4) NOT NULL,
+  weigh_scale_timestamp TIMESTAMP,
+  ticket_image_reference VARCHAR(255),
+  disposal_method VARCHAR(255) NOT NULL,
+  permit_reference VARCHAR(255),
+  compliance_rule_reference VARCHAR(255),
+  reconciliation_state VARCHAR(255) NOT NULL,
+  exception_status VARCHAR(255),
+  disposal_timestamp TIMESTAMP NOT NULL,
+  ticket_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (material_stream_id) REFERENCES waste_recycling_operations_material_stream(material_stream_id),
+  FOREIGN KEY (waste_route_id) REFERENCES waste_recycling_operations_waste_route(waste_route_id)
+);
+
+CREATE TABLE waste_recycling_operations_recycling_yield (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  recycling_yield_id VARCHAR(255) NOT NULL,
+  facility_projection_id VARCHAR(255) NOT NULL,
+  material_stream_id VARCHAR(255) NOT NULL,
+  period_start TIMESTAMP NOT NULL,
+  period_end TIMESTAMP NOT NULL,
+  inbound_weight_kg DECIMAL(18, 4) NOT NULL,
+  reject_weight_kg DECIMAL(18, 4) NOT NULL,
+  recovered_material_kg DECIMAL(18, 4) NOT NULL,
+  commodity_grade VARCHAR(255),
+  moisture_percent DECIMAL(18, 4),
+  destination VARCHAR(255) NOT NULL,
+  diversion_rate DECIMAL(18, 4) NOT NULL,
+  reject_rate DECIMAL(18, 4) NOT NULL,
+  certification_evidence_reference VARCHAR(255),
+  certified_at TIMESTAMP,
+  yield_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (material_stream_id) REFERENCES waste_recycling_operations_material_stream(material_stream_id)
+);
+
+CREATE TABLE waste_recycling_operations_waste_recycling_operations_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  example_text TEXT,
+  approver_role VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE waste_recycling_operations_waste_recycling_operations_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE waste_recycling_operations_waste_recycling_operations_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE waste_recycling_operations_waste_recycling_operations_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  remediation_task VARCHAR(255),
+  evaluated_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE waste_recycling_operations_waste_recycling_operations_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  model_type VARCHAR(255) NOT NULL,
+  coverage_scope VARCHAR(255) NOT NULL,
+  backtest_exception_count INTEGER NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE waste_recycling_operations_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE waste_recycling_operations_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE waste_recycling_operations_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

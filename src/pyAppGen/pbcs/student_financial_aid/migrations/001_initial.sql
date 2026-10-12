@@ -1,15 +1,356 @@
-CREATE TABLE student_financial_aid_aid_application (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE student_financial_aid_eligibility_review (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE student_financial_aid_award_package (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE student_financial_aid_verification_item (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE student_financial_aid_disbursement (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE student_financial_aid_sap_status (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE student_financial_aid_aid_compliance (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE student_financial_aid_student_financial_aid_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE student_financial_aid_student_financial_aid_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE student_financial_aid_student_financial_aid_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE student_financial_aid_student_financial_aid_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE student_financial_aid_student_financial_aid_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE student_financial_aid_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE student_financial_aid_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE student_financial_aid_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS student_financial_aid;
+
+CREATE TABLE student_financial_aid_aid_application (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  aid_application_id VARCHAR(255) NOT NULL,
+  student_reference VARCHAR(255) NOT NULL,
+  program_reference VARCHAR(255) NOT NULL,
+  academic_year VARCHAR(255) NOT NULL,
+  term VARCHAR(255),
+  payment_period VARCHAR(255),
+  census_date TIMESTAMP,
+  enrollment_intensity VARCHAR(255) NOT NULL,
+  enrollment_status VARCHAR(255) NOT NULL,
+  residency_status VARCHAR(255) NOT NULL,
+  dependency_status VARCHAR(255) NOT NULL,
+  household_size INTEGER,
+  family_in_college_count INTEGER,
+  citizenship_status VARCHAR(255),
+  campus VARCHAR(255) NOT NULL,
+  application_state VARCHAR(255) NOT NULL,
+  transition_reason VARCHAR(255),
+  required_evidence TEXT,
+  missing_evidence TEXT,
+  rule_version VARCHAR(255),
+  application_owner VARCHAR(255) NOT NULL,
+  allowed_commands VARCHAR(255),
+  submitted_date TIMESTAMP,
+  decision_date TIMESTAMP,
+  expected_graduation_date TIMESTAMP,
+  cost_of_attendance DECIMAL(18, 4) NOT NULL,
+  expected_family_contribution DECIMAL(18, 4) NOT NULL,
+  need_amount DECIMAL(18, 4) NOT NULL,
+  unmet_need DECIMAL(18, 4) NOT NULL,
+  data_quality_score DECIMAL(18, 4) NOT NULL,
+  open_exception_count INTEGER NOT NULL,
+  projection_freshness TIMESTAMP,
+  application_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE student_financial_aid_eligibility_review (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  eligibility_review_id VARCHAR(255) NOT NULL,
+  aid_application_id VARCHAR(255) NOT NULL,
+  review_type VARCHAR(255) NOT NULL,
+  calculation_version VARCHAR(255) NOT NULL,
+  contribution_inputs TEXT,
+  budget_components TEXT,
+  other_resource_total DECIMAL(18, 4) NOT NULL,
+  total_budget DECIMAL(18, 4) NOT NULL,
+  need_amount DECIMAL(18, 4) NOT NULL,
+  unmet_need DECIMAL(18, 4) NOT NULL,
+  annual_aid_limit DECIMAL(18, 4),
+  aggregate_limit_remaining DECIMAL(18, 4),
+  eligibility_result VARCHAR(255) NOT NULL,
+  ineligibility_reason VARCHAR(255),
+  review_state VARCHAR(255) NOT NULL,
+  review_owner VARCHAR(255) NOT NULL,
+  reviewed_by VARCHAR(255),
+  review_date TIMESTAMP NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  next_review_date TIMESTAMP,
+  review_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (aid_application_id) REFERENCES student_financial_aid_aid_application(aid_application_id)
+);
+
+CREATE TABLE student_financial_aid_award_package (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  award_package_id VARCHAR(255) NOT NULL,
+  aid_application_id VARCHAR(255) NOT NULL,
+  academic_year VARCHAR(255) NOT NULL,
+  payment_period VARCHAR(255),
+  package_version VARCHAR(255) NOT NULL,
+  fund_priority VARCHAR(255) NOT NULL,
+  total_award_amount DECIMAL(18, 4) NOT NULL,
+  grant_amount DECIMAL(18, 4) NOT NULL,
+  scholarship_amount DECIMAL(18, 4) NOT NULL,
+  work_study_amount DECIMAL(18, 4) NOT NULL,
+  subsidized_loan_amount DECIMAL(18, 4) NOT NULL,
+  unsubsidized_loan_amount DECIMAL(18, 4) NOT NULL,
+  institutional_fund_amount DECIMAL(18, 4) NOT NULL,
+  private_aid_amount DECIMAL(18, 4) NOT NULL,
+  external_resource_amount DECIMAL(18, 4) NOT NULL,
+  unmet_need_after_packaging DECIMAL(18, 4) NOT NULL,
+  overaward_amount DECIMAL(18, 4) NOT NULL,
+  overaward_flag BOOLEAN NOT NULL,
+  fund_capacity_remaining DECIMAL(18, 4),
+  annual_limit_check VARCHAR(255) NOT NULL,
+  aggregate_limit_check VARCHAR(255) NOT NULL,
+  packaging_rule_reference VARCHAR(255),
+  package_state VARCHAR(255) NOT NULL,
+  revision_number INTEGER NOT NULL,
+  response_state VARCHAR(255),
+  response_date TIMESTAMP,
+  counseling_required BOOLEAN NOT NULL,
+  counseling_completed BOOLEAN NOT NULL,
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  package_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (aid_application_id) REFERENCES student_financial_aid_aid_application(aid_application_id)
+);
+
+CREATE TABLE student_financial_aid_verification_item (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  verification_item_id VARCHAR(255) NOT NULL,
+  aid_application_id VARCHAR(255) NOT NULL,
+  verification_group VARCHAR(255) NOT NULL,
+  selection_reason VARCHAR(255) NOT NULL,
+  required_document VARCHAR(255) NOT NULL,
+  document_received_date TIMESTAMP,
+  due_date TIMESTAMP NOT NULL,
+  reviewer VARCHAR(255),
+  discrepancy_type VARCHAR(255),
+  discrepancy_detail TEXT,
+  correction_outcome VARCHAR(255),
+  item_state VARCHAR(255) NOT NULL,
+  extension_granted BOOLEAN NOT NULL,
+  extension_due_date TIMESTAMP,
+  resolution_date TIMESTAMP,
+  verification_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (aid_application_id) REFERENCES student_financial_aid_aid_application(aid_application_id)
+);
+
+CREATE TABLE student_financial_aid_disbursement (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  disbursement_id VARCHAR(255) NOT NULL,
+  aid_application_id VARCHAR(255) NOT NULL,
+  award_package_id VARCHAR(255) NOT NULL,
+  payment_period VARCHAR(255) NOT NULL,
+  split_basis VARCHAR(255) NOT NULL,
+  disbursement_amount DECIMAL(18, 4) NOT NULL,
+  scheduled_release_date TIMESTAMP NOT NULL,
+  actual_release_date TIMESTAMP,
+  census_date TIMESTAMP,
+  enrollment_check_result VARCHAR(255) NOT NULL,
+  verification_check_result VARCHAR(255) NOT NULL,
+  sap_check_result VARCHAR(255) NOT NULL,
+  hold_check_result VARCHAR(255) NOT NULL,
+  acceptance_check_result VARCHAR(255) NOT NULL,
+  fund_availability_check VARCHAR(255) NOT NULL,
+  prerequisite_checklist TEXT,
+  blocker_reasons TEXT,
+  release_state VARCHAR(255) NOT NULL,
+  approval_evidence_reference VARCHAR(255),
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  late_disbursement BOOLEAN NOT NULL,
+  cancellation_reason VARCHAR(255),
+  disbursement_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (aid_application_id) REFERENCES student_financial_aid_aid_application(aid_application_id),
+  FOREIGN KEY (award_package_id) REFERENCES student_financial_aid_award_package(award_package_id)
+);
+
+CREATE TABLE student_financial_aid_sap_status (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  sap_status_id VARCHAR(255) NOT NULL,
+  student_reference VARCHAR(255) NOT NULL,
+  aid_application_id VARCHAR(255),
+  evaluation_period VARCHAR(255) NOT NULL,
+  academic_year VARCHAR(255) NOT NULL,
+  gpa_result DECIMAL(18, 4) NOT NULL,
+  required_gpa DECIMAL(18, 4) NOT NULL,
+  pace_rate DECIMAL(18, 4) NOT NULL,
+  required_pace_rate DECIMAL(18, 4) NOT NULL,
+  timeframe_consumed_percent DECIMAL(18, 4) NOT NULL,
+  attempted_credits INTEGER NOT NULL,
+  earned_credits INTEGER NOT NULL,
+  sap_result VARCHAR(255) NOT NULL,
+  appeal_status VARCHAR(255),
+  plan_terms TEXT,
+  probation_start_date TIMESTAMP,
+  next_review_date TIMESTAMP NOT NULL,
+  evaluated_by VARCHAR(255),
+  sap_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (aid_application_id) REFERENCES student_financial_aid_aid_application(aid_application_id)
+);
+
+CREATE TABLE student_financial_aid_aid_compliance (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  aid_compliance_id VARCHAR(255) NOT NULL,
+  obligation_type VARCHAR(255) NOT NULL,
+  rule_source VARCHAR(255) NOT NULL,
+  academic_year VARCHAR(255),
+  payment_period VARCHAR(255),
+  due_date TIMESTAMP NOT NULL,
+  completed_date TIMESTAMP,
+  obligation_owner VARCHAR(255) NOT NULL,
+  obligation_state VARCHAR(255) NOT NULL,
+  evidence_reference VARCHAR(255),
+  escalation_level VARCHAR(255),
+  escalation_date TIMESTAMP,
+  exception_opened BOOLEAN NOT NULL,
+  exception_reason VARCHAR(255),
+  remediation_plan TEXT,
+  compliance_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE student_financial_aid_student_financial_aid_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  rule_category VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  example_text TEXT,
+  approver_role VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE student_financial_aid_student_financial_aid_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  parameter_type VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  lower_bound DECIMAL(18, 4),
+  upper_bound DECIMAL(18, 4),
+  effective_from TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE student_financial_aid_student_financial_aid_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE student_financial_aid_student_financial_aid_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  remediation_task VARCHAR(255),
+  evaluated_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE student_financial_aid_student_financial_aid_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  model_type VARCHAR(255) NOT NULL,
+  coverage_scope VARCHAR(255) NOT NULL,
+  backtest_exception_count INTEGER NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE student_financial_aid_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE student_financial_aid_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE student_financial_aid_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

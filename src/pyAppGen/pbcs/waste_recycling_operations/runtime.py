@@ -74,6 +74,34 @@ WASTE_RECYCLING_OPERATIONS_BUSINESS_TABLES = ('waste_recycling_operations_waste_
  'waste_recycling_operations_waste_recycling_operations_control_assertion',
  'waste_recycling_operations_waste_recycling_operations_governed_model')
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+WASTE_RECYCLING_OPERATIONS_TABLE_FIELDS = {
+    'waste_recycling_operations_waste_route': ('id', 'tenant', 'waste_route_id', 'route_name', 'route_date', 'service_stream', 'territory', 'service_day', 'service_frequency', 'lifecycle_state', 'dispatch_owner', 'vehicle_projection_id', 'crew_projection_id', 'service_window_start', 'service_window_end', 'stop_count', 'completed_stop_count', 'missed_stop_count', 'planned_distance_km', 'actual_distance_km', 'release_state', 'disruption_flag', 'disruption_cause', 'supervisor_approval_state', 'emission_estimate_kg', 'route_notes', 'status', 'version', 'created_at', 'updated_at'),
+    'waste_recycling_operations_bin_asset': ('id', 'tenant', 'bin_asset_id', 'serial_number', 'rfid_tag', 'bin_size', 'material_stream', 'owner_projection_id', 'location_reference', 'deployment_date', 'condition_state', 'lifecycle_state', 'setout_status', 'gps_latitude', 'gps_longitude', 'placement_guidance', 'blocked_access_reason', 'photo_reference', 'fill_level_percent', 'capacity_litres', 'repeat_issue_count', 'last_service_date', 'retirement_date', 'service_constraint', 'bin_notes', 'status', 'version', 'created_at', 'updated_at'),
+    'waste_recycling_operations_pickup_event': ('id', 'tenant', 'pickup_event_id', 'waste_route_id', 'bin_asset_id', 'stop_sequence', 'vehicle_projection_id', 'pickup_timestamp', 'gps_latitude', 'gps_longitude', 'lift_sensor_projection', 'weight_estimate_kg', 'photo_reference', 'outcome_code', 'exception_code', 'missed_reason', 'return_trip_eligible', 'recovery_scheduled_date', 'hazardous_flag', 'safety_observation', 'proof_packet_hash', 'pickup_notes', 'status', 'version', 'created_at', 'updated_at'),
+    'waste_recycling_operations_material_stream': ('id', 'tenant', 'material_stream_id', 'stream_name', 'stream_category', 'accepted_materials', 'prohibited_materials', 'processing_destination', 'contamination_rule', 'contamination_threshold', 'pricing_basis', 'reporting_category', 'organics_moisture_estimate', 'odor_flag', 'prohibited_packaging', 'compost_destination_projection', 'quality_grade', 'sample_method', 'stream_notes', 'status', 'version', 'created_at', 'updated_at'),
+    'waste_recycling_operations_contamination_finding': ('id', 'tenant', 'contamination_finding_id', 'bin_asset_id', 'waste_route_id', 'pickup_event_id', 'contaminant_type', 'severity', 'photo_reference', 'contamination_weight_kg', 'customer_notice_reference', 'notice_sent_at', 'repeat_threshold_exceeded', 'enforcement_option', 'education_campaign_id', 'corrective_action', 'finding_timestamp', 'finding_notes', 'status', 'version', 'created_at', 'updated_at'),
+    'waste_recycling_operations_disposal_ticket': ('id', 'tenant', 'disposal_ticket_id', 'facility_projection_id', 'vehicle_projection_id', 'ticket_number', 'material_stream_id', 'waste_route_id', 'gross_weight_kg', 'tare_weight_kg', 'net_weight_kg', 'weigh_scale_timestamp', 'ticket_image_reference', 'disposal_method', 'permit_reference', 'compliance_rule_reference', 'reconciliation_state', 'exception_status', 'disposal_timestamp', 'ticket_notes', 'status', 'version', 'created_at', 'updated_at'),
+    'waste_recycling_operations_recycling_yield': ('id', 'tenant', 'recycling_yield_id', 'facility_projection_id', 'material_stream_id', 'period_start', 'period_end', 'inbound_weight_kg', 'reject_weight_kg', 'recovered_material_kg', 'commodity_grade', 'moisture_percent', 'destination', 'diversion_rate', 'reject_rate', 'certification_evidence_reference', 'certified_at', 'yield_notes', 'status', 'version', 'created_at', 'updated_at'),
+    'waste_recycling_operations_waste_recycling_operations_policy_rule': ('id', 'tenant', 'rule_id', 'rule_name', 'predicate_text', 'ambiguity_flag', 'example_text', 'approver_role', 'effective_from', 'effective_to', 'compiled_hash', 'status', 'version', 'created_at', 'updated_at'),
+    'waste_recycling_operations_waste_recycling_operations_runtime_parameter': ('id', 'tenant', 'parameter_name', 'parameter_value', 'scope', 'bounded', 'effective_from', 'status', 'version', 'created_at', 'updated_at'),
+    'waste_recycling_operations_waste_recycling_operations_schema_extension': ('id', 'tenant', 'extension_id', 'target_table', 'field_name', 'field_type', 'registered_at', 'status', 'version', 'created_at', 'updated_at'),
+    'waste_recycling_operations_waste_recycling_operations_control_assertion': ('id', 'tenant', 'assertion_id', 'control_name', 'assertion_result', 'severity', 'remediation_task', 'evaluated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'waste_recycling_operations_waste_recycling_operations_governed_model': ('id', 'tenant', 'model_id', 'model_name', 'model_version', 'model_type', 'coverage_scope', 'backtest_exception_count', 'governance_state', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'waste_recycling_operations_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'waste_recycling_operations_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'waste_recycling_operations_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_WASTE_RECYCLING_OPERATIONS_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _waste_recycling_operations_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return WASTE_RECYCLING_OPERATIONS_TABLE_FIELDS.get(table, _WASTE_RECYCLING_OPERATIONS_DEFAULT_FIELDS)
+
+
 def waste_recycling_operations_empty_state():
     return {'records': {}, 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
 
@@ -131,24 +159,11 @@ def waste_recycling_operations_parse_document_instruction(document, instruction)
     return {'ok': True, 'candidate_tables': WASTE_RECYCLING_OPERATIONS_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
 def waste_recycling_operations_build_schema_contract():
-    table_contracts = (
-        {'table': 'waste_recycling_operations_waste_route', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'waste_recycling_operations_bin_asset', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'waste_recycling_operations_pickup_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'waste_recycling_operations_material_stream', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'waste_recycling_operations_contamination_finding', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'waste_recycling_operations_disposal_ticket', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'waste_recycling_operations_recycling_yield', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'waste_recycling_operations_waste_recycling_operations_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'waste_recycling_operations_waste_recycling_operations_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'waste_recycling_operations_waste_recycling_operations_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'waste_recycling_operations_waste_recycling_operations_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'waste_recycling_operations_waste_recycling_operations_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'waste_recycling_operations_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'waste_recycling_operations_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'waste_recycling_operations_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table, 'fields': _waste_recycling_operations_table_fields(table), 'primary_key': ('id',), 'owned_by': PBC_KEY}
+        for table in WASTE_RECYCLING_OPERATIONS_OWNED_TABLES
     )
-    return {'format': 'appgen.waste-recycling-operations-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/waste_recycling_operations/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': WASTE_RECYCLING_OPERATIONS_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': WASTE_RECYCLING_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'database_backends': WASTE_RECYCLING_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': WASTE_RECYCLING_OPERATIONS_OWNED_TABLES}
+    return {'format': 'appgen.waste-recycling-operations-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/waste_recycling_operations/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': WASTE_RECYCLING_OPERATIONS_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(WASTE_RECYCLING_OPERATIONS_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _waste_recycling_operations_table_fields(table)} for table in WASTE_RECYCLING_OPERATIONS_OWNED_TABLES), 'datastore_backends': WASTE_RECYCLING_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'database_backends': WASTE_RECYCLING_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': WASTE_RECYCLING_OPERATIONS_OWNED_TABLES}
 
 def waste_recycling_operations_build_service_contract():
     return {'format': 'appgen.waste-recycling-operations-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_waste_route','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
