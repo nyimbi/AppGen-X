@@ -13,10 +13,11 @@ both typed and uniform across all of them.
 
 The parse is deliberately narrow. These files are machine-written by the same
 generator, so the grammar is a fixed subset: `CREATE TABLE`, comma-separated
-column definitions (the generator writes some tables one column per line and
-others on a single line, so the split is on commas at parenthesis depth zero,
-not on newlines), and table-level `PRIMARY KEY` and `FOREIGN KEY` constraints.
-Anything outside that subset is skipped rather than guessed at.
+column definitions (68 packages write every table one column per line, 77 write
+every table on a single line, and 2 mix the two, so the split is on commas at
+parenthesis depth zero, not on newlines), and table-level `PRIMARY KEY` and
+`FOREIGN KEY` constraints. Anything outside that subset is skipped rather than
+guessed at.
 """
 
 from __future__ import annotations
@@ -99,11 +100,12 @@ def normalize_type(sql_type: str) -> str:
 def _split_columns(body: str) -> list[str]:
     """Split a table body into column definitions.
 
-    The packages write their DDL two ways. 70 of 147 put one column per line;
-    the other 77 put the whole ``CREATE TABLE`` on a single line. Splitting on
-    newlines reads the second shape as one statement, so ``_COLUMN`` matches its
-    leading ``id TEXT`` and silently drops the other seven columns, which is how
-    a `clinical_care_coordination_patient_care_plan` came to have no patient and
+    The packages write their DDL two ways. 68 put every ``CREATE TABLE`` on
+    several lines; 77 put every one on a single line, and 2 mix the two within
+    one file. Splitting on newlines reads the single-line shape as one
+    statement, so ``_COLUMN`` matches its leading ``id TEXT`` and silently drops
+    the other seven columns, which is how a
+    `clinical_care_coordination_patient_care_plan` came to have no patient and
     no plan.
 
     A split on commas at parenthesis depth zero reads both. A type's own width
