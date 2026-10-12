@@ -78,7 +78,14 @@ def _app_package(output_dir) -> types.ModuleType:
             ),
             view_mixins.__dict__,
         )
-    except Exception:  # noqa: BLE001 - the name below is the assertion
+    except Exception:  # noqa: BLE001 - tolerated, and safe: see below
+        # Tolerating an import failure here cannot hide the thing that matters.
+        # `hide_list` is the only name the generated views need from this file,
+        # and it arrives through the star import, so a file that fails to import
+        # leaves the name absent and the views module raises `NameError: name
+        # 'hide_list' is not defined` — which names the problem. The canary test
+        # below exercises exactly that path. The reason to tolerate at all is
+        # that this file's own imports are not the subject under test.
         pass
     sys.modules["app.view_mixins"] = view_mixins
     setattr(app_package, "view_mixins", view_mixins)
