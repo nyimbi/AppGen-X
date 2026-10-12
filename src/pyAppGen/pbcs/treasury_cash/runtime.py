@@ -853,52 +853,61 @@ def treasury_cash_build_api_contract() -> dict:
     }
 
 
+TREASURY_CASH_TABLE_FIELDS = {
+    "treasury_cash_bank_account": ("id", "tenant", "account_id", "legal_entity", "bank_id", "currency", "country", "code", "risk_score", "status", "version", "created_at", "updated_at"),
+    "treasury_cash_bank_account_signatory": ("tenant", "signatory_id", "account_id", "principal", "role", "approval_limit", "active"),
+    "treasury_cash_bank_counterparty": ("tenant", "counterparty_id", "bank_id", "country", "rating", "risk_state", "identity_proof"),
+    "treasury_cash_bank_topology": ("tenant", "topology_id", "bank_id", "accounts", "signatories", "network_hash", "risk_context"),
+    "treasury_cash_balance": ("tenant", "balance_id", "account_id", "value_date", "amount", "currency", "kind", "status"),
+    "treasury_cash_intraday_balance": ("tenant", "intraday_id", "account_id", "observed_at", "amount", "currency", "source"),
+    "treasury_cash_statement": ("tenant", "statement_id", "account_id", "statement_date", "status", "hash_chain_root"),
+    "treasury_cash_statement_line": ("tenant", "line_id", "statement_id", "amount", "currency", "narrative", "line_hash"),
+    "treasury_cash_reconciliation_match": ("tenant", "match_id", "statement_id", "line_id", "flow_id", "confidence", "status"),
+    "treasury_cash_reconciliation_exception": ("tenant", "exception_id", "statement_id", "line_id", "reason", "resolution_state"),
+    "treasury_cash_cash_position": ("tenant", "position_id", "value_date", "currency", "available_cash", "restricted_cash", "confidence"),
+    "treasury_cash_cash_forecast": ("tenant", "forecast_id", "horizon", "currency", "confidence", "model_version"),
+    "treasury_cash_cash_forecast_line": ("tenant", "forecast_line_id", "forecast_id", "period", "amount", "low_band", "high_band"),
+    "treasury_cash_liquidity_pool": ("tenant", "pool_id", "currency", "target_balance", "available_cash", "policy_state"),
+    "treasury_cash_liquidity_plan": ("tenant", "plan_id", "pool_id", "target_balance", "funding_source", "objective_score"),
+    "treasury_cash_sweep_instruction": ("tenant", "sweep_id", "pool_id", "source_account", "target_account", "amount", "status"),
+    "treasury_cash_concentration_run": ("tenant", "run_id", "pool_id", "value_date", "total_swept", "status"),
+    "treasury_cash_intercompany_netting": ("tenant", "netting_id", "from_entity", "to_entity", "amount", "currency", "status"),
+    "treasury_cash_in_house_bank_account": ("tenant", "ihb_account_id", "legal_entity", "currency", "balance", "status"),
+    "treasury_cash_payment_funding": ("tenant", "funding_id", "payment_reference", "amount", "currency", "source", "approval_state"),
+    "treasury_cash_payment_rail_route": ("tenant", "route_id", "rail", "cost", "latency", "risk", "idempotency_key"),
+    "treasury_cash_fx_exposure": ("tenant", "exposure_id", "currency_pair", "amount", "volatility", "value_date"),
+    "treasury_cash_hedge_recommendation": ("tenant", "hedge_id", "exposure_id", "instrument", "hedge_amount", "ratio"),
+    "treasury_cash_capital_action": ("tenant", "capital_action_id", "action_type", "amount", "currency", "approval_state"),
+    "treasury_cash_debt_facility": ("tenant", "facility_id", "counterparty_id", "limit", "available", "rate", "covenant_state"),
+    "treasury_cash_debt_draw": ("tenant", "draw_id", "facility_id", "amount", "rate", "daily_interest", "status"),
+    "treasury_cash_investment": ("tenant", "investment_id", "amount", "yield_rate", "maturity_days", "expected_interest", "status"),
+    "treasury_cash_bank_fee": ("tenant", "fee_id", "account_id", "amount", "fee_type", "anomaly_score"),
+    "treasury_cash_covenant_proof": ("tenant", "proof_id", "position_id", "minimum_liquidity", "proof_hash", "covenant_met"),
+    "treasury_cash_cross_border_liquidity": ("tenant", "federation_id", "position_id", "target_country", "settlement_amount", "message_id"),
+    "treasury_cash_working_capital_finance": ("tenant", "finance_id", "program", "eligible_amount", "advance_amount", "counterparty"),
+    "treasury_cash_counterparty_risk_signal": ("tenant", "signal_id", "counterparty_id", "signal_type", "score", "observed_at"),
+    "treasury_cash_policy_rule": ("tenant", "policy_rule_id", "scope", "status", "predicate", "compiled_hash"),
+    "treasury_cash_rule": ("tenant", "rule_id", "scope", "status", "predicate", "compiled_hash"),
+    "treasury_cash_parameter": ("tenant", "parameter_id", "name", "value", "bounds", "compiled_hash"),
+    "treasury_cash_configuration": ("tenant", "configuration_id", "database_backend", "event_topic", "retry_limit", "default_currency"),
+    "treasury_cash_schema_extension": ("tenant", "extension_id", "table_name", "field_name", "field_type", "version"),
+    "treasury_cash_control_assertion": ("tenant", "control_id", "assertion", "status", "evidence_hash", "tested_at"),
+    "treasury_cash_governed_model": ("tenant", "model_id", "name", "feature_lineage", "drift_score", "governance_status"),
+    "treasury_cash_appgen_outbox_event": ("tenant", "event_id", "event_type", "topic", "idempotency_key", "audit_hash"),
+    "treasury_cash_appgen_inbox_event": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "status"),
+    "treasury_cash_dead_letter_event": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "reason"),
+}
+
+_TREASURY_CASH_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _treasury_cash_table_fields(table: str) -> tuple[str, ...]:
+    """Return a table's columns, falling back to the generic envelope."""
+    return TREASURY_CASH_TABLE_FIELDS.get(table, _TREASURY_CASH_DEFAULT_FIELDS)
+
+
 def treasury_cash_build_schema_contract() -> dict:
     """Return Treasury-owned schema, migration, model, and relationship evidence."""
-    table_fields = {
-        "treasury_cash_bank_account": ("tenant", "account_id", "legal_entity", "bank_id", "currency", "country", "status", "risk_score"),
-        "treasury_cash_bank_account_signatory": ("tenant", "signatory_id", "account_id", "principal", "role", "approval_limit", "active"),
-        "treasury_cash_bank_counterparty": ("tenant", "counterparty_id", "bank_id", "country", "rating", "risk_state", "identity_proof"),
-        "treasury_cash_bank_topology": ("tenant", "topology_id", "bank_id", "accounts", "signatories", "network_hash", "risk_context"),
-        "treasury_cash_balance": ("tenant", "balance_id", "account_id", "value_date", "amount", "currency", "kind", "status"),
-        "treasury_cash_intraday_balance": ("tenant", "intraday_id", "account_id", "observed_at", "amount", "currency", "source"),
-        "treasury_cash_statement": ("tenant", "statement_id", "account_id", "statement_date", "status", "hash_chain_root"),
-        "treasury_cash_statement_line": ("tenant", "line_id", "statement_id", "amount", "currency", "narrative", "line_hash"),
-        "treasury_cash_reconciliation_match": ("tenant", "match_id", "statement_id", "line_id", "flow_id", "confidence", "status"),
-        "treasury_cash_reconciliation_exception": ("tenant", "exception_id", "statement_id", "line_id", "reason", "resolution_state"),
-        "treasury_cash_cash_position": ("tenant", "position_id", "value_date", "currency", "available_cash", "restricted_cash", "confidence"),
-        "treasury_cash_cash_forecast": ("tenant", "forecast_id", "horizon", "currency", "confidence", "model_version"),
-        "treasury_cash_cash_forecast_line": ("tenant", "forecast_line_id", "forecast_id", "period", "amount", "low_band", "high_band"),
-        "treasury_cash_liquidity_pool": ("tenant", "pool_id", "currency", "target_balance", "available_cash", "policy_state"),
-        "treasury_cash_liquidity_plan": ("tenant", "plan_id", "pool_id", "target_balance", "funding_source", "objective_score"),
-        "treasury_cash_sweep_instruction": ("tenant", "sweep_id", "pool_id", "source_account", "target_account", "amount", "status"),
-        "treasury_cash_concentration_run": ("tenant", "run_id", "pool_id", "value_date", "total_swept", "status"),
-        "treasury_cash_intercompany_netting": ("tenant", "netting_id", "from_entity", "to_entity", "amount", "currency", "status"),
-        "treasury_cash_in_house_bank_account": ("tenant", "ihb_account_id", "legal_entity", "currency", "balance", "status"),
-        "treasury_cash_payment_funding": ("tenant", "funding_id", "payment_reference", "amount", "currency", "source", "approval_state"),
-        "treasury_cash_payment_rail_route": ("tenant", "route_id", "rail", "cost", "latency", "risk", "idempotency_key"),
-        "treasury_cash_fx_exposure": ("tenant", "exposure_id", "currency_pair", "amount", "volatility", "value_date"),
-        "treasury_cash_hedge_recommendation": ("tenant", "hedge_id", "exposure_id", "instrument", "hedge_amount", "ratio"),
-        "treasury_cash_capital_action": ("tenant", "capital_action_id", "action_type", "amount", "currency", "approval_state"),
-        "treasury_cash_debt_facility": ("tenant", "facility_id", "counterparty_id", "limit", "available", "rate", "covenant_state"),
-        "treasury_cash_debt_draw": ("tenant", "draw_id", "facility_id", "amount", "rate", "daily_interest", "status"),
-        "treasury_cash_investment": ("tenant", "investment_id", "amount", "yield_rate", "maturity_days", "expected_interest", "status"),
-        "treasury_cash_bank_fee": ("tenant", "fee_id", "account_id", "amount", "fee_type", "anomaly_score"),
-        "treasury_cash_covenant_proof": ("tenant", "proof_id", "position_id", "minimum_liquidity", "proof_hash", "covenant_met"),
-        "treasury_cash_cross_border_liquidity": ("tenant", "federation_id", "position_id", "target_country", "settlement_amount", "message_id"),
-        "treasury_cash_working_capital_finance": ("tenant", "finance_id", "program", "eligible_amount", "advance_amount", "counterparty"),
-        "treasury_cash_counterparty_risk_signal": ("tenant", "signal_id", "counterparty_id", "signal_type", "score", "observed_at"),
-        "treasury_cash_policy_rule": ("tenant", "policy_rule_id", "scope", "status", "predicate", "compiled_hash"),
-        "treasury_cash_rule": ("tenant", "rule_id", "scope", "status", "predicate", "compiled_hash"),
-        "treasury_cash_parameter": ("tenant", "parameter_id", "name", "value", "bounds", "compiled_hash"),
-        "treasury_cash_configuration": ("tenant", "configuration_id", "database_backend", "event_topic", "retry_limit", "default_currency"),
-        "treasury_cash_schema_extension": ("tenant", "extension_id", "table_name", "field_name", "field_type", "version"),
-        "treasury_cash_control_assertion": ("tenant", "control_id", "assertion", "status", "evidence_hash", "tested_at"),
-        "treasury_cash_governed_model": ("tenant", "model_id", "name", "feature_lineage", "drift_score", "governance_status"),
-        "treasury_cash_appgen_outbox_event": ("tenant", "event_id", "event_type", "topic", "idempotency_key", "audit_hash"),
-        "treasury_cash_appgen_inbox_event": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "status"),
-        "treasury_cash_dead_letter_event": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "reason"),
-    }
     relationships = (
         {"from": "treasury_cash_bank_account.bank_id", "to": "treasury_cash_bank_counterparty.bank_id", "type": "owned_reference"},
         {"from": "treasury_cash_bank_account_signatory.account_id", "to": "treasury_cash_bank_account.account_id", "type": "owned_child"},
@@ -915,8 +924,8 @@ def treasury_cash_build_schema_contract() -> dict:
     tables = tuple(
         {
             "table": table,
-            "fields": table_fields[table],
-            "primary_key": tuple(field for field in table_fields[table] if field.endswith("_id") or field == "event_id")[:2],
+            "fields": _treasury_cash_table_fields(table),
+            "primary_key": tuple(field for field in _treasury_cash_table_fields(table) if field.endswith("_id") or field == "event_id")[:2],
             "owned_by": "treasury_cash",
         }
         for table in TREASURY_CASH_OWNED_TABLES
@@ -941,7 +950,7 @@ def treasury_cash_build_schema_contract() -> dict:
             {
                 "class_name": "".join(part.capitalize() for part in table.split("_")),
                 "table": table,
-                "fields": table_fields[table],
+                "fields": _treasury_cash_table_fields(table),
             }
             for table in TREASURY_CASH_OWNED_TABLES
         ),

@@ -1,15 +1,336 @@
-CREATE TABLE banking_core_accounts_deposit_account (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, account_number TEXT NOT NULL, customer_id TEXT NOT NULL, product_code TEXT NOT NULL, currency TEXT NOT NULL, lifecycle_state TEXT NOT NULL, maker_checker_required BOOLEAN NOT NULL, last_transition_reason TEXT, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE banking_core_accounts_account_balance (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE banking_core_accounts_account_hold (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE banking_core_accounts_interest_accrual (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE banking_core_accounts_fee_assessment (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE banking_core_accounts_statement_cycle (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE banking_core_accounts_account_service_case (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE banking_core_accounts_banking_core_accounts_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE banking_core_accounts_banking_core_accounts_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE banking_core_accounts_banking_core_accounts_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE banking_core_accounts_banking_core_accounts_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE banking_core_accounts_banking_core_accounts_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE banking_core_accounts_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE banking_core_accounts_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE banking_core_accounts_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS banking_core_accounts;
+
+CREATE TABLE banking_core_accounts_deposit_account (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  account_number VARCHAR(255) NOT NULL,
+  customer_id VARCHAR(255) NOT NULL,
+  product_code VARCHAR(255) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  lifecycle_state VARCHAR(255) NOT NULL,
+  maker_checker_required BOOLEAN NOT NULL,
+  last_transition_reason VARCHAR(255),
+  payload TEXT,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE banking_core_accounts_account_balance (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  code VARCHAR(255),
+  account_balance_id VARCHAR(255) NOT NULL,
+  deposit_account_id VARCHAR(255) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  ledger_balance DECIMAL(18, 4) NOT NULL,
+  available_balance DECIMAL(18, 4) NOT NULL,
+  withdrawable_balance DECIMAL(18, 4) NOT NULL,
+  held_funds DECIMAL(18, 4) NOT NULL,
+  uncleared_funds DECIMAL(18, 4) NOT NULL,
+  accrued_interest DECIMAL(18, 4) NOT NULL,
+  overdraft_limit DECIMAL(18, 4) NOT NULL,
+  value_date TIMESTAMP NOT NULL,
+  posting_date TIMESTAMP NOT NULL,
+  posting_boundary VARCHAR(255) NOT NULL,
+  balance_anomaly_flag BOOLEAN NOT NULL,
+  anomaly_reason VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  payload TEXT,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (deposit_account_id) REFERENCES banking_core_accounts_deposit_account(account_number)
+);
+
+CREATE TABLE banking_core_accounts_account_hold (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  code VARCHAR(255),
+  account_hold_id VARCHAR(255) NOT NULL,
+  deposit_account_id VARCHAR(255) NOT NULL,
+  hold_category VARCHAR(255) NOT NULL,
+  hold_priority INTEGER NOT NULL,
+  hold_amount DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  blocks_debit BOOLEAN NOT NULL,
+  blocks_credit BOOLEAN NOT NULL,
+  blocks_closure BOOLEAN NOT NULL,
+  legal_basis VARCHAR(255),
+  owning_queue VARCHAR(255) NOT NULL,
+  release_rule VARCHAR(255),
+  release_authority VARCHAR(255),
+  release_reason VARCHAR(255),
+  expiry_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  payload TEXT,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (deposit_account_id) REFERENCES banking_core_accounts_deposit_account(account_number)
+);
+
+CREATE TABLE banking_core_accounts_interest_accrual (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  code VARCHAR(255),
+  interest_accrual_id VARCHAR(255) NOT NULL,
+  deposit_account_id VARCHAR(255) NOT NULL,
+  accrual_period VARCHAR(255) NOT NULL,
+  rate_tier VARCHAR(255),
+  rate_value DECIMAL(18, 4) NOT NULL,
+  balance_band VARCHAR(255),
+  day_count_basis VARCHAR(255) NOT NULL,
+  accrual_amount DECIMAL(18, 4) NOT NULL,
+  capitalization_amount DECIMAL(18, 4) NOT NULL,
+  payout_mode VARCHAR(255) NOT NULL,
+  withholding_amount DECIMAL(18, 4),
+  posting_boundary VARCHAR(255) NOT NULL,
+  holiday_adjustment VARCHAR(255),
+  accrual_date TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  payload TEXT,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (deposit_account_id) REFERENCES banking_core_accounts_deposit_account(account_number)
+);
+
+CREATE TABLE banking_core_accounts_fee_assessment (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  code VARCHAR(255),
+  fee_assessment_id VARCHAR(255) NOT NULL,
+  deposit_account_id VARCHAR(255) NOT NULL,
+  fee_type VARCHAR(255) NOT NULL,
+  trigger_condition VARCHAR(255) NOT NULL,
+  fee_amount DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  policy_rule_version VARCHAR(255),
+  waiver_requested BOOLEAN NOT NULL,
+  waiver_reason VARCHAR(255),
+  waiver_approver_role VARCHAR(255),
+  waiver_approved BOOLEAN NOT NULL,
+  reversal_of VARCHAR(255),
+  reversal_reason VARCHAR(255),
+  posting_boundary VARCHAR(255) NOT NULL,
+  assessed_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  payload TEXT,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (deposit_account_id) REFERENCES banking_core_accounts_deposit_account(account_number)
+);
+
+CREATE TABLE banking_core_accounts_statement_cycle (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  code VARCHAR(255),
+  statement_cycle_id VARCHAR(255) NOT NULL,
+  deposit_account_id VARCHAR(255) NOT NULL,
+  cycle_definition VARCHAR(255) NOT NULL,
+  cutoff_at TIMESTAMP NOT NULL,
+  posting_freeze_window VARCHAR(255),
+  rerun_reason VARCHAR(255),
+  opening_balance DECIMAL(18, 4) NOT NULL,
+  closing_balance DECIMAL(18, 4) NOT NULL,
+  net_activity DECIMAL(18, 4) NOT NULL,
+  exception_status VARCHAR(255),
+  exception_reason VARCHAR(255),
+  posting_boundary VARCHAR(255) NOT NULL,
+  generated_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  payload TEXT,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (deposit_account_id) REFERENCES banking_core_accounts_deposit_account(account_number)
+);
+
+CREATE TABLE banking_core_accounts_account_service_case (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  code VARCHAR(255),
+  account_service_case_id VARCHAR(255) NOT NULL,
+  deposit_account_id VARCHAR(255) NOT NULL,
+  case_type VARCHAR(255) NOT NULL,
+  case_priority VARCHAR(255) NOT NULL,
+  exception_severity VARCHAR(255),
+  ageing_bucket VARCHAR(255),
+  owner_role VARCHAR(255),
+  sla_hours INTEGER,
+  sla_due_at TIMESTAMP,
+  required_evidence TEXT,
+  resolution_evidence TEXT,
+  blocked_capability VARCHAR(255),
+  escalation_route VARCHAR(255),
+  opened_at TIMESTAMP NOT NULL,
+  closed_at TIMESTAMP,
+  closure_reason VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  payload TEXT,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (deposit_account_id) REFERENCES banking_core_accounts_deposit_account(account_number)
+);
+
+CREATE TABLE banking_core_accounts_banking_core_accounts_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  code VARCHAR(255),
+  policy_rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  rule_scope VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  example_text TEXT,
+  approver_role VARCHAR(255),
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  superseded_by VARCHAR(255),
+  compiled_hash VARCHAR(255),
+  approval_evidence_reference VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  payload TEXT,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE banking_core_accounts_banking_core_accounts_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  code VARCHAR(255),
+  runtime_parameter_id VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  parameter_scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  approved_baseline VARCHAR(255),
+  drift_detected BOOLEAN NOT NULL,
+  emergency_override BOOLEAN NOT NULL,
+  override_expires_at TIMESTAMP,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  payload TEXT,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE banking_core_accounts_banking_core_accounts_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  code VARCHAR(255),
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  owner_role VARCHAR(255),
+  validation_rule VARCHAR(255),
+  display_rule VARCHAR(255),
+  migration_plan VARCHAR(255),
+  registered_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  payload TEXT,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE banking_core_accounts_banking_core_accounts_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  code VARCHAR(255),
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  control_family VARCHAR(255) NOT NULL,
+  population_count INTEGER,
+  threshold_value DECIMAL(18, 4),
+  failing_record_count INTEGER,
+  owner_role VARCHAR(255),
+  remediation_task VARCHAR(255),
+  assertion_result VARCHAR(255),
+  severity VARCHAR(255),
+  is_recurrence BOOLEAN NOT NULL,
+  evaluated_at TIMESTAMP,
+  closure_evidence TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  payload TEXT,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE banking_core_accounts_banking_core_accounts_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  code VARCHAR(255),
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  intended_use TEXT,
+  governance_state VARCHAR(255) NOT NULL,
+  feature_set TEXT,
+  evaluation_evidence_reference VARCHAR(255),
+  confidence_threshold DECIMAL(18, 4),
+  drift_check_reference VARCHAR(255),
+  human_feedback_reference VARCHAR(255),
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  payload TEXT,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE banking_core_accounts_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  code VARCHAR(255),
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE banking_core_accounts_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  code VARCHAR(255),
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE banking_core_accounts_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  code VARCHAR(255),
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

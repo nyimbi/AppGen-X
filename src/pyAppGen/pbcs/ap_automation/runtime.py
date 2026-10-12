@@ -1448,41 +1448,48 @@ def ap_automation_build_api_contract() -> dict:
     }
 
 
+AP_AUTOMATION_TABLE_FIELDS = {
+    'ap_automation_vendor': ('id', 'tenant', 'vendor_id', 'name', 'approval_status', 'risk_score', 'audit_proof', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_vendor_site': ('id', 'tenant', 'site_id', 'vendor_id', 'address', 'remit_to', 'currency', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_vendor_bank_account': ('id', 'tenant', 'bank_account_id', 'vendor_id', 'rail', 'masked_account', 'validation_status', 'token_ref', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_vendor_tax_profile': ('id', 'tenant', 'tax_profile_id', 'vendor_id', 'jurisdiction', 'withholding_code', 'exemption_status', 'proof_hash', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_vendor_risk_signal': ('id', 'tenant', 'signal_id', 'vendor_id', 'signal_type', 'score', 'source', 'observed_at', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_purchase_order': ('id', 'tenant', 'po_id', 'vendor_id', 'currency', 'total', 'audit_proof', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_purchase_order_line': ('id', 'tenant', 'po_line_id', 'po_id', 'sku', 'quantity', 'unit_price', 'account', 'vendor_id', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_goods_receipt': ('id', 'tenant', 'receipt_id', 'po_id', 'audit_proof', 'received_at', 'vendor_id', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_goods_receipt_line': ('id', 'tenant', 'receipt_line_id', 'receipt_id', 'sku', 'quantity', 'exception_code', 'vendor_id', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_invoice': ('id', 'tenant', 'invoice_id', 'vendor_id', 'po_id', 'receipt_id', 'subtotal', 'total', 'approval_status', 'payment_status', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_invoice_line': ('id', 'tenant', 'invoice_line_id', 'invoice_id', 'sku', 'quantity', 'unit_price', 'account', 'tax_code', 'vendor_id', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_invoice_capture_artifact': ('id', 'tenant', 'artifact_id', 'invoice_id', 'artifact_type', 'source_hash', 'extraction_confidence', 'storage_ref', 'vendor_id', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_invoice_match_result': ('id', 'tenant', 'match_id', 'invoice_id', 'po_id', 'receipt_id', 'confidence', 'decision', 'explanation_hash', 'vendor_id', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_payment': ('id', 'tenant', 'payment_id', 'invoice_id', 'vendor_id', 'amount', 'rail', 'idempotency_key', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_payment_batch': ('id', 'tenant', 'batch_id', 'rail', 'currency', 'scheduled_date', 'total_amount', 'vendor_id', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_payment_rail_decision': ('id', 'tenant', 'decision_id', 'payment_id', 'rail', 'cost', 'latency', 'risk', 'selected', 'vendor_id', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_discount_opportunity': ('id', 'tenant', 'opportunity_id', 'invoice_id', 'discount_rate', 'discount_value', 'net_benefit', 'decision', 'vendor_id', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_vendor_statement': ('id', 'tenant', 'statement_id', 'vendor_id', 'statement_hash', 'reconciled_amount', 'exception_count', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_withholding_tax': ('id', 'tenant', 'withholding_id', 'invoice_id', 'jurisdiction', 'amount', 'rate', 'proof_hash', 'vendor_id', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_e_invoice_submission': ('id', 'tenant', 'submission_id', 'invoice_id', 'jurisdiction', 'standard', 'submission_hash', 'accepted', 'vendor_id', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_exception_case': ('id', 'tenant', 'case_id', 'invoice_id', 'reason', 'decision', 'suggestion', 'audit_trace', 'vendor_id', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_approval_task': ('id', 'tenant', 'approval_id', 'invoice_id', 'assignee', 'threshold', 'decision', 'decided_at', 'vendor_id', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_cash_forecast_projection': ('id', 'tenant', 'projection_id', 'currency', 'available_cash', 'as_of', 'source_event_id', 'vendor_id', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_policy_rule': ('id', 'tenant', 'rule_id', 'scope', 'predicate', 'compiled_hash', 'vendor_id', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_runtime_parameter': ('id', 'tenant', 'parameter_id', 'name', 'value', 'bounds', 'compiled_hash', 'vendor_id', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_schema_extension': ('id', 'tenant', 'extension_id', 'table_name', 'field_name', 'field_type', 'vendor_id', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_control_assertion': ('id', 'tenant', 'control_id', 'assertion', 'evidence_hash', 'tested_at', 'vendor_id', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_governed_model': ('id', 'tenant', 'model_id', 'name', 'feature_lineage', 'drift_score', 'governance_status', 'vendor_id', 'code', 'status', 'version', 'created_at', 'updated_at'),
+    'ap_automation_outbox': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'attempts', 'idempotency_key', 'audit_hash', 'status', 'created_at', 'processed_at', 'updated_at'),
+    'ap_automation_inbox': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'attempts', 'idempotency_key', 'status', 'created_at', 'processed_at', 'updated_at'),
+    'ap_automation_dead_letter': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'attempts', 'reason', 'idempotency_key', 'status', 'created_at', 'processed_at', 'updated_at'),
+}
+_AP_AUTOMATION_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _ap_automation_table_fields(table: str) -> tuple[str, ...]:
+    """Return a table's columns, falling back to the generic envelope."""
+    return AP_AUTOMATION_TABLE_FIELDS.get(table, _AP_AUTOMATION_DEFAULT_FIELDS)
+
 def ap_automation_build_schema_contract() -> dict:
     """Return AP-owned schema, model, migration, and relationship evidence."""
-    table_fields = {
-        "ap_automation_vendor": ("tenant", "vendor_id", "name", "status", "approval_status", "risk_score", "audit_proof"),
-        "ap_automation_vendor_site": ("tenant", "site_id", "vendor_id", "address", "remit_to", "currency", "status"),
-        "ap_automation_vendor_bank_account": ("tenant", "bank_account_id", "vendor_id", "rail", "masked_account", "validation_status", "token_ref"),
-        "ap_automation_vendor_tax_profile": ("tenant", "tax_profile_id", "vendor_id", "jurisdiction", "withholding_code", "exemption_status", "proof_hash"),
-        "ap_automation_vendor_risk_signal": ("tenant", "signal_id", "vendor_id", "signal_type", "score", "source", "observed_at"),
-        "ap_automation_purchase_order": ("tenant", "po_id", "vendor_id", "currency", "total", "status", "audit_proof"),
-        "ap_automation_purchase_order_line": ("tenant", "po_line_id", "po_id", "sku", "quantity", "unit_price", "account"),
-        "ap_automation_goods_receipt": ("tenant", "receipt_id", "po_id", "status", "audit_proof", "received_at"),
-        "ap_automation_goods_receipt_line": ("tenant", "receipt_line_id", "receipt_id", "sku", "quantity", "exception_code"),
-        "ap_automation_invoice": ("tenant", "invoice_id", "vendor_id", "po_id", "receipt_id", "subtotal", "total", "status", "approval_status", "payment_status"),
-        "ap_automation_invoice_line": ("tenant", "invoice_line_id", "invoice_id", "sku", "quantity", "unit_price", "account", "tax_code"),
-        "ap_automation_invoice_capture_artifact": ("tenant", "artifact_id", "invoice_id", "artifact_type", "source_hash", "extraction_confidence", "storage_ref"),
-        "ap_automation_invoice_match_result": ("tenant", "match_id", "invoice_id", "po_id", "receipt_id", "confidence", "decision", "explanation_hash"),
-        "ap_automation_payment": ("tenant", "payment_id", "invoice_id", "vendor_id", "amount", "rail", "status", "idempotency_key"),
-        "ap_automation_payment_batch": ("tenant", "batch_id", "rail", "currency", "scheduled_date", "status", "total_amount"),
-        "ap_automation_payment_rail_decision": ("tenant", "decision_id", "payment_id", "rail", "cost", "latency", "risk", "selected"),
-        "ap_automation_discount_opportunity": ("tenant", "opportunity_id", "invoice_id", "discount_rate", "discount_value", "net_benefit", "decision"),
-        "ap_automation_vendor_statement": ("tenant", "statement_id", "vendor_id", "statement_hash", "reconciled_amount", "exception_count", "status"),
-        "ap_automation_withholding_tax": ("tenant", "withholding_id", "invoice_id", "jurisdiction", "amount", "rate", "proof_hash"),
-        "ap_automation_e_invoice_submission": ("tenant", "submission_id", "invoice_id", "jurisdiction", "standard", "submission_hash", "accepted"),
-        "ap_automation_exception_case": ("tenant", "case_id", "invoice_id", "reason", "decision", "suggestion", "audit_trace"),
-        "ap_automation_approval_task": ("tenant", "approval_id", "invoice_id", "assignee", "threshold", "decision", "decided_at"),
-        "ap_automation_cash_forecast_projection": ("tenant", "projection_id", "currency", "available_cash", "as_of", "source_event_id"),
-        "ap_automation_policy_rule": ("tenant", "rule_id", "scope", "status", "predicate", "compiled_hash"),
-        "ap_automation_runtime_parameter": ("tenant", "parameter_id", "name", "value", "bounds", "compiled_hash"),
-        "ap_automation_schema_extension": ("tenant", "extension_id", "table_name", "field_name", "field_type", "version"),
-        "ap_automation_control_assertion": ("tenant", "control_id", "assertion", "status", "evidence_hash", "tested_at"),
-        "ap_automation_governed_model": ("tenant", "model_id", "name", "feature_lineage", "drift_score", "governance_status"),
-        "ap_automation_outbox": ("tenant", "event_id", "event_type", "topic", "idempotency_key", "audit_hash"),
-        "ap_automation_inbox": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "status"),
-        "ap_automation_dead_letter": ("tenant", "event_id", "event_type", "idempotency_key", "attempts", "reason"),
-    }
     relationships = (
         {"from": "ap_automation_vendor_site.vendor_id", "to": "ap_automation_vendor.vendor_id", "type": "owned_reference"},
         {"from": "ap_automation_vendor_bank_account.vendor_id", "to": "ap_automation_vendor.vendor_id", "type": "owned_reference"},
@@ -1499,8 +1506,8 @@ def ap_automation_build_schema_contract() -> dict:
     tables = tuple(
         {
             "table": table,
-            "fields": table_fields[table],
-            "primary_key": tuple(field for field in table_fields[table] if field.endswith("_id") or field == "event_id")[:2],
+            "fields": _ap_automation_table_fields(table),
+            "primary_key": tuple(field for field in _ap_automation_table_fields(table) if field.endswith("_id") or field == "event_id")[:2],
             "owned_by": "ap_automation",
         }
         for table in AP_AUTOMATION_OWNED_TABLES
@@ -1525,7 +1532,7 @@ def ap_automation_build_schema_contract() -> dict:
             {
                 "class_name": "".join(part.capitalize() for part in table.removeprefix("ap_automation_").split("_")),
                 "table": table,
-                "fields": table_fields[table],
+                "fields": _ap_automation_table_fields(table),
             }
             for table in AP_AUTOMATION_OWNED_TABLES
         ),

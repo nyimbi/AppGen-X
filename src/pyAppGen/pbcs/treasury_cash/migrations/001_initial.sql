@@ -2,7 +2,14 @@ CREATE SCHEMA IF NOT EXISTS treasury_cash;
 
 CREATE TABLE treasury_cash_bank_account (
   id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  account_id VARCHAR(255) NOT NULL,
+  legal_entity VARCHAR(255) NOT NULL,
+  bank_id VARCHAR(255) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  country VARCHAR(255) NOT NULL,
   code VARCHAR(255) NOT NULL,
+  risk_score DECIMAL(18, 4) NOT NULL,
   status VARCHAR(255) NOT NULL,
   version INTEGER NOT NULL,
   created_at TIMESTAMP NOT NULL,

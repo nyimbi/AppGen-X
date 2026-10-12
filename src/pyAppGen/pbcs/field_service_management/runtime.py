@@ -117,52 +117,77 @@ def field_service_management_parse_document_instruction(document, instruction):
     return {'ok': True, 'candidate_tables': FIELD_SERVICE_MANAGEMENT_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+FIELD_SERVICE_MANAGEMENT_TABLE_FIELDS = {
+    'field_service_management_field_work_order': ('id', 'tenant', 'code', 'field_work_order_id', 'work_order_number', 'work_order_type', 'priority', 'severity', 'customer_reference', 'site_reference', 'service_address', 'asset_reference', 'requested_at', 'promised_window_start', 'promised_window_end', 'scheduled_start', 'scheduled_end', 'first_time_fix_target', 'entitlement_state', 'warranty_covered', 'safety_risk_level', 'required_skill_set', 'required_tool_class', 'estimated_labor_minutes', 'estimated_travel_minutes', 'completion_evidence_required', 'customer_confirmation_required', 'follow_up_required', 'reopen_count', 'exception_reason', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    'field_service_management_dispatch_assignment': ('id', 'tenant', 'code', 'service_id', 'field_work_order_id', 'dispatch_assignment_id', 'dispatch_plan_id', 'technician_id', 'crew_id', 'assignment_role', 'planned_start', 'planned_end', 'skill_match_score', 'tool_readiness_state', 'availability_state', 'fatigue_flag', 'overtime_flag', 'dispatcher_approved', 'status', 'version', 'payload', 'effective_at', 'created_at', 'updated_at'),
+    'field_service_management_technician_profile': ('id', 'tenant', 'code', 'service_id', 'field_work_order_id', 'technician_profile_id', 'technician_code', 'employment_state', 'service_territory', 'home_depot', 'vehicle_reference', 'vehicle_capacity_units', 'shift_pattern', 'languages', 'security_clearance', 'fatigue_limit_minutes', 'customer_restrictions', 'profile_completeness_score', 'credential_evidence_state', 'partner_organization', 'contractor_flag', 'status', 'version', 'payload', 'effective_at', 'created_at', 'updated_at'),
+    'field_service_management_mobile_task': ('id', 'tenant', 'code', 'mobile_task_id', 'field_work_order_id', 'task_sequence', 'task_type', 'task_description', 'assigned_technician_id', 'dependency_state', 'blocked_reason', 'safety_gate_required', 'safety_gate_state', 'offline_allowed', 'evidence_required', 'started_at', 'completed_at', 'duration_minutes', 'sync_state', 'conflict_state', 'idempotency_key', 'replay_order', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    'field_service_management_parts_usage': ('id', 'tenant', 'code', 'parts_usage_id', 'field_work_order_id', 'part_reference', 'part_description', 'part_class', 'quantity_used', 'quantity_returned', 'unit_cost', 'total_cost', 'serial_number', 'source_location', 'van_stock_reference', 'warranty_recovery_state', 'core_return_required', 'core_return_state', 'hazardous_material', 'installed_at', 'removed_part_condition', 'scan_evidence_hash', 'rma_reference', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    'field_service_management_service_sla': ('id', 'tenant', 'code', 'service_sla_id', 'field_work_order_id', 'sla_commitment_reference', 'commitment_type', 'customer_tier', 'response_target_minutes', 'restore_target_minutes', 'resolution_target_minutes', 'clock_start_at', 'clock_stop_at', 'pause_minutes', 'pause_reason', 'business_calendar', 'breach_risk_state', 'breach_forecast_at', 'breach_root_cause', 'mitigation_plan', 'escalation_level', 'escalation_owner', 'entitlement_snapshot', 'measured_at', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    'field_service_management_service_history': ('id', 'tenant', 'code', 'service_history_id', 'field_work_order_id', 'visit_sequence', 'visit_outcome', 'resolution_code', 'diagnosis_summary', 'parts_replaced', 'labor_minutes', 'travel_minutes', 'technician_id', 'repeat_visit_flag', 'repeat_visit_cause', 'first_time_fix_achieved', 'customer_satisfaction_score', 'completed_at', 'cost_to_serve', 'carbon_estimate_kg', 'warranty_claim_reference', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    'field_service_management_customer_service_update': ('id', 'tenant', 'code', 'customer_service_update_id', 'field_work_order_id', 'communication_type', 'channel', 'recipient', 'language', 'message_summary', 'sent_at', 'delivery_state', 'eta_reference', 'delay_reason', 'template_version', 'communication_policy', 'acknowledgement_state', 'escalation_flag', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    'field_service_management_technician_live_location': ('id', 'tenant', 'code', 'technician_live_location_id', 'technician_id', 'latitude', 'longitude', 'accuracy_meters', 'capture_source', 'captured_at', 'staleness_minutes', 'consent_reference', 'capture_purpose', 'masking_level', 'geofence_state', 'retention_policy', 'access_audit_reference', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    'field_service_management_technician_location_breadcrumb': ('id', 'tenant', 'code', 'technician_location_breadcrumb_id', 'technician_live_location_id', 'technician_id', 'sequence_number', 'latitude', 'longitude', 'accuracy_meters', 'capture_source', 'captured_at', 'speed_kph', 'heading_degrees', 'route_leg_reference', 'consent_reference', 'retention_policy', 'redaction_state', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    'field_service_management_technician_availability': ('id', 'tenant', 'code', 'technician_availability_id', 'technician_id', 'availability_state', 'shift_start', 'shift_end', 'capacity_minutes', 'committed_minutes', 'remaining_capacity_minutes', 'travel_load_minutes', 'current_job_reference', 'pause_reason', 'break_state', 'emergency_reserve', 'overtime_risk_state', 'dispatcher_override', 'override_reason', 'territory', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    'field_service_management_technician_home_base': ('id', 'tenant', 'code', 'technician_home_base_id', 'technician_id', 'base_type', 'depot_code', 'address', 'latitude', 'longitude', 'travel_zone', 'effective_from', 'effective_to', 'pickup_window_start', 'pickup_window_end', 'return_required', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    'field_service_management_service_route_plan': ('id', 'tenant', 'code', 'service_route_plan_id', 'technician_id', 'plan_date', 'route_state', 'start_base_reference', 'stop_count', 'total_distance_km', 'total_travel_minutes', 'total_service_minutes', 'projected_finish_at', 'traffic_assumption', 'constraint_summary', 'hard_constraints', 'soft_constraints', 'optimization_cost_function', 'sla_risk_state', 'dispatcher_override', 'override_reason', 'carbon_estimate_kg', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    'field_service_management_service_route_stop': ('id', 'tenant', 'code', 'service_route_stop_id', 'service_route_plan_id', 'stop_sequence', 'stop_type', 'field_work_order_id', 'site_reference', 'latitude', 'longitude', 'window_start', 'window_end', 'planned_arrival', 'planned_departure', 'eta_confidence', 'priority', 'service_minutes', 'required_skill_set', 'required_tool_class', 'pickup_list', 'return_required', 'stop_state', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    'field_service_management_service_route_leg': ('id', 'tenant', 'code', 'service_route_leg_id', 'service_route_plan_id', 'leg_sequence', 'from_reference', 'to_reference', 'distance_km', 'travel_minutes', 'travel_buffer_minutes', 'traffic_state', 'average_speed_kph', 'vehicle_reference', 'carbon_estimate_kg', 'road_condition', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    'field_service_management_route_reoptimization': ('id', 'tenant', 'code', 'route_reoptimization_id', 'service_route_plan_id', 'disruption_type', 'disruption_reason', 'detected_at', 'blocked_stop_ids', 'new_constraints', 'affected_stop_count', 'sla_preservation_state', 'customer_disruption_score', 'readiness_recheck_state', 'downstream_effects', 'approval_required', 'approved_by', 'approved_at', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    'field_service_management_mobile_task_dependency': ('id', 'tenant', 'code', 'mobile_task_dependency_id', 'mobile_task_id', 'prerequisite_task_id', 'dependency_type', 'dependency_state', 'blocked_reason', 'evidence_required', 'conditional_branch', 'offline_allowed', 'emergency_bypass', 'bypass_authorized_by', 'bypass_reason', 'resolution_order', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    'field_service_management_task_safety_gate': ('id', 'tenant', 'code', 'task_safety_gate_id', 'mobile_task_id', 'hazard_class', 'hazard_assessment', 'ppe_requirements', 'lockout_tagout_state', 'permit_required', 'permit_reference', 'stop_work_authority', 'gate_state', 'verified_by', 'verified_at', 'incident_reference', 'escalation_owner', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    'field_service_management_job_tool_requirement': ('id', 'tenant', 'code', 'job_tool_requirement_id', 'field_work_order_id', 'mobile_task_id', 'tool_class', 'tool_type', 'required_quantity', 'calibration_required', 'substitute_allowed', 'substitute_tool_class', 'custody_required', 'van_stock_required', 'depot_pickup_required', 'return_required', 'readiness_state', 'missing_reason', 'validated_at', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    'field_service_management_tool_inventory': ('id', 'tenant', 'code', 'tool_inventory_id', 'tool_asset_code', 'tool_class', 'tool_type', 'serial_number', 'home_depot', 'current_custodian', 'custody_state', 'issued_at', 'returned_at', 'location_state', 'condition_state', 'calibration_required', 'blocked_usage', 'block_reason', 'replacement_reference', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    'field_service_management_tool_calibration': ('id', 'tenant', 'code', 'tool_calibration_id', 'tool_inventory_id', 'calibration_certificate', 'calibration_body', 'calibrated_at', 'expires_at', 'tolerance', 'measurement_standard', 'calibration_result', 'warning_window_days', 'blocked_usage', 'certificate_evidence_hash', 'last_verified_by', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    'field_service_management_van_stock_position': ('id', 'tenant', 'code', 'van_stock_position_id', 'technician_id', 'van_reference', 'depot_reference', 'part_reference', 'on_hand_quantity', 'reserved_quantity', 'replenishment_threshold', 'replenishment_state', 'last_counted_at', 'stock_freshness_state', 'mismatch_detected', 'mismatch_quantity', 'pickup_window_start', 'pickup_window_end', 'transfer_task_reference', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    'field_service_management_skill_assignment_score': ('id', 'tenant', 'code', 'skill_assignment_score_id', 'field_work_order_id', 'technician_id', 'skill_fit_score', 'certification_score', 'tool_readiness_score', 'parts_readiness_score', 'proximity_score', 'workload_score', 'overtime_penalty', 'safety_score', 'sla_risk_score', 'total_score', 'minimum_threshold', 'meets_threshold', 'disqualifying_constraint', 'explanation_factors', 'ranked_position', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    'field_service_management_assignment_constraint': ('id', 'tenant', 'code', 'assignment_constraint_id', 'field_work_order_id', 'technician_id', 'constraint_type', 'constraint_scope', 'hard_constraint', 'constraint_value', 'violation_state', 'violation_reason', 'override_allowed', 'override_reason', 'override_approved_by', 'evaluated_at', 'policy_reference', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    'field_service_management_geofence_event': ('id', 'tenant', 'code', 'geofence_event_id', 'technician_id', 'field_work_order_id', 'geofence_reference', 'event_type', 'occurred_at', 'latitude', 'longitude', 'accuracy_meters', 'radius_meters', 'dwell_minutes', 'deviation_state', 'sla_observation_reference', 'consent_reference', 'retention_policy', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    'field_service_management_location_privacy_consent': ('id', 'tenant', 'code', 'location_privacy_consent_id', 'technician_id', 'consent_basis', 'consent_state', 'capture_purpose', 'granted_at', 'expires_at', 'withdrawn_at', 'retention_policy', 'retention_days', 'masking_level', 'allowed_roles', 'jurisdiction', 'policy_reference', 'access_audit_reference', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    'field_service_management_appgen_outbox_event': ('id', 'tenant', 'code', 'service_id', 'event_id', 'event_type', 'topic', 'idempotency_key', 'attempts', 'status', 'version', 'payload', 'effective_at', 'created_at', 'updated_at'),
+    'field_service_management_appgen_inbox_event': ('id', 'tenant', 'code', 'service_id', 'event_id', 'event_type', 'topic', 'idempotency_key', 'attempts', 'status', 'version', 'payload', 'effective_at', 'created_at', 'updated_at'),
+    'field_service_management_appgen_dead_letter_event': ('id', 'tenant', 'code', 'service_id', 'event_id', 'event_type', 'topic', 'reason', 'attempts', 'status', 'version', 'payload', 'effective_at', 'created_at', 'updated_at'),
+    'field_service_management_work_order': ('id', 'tenant', 'code', 'work_order_id', 'work_order_type', 'priority', 'severity', 'customer_reference', 'site_reference', 'asset_reference', 'requested_at', 'promised_window_start', 'promised_window_end', 'scheduled_start', 'scheduled_end', 'required_skill_set', 'required_tool_class', 'entitlement_state', 'warranty_covered', 'safety_risk_level', 'estimated_labor_minutes', 'estimated_travel_minutes', 'first_time_fix_target', 'reopen_count', 'exception_reason', 'status', 'version', 'payload', 'effective_at', 'created_at', 'updated_at'),
+    'field_service_management_service_request': ('id', 'tenant', 'code', 'service_id', 'service_request_id', 'request_channel', 'reported_symptom', 'symptom_taxonomy', 'severity_score', 'asset_context', 'entitlement_lookup_state', 'remote_fix_eligible', 'duplicate_of_request_id', 'customer_tier', 'sla_impact_state', 'safety_flag', 'missing_evidence', 'classification_confidence', 'proposed_work_order_type', 'status', 'version', 'payload', 'effective_at', 'created_at', 'updated_at'),
+    'field_service_management_service_appointment': ('id', 'tenant', 'code', 'service_id', 'service_appointment_id', 'customer_preferred_window', 'promised_start', 'promised_end', 'arrival_window_start', 'arrival_window_end', 'promise_confidence', 'capacity_validated', 'reminder_schedule', 'reschedule_token', 'reschedule_count', 'no_access_policy', 'late_arrival_state', 'dispatch_plan_reference', 'status', 'version', 'payload', 'effective_at', 'created_at', 'updated_at'),
+    'field_service_management_technician_skill': ('id', 'tenant', 'code', 'service_id', 'technician_skill_id', 'technician_id', 'skill_family', 'skill_level', 'product_models', 'certification_body', 'certified_at', 'expires_at', 'recertification_due_at', 'supervision_required', 'hazardous_work', 'jurisdiction', 'evidence_hash', 'assessment_score', 'restriction_state', 'status', 'version', 'payload', 'effective_at', 'created_at', 'updated_at'),
+    'field_service_management_dispatch_plan': ('id', 'tenant', 'code', 'service_id', 'dispatch_plan_id', 'plan_date', 'route_constraints', 'cost_function', 'hard_constraints', 'soft_constraints', 'candidate_route_count', 'selected_route_reference', 'eta_confidence', 'sla_risk_state', 'dispatcher_override', 'override_reason', 'emergency_lane', 'status', 'version', 'payload', 'effective_at', 'created_at', 'updated_at'),
+    'field_service_management_service_part_requirement': ('id', 'tenant', 'code', 'service_id', 'service_part_requirement_id', 'field_work_order_id', 'part_reference', 'part_class', 'required_quantity', 'serialized_required', 'predicted_part', 'prediction_confidence', 'substitution_allowed', 'kit_reference', 'hazardous_material', 'sourcing_preference', 'availability_state', 'reservation_state', 'status', 'version', 'payload', 'effective_at', 'created_at', 'updated_at'),
+    'field_service_management_part_reservation': ('id', 'tenant', 'code', 'service_id', 'part_reservation_id', 'service_part_requirement_id', 'field_work_order_id', 'part_reference', 'reserved_quantity', 'source_location', 'reservation_state', 'reserved_at', 'expires_at', 'consumed_quantity', 'shortage_state', 'follow_up_visit_required', 'tradeoff_summary', 'status', 'version', 'payload', 'effective_at', 'created_at', 'updated_at'),
+    'field_service_management_mobile_work_log': ('id', 'tenant', 'code', 'service_id', 'mobile_work_log_id', 'mobile_task_id', 'technician_id', 'log_type', 'log_entry', 'logged_at', 'offline_captured', 'sync_state', 'conflict_state', 'media_evidence_hash', 'idempotency_key', 'replay_order', 'local_validation_state', 'device_reference', 'status', 'version', 'payload', 'effective_at', 'created_at', 'updated_at'),
+    'field_service_management_service_checklist': ('id', 'tenant', 'code', 'service_id', 'service_checklist_id', 'mobile_task_id', 'template_reference', 'template_version', 'checklist_state', 'completed_item_count', 'total_item_count', 'required_photo_count', 'measurement_values', 'pass_fail_threshold', 'signature_state', 'regulatory_citation', 'calibration_dependency', 'completed_at', 'status', 'version', 'payload', 'effective_at', 'created_at', 'updated_at'),
+    'field_service_management_warranty_entitlement': ('id', 'tenant', 'code', 'service_id', 'warranty_entitlement_id', 'asset_reference', 'warranty_terms', 'coverage_state', 'coverage_start', 'coverage_end', 'asset_age_days', 'usage_limit', 'usage_consumed', 'exclusion_reference', 'prior_repair_count', 'goodwill_allowed', 'proof_required', 'appeal_state', 'coverage_decision', 'decision_explanation', 'status', 'version', 'payload', 'effective_at', 'created_at', 'updated_at'),
+    'field_service_management_sla_commitment': ('id', 'tenant', 'code', 'service_id', 'sla_commitment_id', 'commitment_type', 'customer_tier', 'response_target_minutes', 'restore_target_minutes', 'resolution_target_minutes', 'start_trigger', 'stop_trigger', 'pause_reasons', 'business_calendar', 'escalation_policy', 'effective_from', 'effective_to', 'breach_consequence', 'status', 'version', 'payload', 'effective_at', 'created_at', 'updated_at'),
+    'field_service_management_sla_observation': ('id', 'tenant', 'code', 'service_id', 'sla_observation_id', 'sla_commitment_id', 'field_work_order_id', 'observed_state', 'clock_start_at', 'clock_stop_at', 'elapsed_minutes', 'pause_minutes', 'breach_risk_state', 'breach_forecast_at', 'breach_root_cause', 'mitigation_plan', 'escalation_level', 'status', 'version', 'payload', 'effective_at', 'created_at', 'updated_at'),
+    'field_service_management_customer_confirmation': ('id', 'tenant', 'code', 'service_id', 'customer_confirmation_id', 'field_work_order_id', 'confirmation_type', 'confirmation_state', 'signed_by', 'signature_hash', 'signed_at', 'language', 'accessibility_support', 'before_media_hash', 'after_media_hash', 'customer_notes', 'refusal_reason', 'dispute_flag', 'correction_state', 'proof_package_hash', 'status', 'version', 'payload', 'effective_at', 'created_at', 'updated_at'),
+    'field_service_management_repeat_visit_signal': ('id', 'tenant', 'code', 'service_id', 'repeat_visit_signal_id', 'field_work_order_id', 'prior_work_order_id', 'repeat_window_days', 'repeat_classification', 'causal_factor', 'related_work_order_cluster', 'technician_pattern', 'asset_pattern', 'part_pattern', 'corrective_action', 'learning_loop_target', 'detected_at', 'confidence_score', 'status', 'version', 'payload', 'effective_at', 'created_at', 'updated_at'),
+    'field_service_management_field_exception_case': ('id', 'tenant', 'code', 'service_id', 'field_exception_case_id', 'field_work_order_id', 'exception_type', 'exception_source', 'raised_at', 'severity', 'triage_state', 'owner_role', 'resolution_action', 'resolution_evidence', 'resolved_at', 'escalation_level', 'status', 'version', 'payload', 'effective_at', 'created_at', 'updated_at'),
+    'field_service_management_field_policy_rule': ('id', 'tenant', 'code', 'field_policy_rule_id', 'rule_name', 'rule_scope', 'rule_expression', 'policy_family', 'severity', 'compiled_hash', 'approval_required', 'approved_by', 'effective_from', 'effective_to', 'status', 'version', 'payload', 'effective_at', 'created_at', 'updated_at'),
+    'field_service_management_field_runtime_parameter': ('id', 'tenant', 'code', 'field_runtime_parameter_id', 'parameter_name', 'parameter_value', 'parameter_scope', 'value_min', 'value_max', 'bounded', 'default_value', 'effective_from', 'effective_to', 'status', 'version', 'payload', 'effective_at', 'created_at', 'updated_at'),
+    'field_service_management_field_schema_extension': ('id', 'tenant', 'code', 'field_schema_extension_id', 'table_name', 'extension_scope', 'field_definition', 'field_count', 'applied', 'applied_at', 'compatibility_state', 'approved_by', 'status', 'version', 'payload', 'effective_at', 'created_at', 'updated_at'),
+    'field_service_management_field_control_assertion': ('id', 'tenant', 'code', 'field_control_assertion_id', 'control_code', 'control_family', 'assertion_scope', 'evaluation_state', 'evidence_hash', 'last_evaluated_at', 'failure_count', 'remediation_owner', 'remediation_due_at', 'status', 'version', 'payload', 'effective_at', 'created_at', 'updated_at'),
+    'field_service_management_field_governed_model': ('id', 'tenant', 'code', 'field_governed_model_id', 'model_name', 'model_version', 'model_purpose', 'drift_indicator', 'false_positive_rate', 'analyst_feedback', 'retraining_decision', 'rollback_decision', 'deployed_at', 'evaluated_at', 'approval_state', 'status', 'version', 'payload', 'effective_at', 'created_at', 'updated_at'),
+}
+_FIELD_SERVICE_MANAGEMENT_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _field_service_management_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return FIELD_SERVICE_MANAGEMENT_TABLE_FIELDS.get(table, _FIELD_SERVICE_MANAGEMENT_DEFAULT_FIELDS)
+
+
 def field_service_management_build_schema_contract():
-    table_contracts = ({'table': 'field_service_management_field_work_order',
-  'fields': ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'field_service_management'},
- {'table': 'field_service_management_dispatch_assignment',
-  'fields': ('id', 'tenant', 'field_work_order_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'field_service_management'},
- {'table': 'field_service_management_technician_profile',
-  'fields': ('id', 'tenant', 'field_work_order_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'field_service_management'},
- {'table': 'field_service_management_mobile_task',
-  'fields': ('id', 'tenant', 'field_work_order_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'field_service_management'},
- {'table': 'field_service_management_parts_usage',
-  'fields': ('id', 'tenant', 'field_work_order_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'field_service_management'},
- {'table': 'field_service_management_service_sla',
-  'fields': ('id', 'tenant', 'field_work_order_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'field_service_management'},
- {'table': 'field_service_management_service_history',
-  'fields': ('id', 'tenant', 'field_work_order_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'field_service_management'},
- {'table': 'field_service_management_customer_service_update',
-  'fields': ('id', 'tenant', 'field_work_order_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'field_service_management'},
- {'table': 'field_service_management_appgen_outbox_event',
-  'fields': ('id', 'tenant', 'field_work_order_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'field_service_management'},
- {'table': 'field_service_management_appgen_inbox_event',
-  'fields': ('id', 'tenant', 'field_work_order_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'field_service_management'},
- {'table': 'field_service_management_appgen_dead_letter_event',
-  'fields': ('id', 'tenant', 'field_work_order_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'field_service_management'})
-    return {'format': 'appgen.field-service-management-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/field_service_management/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': FIELD_SERVICE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': FIELD_SERVICE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'database_backends': FIELD_SERVICE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': FIELD_SERVICE_MANAGEMENT_OWNED_TABLES}
+    table_contracts = tuple(
+        {'table': table,
+         'fields': _field_service_management_table_fields(table),
+         'primary_key': ('id',),
+         'owned_by': PBC_KEY}
+        for table in FIELD_SERVICE_MANAGEMENT_OWNED_TABLES
+    )
+    return {'format': 'appgen.field-service-management-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/field_service_management/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': FIELD_SERVICE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(FIELD_SERVICE_MANAGEMENT_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _field_service_management_table_fields(table)} for table in FIELD_SERVICE_MANAGEMENT_OWNED_TABLES), 'datastore_backends': FIELD_SERVICE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'database_backends': FIELD_SERVICE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': FIELD_SERVICE_MANAGEMENT_OWNED_TABLES}
 
 
 def field_service_management_build_service_contract():
@@ -285,7 +310,7 @@ _FIELD_SERVICE_MANAGEMENT_DOMAIN_RUNTIME_CAPABILITIES = field_service_management
 def _field_workforce_table_contract(table: str) -> dict:
     return {
         'table': table,
-        'fields': ('id', 'tenant', 'work_order_id', 'technician_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+        'fields': _field_service_management_table_fields(table),
         'primary_key': ('id',),
         'owned_by': PBC_KEY,
     }
@@ -295,20 +320,20 @@ def field_service_management_build_schema_contract():
     schema = dict(_FIELD_SERVICE_MANAGEMENT_DOMAIN_BUILD_SCHEMA_CONTRACT())
     existing = tuple(schema.get('tables', ()))
     existing_names = {table['table'] for table in existing}
-    additions = tuple(_field_workforce_table_contract(table) for table in FIELD_WORKFORCE_TABLES if table not in existing_names)
-    tables = existing + additions
+    additions = tuple(table for table in FIELD_WORKFORCE_TABLES if table not in existing_names)
+    tables = existing + tuple(_field_workforce_table_contract(table) for table in additions)
     owned_tables = tuple(dict.fromkeys(tuple(schema.get('owned_tables', ())) + FIELD_WORKFORCE_TABLES))
     migrations = tuple(schema.get('migrations', ())) + tuple(
         {
-            'path': f'pbcs/field_service_management/migrations/field_workforce_{index:03d}_{table["table"]}.sql',
+            'path': f'pbcs/field_service_management/migrations/field_workforce_{index:03d}_{table}.sql',
             'operation': 'create_owned_table',
-            'table': table['table'],
+            'table': table,
             'backend_allowlist': FIELD_SERVICE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS,
         }
         for index, table in enumerate(additions, start=1)
     )
     models = tuple(schema.get('models', ())) + tuple(
-        {'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']}
+        {'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _field_service_management_table_fields(table)}
         for table in additions
     )
     return {**schema, 'tables': tables, 'migrations': migrations, 'models': models, 'owned_tables': owned_tables}
@@ -431,34 +456,29 @@ def field_service_management_build_schema_contract():
     schema = dict(_FIELD_SERVICE_MANAGEMENT_DOMAIN_BASE_BUILD_SCHEMA_CONTRACT())
     existing = {table['table'] for table in schema.get('tables', ())}
     additions = tuple(
-        {
-            'table': table,
-            'fields': ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-            'primary_key': ('id',),
-            'owned_by': PBC_KEY,
-        }
+        table
         for table in domain_depth_contract()['owned_tables']
         if table not in existing
     )
-    tables = tuple(schema.get('tables', ())) + additions
+    tables = tuple(schema.get('tables', ())) + tuple(_field_workforce_table_contract(table) for table in additions)
     return {
         **schema,
         'tables': tables,
         'owned_tables': tuple(table['table'] for table in tables),
         'migrations': tuple(schema.get('migrations', ())) + tuple(
             {
-                'path': f'pbcs/field_service_management/migrations/domain_{index:03d}_{table["table"]}.sql',
+                'path': f'pbcs/field_service_management/migrations/domain_{index:03d}_{table}.sql',
                 'operation': 'create_owned_table',
-                'table': table['table'],
+                'table': table,
                 'backend_allowlist': FIELD_SERVICE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS,
             }
             for index, table in enumerate(additions, start=1)
         ),
         'models': tuple(schema.get('models', ())) + tuple(
             {
-                'class_name': ''.join(part.capitalize() for part in table['table'].split('_')),
-                'table': table['table'],
-                'fields': table['fields'],
+                'class_name': ''.join(part.capitalize() for part in table.split('_')),
+                'table': table,
+                'fields': _field_service_management_table_fields(table),
             }
             for table in additions
         ),

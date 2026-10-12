@@ -117,132 +117,57 @@ def privacy_consent_governance_parse_document_instruction(document, instruction)
     return {'ok': True, 'candidate_tables': PRIVACY_CONSENT_GOVERNANCE_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+PRIVACY_CONSENT_GOVERNANCE_TABLE_FIELDS = {
+    'privacy_consent_governance_data_subject_profile': ('id', 'tenant', 'code', 'data_subject_profile_id', 'subject_reference', 'identity_namespace', 'verification_state', 'identity_confidence', 'lifecycle_state', 'subject_category', 'age_band', 'guardian_authority_state', 'vulnerable_subject_flag', 'preferred_language', 'preferred_channel', 'accessibility_requirement', 'source_event_reference', 'merge_parent_reference', 'split_history_text', 'dissenting_signals_text', 'review_due_at', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_consent_record': ('id', 'tenant', 'code', 'consent_record_id', 'data_subject_profile_id', 'purpose_reference', 'capture_channel', 'jurisdiction_code', 'source_system', 'notice_version', 'capture_method', 'effective_from', 'effective_to', 'expiry_at', 'proof_hash', 'withdrawal_reason', 'chain_sequence', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_processing_purpose': ('id', 'tenant', 'code', 'processing_purpose_id', 'data_subject_profile_id', 'purpose_category', 'purpose_statement', 'allowed_processing_text', 'lawful_basis_code', 'data_category_text', 'retention_link_reference', 'notice_wording_text', 'compatible_purpose_rule', 'purpose_owner', 'approval_state', 'overlap_flag', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_retention_policy': ('id', 'tenant', 'code', 'retention_policy_id', 'data_subject_profile_id', 'policy_name', 'trigger_event', 'retention_period_days', 'jurisdiction_code', 'data_category_text', 'legal_hold_behavior', 'review_cadence_days', 'disposal_method', 'linked_processing_activity', 'exception_text', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_privacy_request': ('id', 'tenant', 'code', 'privacy_request_id', 'data_subject_profile_id', 'request_type', 'request_category', 'jurisdiction_code', 'authorized_agent_reference', 'request_scope_text', 'identity_verification_state', 'received_at', 'sla_due_at', 'extension_state', 'extension_reason', 'duplicate_of_request_id', 'abuse_policy_state', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_disclosure_log': ('id', 'tenant', 'code', 'disclosure_log_id', 'data_subject_profile_id', 'recipient_reference', 'recipient_role', 'disclosure_purpose', 'data_category_text', 'transfer_mechanism', 'destination_country', 'disclosed_at', 'agreement_reference', 'safeguard_state', 'legal_basis_code', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_privacy_impact_assessment': ('id', 'tenant', 'code', 'privacy_impact_assessment_id', 'data_subject_profile_id', 'assessment_type', 'template_reference', 'template_version', 'processing_scope_text', 'data_sensitivity', 'subject_vulnerability', 'profiling_flag', 'transfer_flag', 'safeguard_text', 'residual_risk_score', 'reviewer_reference', 'mitigation_plan', 'approval_state', 'completed_at', 'completion_score', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_privacy_compliance_evidence': ('id', 'tenant', 'code', 'privacy_compliance_evidence_id', 'data_subject_profile_id', 'evidence_type', 'evidence_reference', 'evidence_hash', 'proof_chain_hash', 'redaction_state', 'collected_at', 'collected_by', 'regulatory_citation', 'verification_state', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_consent_subject': ('id', 'tenant', 'code', 'consent_subject_id', 'subject_reference', 'identity_namespace', 'lifecycle_state', 'verification_state', 'identity_confidence', 'payload', 'effective_at', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_consent_grant': ('id', 'tenant', 'code', 'consent_grant_id', 'privacy_id', 'purpose_reference', 'capture_channel', 'jurisdiction_code', 'notice_version', 'capture_method', 'effective_from', 'effective_to', 'expiry_at', 'proof_hash', 'revocation_reason', 'payload', 'effective_at', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_consent_purpose': ('id', 'tenant', 'code', 'consent_purpose_id', 'privacy_id', 'purpose_category', 'purpose_statement', 'lawful_basis_code', 'data_category_text', 'compatible_purpose_rule', 'owner_approval_state', 'payload', 'effective_at', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_privacy_notice': ('id', 'tenant', 'code', 'privacy_notice_id', 'privacy_id', 'notice_version', 'jurisdiction_code', 'audience', 'language_code', 'channel', 'purpose_set_text', 'effective_from', 'effective_to', 'required_clause_text', 'superseded_by_reference', 'diff_summary_text', 'reacknowledgement_required', 'payload', 'effective_at', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_notice_acknowledgement': ('id', 'tenant', 'code', 'notice_acknowledgement_id', 'privacy_id', 'notice_version', 'acknowledgement_channel', 'acknowledged_at', 'locale', 'device_proof_hash', 'session_reference', 'source_system', 'consent_grant_reference', 'reacknowledgement_due_at', 'payload', 'effective_at', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_data_subject_request': ('id', 'tenant', 'code', 'data_subject_request_id', 'privacy_id', 'request_type', 'request_category', 'jurisdiction_code', 'authorized_agent_reference', 'request_scope_text', 'identity_verification_state', 'verification_risk_score', 'received_at', 'sla_due_at', 'extension_state', 'extension_reason', 'response_format', 'delivery_method', 'payload', 'effective_at', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_request_task': ('id', 'tenant', 'code', 'request_task_id', 'privacy_id', 'request_reference', 'task_type', 'task_description', 'owner_role', 'dependency_state', 'data_domain', 'redaction_required', 'export_required', 'due_at', 'completed_at', 'evidence_hash', 'payload', 'effective_at', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_processing_activity': ('id', 'tenant', 'code', 'processing_activity_id', 'privacy_id', 'activity_name', 'purpose_reference', 'data_category_text', 'subject_category_text', 'recipient_text', 'system_reference', 'transfer_state', 'retention_reference', 'lawful_basis_code', 'safeguard_text', 'completeness_score', 'minimization_state', 'payload', 'effective_at', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_processing_basis': ('id', 'tenant', 'code', 'processing_basis_id', 'privacy_id', 'basis_code', 'jurisdiction_code', 'purpose_reference', 'data_category_text', 'documentation_reference', 'balancing_test_text', 'consent_dependency', 'review_due_at', 'invalidation_trigger', 'payload', 'effective_at', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_data_sharing_agreement': ('id', 'tenant', 'code', 'data_sharing_agreement_id', 'privacy_id', 'counterparty_reference', 'party_role', 'purpose_reference', 'data_category_text', 'transfer_mechanism', 'subprocessor_text', 'safeguard_text', 'audit_rights_text', 'effective_from', 'expires_at', 'payload', 'effective_at', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_retention_schedule': ('id', 'tenant', 'code', 'retention_schedule_id', 'privacy_id', 'schedule_name', 'trigger_event', 'retention_period_days', 'jurisdiction_code', 'data_category_text', 'purpose_reference', 'exception_text', 'legal_hold_behavior', 'review_cadence_days', 'disposal_method', 'payload', 'effective_at', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_retention_decision': ('id', 'tenant', 'code', 'retention_decision_id', 'privacy_id', 'schedule_reference', 'data_category_text', 'subject_scope_text', 'hold_status', 'action_taken', 'approver_reference', 'execution_proof_hash', 'downstream_event_plan', 'decided_at', 'payload', 'effective_at', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_privacy_risk_assessment': ('id', 'tenant', 'code', 'privacy_risk_assessment_id', 'privacy_id', 'assessment_scope_text', 'data_sensitivity', 'subject_vulnerability', 'profiling_flag', 'transfer_flag', 'safeguard_text', 'residual_risk_score', 'reviewer_reference', 'mitigation_plan', 'approval_state', 'assessed_at', 'payload', 'effective_at', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_privacy_incident': ('id', 'tenant', 'code', 'privacy_incident_id', 'privacy_id', 'incident_state', 'discovered_at', 'affected_subject_count', 'data_category_text', 'severity', 'containment_action', 'notification_deadline_at', 'regulator_notice_decision', 'customer_notice_decision', 'notification_rationale', 'remediation_task', 'closure_evidence_hash', 'closed_at', 'payload', 'effective_at', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_consent_evidence_packet': ('id', 'tenant', 'code', 'consent_evidence_packet_id', 'privacy_id', 'packet_reference', 'subject_identifier_text', 'purpose_reference', 'notice_version', 'grant_withdrawal_timeline', 'source_proof_hash', 'processing_linkage_text', 'cryptographic_fingerprint', 'redaction_state', 'generated_at', 'payload', 'effective_at', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_privacy_exception_case': ('id', 'tenant', 'code', 'privacy_exception_case_id', 'privacy_id', 'exception_type', 'severity', 'subject_reference', 'activity_reference', 'owner_role', 'sla_due_at', 'evidence_checklist', 'legal_decision', 'remediation_action', 'closure_proof_hash', 'closed_at', 'payload', 'effective_at', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_privacy_policy_rule': ('id', 'tenant', 'code', 'privacy_policy_rule_id', 'rule_name', 'rule_scope', 'predicate_text', 'source_citation', 'ambiguity_flag', 'approval_state', 'approved_by', 'effective_from', 'effective_to', 'compiled_hash', 'prior_version_reference', 'payload', 'effective_at', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_privacy_runtime_parameter': ('id', 'tenant', 'code', 'privacy_runtime_parameter_id', 'parameter_name', 'parameter_value', 'parameter_scope', 'lower_bound', 'upper_bound', 'bounded', 'tenant_override', 'approval_state', 'approved_by', 'effective_from', 'rollback_state', 'payload', 'effective_at', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_privacy_schema_extension': ('id', 'tenant', 'code', 'privacy_schema_extension_id', 'target_table', 'field_name', 'field_type', 'ui_placement', 'compatibility_state', 'backfill_plan', 'backfill_state', 'registered_at', 'activated_at', 'deprecated_at', 'payload', 'effective_at', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_privacy_control_assertion': ('id', 'tenant', 'code', 'privacy_control_assertion_id', 'control_name', 'control_scope', 'assertion_result', 'severity', 'affected_record_reference', 'failing_evidence', 'remediation_task', 'evaluated_at', 'evaluated_by', 'payload', 'effective_at', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_privacy_governed_model': ('id', 'tenant', 'code', 'privacy_governed_model_id', 'model_name', 'model_version', 'authority_role', 'certification_state', 'certification_expires_at', 'jurisdiction_code', 'allowed_actions', 'governance_state', 'proof_chain_hash', 'approved_by', 'approved_at', 'payload', 'effective_at', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_appgen_outbox_event': ('id', 'tenant', 'code', 'data_subject_profile_id', 'privacy_id', 'event_id', 'event_type', 'topic', 'idempotency_key', 'attempts', 'payload', 'effective_at', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_appgen_inbox_event': ('id', 'tenant', 'code', 'data_subject_profile_id', 'privacy_id', 'event_id', 'event_type', 'topic', 'idempotency_key', 'attempts', 'payload', 'effective_at', 'status', 'version', 'created_at', 'updated_at'),
+    'privacy_consent_governance_appgen_dead_letter_event': ('id', 'tenant', 'code', 'data_subject_profile_id', 'privacy_id', 'event_id', 'event_type', 'topic', 'reason', 'attempts', 'payload', 'effective_at', 'status', 'version', 'created_at', 'updated_at'),
+}
+_PRIVACY_CONSENT_GOVERNANCE_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _privacy_consent_governance_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return PRIVACY_CONSENT_GOVERNANCE_TABLE_FIELDS.get(table, _PRIVACY_CONSENT_GOVERNANCE_DEFAULT_FIELDS)
+
+
 def privacy_consent_governance_build_schema_contract():
-    table_contracts = ({'table': 'privacy_consent_governance_data_subject_profile',
-  'fields': ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'privacy_consent_governance'},
- {'table': 'privacy_consent_governance_consent_record',
-  'fields': ('id',
-             'tenant',
-             'data_subject_profile_id',
-             'code',
-             'status',
-             'version',
-             'payload',
-             'created_at',
-             'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'privacy_consent_governance'},
- {'table': 'privacy_consent_governance_processing_purpose',
-  'fields': ('id',
-             'tenant',
-             'data_subject_profile_id',
-             'code',
-             'status',
-             'version',
-             'payload',
-             'created_at',
-             'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'privacy_consent_governance'},
- {'table': 'privacy_consent_governance_retention_policy',
-  'fields': ('id',
-             'tenant',
-             'data_subject_profile_id',
-             'code',
-             'status',
-             'version',
-             'payload',
-             'created_at',
-             'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'privacy_consent_governance'},
- {'table': 'privacy_consent_governance_privacy_request',
-  'fields': ('id',
-             'tenant',
-             'data_subject_profile_id',
-             'code',
-             'status',
-             'version',
-             'payload',
-             'created_at',
-             'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'privacy_consent_governance'},
- {'table': 'privacy_consent_governance_disclosure_log',
-  'fields': ('id',
-             'tenant',
-             'data_subject_profile_id',
-             'code',
-             'status',
-             'version',
-             'payload',
-             'created_at',
-             'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'privacy_consent_governance'},
- {'table': 'privacy_consent_governance_privacy_impact_assessment',
-  'fields': ('id',
-             'tenant',
-             'data_subject_profile_id',
-             'code',
-             'status',
-             'version',
-             'payload',
-             'created_at',
-             'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'privacy_consent_governance'},
- {'table': 'privacy_consent_governance_privacy_compliance_evidence',
-  'fields': ('id',
-             'tenant',
-             'data_subject_profile_id',
-             'code',
-             'status',
-             'version',
-             'payload',
-             'created_at',
-             'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'privacy_consent_governance'},
- {'table': 'privacy_consent_governance_appgen_outbox_event',
-  'fields': ('id',
-             'tenant',
-             'data_subject_profile_id',
-             'code',
-             'status',
-             'version',
-             'payload',
-             'created_at',
-             'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'privacy_consent_governance'},
- {'table': 'privacy_consent_governance_appgen_inbox_event',
-  'fields': ('id',
-             'tenant',
-             'data_subject_profile_id',
-             'code',
-             'status',
-             'version',
-             'payload',
-             'created_at',
-             'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'privacy_consent_governance'},
- {'table': 'privacy_consent_governance_appgen_dead_letter_event',
-  'fields': ('id',
-             'tenant',
-             'data_subject_profile_id',
-             'code',
-             'status',
-             'version',
-             'payload',
-             'created_at',
-             'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'privacy_consent_governance'})
-    return {'format': 'appgen.privacy-consent-governance-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/privacy_consent_governance/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': PRIVACY_CONSENT_GOVERNANCE_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': PRIVACY_CONSENT_GOVERNANCE_ALLOWED_DATABASE_BACKENDS, 'database_backends': PRIVACY_CONSENT_GOVERNANCE_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': PRIVACY_CONSENT_GOVERNANCE_OWNED_TABLES}
+    table_contracts = tuple(
+        {'table': table, 'fields': _privacy_consent_governance_table_fields(table), 'primary_key': ('id',), 'owned_by': PBC_KEY}
+        for table in PRIVACY_CONSENT_GOVERNANCE_OWNED_TABLES
+    )
+    return {'format': 'appgen.privacy-consent-governance-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/privacy_consent_governance/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': PRIVACY_CONSENT_GOVERNANCE_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(PRIVACY_CONSENT_GOVERNANCE_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _privacy_consent_governance_table_fields(table)} for table in PRIVACY_CONSENT_GOVERNANCE_OWNED_TABLES), 'datastore_backends': PRIVACY_CONSENT_GOVERNANCE_ALLOWED_DATABASE_BACKENDS, 'database_backends': PRIVACY_CONSENT_GOVERNANCE_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': PRIVACY_CONSENT_GOVERNANCE_OWNED_TABLES}
 
 
 def privacy_consent_governance_build_service_contract():
@@ -351,37 +276,39 @@ def privacy_consent_governance_build_schema_contract():
     from .domain_depth import domain_depth_contract
 
     schema = dict(_PRIVACY_CONSENT_GOVERNANCE_DOMAIN_BASE_BUILD_SCHEMA_CONTRACT())
-    existing = {table['table'] for table in schema.get('tables', ())}
+    existing = {entry['table'] for entry in schema.get('tables', ())}
+    domain_names = tuple(
+        name for name in domain_depth_contract()['owned_tables'] if name not in existing
+    )
     additions = tuple(
         {
-            'table': table,
-            'fields': ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+            'table': name,
+            'fields': _privacy_consent_governance_table_fields(name),
             'primary_key': ('id',),
             'owned_by': PBC_KEY,
         }
-        for table in domain_depth_contract()['owned_tables']
-        if table not in existing
+        for name in domain_names
     )
     tables = tuple(schema.get('tables', ())) + additions
     return {
         **schema,
         'tables': tables,
-        'owned_tables': tuple(table['table'] for table in tables),
+        'owned_tables': tuple(entry['table'] for entry in tables),
         'migrations': tuple(schema.get('migrations', ())) + tuple(
             {
-                'path': f'pbcs/privacy_consent_governance/migrations/domain_{index:03d}_{table["table"]}.sql',
+                'path': f'pbcs/privacy_consent_governance/migrations/domain_{index:03d}_{name}.sql',
                 'operation': 'create_owned_table',
-                'table': table['table'],
+                'table': name,
                 'backend_allowlist': PRIVACY_CONSENT_GOVERNANCE_ALLOWED_DATABASE_BACKENDS,
             }
-            for index, table in enumerate(additions, start=1)
+            for index, name in enumerate(domain_names, start=1)
         ),
         'models': tuple(schema.get('models', ())) + tuple(
             {
-                'class_name': ''.join(part.capitalize() for part in table['table'].split('_')),
-                'table': table['table'],
-                'fields': table['fields'],
+                'class_name': ''.join(part.capitalize() for part in name.split('_')),
+                'table': name,
+                'fields': _privacy_consent_governance_table_fields(name),
             }
-            for table in additions
+            for name in domain_names
         ),
     }

@@ -499,47 +499,150 @@ def capital_projects_delivery_parse_document_instruction(document, instruction):
     }
 
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+CAPITAL_PROJECTS_DELIVERY_TABLE_FIELDS = {
+    "capital_projects_delivery_capital_project": (
+        "id", "tenant", "code", "name", "status", "lifecycle_stage",
+        "rebaseline_required", "rebaseline_count", "criteria_status",
+        "gate_dates", "gate_history", "payload", "created_at", "updated_at",
+    ),
+    "capital_projects_delivery_epc_package": (
+        "id", "tenant", "code", "epc_package_id", "project_id", "package_name",
+        "wbs_node", "contractor_reference", "scope_description",
+        "original_budget", "approved_budget", "awarded_value", "committed_value",
+        "forecast_final_cost", "pending_change_exposure", "contingency_remaining",
+        "planned_start", "planned_finish", "forecast_finish", "actual_finish",
+        "percent_complete", "readiness_signoff", "readiness_blockers",
+        "interface_count", "open_change_orders", "long_lead_item_count",
+        "acceptance_criteria", "payload", "status", "version", "created_at",
+        "updated_at",
+    ),
+    "capital_projects_delivery_permit_milestone": (
+        "id", "tenant", "code", "permit_milestone_id", "project_id",
+        "package_id", "milestone_name", "milestone_type", "phase_owner",
+        "authority", "permit_type", "submission_date", "review_cycle_days",
+        "resubmission_count", "approval_date", "expiry_date", "tied_workfront",
+        "blocked_workfront", "predecessor_milestone", "hold_point_flag",
+        "quality_release_state", "success_criteria", "permit_blocking",
+        "payload", "status", "version", "created_at", "updated_at",
+    ),
+    "capital_projects_delivery_progress_measurement": (
+        "id", "tenant", "code", "progress_measurement_id", "project_id",
+        "package_id", "wbs_node", "discipline", "measurement_period",
+        "measurement_date", "installed_quantity", "earned_quantity",
+        "quantity_unit", "percent_complete", "earning_rule",
+        "weighted_milestone", "planned_value", "earned_value", "actual_cost",
+        "schedule_performance_index", "cost_performance_index", "crew_loading",
+        "productivity_assumption", "productivity_variance", "evidence_reference",
+        "payload", "status", "version", "created_at", "updated_at",
+    ),
+    "capital_projects_delivery_commissioning_system": (
+        "id", "tenant", "code", "commissioning_system_id", "project_id",
+        "package_id", "system_name", "subsystem_name", "completion_boundary",
+        "completion_criteria", "mechanical_completion_state",
+        "precommissioning_activity", "test_type", "procedure_reference",
+        "planned_test_date", "actual_test_date", "fail_retest_state",
+        "punch_item_count", "critical_punch_count", "hold_point_state",
+        "energization_state", "utility_availability", "vendor_attendance",
+        "startup_sequence_reference", "readiness_status", "payload", "status",
+        "version", "created_at", "updated_at",
+    ),
+    "capital_projects_delivery_project_risk": (
+        "id", "tenant", "code", "project_risk_id", "project_id", "package_id",
+        "risk_title", "risk_category", "risk_type", "probability_score",
+        "cost_risk_exposure", "schedule_risk_days", "trigger_condition",
+        "mitigation_action", "mitigation_due_date", "owner_role",
+        "residual_risk_state", "early_warning_flag", "weather_delay_flag",
+        "productivity_impact", "opportunity_benefit", "escalation_state",
+        "payload", "status", "version", "created_at", "updated_at",
+    ),
+    "capital_projects_delivery_turnover_package": (
+        "id", "tenant", "code", "turnover_package_id", "project_id",
+        "package_id", "system_reference", "dossier_requirement",
+        "dossier_completeness", "as_built_drawings_state", "test_pack_state",
+        "warranty_start", "warranty_end", "retention_release_state",
+        "defects_outstanding", "training_completion_pct",
+        "spare_parts_transfer_state", "operating_procedures_state",
+        "asset_data_handoff_state", "close_certificate_ready",
+        "handover_acceptance_date", "payload", "status", "version",
+        "created_at", "updated_at",
+    ),
+    "capital_projects_delivery_capital_projects_delivery_policy_rule": (
+        "id", "tenant", "code", "policy_rule_id", "rule_name", "scope",
+        "predicate_text", "ambiguity_flag", "example_text", "approver_role",
+        "effective_from", "effective_to", "compiled_hash", "conflict_reference",
+        "payload", "status", "version", "created_at", "updated_at",
+    ),
+    "capital_projects_delivery_capital_projects_delivery_runtime_parameter": (
+        "id", "tenant", "code", "parameter_name", "parameter_value", "scope",
+        "bounded", "impact_simulation_reference", "effective_from", "payload",
+        "status", "version", "created_at", "updated_at",
+    ),
+    "capital_projects_delivery_capital_projects_delivery_schema_extension": (
+        "id", "tenant", "code", "extension_id", "target_table", "field_name",
+        "field_type", "registered_at", "payload", "status", "version",
+        "created_at", "updated_at",
+    ),
+    "capital_projects_delivery_capital_projects_delivery_control_assertion": (
+        "id", "tenant", "code", "assertion_id", "control_name",
+        "population_count", "threshold_value", "failing_record_count",
+        "owner_role", "remediation_task", "assertion_result", "severity",
+        "is_recurrence", "closure_evidence", "evaluated_at", "payload",
+        "status", "version", "created_at", "updated_at",
+    ),
+    "capital_projects_delivery_capital_projects_delivery_governed_model": (
+        "id", "tenant", "code", "model_id", "model_name", "model_version",
+        "intended_use", "governance_state", "feature_set",
+        "evaluation_evidence_reference", "confidence_threshold",
+        "drift_check_reference", "human_feedback_reference", "approved_by",
+        "approved_at", "payload", "status", "version", "created_at",
+        "updated_at",
+    ),
+    "capital_projects_delivery_appgen_outbox_event": (
+        "id", "tenant", "code", "event_id", "event_type", "topic", "payload",
+        "idempotency_key", "attempts", "status", "version", "created_at",
+        "updated_at",
+    ),
+    "capital_projects_delivery_appgen_inbox_event": (
+        "id", "tenant", "code", "event_id", "event_type", "topic", "payload",
+        "idempotency_key", "attempts", "status", "version", "created_at",
+        "updated_at",
+    ),
+    "capital_projects_delivery_appgen_dead_letter_event": (
+        "id", "tenant", "code", "event_id", "event_type", "topic", "payload",
+        "reason", "attempts", "status", "version", "created_at", "updated_at",
+    ),
+}
+_CAPITAL_PROJECTS_DELIVERY_DEFAULT_FIELDS = (
+    "id",
+    "tenant",
+    "code",
+    "status",
+    "version",
+    "payload",
+    "created_at",
+    "updated_at",
+)
+
+
+def _capital_projects_delivery_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return CAPITAL_PROJECTS_DELIVERY_TABLE_FIELDS.get(
+        table, _CAPITAL_PROJECTS_DELIVERY_DEFAULT_FIELDS
+    )
+
+
 def _table_contracts():
-    return (
+    return tuple(
         {
-            "table": "capital_projects_delivery_capital_project",
-            "fields": (
-                "id",
-                "tenant",
-                "code",
-                "name",
-                "status",
-                "lifecycle_stage",
-                "rebaseline_required",
-                "rebaseline_count",
-                "criteria_status",
-                "gate_dates",
-                "gate_history",
-                "payload",
-                "created_at",
-                "updated_at",
-            ),
+            "table": table,
+            "fields": _capital_projects_delivery_table_fields(table),
             "primary_key": ("id",),
             "owned_by": PBC_KEY,
-        },
-        *(
-            {
-                "table": table,
-                "fields": (
-                    "id",
-                    "tenant",
-                    "code",
-                    "status",
-                    "version",
-                    "payload",
-                    "created_at",
-                    "updated_at",
-                ),
-                "primary_key": ("id",),
-                "owned_by": PBC_KEY,
-            }
-            for table in CAPITAL_PROJECTS_DELIVERY_OWNED_TABLES[1:]
-        ),
+        }
+        for table in CAPITAL_PROJECTS_DELIVERY_OWNED_TABLES
     )
 
 
@@ -547,12 +650,12 @@ def capital_projects_delivery_build_schema_contract():
     table_contracts = _table_contracts()
     models = tuple(
         {
-            "class_name": "".join(part.capitalize() for part in table["table"].split("_")),
-            "table": table["table"],
-            "fields": table["fields"],
+            "class_name": "".join(part.capitalize() for part in table.split("_")),
+            "table": table,
+            "fields": _capital_projects_delivery_table_fields(table),
             "database_backed": True,
         }
-        for table in table_contracts
+        for table in CAPITAL_PROJECTS_DELIVERY_OWNED_TABLES
     )
     return {
         "format": "appgen.capital-projects-delivery-owned-schema-contract.v1",
@@ -563,7 +666,7 @@ def capital_projects_delivery_build_schema_contract():
             {
                 "path": "pbcs/capital_projects_delivery/migrations/001_initial.sql",
                 "operation": "create_owned_tables",
-                "tables": tuple(table["table"] for table in table_contracts),
+                "tables": CAPITAL_PROJECTS_DELIVERY_OWNED_TABLES,
                 "backend_allowlist": CAPITAL_PROJECTS_DELIVERY_ALLOWED_DATABASE_BACKENDS,
             },
         ),

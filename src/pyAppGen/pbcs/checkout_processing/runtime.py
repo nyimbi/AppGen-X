@@ -1358,25 +1358,36 @@ def checkout_processing_build_api_contract() -> dict:
     }
 
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+CHECKOUT_PROCESSING_TABLE_FIELDS = {
+    "cart": ("id", "tenant", "cart_id", "customer_id", "channel", "currency", "market", "subtotal", "discount_total", "tax_total", "shipping_total", "total", "code", "status", "version", "created_at", "updated_at"),
+    "cart_line": ("id", "tenant", "line_id", "cart_id", "product_id", "product_variant", "product_title", "unit", "quantity", "unit_price", "extended_price", "tax_class", "inventory_eligible", "source_event_version", "code", "status", "version", "created_at", "updated_at"),
+    "checkout_session": ("id", "tenant", "session_id", "cart_id", "order_id", "pricing_handoff_id", "tax_handoff_id", "inventory_handoff_id", "payment_handoff_id", "risk_decision", "total", "code", "status", "version", "created_at", "updated_at"),
+    "promotion_redemption": ("id", "tenant", "redemption_id", "cart_id", "coupon_code", "campaign", "discount_rate", "discount_total", "usage_cap", "stackable", "code", "status", "version", "created_at", "updated_at"),
+    "checkout_pricing_handoff": ("id", "tenant", "pricing_handoff_id", "session_id", "cart_id", "currency", "subtotal", "discount_total", "fees_total", "rounding_adjustment", "price_version", "quote_expires_at", "status", "version", "created_at", "updated_at"),
+    "checkout_tax_handoff": ("id", "tenant", "tax_handoff_id", "session_id", "cart_id", "calculation_id", "taxable_basis", "jurisdiction", "tax_total", "tax_inclusive", "quote_expires_at", "status", "version", "created_at", "updated_at"),
+    "checkout_inventory_reservation_handoff": ("id", "tenant", "inventory_handoff_id", "session_id", "reservation_id", "reservation_state", "quantity", "fulfillment_node", "ttl_minutes", "confidence", "status", "version", "created_at", "updated_at"),
+    "checkout_payment_intent_handoff": ("id", "tenant", "payment_handoff_id", "session_id", "payment_intent_id", "amount", "currency", "method", "authorization_id", "capture_id", "retry_count", "status", "version", "created_at", "updated_at"),
+    "checkout_risk_screen": ("id", "tenant", "session_id", "risk_score", "decision", "score_factors", "model_version", "rule_hits", "reviewer", "expires_at", "signals", "status", "version", "created_at", "updated_at"),
+    "checkout_address_validation": ("id", "tenant", "cart_id", "country", "region", "city", "postal_code", "normalized_address", "confidence", "deliverable", "restricted_destination", "customer_override", "provider", "shipping_option", "shipping_total", "status", "version", "created_at", "updated_at"),
+    "checkout_rule": ("id", "tenant", "rule_id", "scope", "promotion_policy", "shipping_policy", "risk_policy", "payment_policy", "enabled", "compiled_hash", "compiled_expression", "status", "version", "created_at", "updated_at"),
+    "checkout_parameter": ("id", "tenant", "parameter_id", "name", "value", "tenant_scope", "bounded", "effective_from", "compiled_hash", "status", "version", "created_at", "updated_at"),
+    "checkout_configuration": ("id", "tenant", "configuration_id", "database_backend", "event_topic", "retry_limit", "default_currency", "default_country", "workbench_limit", "status", "version", "created_at", "updated_at"),
+    "checkout_processing_appgen_outbox_event": ("id", "tenant", "event_id", "event_type", "topic", "payload", "idempotency_key", "attempts", "status", "created_at", "processed_at", "updated_at"),
+    "checkout_processing_appgen_inbox_event": ("id", "tenant", "event_id", "event_type", "topic", "payload", "idempotency_key", "attempts", "status", "created_at", "processed_at", "updated_at"),
+    "checkout_processing_dead_letter_event": ("id", "tenant", "event_id", "event_type", "topic", "payload", "reason", "attempts", "status", "created_at", "processed_at", "updated_at"),
+}
+_CHECKOUT_PROCESSING_DEFAULT_FIELDS = ("id", "tenant", "code", "status", "version", "payload", "created_at", "updated_at")
+
+
+def _checkout_processing_table_fields(table: str) -> tuple[str, ...]:
+    """Return a table's columns, falling back to the generic envelope."""
+    return CHECKOUT_PROCESSING_TABLE_FIELDS.get(table, _CHECKOUT_PROCESSING_DEFAULT_FIELDS)
+
+
 def checkout_processing_build_schema_contract() -> dict:
-    table_fields = {
-        "cart": ("tenant", "cart_id", "customer_id", "channel", "currency", "market", "status", "total"),
-        "cart_line": ("tenant", "line_id", "cart_id", "product_id", "quantity", "unit_price", "extended_price"),
-        "checkout_session": ("tenant", "session_id", "cart_id", "order_id", "status", "pricing_handoff_id", "payment_intent_id"),
-        "promotion_redemption": ("tenant", "redemption_id", "cart_id", "coupon_code", "campaign", "discount_total", "status"),
-        "checkout_pricing_handoff": ("tenant", "pricing_handoff_id", "session_id", "cart_id", "currency", "subtotal", "discount_total", "status"),
-        "checkout_tax_handoff": ("tenant", "tax_handoff_id", "session_id", "cart_id", "calculation_id", "tax_total", "status"),
-        "checkout_inventory_reservation_handoff": ("tenant", "inventory_handoff_id", "session_id", "reservation_id", "confidence", "status"),
-        "checkout_payment_intent_handoff": ("tenant", "payment_handoff_id", "session_id", "payment_intent_id", "amount", "method", "status"),
-        "checkout_risk_screen": ("tenant", "session_id", "risk_score", "decision", "signals"),
-        "checkout_address_validation": ("tenant", "cart_id", "country", "shipping_option", "shipping_total", "status"),
-        "checkout_rule": ("tenant", "rule_id", "scope", "status", "compiled_hash", "compiled_expression"),
-        "checkout_parameter": ("parameter_id", "name", "value", "tenant_scope", "compiled_hash"),
-        "checkout_configuration": ("configuration_id", "database_backend", "event_topic", "retry_limit", "default_currency", "default_country"),
-        "checkout_processing_appgen_outbox_event": ("event_id", "event_type", "topic", "idempotency_key", "status", "audit_hash"),
-        "checkout_processing_appgen_inbox_event": ("event_id", "event_type", "idempotency_key", "attempts", "retry_limit", "status"),
-        "checkout_processing_dead_letter_event": ("event_id", "event_type", "idempotency_key", "attempts", "reason", "status"),
-    }
     relationships = (
         {"from": "cart_line.cart_id", "to": "cart.cart_id", "type": "owned_child"},
         {"from": "promotion_redemption.cart_id", "to": "cart.cart_id", "type": "owned_discount"},
@@ -1391,8 +1402,8 @@ def checkout_processing_build_schema_contract() -> dict:
     tables = tuple(
         {
             "table": table,
-            "fields": table_fields[table],
-            "primary_key": tuple(field for field in table_fields[table] if field.endswith("_id") or field == "event_id")[:2],
+            "fields": _checkout_processing_table_fields(table),
+            "primary_key": tuple(field for field in _checkout_processing_table_fields(table) if field.endswith("_id") or field == "event_id")[:2],
             "owned_by": "checkout_processing",
         }
         for table in CHECKOUT_PROCESSING_OWNED_TABLES
@@ -1417,7 +1428,7 @@ def checkout_processing_build_schema_contract() -> dict:
             {
                 "class_name": "".join(part.capitalize() for part in table.split("_")),
                 "table": table,
-                "fields": table_fields[table],
+                "fields": _checkout_processing_table_fields(table),
             }
             for table in CHECKOUT_PROCESSING_OWNED_TABLES
         ),

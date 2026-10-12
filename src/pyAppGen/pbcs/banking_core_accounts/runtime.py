@@ -404,45 +404,54 @@ def banking_core_accounts_parse_document_instruction(document, instruction):
     }
 
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+BANKING_CORE_ACCOUNTS_TABLE_FIELDS = {
+    "banking_core_accounts_deposit_account": ('id', 'tenant', 'account_number', 'customer_id', 'product_code', 'currency', 'lifecycle_state', 'maker_checker_required', 'last_transition_reason', 'payload', 'created_at', 'updated_at'),
+    "banking_core_accounts_account_balance": ('id', 'tenant', 'code', 'account_balance_id', 'deposit_account_id', 'currency', 'ledger_balance', 'available_balance', 'withdrawable_balance', 'held_funds', 'uncleared_funds', 'accrued_interest', 'overdraft_limit', 'value_date', 'posting_date', 'posting_boundary', 'balance_anomaly_flag', 'anomaly_reason', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    "banking_core_accounts_account_hold": ('id', 'tenant', 'code', 'account_hold_id', 'deposit_account_id', 'hold_category', 'hold_priority', 'hold_amount', 'currency', 'blocks_debit', 'blocks_credit', 'blocks_closure', 'legal_basis', 'owning_queue', 'release_rule', 'release_authority', 'release_reason', 'expiry_at', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    "banking_core_accounts_interest_accrual": ('id', 'tenant', 'code', 'interest_accrual_id', 'deposit_account_id', 'accrual_period', 'rate_tier', 'rate_value', 'balance_band', 'day_count_basis', 'accrual_amount', 'capitalization_amount', 'payout_mode', 'withholding_amount', 'posting_boundary', 'holiday_adjustment', 'accrual_date', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    "banking_core_accounts_fee_assessment": ('id', 'tenant', 'code', 'fee_assessment_id', 'deposit_account_id', 'fee_type', 'trigger_condition', 'fee_amount', 'currency', 'policy_rule_version', 'waiver_requested', 'waiver_reason', 'waiver_approver_role', 'waiver_approved', 'reversal_of', 'reversal_reason', 'posting_boundary', 'assessed_at', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    "banking_core_accounts_statement_cycle": ('id', 'tenant', 'code', 'statement_cycle_id', 'deposit_account_id', 'cycle_definition', 'cutoff_at', 'posting_freeze_window', 'rerun_reason', 'opening_balance', 'closing_balance', 'net_activity', 'exception_status', 'exception_reason', 'posting_boundary', 'generated_at', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    "banking_core_accounts_account_service_case": ('id', 'tenant', 'code', 'account_service_case_id', 'deposit_account_id', 'case_type', 'case_priority', 'exception_severity', 'ageing_bucket', 'owner_role', 'sla_hours', 'sla_due_at', 'required_evidence', 'resolution_evidence', 'blocked_capability', 'escalation_route', 'opened_at', 'closed_at', 'closure_reason', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    "banking_core_accounts_banking_core_accounts_policy_rule": ('id', 'tenant', 'code', 'policy_rule_id', 'rule_name', 'rule_scope', 'predicate_text', 'ambiguity_flag', 'example_text', 'approver_role', 'effective_from', 'effective_to', 'superseded_by', 'compiled_hash', 'approval_evidence_reference', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    "banking_core_accounts_banking_core_accounts_runtime_parameter": ('id', 'tenant', 'code', 'runtime_parameter_id', 'parameter_name', 'parameter_value', 'parameter_scope', 'bounded', 'approved_baseline', 'drift_detected', 'emergency_override', 'override_expires_at', 'effective_from', 'effective_to', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    "banking_core_accounts_banking_core_accounts_schema_extension": ('id', 'tenant', 'code', 'extension_id', 'target_table', 'field_name', 'field_type', 'owner_role', 'validation_rule', 'display_rule', 'migration_plan', 'registered_at', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    "banking_core_accounts_banking_core_accounts_control_assertion": ('id', 'tenant', 'code', 'assertion_id', 'control_name', 'control_family', 'population_count', 'threshold_value', 'failing_record_count', 'owner_role', 'remediation_task', 'assertion_result', 'severity', 'is_recurrence', 'evaluated_at', 'closure_evidence', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    "banking_core_accounts_banking_core_accounts_governed_model": ('id', 'tenant', 'code', 'model_id', 'model_name', 'model_version', 'intended_use', 'governance_state', 'feature_set', 'evaluation_evidence_reference', 'confidence_threshold', 'drift_check_reference', 'human_feedback_reference', 'approved_by', 'approved_at', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+    "banking_core_accounts_appgen_outbox_event": ('id', 'tenant', 'code', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'version', 'created_at', 'updated_at'),
+    "banking_core_accounts_appgen_inbox_event": ('id', 'tenant', 'code', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'version', 'created_at', 'updated_at'),
+    "banking_core_accounts_appgen_dead_letter_event": ('id', 'tenant', 'code', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'version', 'created_at', 'updated_at'),
+}
+_BANKING_CORE_ACCOUNTS_DEFAULT_FIELDS = (
+    "id",
+    "tenant",
+    "code",
+    "status",
+    "version",
+    "payload",
+    "created_at",
+    "updated_at",
+)
+
+
+def _banking_core_accounts_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return BANKING_CORE_ACCOUNTS_TABLE_FIELDS.get(
+        table, _BANKING_CORE_ACCOUNTS_DEFAULT_FIELDS
+    )
+
+
 def banking_core_accounts_build_schema_contract():
-    table_contracts = (
+    table_contracts = tuple(
         {
-            "table": "banking_core_accounts_deposit_account",
-            "fields": (
-                "id",
-                "tenant",
-                "account_number",
-                "customer_id",
-                "product_code",
-                "currency",
-                "lifecycle_state",
-                "maker_checker_required",
-                "last_transition_reason",
-                "payload",
-                "created_at",
-                "updated_at",
-            ),
+            "table": table,
+            "fields": _banking_core_accounts_table_fields(table),
             "primary_key": ("id",),
             "owned_by": PBC_KEY,
-        },
-        *tuple(
-            {
-                "table": table,
-                "fields": (
-                    "id",
-                    "tenant",
-                    "code",
-                    "status",
-                    "version",
-                    "payload",
-                    "created_at",
-                    "updated_at",
-                ),
-                "primary_key": ("id",),
-                "owned_by": PBC_KEY,
-            }
-            for table in BANKING_CORE_ACCOUNTS_OWNED_TABLES[1:]
-        ),
+        }
+        for table in BANKING_CORE_ACCOUNTS_OWNED_TABLES
     )
     return {
         "format": "appgen.banking-core-accounts-owned-schema-contract.v1",
@@ -453,17 +462,17 @@ def banking_core_accounts_build_schema_contract():
             {
                 "path": "pbcs/banking_core_accounts/migrations/001_initial.sql",
                 "operation": "create_owned_tables",
-                "tables": tuple(table["table"] for table in table_contracts),
+                "tables": BANKING_CORE_ACCOUNTS_OWNED_TABLES,
                 "backend_allowlist": BANKING_CORE_ACCOUNTS_ALLOWED_DATABASE_BACKENDS,
             },
         ),
         "models": tuple(
             {
-                "class_name": "".join(part.capitalize() for part in table["table"].split("_")),
-                "table": table["table"],
-                "fields": table["fields"],
+                "class_name": "".join(part.capitalize() for part in table.split("_")),
+                "table": table,
+                "fields": _banking_core_accounts_table_fields(table),
             }
-            for table in table_contracts
+            for table in BANKING_CORE_ACCOUNTS_OWNED_TABLES
         ),
         "datastore_backends": BANKING_CORE_ACCOUNTS_ALLOWED_DATABASE_BACKENDS,
         "database_backends": BANKING_CORE_ACCOUNTS_ALLOWED_DATABASE_BACKENDS,

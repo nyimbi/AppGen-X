@@ -32,6 +32,50 @@ PROJECT_PORTFOLIO_MANAGEMENT_RUNTIME_CAPABILITY_KEYS = ('project_portfolio_manag
 PROJECT_PORTFOLIO_MANAGEMENT_UI_FRAGMENT_KEYS = ('ProjectPortfolioManagementWorkbench', 'ProjectPortfolioManagementDetail', 'ProjectPortfolioManagementAssistantPanel')
 PROJECT_PORTFOLIO_MANAGEMENT_BUSINESS_TABLES = ('project_portfolio_management_portfolio', 'project_portfolio_management_program', 'project_portfolio_management_project', 'project_portfolio_management_project_milestone', 'project_portfolio_management_project_budget', 'project_portfolio_management_resource_assignment', 'project_portfolio_management_project_risk', 'project_portfolio_management_benefit_realization')
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+PROJECT_PORTFOLIO_MANAGEMENT_TABLE_FIELDS = {
+    'project_portfolio_management_portfolio': ('id', 'tenant', 'code', 'portfolio_id', 'portfolio_name', 'portfolio_code', 'portfolio_manager', 'sponsor', 'strategic_theme', 'reporting_currency', 'fiscal_year_start_month', 'lifecycle_state', 'approval_authority', 'intake_open_flag', 'scoring_model_version', 'budget_envelope_amount', 'committed_amount', 'forecast_amount', 'capacity_buffer_percent', 'risk_appetite_state', 'last_reviewed_at', 'description', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_program': ('id', 'tenant', 'code', 'portfolio_id', 'program_id', 'program_name', 'program_code', 'program_manager', 'strategic_objective', 'funding_source', 'lifecycle_state', 'planned_start_date', 'planned_end_date', 'approved_budget_amount', 'forecast_amount', 'benefit_target_amount', 'project_count', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_project': ('id', 'tenant', 'code', 'portfolio_id', 'project_id', 'project_name', 'project_code', 'project_manager', 'delivery_method', 'lifecycle_state', 'priority_rank', 'planned_start_date', 'planned_end_date', 'approved_budget_amount', 'actual_cost_amount', 'forecast_cost_amount', 'benefit_target_amount', 'percent_complete', 'health_state', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_project_milestone': ('id', 'tenant', 'code', 'portfolio_id', 'project_id', 'milestone_id', 'milestone_name', 'milestone_type', 'planned_date', 'forecast_date', 'actual_date', 'completion_state', 'gate_reference', 'deliverable_reference', 'owner', 'slip_days', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_project_budget': ('id', 'tenant', 'code', 'portfolio_id', 'project_id', 'budget_id', 'fiscal_year', 'fiscal_period', 'funding_source', 'capital_amount', 'expense_amount', 'contingency_amount', 'approved_amount', 'consumed_amount', 'remaining_amount', 'currency', 'capitalization_treatment', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_resource_assignment': ('id', 'tenant', 'code', 'portfolio_id', 'effective_at', 'resource_assignment_id', 'resource_projection_id', 'project_id', 'role_name', 'skill_code', 'allocation_percent', 'planned_hours', 'actual_hours', 'start_date', 'end_date', 'capacity_state', 'conflict_flag', 'assignment_owner', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_project_risk': ('id', 'tenant', 'code', 'portfolio_id', 'project_risk_id', 'project_id', 'risk_title', 'risk_category', 'probability_score', 'impact_score', 'exposure_score', 'mitigation_plan', 'contingency_amount', 'owner', 'review_date', 'escalation_level', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_benefit_realization': ('id', 'tenant', 'code', 'portfolio_id', 'effective_at', 'benefit_realization_id', 'project_id', 'benefit_hypothesis_id', 'benefit_category', 'baseline_value', 'target_value', 'realized_value', 'realization_date', 'measurement_method', 'confidence_percent', 'variance_amount', 'benefit_owner', 'evidence_reference', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_portfolio_item': ('id', 'tenant', 'code', 'effective_at', 'portfolio_item_id', 'item_name', 'item_code', 'intake_source', 'sponsor', 'requesting_unit', 'archetype', 'strategic_theme', 'problem_statement', 'expected_value_amount', 'estimated_cost_amount', 'risk_class', 'intake_state', 'submitted_at', 'target_decision_date', 'priority_rank', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_portfolio_program': ('id', 'tenant', 'code', 'portfolio_id', 'effective_at', 'portfolio_item_id', 'portfolio_program_id', 'program_name', 'program_manager', 'strategic_objective', 'funding_source', 'approved_budget_amount', 'planned_start_date', 'planned_end_date', 'lifecycle_state', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_business_case': ('id', 'tenant', 'code', 'portfolio_id', 'effective_at', 'portfolio_item_id', 'business_case_id', 'case_version', 'author', 'case_state', 'investment_amount', 'net_benefit_amount', 'roi_percent', 'payback_months', 'discount_rate', 'assumption_summary', 'evidence_package_reference', 'approval_authority', 'submitted_at', 'approved_at', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_portfolio_score': ('id', 'tenant', 'code', 'portfolio_id', 'effective_at', 'portfolio_item_id', 'portfolio_score_id', 'score_model_version', 'strategic_value_score', 'financial_value_score', 'risk_score', 'capacity_score', 'compliance_score', 'sustainability_score', 'composite_score', 'rank_position', 'scoring_method', 'score_explanation', 'scored_at', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_prioritization_run': ('id', 'tenant', 'code', 'portfolio_id', 'effective_at', 'portfolio_item_id', 'prioritization_run_id', 'run_label', 'scoring_model_version', 'run_type', 'item_count', 'selection_criteria', 'budget_envelope_amount', 'allocated_amount', 'published_at', 'published_by', 'run_explanation', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_stage_gate': ('id', 'tenant', 'code', 'portfolio_id', 'effective_at', 'portfolio_item_id', 'stage_gate_id', 'gate_name', 'gate_sequence', 'gate_type', 'required_evidence', 'entry_criteria', 'exit_criteria', 'gate_owner', 'planned_date', 'actual_date', 'gate_state', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_gate_decision': ('id', 'tenant', 'code', 'portfolio_id', 'effective_at', 'portfolio_item_id', 'gate_decision_id', 'stage_gate_id', 'decision_outcome', 'decision_rationale', 'decided_by', 'decision_date', 'conditions_text', 'waiver_reference', 'next_review_date', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_project_dependency': ('id', 'tenant', 'code', 'portfolio_id', 'effective_at', 'portfolio_item_id', 'project_dependency_id', 'predecessor_reference', 'successor_reference', 'dependency_type', 'dependency_strength', 'lead_lag_days', 'required_evidence', 'risk_propagation_weight', 'critical_path_flag', 'dependency_state', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_resource_demand': ('id', 'tenant', 'code', 'portfolio_id', 'effective_at', 'portfolio_item_id', 'resource_demand_id', 'role_name', 'skill_code', 'period_start', 'period_end', 'demand_hours', 'supply_hours', 'gap_hours', 'capacity_state', 'conflict_flag', 'sourcing_option', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_benefit_hypothesis': ('id', 'tenant', 'code', 'portfolio_id', 'effective_at', 'portfolio_item_id', 'benefit_hypothesis_id', 'benefit_category', 'hypothesis_statement', 'baseline_value', 'target_value', 'measurement_method', 'measurement_frequency', 'benefit_owner', 'realization_horizon', 'confidence_percent', 'materiality_state', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_portfolio_risk': ('id', 'tenant', 'code', 'portfolio_id', 'effective_at', 'portfolio_item_id', 'portfolio_risk_id', 'risk_title', 'risk_category', 'correlation_group', 'probability_score', 'impact_score', 'exposure_score', 'appetite_state', 'residual_exposure_amount', 'mitigation_coverage_percent', 'owner', 'review_date', 'escalation_level', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_portfolio_issue': ('id', 'tenant', 'code', 'portfolio_id', 'effective_at', 'portfolio_item_id', 'portfolio_issue_id', 'issue_title', 'issue_category', 'escalation_level', 'decision_needed', 'impacted_items_text', 'owner', 'due_date', 'recommended_intervention', 'blocker_type', 'issue_state', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_change_request': ('id', 'tenant', 'code', 'portfolio_id', 'effective_at', 'portfolio_item_id', 'change_request_id', 'change_type', 'change_summary', 'requested_by', 'impact_cost_amount', 'impact_benefit_amount', 'impact_schedule_days', 'impact_risk_score', 'impact_capacity_hours', 'before_after_reference', 'approval_state', 'approved_by', 'approved_at', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_portfolio_financial_snapshot': ('id', 'tenant', 'code', 'portfolio_id', 'effective_at', 'portfolio_item_id', 'financial_snapshot_id', 'snapshot_period', 'baseline_version', 'budget_amount', 'committed_amount', 'actual_amount', 'forecast_amount', 'variance_amount', 'variance_driver', 'funding_source', 'contingency_used_amount', 'remaining_exposure_amount', 'materiality_threshold_amount', 'published_at', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_portfolio_exception_case': ('id', 'tenant', 'code', 'portfolio_id', 'effective_at', 'portfolio_item_id', 'exception_case_id', 'exception_type', 'policy_breached', 'affected_item_reference', 'authority_required', 'temporary_controls', 'expiry_date', 'remediation_owner', 'recurrence_flag', 'closure_proof_reference', 'exception_state', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_portfolio_policy_rule': ('id', 'tenant', 'code', 'effective_at', 'portfolio_policy_rule_id', 'rule_name', 'rule_category', 'rule_text', 'predicate_text', 'threshold_value', 'scope', 'approval_authority', 'effective_from', 'effective_to', 'compiled_hash', 'rule_state', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_portfolio_runtime_parameter': ('id', 'tenant', 'code', 'effective_at', 'portfolio_runtime_parameter_id', 'parameter_name', 'parameter_value', 'value_type', 'scope', 'bounded', 'lower_bound', 'upper_bound', 'effective_from', 'effective_to', 'change_approval_state', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_portfolio_schema_extension': ('id', 'tenant', 'code', 'effective_at', 'portfolio_schema_extension_id', 'target_table', 'field_name', 'field_type', 'field_definition', 'registered_by', 'registered_at', 'extension_state', 'validation_state', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_portfolio_control_assertion': ('id', 'tenant', 'code', 'effective_at', 'portfolio_control_assertion_id', 'control_objective', 'control_name', 'test_method', 'sample_population', 'assertion_result', 'severity', 'failure_evidence', 'remediation_task', 'owner', 'tested_at', 'next_test_date', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_portfolio_governed_model': ('id', 'tenant', 'code', 'effective_at', 'portfolio_governed_model_id', 'model_name', 'model_version', 'model_type', 'prediction_target', 'feature_summary', 'training_period_start', 'training_period_end', 'drift_check_state', 'fairness_review_state', 'governance_state', 'approved_by', 'approved_at', 'payload', 'status', 'version', 'created_at', 'updated_at'),
+    'project_portfolio_management_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'code', 'portfolio_id', 'payload', 'idempotency_key', 'attempts', 'status', 'version', 'effective_at', 'created_at', 'updated_at'),
+    'project_portfolio_management_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'code', 'portfolio_id', 'payload', 'idempotency_key', 'attempts', 'status', 'version', 'effective_at', 'created_at', 'updated_at'),
+    'project_portfolio_management_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'code', 'portfolio_id', 'payload', 'reason', 'attempts', 'status', 'version', 'effective_at', 'created_at', 'updated_at'),
+}
+
+_PROJECT_PORTFOLIO_MANAGEMENT_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _project_portfolio_management_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return PROJECT_PORTFOLIO_MANAGEMENT_TABLE_FIELDS.get(table, _PROJECT_PORTFOLIO_MANAGEMENT_DEFAULT_FIELDS)
+
 
 def project_portfolio_management_empty_state():
     return {'records': {}, 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
@@ -118,51 +162,11 @@ def project_portfolio_management_parse_document_instruction(document, instructio
 
 
 def project_portfolio_management_build_schema_contract():
-    table_contracts = ({'table': 'project_portfolio_management_portfolio',
-  'fields': ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'project_portfolio_management'},
- {'table': 'project_portfolio_management_program',
-  'fields': ('id', 'tenant', 'portfolio_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'project_portfolio_management'},
- {'table': 'project_portfolio_management_project',
-  'fields': ('id', 'tenant', 'portfolio_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'project_portfolio_management'},
- {'table': 'project_portfolio_management_project_milestone',
-  'fields': ('id', 'tenant', 'portfolio_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'project_portfolio_management'},
- {'table': 'project_portfolio_management_project_budget',
-  'fields': ('id', 'tenant', 'portfolio_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'project_portfolio_management'},
- {'table': 'project_portfolio_management_resource_assignment',
-  'fields': ('id', 'tenant', 'portfolio_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'project_portfolio_management'},
- {'table': 'project_portfolio_management_project_risk',
-  'fields': ('id', 'tenant', 'portfolio_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'project_portfolio_management'},
- {'table': 'project_portfolio_management_benefit_realization',
-  'fields': ('id', 'tenant', 'portfolio_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'project_portfolio_management'},
- {'table': 'project_portfolio_management_appgen_outbox_event',
-  'fields': ('id', 'tenant', 'portfolio_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'project_portfolio_management'},
- {'table': 'project_portfolio_management_appgen_inbox_event',
-  'fields': ('id', 'tenant', 'portfolio_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'project_portfolio_management'},
- {'table': 'project_portfolio_management_appgen_dead_letter_event',
-  'fields': ('id', 'tenant', 'portfolio_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'project_portfolio_management'})
-    return {'format': 'appgen.project-portfolio-management-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/project_portfolio_management/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': PROJECT_PORTFOLIO_MANAGEMENT_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': PROJECT_PORTFOLIO_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'database_backends': PROJECT_PORTFOLIO_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': PROJECT_PORTFOLIO_MANAGEMENT_OWNED_TABLES}
+    table_contracts = tuple(
+        {'table': table, 'fields': _project_portfolio_management_table_fields(table), 'primary_key': ('id',), 'owned_by': PBC_KEY}
+        for table in PROJECT_PORTFOLIO_MANAGEMENT_OWNED_TABLES
+    )
+    return {'format': 'appgen.project-portfolio-management-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/project_portfolio_management/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': PROJECT_PORTFOLIO_MANAGEMENT_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(PROJECT_PORTFOLIO_MANAGEMENT_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _project_portfolio_management_table_fields(table)} for table in PROJECT_PORTFOLIO_MANAGEMENT_OWNED_TABLES), 'datastore_backends': PROJECT_PORTFOLIO_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'database_backends': PROJECT_PORTFOLIO_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': PROJECT_PORTFOLIO_MANAGEMENT_OWNED_TABLES}
 
 
 def project_portfolio_management_build_service_contract():
@@ -275,7 +279,7 @@ def project_portfolio_management_build_schema_contract():
     additions = tuple(
         {
             'table': table,
-            'fields': ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+            'fields': _project_portfolio_management_table_fields(table),
             'primary_key': ('id',),
             'owned_by': PBC_KEY,
         }
