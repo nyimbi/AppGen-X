@@ -1,15 +1,326 @@
-CREATE TABLE music_royalties_rights_musical_work (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE music_royalties_rights_recording (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE music_royalties_rights_rights_split (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE music_royalties_rights_license (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE music_royalties_rights_usage_report (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE music_royalties_rights_royalty_statement (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE music_royalties_rights_rights_dispute (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE music_royalties_rights_music_royalties_rights_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE music_royalties_rights_music_royalties_rights_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE music_royalties_rights_music_royalties_rights_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE music_royalties_rights_music_royalties_rights_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE music_royalties_rights_music_royalties_rights_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE music_royalties_rights_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE music_royalties_rights_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE music_royalties_rights_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS music_royalties_rights;
+
+CREATE TABLE music_royalties_rights_musical_work (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  musical_work_id VARCHAR(255) NOT NULL,
+  canonical_title VARCHAR(255) NOT NULL,
+  alternate_titles TEXT,
+  translated_titles TEXT,
+  work_type VARCHAR(255) NOT NULL,
+  language_code VARCHAR(255),
+  iswc VARCHAR(255),
+  external_work_reference VARCHAR(255),
+  duration_seconds INTEGER,
+  duration_tolerance_seconds INTEGER,
+  version_lineage VARCHAR(255),
+  title_match_confidence DECIMAL(18, 4),
+  duplicate_review_state VARCHAR(255),
+  registration_state VARCHAR(255) NOT NULL,
+  statement_eligible BOOLEAN NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE music_royalties_rights_recording (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  recording_id VARCHAR(255) NOT NULL,
+  musical_work_id VARCHAR(255),
+  recording_title VARCHAR(255) NOT NULL,
+  isrc VARCHAR(255),
+  version_type VARCHAR(255) NOT NULL,
+  family_reference VARCHAR(255),
+  inherits_parent_rights BOOLEAN NOT NULL,
+  master_owner VARCHAR(255),
+  master_rights_state VARCHAR(255),
+  recording_territory VARCHAR(255),
+  first_release_at TIMESTAMP,
+  producer_points DECIMAL(18, 4),
+  neighboring_rights_eligible BOOLEAN NOT NULL,
+  match_confidence DECIMAL(18, 4),
+  match_state VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (musical_work_id) REFERENCES music_royalties_rights_musical_work(musical_work_id)
+);
+
+CREATE TABLE music_royalties_rights_rights_split (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rights_split_id VARCHAR(255) NOT NULL,
+  musical_work_id VARCHAR(255) NOT NULL,
+  split_version INTEGER NOT NULL,
+  contributor_name VARCHAR(255) NOT NULL,
+  contributor_role VARCHAR(255) NOT NULL,
+  ipi_cae VARCHAR(255),
+  share_basis VARCHAR(255),
+  writer_share DECIMAL(18, 4) NOT NULL,
+  publisher_share DECIMAL(18, 4),
+  administrator VARCHAR(255),
+  collection_society VARCHAR(255),
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  supersedes_split_id VARCHAR(255),
+  change_reason_code VARCHAR(255) NOT NULL,
+  validation_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (musical_work_id) REFERENCES music_royalties_rights_musical_work(musical_work_id)
+);
+
+CREATE TABLE music_royalties_rights_license (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  license_id VARCHAR(255) NOT NULL,
+  musical_work_id VARCHAR(255),
+  recording_id VARCHAR(255),
+  licensee_name VARCHAR(255) NOT NULL,
+  license_type VARCHAR(255) NOT NULL,
+  rights_bundle VARCHAR(255) NOT NULL,
+  grant_type VARCHAR(255),
+  media_type VARCHAR(255),
+  territory_code VARCHAR(255) NOT NULL,
+  exclusivity VARCHAR(255),
+  fee_basis VARCHAR(255),
+  license_fee DECIMAL(18, 4),
+  royalty_rate_basis DECIMAL(18, 4),
+  currency VARCHAR(255),
+  term_start_at TIMESTAMP,
+  term_end_at TIMESTAMP,
+  embargo_start_at TIMESTAMP,
+  embargo_end_at TIMESTAMP,
+  option_exercise_at TIMESTAMP,
+  approval_authority VARCHAR(255),
+  license_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (musical_work_id) REFERENCES music_royalties_rights_musical_work(musical_work_id)
+);
+
+CREATE TABLE music_royalties_rights_usage_report (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  usage_report_id VARCHAR(255) NOT NULL,
+  recording_id VARCHAR(255),
+  source_type VARCHAR(255) NOT NULL,
+  source_name VARCHAR(255),
+  source_fingerprint VARCHAR(255),
+  reporting_period_start TIMESTAMP NOT NULL,
+  reporting_period_end TIMESTAMP NOT NULL,
+  territory_code VARCHAR(255),
+  unit_convention VARCHAR(255),
+  line_count INTEGER,
+  normalized_line_count INTEGER,
+  unmatched_line_count INTEGER,
+  currency VARCHAR(255),
+  gross_amount DECIMAL(18, 4),
+  ingestion_confidence DECIMAL(18, 4),
+  ingestion_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (recording_id) REFERENCES music_royalties_rights_recording(recording_id)
+);
+
+CREATE TABLE music_royalties_rights_royalty_statement (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  royalty_statement_id VARCHAR(255) NOT NULL,
+  payee_reference VARCHAR(255) NOT NULL,
+  accounting_period VARCHAR(255) NOT NULL,
+  period_state VARCHAR(255) NOT NULL,
+  statement_currency VARCHAR(255),
+  gross_amount DECIMAL(18, 4) NOT NULL,
+  deduction_amount DECIMAL(18, 4),
+  withholding_amount DECIMAL(18, 4),
+  recoupment_amount DECIMAL(18, 4),
+  reserve_amount DECIMAL(18, 4),
+  net_payable DECIMAL(18, 4) NOT NULL,
+  beneficiary_reference VARCHAR(255),
+  rate_source VARCHAR(255),
+  split_version_reference VARCHAR(255),
+  calculation_trace_hash VARCHAR(255),
+  issuance_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE music_royalties_rights_rights_dispute (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rights_dispute_id VARCHAR(255) NOT NULL,
+  musical_work_id VARCHAR(255),
+  royalty_statement_id VARCHAR(255),
+  license_id VARCHAR(255),
+  dispute_type VARCHAR(255) NOT NULL,
+  claimant_name VARCHAR(255) NOT NULL,
+  contested_object_reference VARCHAR(255),
+  dispute_state VARCHAR(255) NOT NULL,
+  received_at TIMESTAMP NOT NULL,
+  response_due_at TIMESTAMP,
+  resolution_at TIMESTAMP,
+  evidence_bundle_reference VARCHAR(255),
+  resolution_reason TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (musical_work_id) REFERENCES music_royalties_rights_musical_work(musical_work_id)
+);
+
+CREATE TABLE music_royalties_rights_music_royalties_rights_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  policy_rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  rule_scope VARCHAR(255),
+  predicate_text TEXT,
+  ambiguity_flag BOOLEAN NOT NULL,
+  approver_role VARCHAR(255),
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255),
+  source_span TEXT,
+  prior_version_reference VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE music_royalties_rights_music_royalties_rights_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  runtime_parameter_id VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255),
+  parameter_scope VARCHAR(255),
+  lower_bound DECIMAL(18, 4),
+  upper_bound DECIMAL(18, 4),
+  bounded BOOLEAN NOT NULL,
+  tenant_override BOOLEAN NOT NULL,
+  approval_state VARCHAR(255),
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  effective_from TIMESTAMP,
+  rollback_state VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE music_royalties_rights_music_royalties_rights_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  schema_extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  ui_placement VARCHAR(255),
+  compatibility_state VARCHAR(255),
+  backfill_plan TEXT,
+  backfill_state VARCHAR(255),
+  registered_at TIMESTAMP,
+  activated_at TIMESTAMP,
+  deprecated_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE music_royalties_rights_music_royalties_rights_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  control_assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  control_scope VARCHAR(255),
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255),
+  segregation_violation BOOLEAN NOT NULL,
+  affected_record_reference VARCHAR(255),
+  failing_evidence TEXT,
+  remediation_task VARCHAR(255),
+  evaluated_at TIMESTAMP,
+  evaluated_by VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE music_royalties_rights_music_royalties_rights_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  governed_model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255),
+  authority_role VARCHAR(255),
+  certification_state VARCHAR(255),
+  certification_expires_at TIMESTAMP,
+  jurisdiction_code VARCHAR(255),
+  allowed_actions TEXT,
+  governance_state VARCHAR(255) NOT NULL,
+  proof_chain_hash VARCHAR(255),
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE music_royalties_rights_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT,
+  idempotency_key VARCHAR(255),
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE music_royalties_rights_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT,
+  idempotency_key VARCHAR(255),
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE music_royalties_rights_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT,
+  reason TEXT,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

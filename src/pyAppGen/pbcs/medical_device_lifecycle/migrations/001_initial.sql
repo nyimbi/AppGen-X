@@ -1,15 +1,332 @@
-CREATE TABLE medical_device_lifecycle_medical_device (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE medical_device_lifecycle_device_assignment (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE medical_device_lifecycle_calibration (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE medical_device_lifecycle_maintenance_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE medical_device_lifecycle_recall_notice (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE medical_device_lifecycle_usage_trace (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE medical_device_lifecycle_regulatory_evidence (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE medical_device_lifecycle_medical_device_lifecycle_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE medical_device_lifecycle_medical_device_lifecycle_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE medical_device_lifecycle_medical_device_lifecycle_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE medical_device_lifecycle_medical_device_lifecycle_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE medical_device_lifecycle_medical_device_lifecycle_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE medical_device_lifecycle_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE medical_device_lifecycle_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE medical_device_lifecycle_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS medical_device_lifecycle;
+
+CREATE TABLE medical_device_lifecycle_medical_device (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  medical_device_id VARCHAR(255) NOT NULL,
+  udi_di VARCHAR(255) NOT NULL,
+  manufacturer_name VARCHAR(255) NOT NULL,
+  model_number VARCHAR(255) NOT NULL,
+  serial_number VARCHAR(255) NOT NULL,
+  lot_number VARCHAR(255) NOT NULL,
+  firmware_version VARCHAR(255) NOT NULL,
+  approved_firmware_baseline VARCHAR(255) NOT NULL,
+  hardware_revision VARCHAR(255) NOT NULL,
+  risk_class VARCHAR(255) NOT NULL,
+  implantable_flag BOOLEAN NOT NULL,
+  sterile_flag BOOLEAN NOT NULL,
+  ownership_type VARCHAR(255) NOT NULL,
+  lifecycle_state VARCHAR(255) NOT NULL,
+  current_location VARCHAR(255) NOT NULL,
+  owning_department VARCHAR(255) NOT NULL,
+  physical_zone VARCHAR(255) NOT NULL,
+  last_scan_at TIMESTAMP,
+  custody_actor VARCHAR(255) NOT NULL,
+  qualification_state VARCHAR(255) NOT NULL,
+  reprocessing_state VARCHAR(255) NOT NULL,
+  readiness_state VARCHAR(255) NOT NULL,
+  parent_device_reference VARCHAR(255) NOT NULL,
+  source_evidence_reference VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE medical_device_lifecycle_device_assignment (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  device_assignment_id VARCHAR(255) NOT NULL,
+  medical_device_id VARCHAR(255) NOT NULL,
+  assignment_type VARCHAR(255) NOT NULL,
+  assignee_projection_reference VARCHAR(255) NOT NULL,
+  responsible_role VARCHAR(255) NOT NULL,
+  intended_use VARCHAR(255) NOT NULL,
+  privacy_consent_flag BOOLEAN NOT NULL,
+  assignment_start_at TIMESTAMP,
+  assignment_end_at TIMESTAMP,
+  release_condition VARCHAR(255) NOT NULL,
+  implant_date TIMESTAMP,
+  body_site VARCHAR(255) NOT NULL,
+  implanting_clinician_reference VARCHAR(255) NOT NULL,
+  explant_date TIMESTAMP,
+  explant_reason VARCHAR(255) NOT NULL,
+  patient_notification_state VARCHAR(255) NOT NULL,
+  custody_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (medical_device_id) REFERENCES medical_device_lifecycle_medical_device(medical_device_id)
+);
+
+CREATE TABLE medical_device_lifecycle_calibration (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  calibration_id VARCHAR(255) NOT NULL,
+  medical_device_id VARCHAR(255) NOT NULL,
+  required_interval_days INTEGER NOT NULL,
+  tolerance_value DECIMAL(18, 4) NOT NULL,
+  standard_reference VARCHAR(255) NOT NULL,
+  measured_before_value DECIMAL(18, 4) NOT NULL,
+  measured_after_value DECIMAL(18, 4) NOT NULL,
+  technician_reference VARCHAR(255) NOT NULL,
+  result_state VARCHAR(255) NOT NULL,
+  due_date TIMESTAMP,
+  out_of_tolerance_impact TEXT NOT NULL,
+  impact_review_state VARCHAR(255) NOT NULL,
+  performed_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (medical_device_id) REFERENCES medical_device_lifecycle_medical_device(medical_device_id)
+);
+
+CREATE TABLE medical_device_lifecycle_maintenance_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  maintenance_event_id VARCHAR(255) NOT NULL,
+  medical_device_id VARCHAR(255) NOT NULL,
+  maintenance_type VARCHAR(255) NOT NULL,
+  failure_mode VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  root_cause TEXT NOT NULL,
+  parts_replaced TEXT NOT NULL,
+  technician_reference VARCHAR(255) NOT NULL,
+  service_vendor_reference VARCHAR(255) NOT NULL,
+  contract_sla_hours INTEGER NOT NULL,
+  downtime_minutes INTEGER NOT NULL,
+  qualification_result VARCHAR(255) NOT NULL,
+  return_to_service_state VARCHAR(255) NOT NULL,
+  next_due_at TIMESTAMP,
+  reported_at TIMESTAMP,
+  resolved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (medical_device_id) REFERENCES medical_device_lifecycle_medical_device(medical_device_id)
+);
+
+CREATE TABLE medical_device_lifecycle_recall_notice (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  recall_notice_id VARCHAR(255) NOT NULL,
+  recall_class VARCHAR(255) NOT NULL,
+  manufacturer_notice_reference VARCHAR(255) NOT NULL,
+  affected_criteria TEXT NOT NULL,
+  required_action VARCHAR(255) NOT NULL,
+  action_type VARCHAR(255) NOT NULL,
+  deadline_at TIMESTAMP,
+  patient_impact_flag BOOLEAN NOT NULL,
+  closure_requirement TEXT NOT NULL,
+  affected_device_count INTEGER NOT NULL,
+  quarantine_task_state VARCHAR(255) NOT NULL,
+  notification_task_state VARCHAR(255) NOT NULL,
+  remediation_state VARCHAR(255) NOT NULL,
+  closure_state VARCHAR(255) NOT NULL,
+  jurisdiction_code VARCHAR(255) NOT NULL,
+  issued_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE medical_device_lifecycle_usage_trace (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  usage_trace_id VARCHAR(255) NOT NULL,
+  medical_device_id VARCHAR(255) NOT NULL,
+  usage_event_type VARCHAR(255) NOT NULL,
+  operator_reference VARCHAR(255) NOT NULL,
+  procedure_projection_reference VARCHAR(255) NOT NULL,
+  usage_start_at TIMESTAMP,
+  usage_end_at TIMESTAMP,
+  location_reference VARCHAR(255) NOT NULL,
+  usage_metric_value DECIMAL(18, 4) NOT NULL,
+  alarm_configuration_state VARCHAR(255) NOT NULL,
+  alarm_severity VARCHAR(255) NOT NULL,
+  alarm_acknowledged BOOLEAN NOT NULL,
+  nuisance_alarm_flag BOOLEAN NOT NULL,
+  exception_flag BOOLEAN NOT NULL,
+  redaction_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (medical_device_id) REFERENCES medical_device_lifecycle_medical_device(medical_device_id)
+);
+
+CREATE TABLE medical_device_lifecycle_regulatory_evidence (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  regulatory_evidence_id VARCHAR(255) NOT NULL,
+  medical_device_id VARCHAR(255) NOT NULL,
+  document_type VARCHAR(255) NOT NULL,
+  effective_date TIMESTAMP,
+  device_scope VARCHAR(255) NOT NULL,
+  retention_class VARCHAR(255) NOT NULL,
+  approval_state VARCHAR(255) NOT NULL,
+  checksum VARCHAR(255) NOT NULL,
+  evidence_packet_reference VARCHAR(255) NOT NULL,
+  incident_link_reference VARCHAR(255) NOT NULL,
+  harm_severity VARCHAR(255) NOT NULL,
+  investigation_state VARCHAR(255) NOT NULL,
+  reportability_state VARCHAR(255) NOT NULL,
+  jurisdiction_code VARCHAR(255) NOT NULL,
+  report_deadline_at TIMESTAMP,
+  submission_state VARCHAR(255) NOT NULL,
+  proof_chain_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (medical_device_id) REFERENCES medical_device_lifecycle_medical_device(medical_device_id)
+);
+
+CREATE TABLE medical_device_lifecycle_medical_device_lifecycle_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  policy_rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  rule_scope VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  approver_role VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  source_span TEXT NOT NULL,
+  prior_version_reference VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE medical_device_lifecycle_medical_device_lifecycle_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  runtime_parameter_id VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value DECIMAL(18, 4) NOT NULL,
+  parameter_scope VARCHAR(255) NOT NULL,
+  lower_bound DECIMAL(18, 4) NOT NULL,
+  upper_bound DECIMAL(18, 4) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  tenant_override BOOLEAN NOT NULL,
+  approval_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  effective_from TIMESTAMP,
+  rollback_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE medical_device_lifecycle_medical_device_lifecycle_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  schema_extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  ui_placement VARCHAR(255) NOT NULL,
+  compatibility_state VARCHAR(255) NOT NULL,
+  backfill_plan TEXT NOT NULL,
+  backfill_state VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP,
+  activated_at TIMESTAMP,
+  deprecated_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE medical_device_lifecycle_medical_device_lifecycle_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  control_assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  control_scope VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  segregation_violation BOOLEAN NOT NULL,
+  affected_record_reference VARCHAR(255) NOT NULL,
+  failing_evidence TEXT NOT NULL,
+  remediation_task TEXT NOT NULL,
+  evaluated_at TIMESTAMP,
+  evaluated_by VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE medical_device_lifecycle_medical_device_lifecycle_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  governed_model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  authority_role VARCHAR(255) NOT NULL,
+  certification_state VARCHAR(255) NOT NULL,
+  certification_expires_at TIMESTAMP,
+  jurisdiction_code VARCHAR(255) NOT NULL,
+  allowed_actions TEXT NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  proof_chain_hash VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE medical_device_lifecycle_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE medical_device_lifecycle_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE medical_device_lifecycle_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

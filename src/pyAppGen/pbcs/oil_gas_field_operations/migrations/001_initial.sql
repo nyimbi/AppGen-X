@@ -1,15 +1,332 @@
-CREATE TABLE oil_gas_field_operations_well (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE oil_gas_field_operations_production_reading (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE oil_gas_field_operations_field_ticket (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE oil_gas_field_operations_workover_plan (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE oil_gas_field_operations_hse_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE oil_gas_field_operations_reserve_estimate (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE oil_gas_field_operations_lifting_cost (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE oil_gas_field_operations_oil_gas_field_operations_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE oil_gas_field_operations_oil_gas_field_operations_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE oil_gas_field_operations_oil_gas_field_operations_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE oil_gas_field_operations_oil_gas_field_operations_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE oil_gas_field_operations_oil_gas_field_operations_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE oil_gas_field_operations_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE oil_gas_field_operations_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE oil_gas_field_operations_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS oil_gas_field_operations;
+
+CREATE TABLE oil_gas_field_operations_well (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  well_id VARCHAR(255) NOT NULL,
+  well_name VARCHAR(255) NOT NULL,
+  well_type VARCHAR(255) NOT NULL,
+  operator_name VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  area_name VARCHAR(255) NOT NULL,
+  pad_name VARCHAR(255) NOT NULL,
+  lease_name VARCHAR(255) NOT NULL,
+  surface_location VARCHAR(255) NOT NULL,
+  route_code VARCHAR(255) NOT NULL,
+  producing_interval VARCHAR(255) NOT NULL,
+  completion_reference VARCHAR(255) NOT NULL,
+  lifecycle_state VARCHAR(255) NOT NULL,
+  spud_date TIMESTAMP,
+  first_production_date TIMESTAMP,
+  artificial_lift_type VARCHAR(255) NOT NULL,
+  operating_readiness VARCHAR(255) NOT NULL,
+  shut_in_reason VARCHAR(255) NOT NULL,
+  return_to_service_date TIMESTAMP,
+  final_abandonment_date TIMESTAMP,
+  integrity_status VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE oil_gas_field_operations_production_reading (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  production_reading_id VARCHAR(255) NOT NULL,
+  well_id VARCHAR(255) NOT NULL,
+  reading_date TIMESTAMP NOT NULL,
+  effective_production_date TIMESTAMP NOT NULL,
+  reporting_date TIMESTAMP NOT NULL,
+  measurement_basis VARCHAR(255) NOT NULL,
+  oil_gross_volume DECIMAL(18, 4) NOT NULL,
+  oil_net_volume DECIMAL(18, 4) NOT NULL,
+  gas_gross_volume DECIMAL(18, 4) NOT NULL,
+  gas_net_volume DECIMAL(18, 4) NOT NULL,
+  water_volume DECIMAL(18, 4) NOT NULL,
+  injected_volume DECIMAL(18, 4) NOT NULL,
+  oil_disposition VARCHAR(255) NOT NULL,
+  gas_disposition VARCHAR(255) NOT NULL,
+  water_disposition VARCHAR(255) NOT NULL,
+  meter_reference VARCHAR(255) NOT NULL,
+  meter_factor DECIMAL(18, 4) NOT NULL,
+  test_reference VARCHAR(255) NOT NULL,
+  allocation_basis VARCHAR(255) NOT NULL,
+  allocation_variance DECIMAL(18, 4) NOT NULL,
+  downtime_hours INTEGER NOT NULL,
+  deferred_volume DECIMAL(18, 4) NOT NULL,
+  revision_reason VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (well_id) REFERENCES oil_gas_field_operations_well(well_id)
+);
+
+CREATE TABLE oil_gas_field_operations_field_ticket (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  field_ticket_id VARCHAR(255) NOT NULL,
+  well_id VARCHAR(255) NOT NULL,
+  ticket_number VARCHAR(255) NOT NULL,
+  route_type VARCHAR(255) NOT NULL,
+  visit_objective VARCHAR(255) NOT NULL,
+  ticket_source VARCHAR(255) NOT NULL,
+  urgency VARCHAR(255) NOT NULL,
+  service_performed VARCHAR(255) NOT NULL,
+  materials_used TEXT NOT NULL,
+  chemical_program_reference VARCHAR(255) NOT NULL,
+  follow_up_required BOOLEAN NOT NULL,
+  visited_at TIMESTAMP,
+  closed_at TIMESTAMP,
+  closeout_notes TEXT NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (well_id) REFERENCES oil_gas_field_operations_well(well_id)
+);
+
+CREATE TABLE oil_gas_field_operations_workover_plan (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  workover_plan_id VARCHAR(255) NOT NULL,
+  well_id VARCHAR(255) NOT NULL,
+  candidate_rank INTEGER NOT NULL,
+  target_interval VARCHAR(255) NOT NULL,
+  pulling_depth DECIMAL(18, 4) NOT NULL,
+  suspected_failure VARCHAR(255) NOT NULL,
+  required_equipment TEXT NOT NULL,
+  crew_readiness VARCHAR(255) NOT NULL,
+  kill_fluid_assumption VARCHAR(255) NOT NULL,
+  planned_chemicals TEXT NOT NULL,
+  expected_downtime_hours INTEGER NOT NULL,
+  expected_recovery_volume DECIMAL(18, 4) NOT NULL,
+  permit_reference VARCHAR(255) NOT NULL,
+  safety_checkpoint_state VARCHAR(255) NOT NULL,
+  engineer_rationale TEXT NOT NULL,
+  after_action_findings TEXT NOT NULL,
+  restored_test_result VARCHAR(255) NOT NULL,
+  planned_start TIMESTAMP,
+  completed_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (well_id) REFERENCES oil_gas_field_operations_well(well_id)
+);
+
+CREATE TABLE oil_gas_field_operations_hse_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  hse_event_id VARCHAR(255) NOT NULL,
+  well_id VARCHAR(255) NOT NULL,
+  field_ticket_id VARCHAR(255) NOT NULL,
+  event_class VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  occurred_at TIMESTAMP NOT NULL,
+  reported_at TIMESTAMP NOT NULL,
+  spill_volume DECIMAL(18, 4) NOT NULL,
+  volume_estimate_basis VARCHAR(255) NOT NULL,
+  affected_media VARCHAR(255) NOT NULL,
+  containment_status VARCHAR(255) NOT NULL,
+  remediation_milestone VARCHAR(255) NOT NULL,
+  sampling_reference VARCHAR(255) NOT NULL,
+  agency_notification_at TIMESTAMP,
+  reportable_flag BOOLEAN NOT NULL,
+  investigation_state VARCHAR(255) NOT NULL,
+  closure_signoff VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (well_id) REFERENCES oil_gas_field_operations_well(well_id)
+);
+
+CREATE TABLE oil_gas_field_operations_reserve_estimate (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  reserve_estimate_id VARCHAR(255) NOT NULL,
+  well_id VARCHAR(255) NOT NULL,
+  estimate_date TIMESTAMP NOT NULL,
+  estimate_category VARCHAR(255) NOT NULL,
+  methodology VARCHAR(255) NOT NULL,
+  oil_in_place DECIMAL(18, 4) NOT NULL,
+  gas_in_place DECIMAL(18, 4) NOT NULL,
+  recoverable_oil DECIMAL(18, 4) NOT NULL,
+  recoverable_gas DECIMAL(18, 4) NOT NULL,
+  recovery_factor DECIMAL(18, 4) NOT NULL,
+  decline_rate DECIMAL(18, 4) NOT NULL,
+  forecast_horizon_days INTEGER NOT NULL,
+  reserves_confidence DECIMAL(18, 4) NOT NULL,
+  independent_review_state VARCHAR(255) NOT NULL,
+  revision_reason VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (well_id) REFERENCES oil_gas_field_operations_well(well_id)
+);
+
+CREATE TABLE oil_gas_field_operations_lifting_cost (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  lifting_cost_id VARCHAR(255) NOT NULL,
+  well_id VARCHAR(255) NOT NULL,
+  cost_category VARCHAR(255) NOT NULL,
+  cost_driver VARCHAR(255) NOT NULL,
+  asset_scope VARCHAR(255) NOT NULL,
+  linked_field_ticket_id VARCHAR(255) NOT NULL,
+  linked_workover_plan_id VARCHAR(255) NOT NULL,
+  service_date TIMESTAMP NOT NULL,
+  allocation_basis VARCHAR(255) NOT NULL,
+  cost_amount DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  volume_basis DECIMAL(18, 4) NOT NULL,
+  unit_cost DECIMAL(18, 4) NOT NULL,
+  invoice_reference VARCHAR(255) NOT NULL,
+  vendor_name VARCHAR(255) NOT NULL,
+  period_code VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (well_id) REFERENCES oil_gas_field_operations_well(well_id)
+);
+
+CREATE TABLE oil_gas_field_operations_oil_gas_field_operations_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  rule_scope VARCHAR(255) NOT NULL,
+  risk_tier VARCHAR(255) NOT NULL,
+  target_asset_type VARCHAR(255) NOT NULL,
+  override_authority VARCHAR(255) NOT NULL,
+  supersedes_rule_id VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE oil_gas_field_operations_oil_gas_field_operations_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_id VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  parameter_scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  tenant_scope VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE oil_gas_field_operations_oil_gas_field_operations_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  compatibility_rule VARCHAR(255) NOT NULL,
+  migration_note TEXT NOT NULL,
+  registered_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE oil_gas_field_operations_oil_gas_field_operations_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  control_family VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  rule_reference VARCHAR(255) NOT NULL,
+  date_range_start TIMESTAMP,
+  date_range_end TIMESTAMP,
+  sealed_proof_hash VARCHAR(255) NOT NULL,
+  remediation_task TEXT NOT NULL,
+  evaluated_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE oil_gas_field_operations_oil_gas_field_operations_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  model_purpose TEXT NOT NULL,
+  feature_inputs TEXT NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  review_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  retirement_policy VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE oil_gas_field_operations_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE oil_gas_field_operations_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE oil_gas_field_operations_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

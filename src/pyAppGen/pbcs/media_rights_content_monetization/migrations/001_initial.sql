@@ -1,15 +1,359 @@
-CREATE TABLE media_rights_content_monetization_rights_asset (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_rights_content_monetization_license_agreement (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_rights_content_monetization_distribution_window (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_rights_content_monetization_usage_record (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_rights_content_monetization_royalty_statement (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_rights_content_monetization_revenue_share (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_rights_content_monetization_territory_restriction (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_rights_content_monetization_media_rights_content_monetization_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_rights_content_monetization_media_rights_content_monetization_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_rights_content_monetization_media_rights_content_monetization_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_rights_content_monetization_media_rights_content_monetization_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_rights_content_monetization_media_rights_content_monetization_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_rights_content_monetization_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_rights_content_monetization_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_rights_content_monetization_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS media_rights_content_monetization;
+
+CREATE TABLE media_rights_content_monetization_rights_asset (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rights_asset_id VARCHAR(255) NOT NULL,
+  title_name VARCHAR(255) NOT NULL,
+  rights_type VARCHAR(255) NOT NULL,
+  grantor VARCHAR(255) NOT NULL,
+  grantee VARCHAR(255) NOT NULL,
+  exclusivity_scope VARCHAR(255) NOT NULL,
+  language_code VARCHAR(255) NOT NULL,
+  edit_type VARCHAR(255) NOT NULL,
+  edit_family VARCHAR(255) NOT NULL,
+  parent_asset_id VARCHAR(255),
+  availability_state VARCHAR(255) NOT NULL,
+  primary_exploitation_rights BOOLEAN NOT NULL,
+  marketing_use_rights BOOLEAN NOT NULL,
+  derivative_packaging_rights BOOLEAN NOT NULL,
+  promo_clip_duration_cap_seconds INTEGER,
+  promo_still_count INTEGER,
+  chain_of_title_state VARCHAR(255) NOT NULL,
+  rights_evidence_status VARCHAR(255) NOT NULL,
+  quality_score DECIMAL(18, 4) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE media_rights_content_monetization_license_agreement (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  license_agreement_id VARCHAR(255) NOT NULL,
+  rights_asset_id VARCHAR(255) NOT NULL,
+  agreement_reference VARCHAR(255) NOT NULL,
+  rights_direction VARCHAR(255) NOT NULL,
+  grantor VARCHAR(255) NOT NULL,
+  grantee VARCHAR(255) NOT NULL,
+  exclusivity_scope VARCHAR(255) NOT NULL,
+  exclusivity_start TIMESTAMP,
+  exclusivity_end TIMESTAMP,
+  term_anchor VARCHAR(255) NOT NULL,
+  term_start TIMESTAMP NOT NULL,
+  term_end TIMESTAMP,
+  auto_renewal BOOLEAN NOT NULL,
+  option_exercise_deadline TIMESTAMP,
+  renewal_notice_days INTEGER,
+  minimum_guarantee_amount DECIMAL(18, 4) NOT NULL,
+  recouped_amount DECIMAL(18, 4) NOT NULL,
+  outstanding_guarantee_amount DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  ad_supported_permitted BOOLEAN NOT NULL,
+  pre_roll_permitted BOOLEAN NOT NULL,
+  mid_roll_permitted BOOLEAN NOT NULL,
+  dynamic_ad_insertion_permitted BOOLEAN NOT NULL,
+  minimum_unit_price DECIMAL(18, 4),
+  minimum_cpm DECIMAL(18, 4),
+  upstream_agreement_reference VARCHAR(255),
+  sponsor_approval_required BOOLEAN NOT NULL,
+  restrictions_summary TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (rights_asset_id) REFERENCES media_rights_content_monetization_rights_asset(rights_asset_id)
+);
+
+CREATE TABLE media_rights_content_monetization_distribution_window (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  distribution_window_id VARCHAR(255) NOT NULL,
+  rights_asset_id VARCHAR(255) NOT NULL,
+  license_agreement_id VARCHAR(255) NOT NULL,
+  window_reference VARCHAR(255) NOT NULL,
+  platform_code VARCHAR(255) NOT NULL,
+  platform_family VARCHAR(255) NOT NULL,
+  channel_class VARCHAR(255) NOT NULL,
+  playback_mode VARCHAR(255) NOT NULL,
+  download_permitted BOOLEAN NOT NULL,
+  offline_viewing_permitted BOOLEAN NOT NULL,
+  window_start TIMESTAMP NOT NULL,
+  window_end TIMESTAMP NOT NULL,
+  embargo_until TIMESTAMP,
+  extension_days INTEGER,
+  amendment_reason TEXT,
+  superseded_by_id VARCHAR(255),
+  holdback_rule_type VARCHAR(255),
+  holdback_release_at TIMESTAMP,
+  ad_monetization_permitted BOOLEAN NOT NULL,
+  dub_rights_permitted BOOLEAN NOT NULL,
+  subtitle_rights_permitted BOOLEAN NOT NULL,
+  localized_metadata_permitted BOOLEAN NOT NULL,
+  takedown_state VARCHAR(255) NOT NULL,
+  takedown_deadline TIMESTAMP,
+  launch_readiness_state VARCHAR(255) NOT NULL,
+  overlap_conflict_flag BOOLEAN NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (rights_asset_id) REFERENCES media_rights_content_monetization_rights_asset(rights_asset_id),
+  FOREIGN KEY (license_agreement_id) REFERENCES media_rights_content_monetization_license_agreement(license_agreement_id)
+);
+
+CREATE TABLE media_rights_content_monetization_usage_record (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  usage_record_id VARCHAR(255) NOT NULL,
+  rights_asset_id VARCHAR(255) NOT NULL,
+  distribution_window_id VARCHAR(255),
+  partner_name VARCHAR(255) NOT NULL,
+  report_type VARCHAR(255) NOT NULL,
+  ingestion_profile VARCHAR(255) NOT NULL,
+  metric_name VARCHAR(255) NOT NULL,
+  metric_value DECIMAL(18, 4) NOT NULL,
+  source_unit VARCHAR(255) NOT NULL,
+  source_file_name VARCHAR(255) NOT NULL,
+  source_line_number INTEGER,
+  canonical_mapping TEXT,
+  territory_code VARCHAR(255) NOT NULL,
+  platform_code VARCHAR(255) NOT NULL,
+  period_start TIMESTAMP NOT NULL,
+  period_end TIMESTAMP NOT NULL,
+  rejected_row BOOLEAN NOT NULL,
+  rejection_reason TEXT,
+  dedupe_key VARCHAR(255) NOT NULL,
+  reconciliation_state VARCHAR(255) NOT NULL,
+  reported_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (rights_asset_id) REFERENCES media_rights_content_monetization_rights_asset(rights_asset_id),
+  FOREIGN KEY (distribution_window_id) REFERENCES media_rights_content_monetization_distribution_window(distribution_window_id)
+);
+
+CREATE TABLE media_rights_content_monetization_royalty_statement (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  royalty_statement_id VARCHAR(255) NOT NULL,
+  license_agreement_id VARCHAR(255) NOT NULL,
+  rights_asset_id VARCHAR(255) NOT NULL,
+  statement_reference VARCHAR(255) NOT NULL,
+  accounting_period_start TIMESTAMP NOT NULL,
+  accounting_period_end TIMESTAMP NOT NULL,
+  line_state VARCHAR(255) NOT NULL,
+  gross_revenue DECIMAL(18, 4) NOT NULL,
+  allowed_deductions DECIMAL(18, 4) NOT NULL,
+  recoupment_applied DECIMAL(18, 4) NOT NULL,
+  partner_share DECIMAL(18, 4) NOT NULL,
+  payable_amount DECIMAL(18, 4) NOT NULL,
+  disputed_amount DECIMAL(18, 4) NOT NULL,
+  carried_forward_amount DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  triggering_usage_record_id VARCHAR(255),
+  dispute_reason TEXT,
+  reconciliation_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (license_agreement_id) REFERENCES media_rights_content_monetization_license_agreement(license_agreement_id),
+  FOREIGN KEY (rights_asset_id) REFERENCES media_rights_content_monetization_rights_asset(rights_asset_id)
+);
+
+CREATE TABLE media_rights_content_monetization_revenue_share (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  revenue_share_id VARCHAR(255) NOT NULL,
+  license_agreement_id VARCHAR(255) NOT NULL,
+  rights_asset_id VARCHAR(255) NOT NULL,
+  waterfall_stage VARCHAR(255) NOT NULL,
+  stage_order INTEGER NOT NULL,
+  share_percent DECIMAL(18, 4) NOT NULL,
+  tier_floor_amount DECIMAL(18, 4),
+  tier_ceiling_amount DECIMAL(18, 4),
+  commission_percent DECIMAL(18, 4) NOT NULL,
+  minimum_guarantee_amount DECIMAL(18, 4) NOT NULL,
+  recoupment_priority INTEGER NOT NULL,
+  residual_holdback_percent DECIMAL(18, 4) NOT NULL,
+  minimum_unit_price DECIMAL(18, 4),
+  minimum_cpm DECIMAL(18, 4),
+  currency VARCHAR(255) NOT NULL,
+  calculation_state VARCHAR(255) NOT NULL,
+  originating_rule_id VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (license_agreement_id) REFERENCES media_rights_content_monetization_license_agreement(license_agreement_id),
+  FOREIGN KEY (rights_asset_id) REFERENCES media_rights_content_monetization_rights_asset(rights_asset_id)
+);
+
+CREATE TABLE media_rights_content_monetization_territory_restriction (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  territory_restriction_id VARCHAR(255) NOT NULL,
+  rights_asset_id VARCHAR(255) NOT NULL,
+  territory_code VARCHAR(255) NOT NULL,
+  territory_name VARCHAR(255) NOT NULL,
+  parent_territory_code VARCHAR(255),
+  territory_scope VARCHAR(255) NOT NULL,
+  inclusion_list TEXT,
+  exclusion_list TEXT,
+  inheritance_precedence INTEGER NOT NULL,
+  restriction_type VARCHAR(255) NOT NULL,
+  rating_code VARCHAR(255),
+  watershed_hour INTEGER,
+  ad_category_restriction TEXT,
+  child_directed BOOLEAN NOT NULL,
+  block_reason TEXT,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (rights_asset_id) REFERENCES media_rights_content_monetization_rights_asset(rights_asset_id)
+);
+
+CREATE TABLE media_rights_content_monetization_media_rights_content_monetization_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  policy_rule_id VARCHAR(255) NOT NULL,
+  rights_asset_id VARCHAR(255),
+  rule_name VARCHAR(255) NOT NULL,
+  prohibited_combination TEXT,
+  required_companion_rights TEXT,
+  mandatory_review_condition TEXT,
+  predicate_text TEXT NOT NULL,
+  policy_version VARCHAR(255) NOT NULL,
+  approver_role VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  changed_by VARCHAR(255) NOT NULL,
+  change_reason TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE media_rights_content_monetization_media_rights_content_monetization_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  runtime_parameter_id VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  quality_score_floor DECIMAL(18, 4) NOT NULL,
+  materiality_threshold DECIMAL(18, 4) NOT NULL,
+  approval_sla_hours INTEGER NOT NULL,
+  risk_threshold DECIMAL(18, 4) NOT NULL,
+  forecast_horizon_days INTEGER NOT NULL,
+  workbench_limit INTEGER NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE media_rights_content_monetization_media_rights_content_monetization_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  schema_extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  channel_name VARCHAR(255) NOT NULL,
+  owner_role VARCHAR(255) NOT NULL,
+  rollout_state VARCHAR(255) NOT NULL,
+  projection_impact VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE media_rights_content_monetization_media_rights_content_monetization_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  control_assertion_id VARCHAR(255) NOT NULL,
+  rights_asset_id VARCHAR(255),
+  control_name VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  remediation_task TEXT,
+  evaluated_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (rights_asset_id) REFERENCES media_rights_content_monetization_rights_asset(rights_asset_id)
+);
+
+CREATE TABLE media_rights_content_monetization_media_rights_content_monetization_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  governed_model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE media_rights_content_monetization_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE media_rights_content_monetization_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE media_rights_content_monetization_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

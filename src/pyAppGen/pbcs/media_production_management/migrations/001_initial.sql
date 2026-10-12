@@ -1,15 +1,365 @@
-CREATE TABLE media_production_management_production (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_production_management_budget_line (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_production_management_crew_booking (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_production_management_location_permit (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_production_management_shoot_day (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_production_management_post_production_task (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_production_management_delivery_asset (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_production_management_media_production_management_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_production_management_media_production_management_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_production_management_media_production_management_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_production_management_media_production_management_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_production_management_media_production_management_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_production_management_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_production_management_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE media_production_management_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS media_production_management;
+
+CREATE TABLE media_production_management_production (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  production_id VARCHAR(255) NOT NULL,
+  production_title VARCHAR(255) NOT NULL,
+  production_type VARCHAR(255) NOT NULL,
+  slate_stage VARCHAR(255) NOT NULL,
+  lifecycle_state VARCHAR(255) NOT NULL,
+  script_version VARCHAR(255),
+  creative_package_reference VARCHAR(255),
+  greenlight_state VARCHAR(255) NOT NULL,
+  financing_readiness_score DECIMAL(18, 4) NOT NULL,
+  budget_total DECIMAL(18, 4) NOT NULL,
+  budget_currency VARCHAR(255) NOT NULL,
+  approved_budget_version INTEGER,
+  prep_start_date TIMESTAMP,
+  principal_photography_start TIMESTAMP,
+  wrap_date TIMESTAMP,
+  delivery_due_date TIMESTAMP,
+  target_release_date TIMESTAMP,
+  production_company VARCHAR(255) NOT NULL,
+  studio VARCHAR(255),
+  network VARCHAR(255),
+  executive_producer VARCHAR(255),
+  producer VARCHAR(255),
+  line_producer VARCHAR(255),
+  readiness_score DECIMAL(18, 4) NOT NULL,
+  risk_score DECIMAL(18, 4) NOT NULL,
+  open_exception_count INTEGER NOT NULL,
+  production_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE media_production_management_budget_line (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  budget_line_id VARCHAR(255) NOT NULL,
+  production_id VARCHAR(255) NOT NULL,
+  phase_code VARCHAR(255) NOT NULL,
+  account_group VARCHAR(255) NOT NULL,
+  account_code VARCHAR(255) NOT NULL,
+  cost_category VARCHAR(255) NOT NULL,
+  above_the_line BOOLEAN NOT NULL,
+  below_the_line BOOLEAN NOT NULL,
+  line_description VARCHAR(255) NOT NULL,
+  budgeted_amount DECIMAL(18, 4) NOT NULL,
+  committed_amount DECIMAL(18, 4) NOT NULL,
+  actual_amount DECIMAL(18, 4) NOT NULL,
+  estimate_to_complete DECIMAL(18, 4) NOT NULL,
+  variance_amount DECIMAL(18, 4) NOT NULL,
+  contingency_bucket VARCHAR(255),
+  budget_currency VARCHAR(255) NOT NULL,
+  revision_number INTEGER NOT NULL,
+  baseline_locked BOOLEAN NOT NULL,
+  change_order_reason VARCHAR(255),
+  approval_threshold DECIMAL(18, 4),
+  approver_role VARCHAR(255),
+  cost_report_week VARCHAR(255),
+  vendor_name VARCHAR(255),
+  purchase_order_reference VARCHAR(255),
+  receipt_matched BOOLEAN NOT NULL,
+  cost_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (production_id) REFERENCES media_production_management_production(production_id)
+);
+
+CREATE TABLE media_production_management_crew_booking (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  crew_booking_id VARCHAR(255) NOT NULL,
+  production_id VARCHAR(255) NOT NULL,
+  engagement_type VARCHAR(255) NOT NULL,
+  person_name VARCHAR(255) NOT NULL,
+  role_name VARCHAR(255) NOT NULL,
+  department VARCHAR(255) NOT NULL,
+  union_status VARCHAR(255),
+  deal_memo_reference VARCHAR(255),
+  deal_memo_status VARCHAR(255) NOT NULL,
+  rate_amount DECIMAL(18, 4) NOT NULL,
+  rate_currency VARCHAR(255) NOT NULL,
+  rate_basis VARCHAR(255) NOT NULL,
+  booking_start_date TIMESTAMP NOT NULL,
+  booking_end_date TIMESTAMP NOT NULL,
+  fitting_date TIMESTAMP,
+  rehearsal_date TIMESTAMP,
+  work_guarantee_days INTEGER,
+  travel_class VARCHAR(255),
+  accommodation_rule VARCHAR(255),
+  per_diem_amount DECIMAL(18, 4),
+  availability_confirmed BOOLEAN NOT NULL,
+  release_obligation VARCHAR(255),
+  contact_email VARCHAR(255),
+  contact_phone VARCHAR(255),
+  booking_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (production_id) REFERENCES media_production_management_production(production_id)
+);
+
+CREATE TABLE media_production_management_location_permit (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  location_permit_id VARCHAR(255) NOT NULL,
+  production_id VARCHAR(255) NOT NULL,
+  location_name VARCHAR(255) NOT NULL,
+  jurisdiction VARCHAR(255) NOT NULL,
+  permit_reference VARCHAR(255) NOT NULL,
+  permit_type VARCHAR(255) NOT NULL,
+  site_owner VARCHAR(255) NOT NULL,
+  site_contact VARCHAR(255) NOT NULL,
+  site_contact_phone VARCHAR(255),
+  permit_status VARCHAR(255) NOT NULL,
+  readiness_state VARCHAR(255) NOT NULL,
+  application_date TIMESTAMP NOT NULL,
+  approval_date TIMESTAMP,
+  permit_expiry_date TIMESTAMP,
+  curfew_time VARCHAR(255),
+  parking_plan VARCHAR(255),
+  power_availability VARCHAR(255),
+  police_requirement VARCHAR(255),
+  fire_requirement VARCHAR(255),
+  insurance_evidence_reference VARCHAR(255),
+  neighborhood_obligation VARCHAR(255),
+  access_restriction VARCHAR(255),
+  contingency_location VARCHAR(255),
+  permit_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (production_id) REFERENCES media_production_management_production(production_id)
+);
+
+CREATE TABLE media_production_management_shoot_day (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  shoot_day_id VARCHAR(255) NOT NULL,
+  production_id VARCHAR(255) NOT NULL,
+  location_permit_id VARCHAR(255),
+  schedule_version INTEGER NOT NULL,
+  shoot_date TIMESTAMP NOT NULL,
+  day_number INTEGER NOT NULL,
+  unit_name VARCHAR(255) NOT NULL,
+  scene_count INTEGER NOT NULL,
+  page_count DECIMAL(18, 4) NOT NULL,
+  estimated_duration_hours DECIMAL(18, 4) NOT NULL,
+  call_time TIMESTAMP,
+  first_shot_time TIMESTAMP,
+  wrap_time TIMESTAMP,
+  actual_wrap_time TIMESTAMP,
+  call_sheet_version INTEGER,
+  call_sheet_approved BOOLEAN NOT NULL,
+  readiness_state VARCHAR(255) NOT NULL,
+  turnaround_hours DECIMAL(18, 4),
+  weather_cover BOOLEAN NOT NULL,
+  night_shoot BOOLEAN NOT NULL,
+  company_move BOOLEAN NOT NULL,
+  safety_plan_reference VARCHAR(255),
+  department_checklist_complete BOOLEAN NOT NULL,
+  blocking_exception_count INTEGER NOT NULL,
+  risk_score DECIMAL(18, 4) NOT NULL,
+  day_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (production_id) REFERENCES media_production_management_production(production_id),
+  FOREIGN KEY (location_permit_id) REFERENCES media_production_management_location_permit(location_permit_id)
+);
+
+CREATE TABLE media_production_management_post_production_task (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  post_production_task_id VARCHAR(255) NOT NULL,
+  production_id VARCHAR(255) NOT NULL,
+  milestone_type VARCHAR(255) NOT NULL,
+  milestone_name VARCHAR(255) NOT NULL,
+  post_stage VARCHAR(255) NOT NULL,
+  owner_name VARCHAR(255) NOT NULL,
+  vendor_name VARCHAR(255),
+  planned_date TIMESTAMP NOT NULL,
+  actual_date TIMESTAMP,
+  dependency_task_id VARCHAR(255),
+  approval_state VARCHAR(255) NOT NULL,
+  progress_percent DECIMAL(18, 4) NOT NULL,
+  shot_count INTEGER,
+  turnover_reference VARCHAR(255),
+  bid_status VARCHAR(255),
+  version_number INTEGER NOT NULL,
+  picture_locked BOOLEAN NOT NULL,
+  qc_result VARCHAR(255),
+  rejection_reason VARCHAR(255),
+  task_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (production_id) REFERENCES media_production_management_production(production_id)
+);
+
+CREATE TABLE media_production_management_delivery_asset (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  delivery_asset_id VARCHAR(255) NOT NULL,
+  production_id VARCHAR(255) NOT NULL,
+  package_type VARCHAR(255) NOT NULL,
+  asset_name VARCHAR(255) NOT NULL,
+  spec_version VARCHAR(255) NOT NULL,
+  territory VARCHAR(255) NOT NULL,
+  language VARCHAR(255) NOT NULL,
+  audio_layout VARCHAR(255),
+  caption_set VARCHAR(255),
+  artwork_set VARCHAR(255),
+  master_format VARCHAR(255) NOT NULL,
+  checksum VARCHAR(255),
+  checksum_algorithm VARCHAR(255),
+  qc_result VARCHAR(255),
+  shipment_state VARCHAR(255) NOT NULL,
+  delivery_platform VARCHAR(255) NOT NULL,
+  delivery_due_date TIMESTAMP,
+  delivered_at TIMESTAMP,
+  file_size_bytes INTEGER,
+  retention_class VARCHAR(255),
+  archive_bundle_reference VARCHAR(255),
+  marketing_asset BOOLEAN NOT NULL,
+  embargo_date TIMESTAMP,
+  redelivery_count INTEGER NOT NULL,
+  asset_notes TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (production_id) REFERENCES media_production_management_production(production_id)
+);
+
+CREATE TABLE media_production_management_media_production_management_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  example_text TEXT,
+  approver_role VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE media_production_management_media_production_management_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE media_production_management_media_production_management_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE media_production_management_media_production_management_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  remediation_task VARCHAR(255),
+  evaluated_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE media_production_management_media_production_management_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  model_type VARCHAR(255) NOT NULL,
+  coverage_scope VARCHAR(255) NOT NULL,
+  backtest_exception_count INTEGER NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE media_production_management_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE media_production_management_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE media_production_management_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

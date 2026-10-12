@@ -74,6 +74,34 @@ OIL_GAS_FIELD_OPERATIONS_BUSINESS_TABLES = ('oil_gas_field_operations_well',
  'oil_gas_field_operations_oil_gas_field_operations_control_assertion',
  'oil_gas_field_operations_oil_gas_field_operations_governed_model')
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+OIL_GAS_FIELD_OPERATIONS_TABLE_FIELDS = {
+    'oil_gas_field_operations_well': ('id', 'tenant', 'well_id', 'well_name', 'well_type', 'operator_name', 'field_name', 'area_name', 'pad_name', 'lease_name', 'surface_location', 'route_code', 'producing_interval', 'completion_reference', 'lifecycle_state', 'spud_date', 'first_production_date', 'artificial_lift_type', 'operating_readiness', 'shut_in_reason', 'return_to_service_date', 'final_abandonment_date', 'integrity_status', 'status', 'version', 'created_at', 'updated_at'),
+    'oil_gas_field_operations_production_reading': ('id', 'tenant', 'production_reading_id', 'well_id', 'reading_date', 'effective_production_date', 'reporting_date', 'measurement_basis', 'oil_gross_volume', 'oil_net_volume', 'gas_gross_volume', 'gas_net_volume', 'water_volume', 'injected_volume', 'oil_disposition', 'gas_disposition', 'water_disposition', 'meter_reference', 'meter_factor', 'test_reference', 'allocation_basis', 'allocation_variance', 'downtime_hours', 'deferred_volume', 'revision_reason', 'status', 'version', 'created_at', 'updated_at'),
+    'oil_gas_field_operations_field_ticket': ('id', 'tenant', 'field_ticket_id', 'well_id', 'ticket_number', 'route_type', 'visit_objective', 'ticket_source', 'urgency', 'service_performed', 'materials_used', 'chemical_program_reference', 'follow_up_required', 'visited_at', 'closed_at', 'closeout_notes', 'status', 'version', 'created_at', 'updated_at'),
+    'oil_gas_field_operations_workover_plan': ('id', 'tenant', 'workover_plan_id', 'well_id', 'candidate_rank', 'target_interval', 'pulling_depth', 'suspected_failure', 'required_equipment', 'crew_readiness', 'kill_fluid_assumption', 'planned_chemicals', 'expected_downtime_hours', 'expected_recovery_volume', 'permit_reference', 'safety_checkpoint_state', 'engineer_rationale', 'after_action_findings', 'restored_test_result', 'planned_start', 'completed_at', 'status', 'version', 'created_at', 'updated_at'),
+    'oil_gas_field_operations_hse_event': ('id', 'tenant', 'hse_event_id', 'well_id', 'field_ticket_id', 'event_class', 'severity', 'occurred_at', 'reported_at', 'spill_volume', 'volume_estimate_basis', 'affected_media', 'containment_status', 'remediation_milestone', 'sampling_reference', 'agency_notification_at', 'reportable_flag', 'investigation_state', 'closure_signoff', 'status', 'version', 'created_at', 'updated_at'),
+    'oil_gas_field_operations_reserve_estimate': ('id', 'tenant', 'reserve_estimate_id', 'well_id', 'estimate_date', 'estimate_category', 'methodology', 'oil_in_place', 'gas_in_place', 'recoverable_oil', 'recoverable_gas', 'recovery_factor', 'decline_rate', 'forecast_horizon_days', 'reserves_confidence', 'independent_review_state', 'revision_reason', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'oil_gas_field_operations_lifting_cost': ('id', 'tenant', 'lifting_cost_id', 'well_id', 'cost_category', 'cost_driver', 'asset_scope', 'linked_field_ticket_id', 'linked_workover_plan_id', 'service_date', 'allocation_basis', 'cost_amount', 'currency', 'volume_basis', 'unit_cost', 'invoice_reference', 'vendor_name', 'period_code', 'status', 'version', 'created_at', 'updated_at'),
+    'oil_gas_field_operations_oil_gas_field_operations_policy_rule': ('id', 'tenant', 'rule_id', 'rule_name', 'predicate_text', 'rule_scope', 'risk_tier', 'target_asset_type', 'override_authority', 'supersedes_rule_id', 'effective_from', 'effective_to', 'compiled_hash', 'approved_by', 'status', 'version', 'created_at', 'updated_at'),
+    'oil_gas_field_operations_oil_gas_field_operations_runtime_parameter': ('id', 'tenant', 'parameter_id', 'parameter_name', 'parameter_value', 'parameter_scope', 'bounded', 'tenant_scope', 'effective_from', 'effective_to', 'status', 'version', 'created_at', 'updated_at'),
+    'oil_gas_field_operations_oil_gas_field_operations_schema_extension': ('id', 'tenant', 'extension_id', 'target_table', 'field_name', 'field_type', 'compatibility_rule', 'migration_note', 'registered_at', 'status', 'version', 'created_at', 'updated_at'),
+    'oil_gas_field_operations_oil_gas_field_operations_control_assertion': ('id', 'tenant', 'assertion_id', 'control_name', 'control_family', 'assertion_result', 'severity', 'rule_reference', 'date_range_start', 'date_range_end', 'sealed_proof_hash', 'remediation_task', 'evaluated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'oil_gas_field_operations_oil_gas_field_operations_governed_model': ('id', 'tenant', 'model_id', 'model_name', 'model_version', 'model_purpose', 'feature_inputs', 'governance_state', 'review_state', 'approved_by', 'approved_at', 'retirement_policy', 'status', 'version', 'created_at', 'updated_at'),
+    'oil_gas_field_operations_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'oil_gas_field_operations_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'oil_gas_field_operations_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_OIL_GAS_FIELD_OPERATIONS_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _oil_gas_field_operations_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return OIL_GAS_FIELD_OPERATIONS_TABLE_FIELDS.get(table, _OIL_GAS_FIELD_OPERATIONS_DEFAULT_FIELDS)
+
+
 def oil_gas_field_operations_empty_state():
     return {'records': {}, 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
 
@@ -131,24 +159,11 @@ def oil_gas_field_operations_parse_document_instruction(document, instruction):
     return {'ok': True, 'candidate_tables': OIL_GAS_FIELD_OPERATIONS_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
 def oil_gas_field_operations_build_schema_contract():
-    table_contracts = (
-        {'table': 'oil_gas_field_operations_well', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'oil_gas_field_operations_production_reading', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'oil_gas_field_operations_field_ticket', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'oil_gas_field_operations_workover_plan', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'oil_gas_field_operations_hse_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'oil_gas_field_operations_reserve_estimate', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'oil_gas_field_operations_lifting_cost', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'oil_gas_field_operations_oil_gas_field_operations_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'oil_gas_field_operations_oil_gas_field_operations_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'oil_gas_field_operations_oil_gas_field_operations_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'oil_gas_field_operations_oil_gas_field_operations_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'oil_gas_field_operations_oil_gas_field_operations_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'oil_gas_field_operations_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'oil_gas_field_operations_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'oil_gas_field_operations_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table, 'fields': _oil_gas_field_operations_table_fields(table), 'primary_key': ('id',), 'owned_by': PBC_KEY}
+        for table in OIL_GAS_FIELD_OPERATIONS_OWNED_TABLES
     )
-    return {'format': 'appgen.oil-gas-field-operations-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/oil_gas_field_operations/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': OIL_GAS_FIELD_OPERATIONS_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': OIL_GAS_FIELD_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'database_backends': OIL_GAS_FIELD_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': OIL_GAS_FIELD_OPERATIONS_OWNED_TABLES}
+    return {'format': 'appgen.oil-gas-field-operations-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/oil_gas_field_operations/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': OIL_GAS_FIELD_OPERATIONS_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(OIL_GAS_FIELD_OPERATIONS_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _oil_gas_field_operations_table_fields(table)} for table in OIL_GAS_FIELD_OPERATIONS_OWNED_TABLES), 'datastore_backends': OIL_GAS_FIELD_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'database_backends': OIL_GAS_FIELD_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': OIL_GAS_FIELD_OPERATIONS_OWNED_TABLES}
 
 def oil_gas_field_operations_build_service_contract():
     return {'format': 'appgen.oil-gas-field-operations-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_well','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}

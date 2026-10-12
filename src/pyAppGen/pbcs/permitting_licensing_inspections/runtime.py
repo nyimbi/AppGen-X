@@ -130,25 +130,42 @@ def permitting_licensing_inspections_run_advanced_assessment(state, payload=None
 def permitting_licensing_inspections_parse_document_instruction(document, instruction):
     return {'ok': True, 'candidate_tables': PERMITTING_LICENSING_INSPECTIONS_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+PERMITTING_LICENSING_INSPECTIONS_TABLE_FIELDS = {
+    'permitting_licensing_inspections_application': ('id', 'tenant', 'application_id', 'application_type', 'applicant_name', 'applicant_party_role', 'parcel_identifier', 'site_address', 'zoning_district', 'consultation_reference', 'completeness_state', 'intake_channel', 'preferred_language', 'hearing_required', 'public_notice_required', 'submitted_at', 'status', 'version', 'created_at', 'updated_at'),
+    'permitting_licensing_inspections_permit': ('id', 'tenant', 'permit_id', 'application_id', 'permit_number', 'permit_type', 'issuance_readiness_state', 'temporary_permit', 'term_limit_days', 'condition_count', 'supersedes_permit_id', 'issued_at', 'expires_at', 'status', 'version', 'created_at', 'updated_at'),
+    'permitting_licensing_inspections_license': ('id', 'tenant', 'license_id', 'application_id', 'license_number', 'license_class', 'qualified_activities', 'allowed_locations', 'occupancy_limit', 'operating_conditions', 'provisional_license', 'renewal_state', 'expires_at', 'status', 'version', 'created_at', 'updated_at'),
+    'permitting_licensing_inspections_review_task': ('id', 'tenant', 'review_task_id', 'application_id', 'discipline', 'review_mode', 'reviewer_identity', 'lead_reviewer_identity', 'dependency_task_id', 'plan_set_version', 'correction_round', 'referral_scope', 'sla_state', 'due_at', 'status', 'version', 'created_at', 'updated_at'),
+    'permitting_licensing_inspections_fee_assessment': ('id', 'tenant', 'fee_assessment_id', 'application_id', 'fee_schedule_reference', 'assessment_basis', 'assessed_amount', 'waiver_amount', 'credit_amount', 'refund_eligible', 'payment_status', 'payment_confirmed_at', 'effective_from', 'status', 'version', 'created_at', 'updated_at'),
+    'permitting_licensing_inspections_inspection': ('id', 'tenant', 'inspection_id', 'permit_id', 'inspection_type', 'inspection_route', 'inspector_identity', 'outcome', 'reinspection_required', 'reinspection_of_inspection_id', 'evidence_capture_state', 'geolocation', 'offline_captured', 'scheduled_window_start', 'scheduled_window_end', 'status', 'version', 'created_at', 'updated_at'),
+    'permitting_licensing_inspections_violation': ('id', 'tenant', 'violation_id', 'inspection_id', 'violation_taxonomy', 'severity', 'imminence', 'recurrence_count', 'remedy_type', 'enforcement_step', 'escalation_authority', 'stop_work_issued', 'notice_served_at', 'cure_deadline_at', 'status', 'version', 'created_at', 'updated_at'),
+    'permitting_licensing_inspections_permitting_licensing_inspections_policy_rule': ('id', 'tenant', 'policy_rule_id', 'policy_id', 'rule_name', 'predicate_text', 'jurisdiction_scope', 'effective_from', 'effective_to', 'compiled_hash', 'status', 'version', 'created_at', 'updated_at'),
+    'permitting_licensing_inspections_permitting_licensing_inspections_runtime_parameter': ('id', 'tenant', 'runtime_parameter_id', 'parameter_name', 'parameter_value', 'scope', 'bounded', 'effective_from', 'status', 'version', 'created_at', 'updated_at'),
+    'permitting_licensing_inspections_permitting_licensing_inspections_schema_extension': ('id', 'tenant', 'schema_extension_id', 'target_table', 'field_name', 'field_type', 'registered_at', 'status', 'version', 'created_at', 'updated_at'),
+    'permitting_licensing_inspections_permitting_licensing_inspections_control_assertion': ('id', 'tenant', 'control_assertion_id', 'control_name', 'assertion_result', 'severity', 'remediation_task', 'evaluated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'permitting_licensing_inspections_permitting_licensing_inspections_governed_model': ('id', 'tenant', 'governed_model_id', 'model_name', 'model_version', 'governance_state', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'permitting_licensing_inspections_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'permitting_licensing_inspections_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'permitting_licensing_inspections_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_PERMITTING_LICENSING_INSPECTIONS_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _permitting_licensing_inspections_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return PERMITTING_LICENSING_INSPECTIONS_TABLE_FIELDS.get(table, _PERMITTING_LICENSING_INSPECTIONS_DEFAULT_FIELDS)
+
 def permitting_licensing_inspections_build_schema_contract():
-    table_contracts = (
-        {'table': 'permitting_licensing_inspections_application', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'permitting_licensing_inspections_permit', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'permitting_licensing_inspections_license', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'permitting_licensing_inspections_review_task', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'permitting_licensing_inspections_fee_assessment', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'permitting_licensing_inspections_inspection', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'permitting_licensing_inspections_violation', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'permitting_licensing_inspections_permitting_licensing_inspections_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'permitting_licensing_inspections_permitting_licensing_inspections_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'permitting_licensing_inspections_permitting_licensing_inspections_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'permitting_licensing_inspections_permitting_licensing_inspections_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'permitting_licensing_inspections_permitting_licensing_inspections_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'permitting_licensing_inspections_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'permitting_licensing_inspections_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'permitting_licensing_inspections_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table,
+         'fields': _permitting_licensing_inspections_table_fields(table),
+         'primary_key': ('id',),
+         'owned_by': PBC_KEY}
+        for table in PERMITTING_LICENSING_INSPECTIONS_OWNED_TABLES
     )
-    return {'format': 'appgen.permitting-licensing-inspections-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/permitting_licensing_inspections/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': PERMITTING_LICENSING_INSPECTIONS_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': PERMITTING_LICENSING_INSPECTIONS_ALLOWED_DATABASE_BACKENDS, 'database_backends': PERMITTING_LICENSING_INSPECTIONS_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': PERMITTING_LICENSING_INSPECTIONS_OWNED_TABLES}
+    return {'format': 'appgen.permitting-licensing-inspections-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/permitting_licensing_inspections/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': PERMITTING_LICENSING_INSPECTIONS_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(PERMITTING_LICENSING_INSPECTIONS_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _permitting_licensing_inspections_table_fields(table)} for table in PERMITTING_LICENSING_INSPECTIONS_OWNED_TABLES), 'datastore_backends': PERMITTING_LICENSING_INSPECTIONS_ALLOWED_DATABASE_BACKENDS, 'database_backends': PERMITTING_LICENSING_INSPECTIONS_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': PERMITTING_LICENSING_INSPECTIONS_OWNED_TABLES}
 
 def permitting_licensing_inspections_build_service_contract():
     return {'format': 'appgen.permitting-licensing-inspections-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_application','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}

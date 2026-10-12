@@ -73,6 +73,33 @@ MUSIC_ROYALTIES_RIGHTS_BUSINESS_TABLES = ('music_royalties_rights_musical_work',
  'music_royalties_rights_music_royalties_rights_schema_extension',
  'music_royalties_rights_music_royalties_rights_control_assertion',
  'music_royalties_rights_music_royalties_rights_governed_model')
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+MUSIC_ROYALTIES_RIGHTS_TABLE_FIELDS = {
+    'music_royalties_rights_musical_work': ('id', 'tenant', 'musical_work_id', 'canonical_title', 'alternate_titles', 'translated_titles', 'work_type', 'language_code', 'iswc', 'external_work_reference', 'duration_seconds', 'duration_tolerance_seconds', 'version_lineage', 'title_match_confidence', 'duplicate_review_state', 'registration_state', 'statement_eligible', 'status', 'version', 'created_at', 'updated_at'),
+    'music_royalties_rights_recording': ('id', 'tenant', 'recording_id', 'musical_work_id', 'recording_title', 'isrc', 'version_type', 'family_reference', 'inherits_parent_rights', 'master_owner', 'master_rights_state', 'recording_territory', 'first_release_at', 'producer_points', 'neighboring_rights_eligible', 'match_confidence', 'match_state', 'status', 'version', 'created_at', 'updated_at'),
+    'music_royalties_rights_rights_split': ('id', 'tenant', 'rights_split_id', 'musical_work_id', 'split_version', 'contributor_name', 'contributor_role', 'ipi_cae', 'share_basis', 'writer_share', 'publisher_share', 'administrator', 'collection_society', 'effective_from', 'effective_to', 'supersedes_split_id', 'change_reason_code', 'validation_state', 'status', 'version', 'created_at', 'updated_at'),
+    'music_royalties_rights_license': ('id', 'tenant', 'license_id', 'musical_work_id', 'recording_id', 'licensee_name', 'license_type', 'rights_bundle', 'grant_type', 'media_type', 'territory_code', 'exclusivity', 'fee_basis', 'license_fee', 'royalty_rate_basis', 'currency', 'term_start_at', 'term_end_at', 'embargo_start_at', 'embargo_end_at', 'option_exercise_at', 'approval_authority', 'license_state', 'status', 'version', 'created_at', 'updated_at'),
+    'music_royalties_rights_usage_report': ('id', 'tenant', 'usage_report_id', 'recording_id', 'source_type', 'source_name', 'source_fingerprint', 'reporting_period_start', 'reporting_period_end', 'territory_code', 'unit_convention', 'line_count', 'normalized_line_count', 'unmatched_line_count', 'currency', 'gross_amount', 'ingestion_confidence', 'ingestion_state', 'status', 'version', 'created_at', 'updated_at'),
+    'music_royalties_rights_royalty_statement': ('id', 'tenant', 'royalty_statement_id', 'payee_reference', 'accounting_period', 'period_state', 'statement_currency', 'gross_amount', 'deduction_amount', 'withholding_amount', 'recoupment_amount', 'reserve_amount', 'net_payable', 'beneficiary_reference', 'rate_source', 'split_version_reference', 'calculation_trace_hash', 'issuance_state', 'status', 'version', 'created_at', 'updated_at'),
+    'music_royalties_rights_rights_dispute': ('id', 'tenant', 'rights_dispute_id', 'musical_work_id', 'royalty_statement_id', 'license_id', 'dispute_type', 'claimant_name', 'contested_object_reference', 'dispute_state', 'received_at', 'response_due_at', 'resolution_at', 'evidence_bundle_reference', 'resolution_reason', 'status', 'version', 'created_at', 'updated_at'),
+    'music_royalties_rights_music_royalties_rights_policy_rule': ('id', 'tenant', 'policy_rule_id', 'rule_name', 'rule_scope', 'predicate_text', 'ambiguity_flag', 'approver_role', 'effective_from', 'effective_to', 'compiled_hash', 'source_span', 'prior_version_reference', 'status', 'version', 'created_at', 'updated_at'),
+    'music_royalties_rights_music_royalties_rights_runtime_parameter': ('id', 'tenant', 'runtime_parameter_id', 'parameter_name', 'parameter_value', 'parameter_scope', 'lower_bound', 'upper_bound', 'bounded', 'tenant_override', 'approval_state', 'approved_by', 'approved_at', 'effective_from', 'rollback_state', 'status', 'version', 'created_at', 'updated_at'),
+    'music_royalties_rights_music_royalties_rights_schema_extension': ('id', 'tenant', 'schema_extension_id', 'target_table', 'field_name', 'field_type', 'ui_placement', 'compatibility_state', 'backfill_plan', 'backfill_state', 'registered_at', 'activated_at', 'deprecated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'music_royalties_rights_music_royalties_rights_control_assertion': ('id', 'tenant', 'control_assertion_id', 'control_name', 'control_scope', 'assertion_result', 'severity', 'segregation_violation', 'affected_record_reference', 'failing_evidence', 'remediation_task', 'evaluated_at', 'evaluated_by', 'status', 'version', 'created_at', 'updated_at'),
+    'music_royalties_rights_music_royalties_rights_governed_model': ('id', 'tenant', 'governed_model_id', 'model_name', 'model_version', 'authority_role', 'certification_state', 'certification_expires_at', 'jurisdiction_code', 'allowed_actions', 'governance_state', 'proof_chain_hash', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'music_royalties_rights_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'music_royalties_rights_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'music_royalties_rights_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_MUSIC_ROYALTIES_RIGHTS_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _music_royalties_rights_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return MUSIC_ROYALTIES_RIGHTS_TABLE_FIELDS.get(table, _MUSIC_ROYALTIES_RIGHTS_DEFAULT_FIELDS)
+
 
 def music_royalties_rights_empty_state():
     return {'records': {}, 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
@@ -131,24 +158,11 @@ def music_royalties_rights_parse_document_instruction(document, instruction):
     return {'ok': True, 'candidate_tables': MUSIC_ROYALTIES_RIGHTS_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
 def music_royalties_rights_build_schema_contract():
-    table_contracts = (
-        {'table': 'music_royalties_rights_musical_work', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'music_royalties_rights_recording', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'music_royalties_rights_rights_split', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'music_royalties_rights_license', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'music_royalties_rights_usage_report', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'music_royalties_rights_royalty_statement', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'music_royalties_rights_rights_dispute', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'music_royalties_rights_music_royalties_rights_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'music_royalties_rights_music_royalties_rights_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'music_royalties_rights_music_royalties_rights_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'music_royalties_rights_music_royalties_rights_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'music_royalties_rights_music_royalties_rights_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'music_royalties_rights_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'music_royalties_rights_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'music_royalties_rights_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table, 'fields': _music_royalties_rights_table_fields(table), 'primary_key': ('id',), 'owned_by': PBC_KEY}
+        for table in MUSIC_ROYALTIES_RIGHTS_OWNED_TABLES
     )
-    return {'format': 'appgen.music-royalties-rights-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/music_royalties_rights/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': MUSIC_ROYALTIES_RIGHTS_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': MUSIC_ROYALTIES_RIGHTS_ALLOWED_DATABASE_BACKENDS, 'database_backends': MUSIC_ROYALTIES_RIGHTS_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': MUSIC_ROYALTIES_RIGHTS_OWNED_TABLES}
+    return {'format': 'appgen.music-royalties-rights-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/music_royalties_rights/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': MUSIC_ROYALTIES_RIGHTS_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(MUSIC_ROYALTIES_RIGHTS_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _music_royalties_rights_table_fields(table)} for table in MUSIC_ROYALTIES_RIGHTS_OWNED_TABLES), 'datastore_backends': MUSIC_ROYALTIES_RIGHTS_ALLOWED_DATABASE_BACKENDS, 'database_backends': MUSIC_ROYALTIES_RIGHTS_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': MUSIC_ROYALTIES_RIGHTS_OWNED_TABLES}
 
 def music_royalties_rights_build_service_contract():
     return {'format': 'appgen.music-royalties-rights-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_musical_work','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}

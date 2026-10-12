@@ -1,15 +1,349 @@
-CREATE TABLE mining_operations_management_mine_plan (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE mining_operations_management_pit_block (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE mining_operations_management_extraction_shift (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE mining_operations_management_haulage_cycle (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE mining_operations_management_fleet_asset (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE mining_operations_management_ore_quality (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE mining_operations_management_stockpile (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE mining_operations_management_mining_operations_management_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE mining_operations_management_mining_operations_management_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE mining_operations_management_mining_operations_management_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE mining_operations_management_mining_operations_management_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE mining_operations_management_mining_operations_management_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE mining_operations_management_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE mining_operations_management_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE mining_operations_management_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS mining_operations_management;
+
+CREATE TABLE mining_operations_management_mine_plan (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  mine_plan_id VARCHAR(255) NOT NULL,
+  plan_name VARCHAR(255) NOT NULL,
+  plan_code VARCHAR(255) NOT NULL,
+  mining_method VARCHAR(255) NOT NULL,
+  planning_horizon VARCHAR(255) NOT NULL,
+  period_start TIMESTAMP,
+  period_end TIMESTAMP,
+  planned_ore_tonnes DECIMAL(18, 4) NOT NULL,
+  planned_waste_tonnes DECIMAL(18, 4) NOT NULL,
+  planned_grade DECIMAL(18, 4) NOT NULL,
+  stripping_ratio DECIMAL(18, 4) NOT NULL,
+  planned_metres_drilled DECIMAL(18, 4) NOT NULL,
+  ore_destination VARCHAR(255) NOT NULL,
+  sequencing_window VARCHAR(255) NOT NULL,
+  revision_number INTEGER NOT NULL,
+  forecast_horizon_days INTEGER NOT NULL,
+  confidence_band DECIMAL(18, 4) NOT NULL,
+  approval_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE mining_operations_management_pit_block (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  pit_block_id VARCHAR(255) NOT NULL,
+  mine_plan_id VARCHAR(255) NOT NULL,
+  block_code VARCHAR(255) NOT NULL,
+  pit_phase VARCHAR(255) NOT NULL,
+  pushback VARCHAR(255) NOT NULL,
+  bench VARCHAR(255) NOT NULL,
+  stope VARCHAR(255) NOT NULL,
+  drawpoint VARCHAR(255) NOT NULL,
+  mining_area VARCHAR(255) NOT NULL,
+  location_reference VARCHAR(255) NOT NULL,
+  mine_coordinate_reference VARCHAR(255) NOT NULL,
+  mining_method VARCHAR(255) NOT NULL,
+  lithology VARCHAR(255) NOT NULL,
+  planned_tonnes DECIMAL(18, 4) NOT NULL,
+  planned_grade DECIMAL(18, 4) NOT NULL,
+  expected_grade_band VARCHAR(255) NOT NULL,
+  dilution_risk DECIMAL(18, 4) NOT NULL,
+  sequence_priority INTEGER NOT NULL,
+  ore_destination VARCHAR(255) NOT NULL,
+  geotechnical_domain VARCHAR(255) NOT NULL,
+  hazard_state VARCHAR(255) NOT NULL,
+  risk_rating VARCHAR(255) NOT NULL,
+  monitoring_source VARCHAR(255) NOT NULL,
+  mitigation_requirement TEXT NOT NULL,
+  hazard_expires_at TIMESTAMP,
+  readiness_state VARCHAR(255) NOT NULL,
+  active BOOLEAN NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (mine_plan_id) REFERENCES mining_operations_management_mine_plan(mine_plan_id)
+);
+
+CREATE TABLE mining_operations_management_extraction_shift (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extraction_shift_id VARCHAR(255) NOT NULL,
+  mine_plan_id VARCHAR(255) NOT NULL,
+  pit_block_id VARCHAR(255) NOT NULL,
+  shift_code VARCHAR(255) NOT NULL,
+  shift_date TIMESTAMP,
+  shift_type VARCHAR(255) NOT NULL,
+  mining_area VARCHAR(255) NOT NULL,
+  supervisor_id VARCHAR(255) NOT NULL,
+  target_ore_tonnes DECIMAL(18, 4) NOT NULL,
+  target_waste_tonnes DECIMAL(18, 4) NOT NULL,
+  target_metres_drilled DECIMAL(18, 4) NOT NULL,
+  target_truck_loads INTEGER NOT NULL,
+  target_blasts INTEGER NOT NULL,
+  actual_ore_tonnes DECIMAL(18, 4) NOT NULL,
+  actual_waste_tonnes DECIMAL(18, 4) NOT NULL,
+  actual_metres_drilled DECIMAL(18, 4) NOT NULL,
+  actual_truck_loads INTEGER NOT NULL,
+  actual_blasts INTEGER NOT NULL,
+  plant_feed_nomination_id VARCHAR(255) NOT NULL,
+  delay_minutes INTEGER NOT NULL,
+  critical_constraints TEXT NOT NULL,
+  handover_state VARCHAR(255) NOT NULL,
+  reported_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (mine_plan_id) REFERENCES mining_operations_management_mine_plan(mine_plan_id),
+  FOREIGN KEY (pit_block_id) REFERENCES mining_operations_management_pit_block(pit_block_id)
+);
+
+CREATE TABLE mining_operations_management_haulage_cycle (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  haulage_cycle_id VARCHAR(255) NOT NULL,
+  extraction_shift_id VARCHAR(255) NOT NULL,
+  haul_route_id VARCHAR(255) NOT NULL,
+  loader_id VARCHAR(255) NOT NULL,
+  truck_id VARCHAR(255) NOT NULL,
+  operator_id VARCHAR(255) NOT NULL,
+  from_point VARCHAR(255) NOT NULL,
+  to_point VARCHAR(255) NOT NULL,
+  material_class VARCHAR(255) NOT NULL,
+  payload_class VARCHAR(255) NOT NULL,
+  payload_tonnes DECIMAL(18, 4) NOT NULL,
+  distance_km DECIMAL(18, 4) NOT NULL,
+  cycle_start_at TIMESTAMP,
+  cycle_end_at TIMESTAMP,
+  cycle_minutes INTEGER NOT NULL,
+  queue_minutes INTEGER NOT NULL,
+  wait_minutes INTEGER NOT NULL,
+  destination VARCHAR(255) NOT NULL,
+  dispatch_state VARCHAR(255) NOT NULL,
+  reassignment_reason TEXT NOT NULL,
+  delay_code VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (extraction_shift_id) REFERENCES mining_operations_management_extraction_shift(extraction_shift_id)
+);
+
+CREATE TABLE mining_operations_management_fleet_asset (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  fleet_asset_id VARCHAR(255) NOT NULL,
+  asset_code VARCHAR(255) NOT NULL,
+  equipment_class VARCHAR(255) NOT NULL,
+  asset_type VARCHAR(255) NOT NULL,
+  payload_band VARCHAR(255) NOT NULL,
+  fuel_type VARCHAR(255) NOT NULL,
+  approved_mining_areas TEXT NOT NULL,
+  operator_certification_required VARCHAR(255) NOT NULL,
+  communication_available BOOLEAN NOT NULL,
+  operation_scope VARCHAR(255) NOT NULL,
+  availability_state VARCHAR(255) NOT NULL,
+  breakdown_class VARCHAR(255) NOT NULL,
+  maintenance_due_at TIMESTAMP,
+  workshop_queue VARCHAR(255) NOT NULL,
+  return_to_service_state VARCHAR(255) NOT NULL,
+  operating_hours DECIMAL(18, 4) NOT NULL,
+  utilisation_pct DECIMAL(18, 4) NOT NULL,
+  dispatch_eligible BOOLEAN NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE mining_operations_management_ore_quality (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  ore_quality_id VARCHAR(255) NOT NULL,
+  pit_block_id VARCHAR(255) NOT NULL,
+  stockpile_id VARCHAR(255) NOT NULL,
+  sample_reference VARCHAR(255) NOT NULL,
+  sample_type VARCHAR(255) NOT NULL,
+  sample_interval VARCHAR(255) NOT NULL,
+  sampled_at TIMESTAMP,
+  assay_status VARCHAR(255) NOT NULL,
+  provisional_grade DECIMAL(18, 4) NOT NULL,
+  final_grade DECIMAL(18, 4) NOT NULL,
+  grade_band VARCHAR(255) NOT NULL,
+  moisture_pct DECIMAL(18, 4) NOT NULL,
+  sampling_confidence DECIMAL(18, 4) NOT NULL,
+  boundary_decision VARCHAR(255) NOT NULL,
+  destination_change VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  variance_reason TEXT NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (pit_block_id) REFERENCES mining_operations_management_pit_block(pit_block_id)
+);
+
+CREATE TABLE mining_operations_management_stockpile (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  stockpile_id VARCHAR(255) NOT NULL,
+  stockpile_code VARCHAR(255) NOT NULL,
+  stockpile_type VARCHAR(255) NOT NULL,
+  mining_area VARCHAR(255) NOT NULL,
+  source_table VARCHAR(255) NOT NULL,
+  source_reference VARCHAR(255) NOT NULL,
+  movement_type VARCHAR(255) NOT NULL,
+  movement_tonnes DECIMAL(18, 4) NOT NULL,
+  movement_at TIMESTAMP,
+  genealogy_reference VARCHAR(255) NOT NULL,
+  estimated_tonnes DECIMAL(18, 4) NOT NULL,
+  estimated_grade DECIMAL(18, 4) NOT NULL,
+  grade_band VARCHAR(255) NOT NULL,
+  moisture_pct DECIMAL(18, 4) NOT NULL,
+  density_factor DECIMAL(18, 4) NOT NULL,
+  confidence_class VARCHAR(255) NOT NULL,
+  last_survey_at TIMESTAMP,
+  last_sample_at TIMESTAMP,
+  estimate_stale BOOLEAN NOT NULL,
+  plant_feed_target VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE mining_operations_management_mining_operations_management_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  rule_scope VARCHAR(255) NOT NULL,
+  policy_domain VARCHAR(255) NOT NULL,
+  approver_role VARCHAR(255) NOT NULL,
+  override_justification_required BOOLEAN NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE mining_operations_management_mining_operations_management_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  unit VARCHAR(255) NOT NULL,
+  lower_bound DECIMAL(18, 4) NOT NULL,
+  upper_bound DECIMAL(18, 4) NOT NULL,
+  effective_from TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE mining_operations_management_mining_operations_management_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  compatibility_state VARCHAR(255) NOT NULL,
+  migration_preview_hash VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE mining_operations_management_mining_operations_management_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  control_domain VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  failure_context TEXT NOT NULL,
+  remediation_task TEXT NOT NULL,
+  evidence_hash VARCHAR(255) NOT NULL,
+  evaluated_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE mining_operations_management_mining_operations_management_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  model_purpose TEXT NOT NULL,
+  training_window_start TIMESTAMP,
+  training_window_end TIMESTAMP,
+  owner_role VARCHAR(255) NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  retirement_state VARCHAR(255) NOT NULL,
+  decision_trace_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE mining_operations_management_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE mining_operations_management_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE mining_operations_management_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

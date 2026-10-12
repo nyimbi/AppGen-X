@@ -74,6 +74,34 @@ MEDICAL_DEVICE_LIFECYCLE_BUSINESS_TABLES = ('medical_device_lifecycle_medical_de
  'medical_device_lifecycle_medical_device_lifecycle_control_assertion',
  'medical_device_lifecycle_medical_device_lifecycle_governed_model')
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+MEDICAL_DEVICE_LIFECYCLE_TABLE_FIELDS = {
+    'medical_device_lifecycle_medical_device': ('id', 'tenant', 'medical_device_id', 'udi_di', 'manufacturer_name', 'model_number', 'serial_number', 'lot_number', 'firmware_version', 'approved_firmware_baseline', 'hardware_revision', 'risk_class', 'implantable_flag', 'sterile_flag', 'ownership_type', 'lifecycle_state', 'current_location', 'owning_department', 'physical_zone', 'last_scan_at', 'custody_actor', 'qualification_state', 'reprocessing_state', 'readiness_state', 'parent_device_reference', 'source_evidence_reference', 'status', 'version', 'created_at', 'updated_at'),
+    'medical_device_lifecycle_device_assignment': ('id', 'tenant', 'device_assignment_id', 'medical_device_id', 'assignment_type', 'assignee_projection_reference', 'responsible_role', 'intended_use', 'privacy_consent_flag', 'assignment_start_at', 'assignment_end_at', 'release_condition', 'implant_date', 'body_site', 'implanting_clinician_reference', 'explant_date', 'explant_reason', 'patient_notification_state', 'custody_state', 'status', 'version', 'created_at', 'updated_at'),
+    'medical_device_lifecycle_calibration': ('id', 'tenant', 'calibration_id', 'medical_device_id', 'required_interval_days', 'tolerance_value', 'standard_reference', 'measured_before_value', 'measured_after_value', 'technician_reference', 'result_state', 'due_date', 'out_of_tolerance_impact', 'impact_review_state', 'performed_at', 'status', 'version', 'created_at', 'updated_at'),
+    'medical_device_lifecycle_maintenance_event': ('id', 'tenant', 'maintenance_event_id', 'medical_device_id', 'maintenance_type', 'failure_mode', 'severity', 'root_cause', 'parts_replaced', 'technician_reference', 'service_vendor_reference', 'contract_sla_hours', 'downtime_minutes', 'qualification_result', 'return_to_service_state', 'next_due_at', 'reported_at', 'resolved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'medical_device_lifecycle_recall_notice': ('id', 'tenant', 'recall_notice_id', 'recall_class', 'manufacturer_notice_reference', 'affected_criteria', 'required_action', 'action_type', 'deadline_at', 'patient_impact_flag', 'closure_requirement', 'affected_device_count', 'quarantine_task_state', 'notification_task_state', 'remediation_state', 'closure_state', 'jurisdiction_code', 'issued_at', 'status', 'version', 'created_at', 'updated_at'),
+    'medical_device_lifecycle_usage_trace': ('id', 'tenant', 'usage_trace_id', 'medical_device_id', 'usage_event_type', 'operator_reference', 'procedure_projection_reference', 'usage_start_at', 'usage_end_at', 'location_reference', 'usage_metric_value', 'alarm_configuration_state', 'alarm_severity', 'alarm_acknowledged', 'nuisance_alarm_flag', 'exception_flag', 'redaction_state', 'status', 'version', 'created_at', 'updated_at'),
+    'medical_device_lifecycle_regulatory_evidence': ('id', 'tenant', 'regulatory_evidence_id', 'medical_device_id', 'document_type', 'effective_date', 'device_scope', 'retention_class', 'approval_state', 'checksum', 'evidence_packet_reference', 'incident_link_reference', 'harm_severity', 'investigation_state', 'reportability_state', 'jurisdiction_code', 'report_deadline_at', 'submission_state', 'proof_chain_hash', 'status', 'version', 'created_at', 'updated_at'),
+    'medical_device_lifecycle_medical_device_lifecycle_policy_rule': ('id', 'tenant', 'policy_rule_id', 'rule_name', 'rule_scope', 'predicate_text', 'ambiguity_flag', 'approver_role', 'effective_from', 'effective_to', 'compiled_hash', 'source_span', 'prior_version_reference', 'status', 'version', 'created_at', 'updated_at'),
+    'medical_device_lifecycle_medical_device_lifecycle_runtime_parameter': ('id', 'tenant', 'runtime_parameter_id', 'parameter_name', 'parameter_value', 'parameter_scope', 'lower_bound', 'upper_bound', 'bounded', 'tenant_override', 'approval_state', 'approved_by', 'approved_at', 'effective_from', 'rollback_state', 'status', 'version', 'created_at', 'updated_at'),
+    'medical_device_lifecycle_medical_device_lifecycle_schema_extension': ('id', 'tenant', 'schema_extension_id', 'target_table', 'field_name', 'field_type', 'ui_placement', 'compatibility_state', 'backfill_plan', 'backfill_state', 'registered_at', 'activated_at', 'deprecated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'medical_device_lifecycle_medical_device_lifecycle_control_assertion': ('id', 'tenant', 'control_assertion_id', 'control_name', 'control_scope', 'assertion_result', 'severity', 'segregation_violation', 'affected_record_reference', 'failing_evidence', 'remediation_task', 'evaluated_at', 'evaluated_by', 'status', 'version', 'created_at', 'updated_at'),
+    'medical_device_lifecycle_medical_device_lifecycle_governed_model': ('id', 'tenant', 'governed_model_id', 'model_name', 'model_version', 'authority_role', 'certification_state', 'certification_expires_at', 'jurisdiction_code', 'allowed_actions', 'governance_state', 'proof_chain_hash', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'medical_device_lifecycle_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'medical_device_lifecycle_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'medical_device_lifecycle_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_MEDICAL_DEVICE_LIFECYCLE_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _medical_device_lifecycle_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return MEDICAL_DEVICE_LIFECYCLE_TABLE_FIELDS.get(table, _MEDICAL_DEVICE_LIFECYCLE_DEFAULT_FIELDS)
+
+
 def medical_device_lifecycle_empty_state():
     return {'records': {}, 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
 
@@ -131,24 +159,11 @@ def medical_device_lifecycle_parse_document_instruction(document, instruction):
     return {'ok': True, 'candidate_tables': MEDICAL_DEVICE_LIFECYCLE_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
 def medical_device_lifecycle_build_schema_contract():
-    table_contracts = (
-        {'table': 'medical_device_lifecycle_medical_device', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'medical_device_lifecycle_device_assignment', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'medical_device_lifecycle_calibration', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'medical_device_lifecycle_maintenance_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'medical_device_lifecycle_recall_notice', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'medical_device_lifecycle_usage_trace', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'medical_device_lifecycle_regulatory_evidence', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'medical_device_lifecycle_medical_device_lifecycle_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'medical_device_lifecycle_medical_device_lifecycle_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'medical_device_lifecycle_medical_device_lifecycle_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'medical_device_lifecycle_medical_device_lifecycle_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'medical_device_lifecycle_medical_device_lifecycle_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'medical_device_lifecycle_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'medical_device_lifecycle_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'medical_device_lifecycle_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table, 'fields': _medical_device_lifecycle_table_fields(table), 'primary_key': ('id',), 'owned_by': PBC_KEY}
+        for table in MEDICAL_DEVICE_LIFECYCLE_OWNED_TABLES
     )
-    return {'format': 'appgen.medical-device-lifecycle-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/medical_device_lifecycle/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': MEDICAL_DEVICE_LIFECYCLE_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': MEDICAL_DEVICE_LIFECYCLE_ALLOWED_DATABASE_BACKENDS, 'database_backends': MEDICAL_DEVICE_LIFECYCLE_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': MEDICAL_DEVICE_LIFECYCLE_OWNED_TABLES}
+    return {'format': 'appgen.medical-device-lifecycle-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/medical_device_lifecycle/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': MEDICAL_DEVICE_LIFECYCLE_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(MEDICAL_DEVICE_LIFECYCLE_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _medical_device_lifecycle_table_fields(table)} for table in MEDICAL_DEVICE_LIFECYCLE_OWNED_TABLES), 'datastore_backends': MEDICAL_DEVICE_LIFECYCLE_ALLOWED_DATABASE_BACKENDS, 'database_backends': MEDICAL_DEVICE_LIFECYCLE_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': MEDICAL_DEVICE_LIFECYCLE_OWNED_TABLES}
 
 def medical_device_lifecycle_build_service_contract():
     return {'format': 'appgen.medical-device-lifecycle-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_medical_device','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
