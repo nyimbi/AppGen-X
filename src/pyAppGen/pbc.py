@@ -8251,59 +8251,73 @@ def _table_contract(
 ) -> dict:
     """Return the owned-table contract for one logical table.
 
-    Columns come from the package's own migration, which is the one place a
-    PBC states its real columns and their types and is uniform across all 147
-    packages. Before this, every table in every PBC was given the same
-    `code`/`status`/`version` stub, so a `dam_core` app declared 49 tables and
-    described none of them.
+    Columns, foreign keys and unique constraints all come from the package's own
+    migration, which is the one place a PBC states its real schema and is uniform
+    across all 147 packages. The contract used to invent them: every table at
+    `position > 0` was given a synthetic `<primary_table>_id INTEGER` foreign key
+    pointing at `service["tables"][0].id`, whether or not the package had such a
+    column and whatever type the real one carried. `dam_core_asset_version`
+    declares `asset_id` as `VARCHAR(255)` referencing `dam_core_asset.asset_id`
+    (a unique business key), and the emitter pointed it at `dam_core_asset.id`
+    (an `INTEGER` surrogate) instead, so the generated migration failed to apply
+    for 117 of 147 packages.
 
-    The owned-table name and the relationship set are left as they were. A
-    package's migration does not always name a table the way its runtime does
-    (`ar_credit` migrates `ar_credit_ar_customer` but declares `ar_customer`),
-    and 126 of 147 packages list fewer tables in their service contract than
-    their migration creates, so adopting the migration's names wholesale moves
-    real foreign keys outside the contract and fails the owned-table check.
-    Reconciling that is its own change; this one only stops the fields lying.
+    The package's own names are adopted rather than reconstructed. `ar_credit`
+    migrates `ar_credit_ar_customer` and declares `ar_customer`; prefixing the
+    logical name gave `ar_credit_customer`, a table no migration creates. The
+    migration is looked up by logical name, by the package's own resolved name,
+    and by the key-prefixed form, and the first match wins.
+
+    A relationship whose target is outside the tables this contract emits is
+    dropped: the generated migration creates only the service contract's tables,
+    and Postgres rejects a foreign key to a table that is not there.
     """
-    owned_table = table if table.startswith(f"{key}_") else f"{key}_{table}"
-    # `primary_table` is already key-prefixed in the packages that spell their
-    # service tables physically (`procurement_sourcing_purchase_requisition`),
-    # so prefixing it unconditionally produced
-    # `procurement_sourcing_procurement_sourcing_purchase_requisition` and put
-    # every relationship target outside the owned set. The owned-table check
-    # caught it only once the table name itself stopped doubling, because until
-    # then both sides were wrong in the same direction.
-    primary_owned = primary_table if primary_table.startswith(f"{key}_") else f"{key}_{primary_table}"
+    owned_table = _physical_table_name(key, table, owned)
     fields = _table_fields(key, table, owned, primary_table, position)
-    relationships = []
-    if position > 0:
-        target_table = primary_owned
-        field_name = f"{primary_table}_id"
-        if not any(field["name"] == field_name for field in fields):
-            fields.insert(
-                1,
-                {
-                    "name": field_name,
-                    "type": "integer",
-                    "required": True,
-                    "references": f"{target_table}.id",
-                },
-            )
-        relationships.append(
-            {
-                "field": field_name,
-                "target_table": target_table,
-                "target_column": "id",
-                "cardinality": "many-to-one",
-                "ownership": "same_pbc",
-            }
-        )
+    schema = pbc_schema.owned_schema(key).get(owned_table) or {}
+    emitted = _contract_table_names(key, owned)
+    relationships = tuple(
+        relationship
+        for relationship in schema.get("relationships", ())
+        if relationship["target_table"] in emitted
+    )
     return {
         "logical_table": table,
         "owned_table": owned_table,
         "fields": tuple(fields),
-        "relationships": tuple(relationships),
+        "relationships": relationships,
+        "composite_primary_key": tuple(schema.get("composite_primary_key", ())),
+        "unique": tuple(schema.get("unique", ())),
     }
+
+
+def _contract_table_names(key: str, owned: tuple[str, ...]) -> frozenset[str]:
+    """Return the physical names of every table this contract emits."""
+    return frozenset(
+        _physical_table_name(key, table, owned)
+        for table in _service_contract(key)["tables"]
+    )
+
+
+def _physical_table_name(key: str, logical: str, owned: tuple[str, ...] = ()) -> str:
+    """Return the name the package's migration uses for one logical table.
+
+    The migration is authoritative: a package that migrates
+    `ar_credit_ar_customer` owns that table under that name, and a contract that
+    calls it `ar_credit_customer` describes a table nothing creates. The logical
+    name, the package's own resolved name, and the key-prefixed form are tried in
+    turn, then a suffix match, and only a name no migration declares falls back
+    to the key-prefixed form.
+    """
+    schema = pbc_schema.owned_schema(key)
+    resolved = _owned_table_name(key, logical, owned or _owned_tables(key))
+    for candidate in (logical, resolved, f"{key}_{logical}", f"{key}_{resolved}"):
+        if candidate in schema:
+            return candidate
+    suffixed = tuple(name for name in schema if name.endswith(f"_{logical}"))
+    if len(suffixed) == 1:
+        return suffixed[0]
+    return logical if logical.startswith(f"{key}_") else f"{key}_{logical}"
 
 
 def _table_fields(
@@ -8322,7 +8336,7 @@ def _table_fields(
     first that the migration declares wins.
     """
     migration_names = tuple(pbc_schema.owned_schema(key))
-    resolved = _owned_table_name(key, table, owned or migration_names)
+    resolved = _physical_table_name(key, table, owned or migration_names)
     candidates = (
         table,
         resolved,
@@ -9064,6 +9078,17 @@ def _event_contract(key: str, service: dict) -> dict:
 
 
 def _sql_type(field: dict) -> str:
+    """Return the SQL type for one contract field.
+
+    The migration's own `sql_type` is preferred when the parser recorded one: it
+    is the package's real declaration, including a width the canonical vocabulary
+    drops (`DECIMAL(18, 4)`), and re-emitting it keeps the generated migration
+    identical to the package's own. A field the parser never saw, or one from the
+    package's schema contract, is rendered from the canonical type instead.
+    """
+    declared = field.get("sql_type")
+    if declared:
+        return declared
     field_type = field["type"]
     if field_type == "integer":
         return "INTEGER"
@@ -9071,35 +9096,85 @@ def _sql_type(field: dict) -> str:
         return "TIMESTAMP"
     if field_type == "text":
         return "TEXT"
+    if field_type == "boolean":
+        return "BOOLEAN"
+    if field_type == "json":
+        return "JSONB"
+    if field_type == "decimal":
+        return "NUMERIC(18, 4)"
     return "VARCHAR(255)"
 
 
 def _migration_sql(key: str, table_contracts: tuple[dict, ...], event_contract: dict) -> str:
+    """Render the package's schema as one migration, in dependency order.
+
+    Three properties matter for the SQL to apply to Postgres, and each was
+    missing:
+
+    * A table is created after every table it references. `gl_core_journal_entry`
+      carries a foreign key to `gl_core_accounting_period`, which the service
+      contract lists later, so declaration order alone fails with
+      `relation "gl_core_accounting_period" does not exist`.
+    * A composite primary key is one table-level constraint. `audit_ledger`'s
+      `audit_event` keys on `(audit_id, aggregate_id)`; writing the inline
+      `PRIMARY KEY` clause on both columns is `multiple primary keys for table`.
+    * A foreign key needs a unique index on its target. 787 parsed foreign keys
+      point at a business key the migration marks `UNIQUE` but not primary, so
+      that constraint has to be re-emitted or Postgres refuses the reference.
+    """
     statements = [f"CREATE SCHEMA IF NOT EXISTS {key};"]
-    for table in table_contracts:
+    for table in _dependency_ordered(table_contracts):
         column_lines = []
+        composite = set(table.get("composite_primary_key", ()))
         for field in table["fields"]:
-            line = f"  {field['name']} {_sql_type(field)}"
-            if field.get("primary_key"):
+            name = pbc_schema.quote_identifier(field["name"])
+            line = f"  {name} {_sql_type(field)}"
+            if field.get("primary_key") and field["name"] not in composite:
                 line += " PRIMARY KEY"
             if field.get("required") or field.get("primary_key"):
                 line += " NOT NULL"
             column_lines.append(line)
+        if composite:
+            members = ", ".join(
+                pbc_schema.quote_identifier(name)
+                for name in table.get("composite_primary_key", ())
+            )
+            column_lines.append(f"  PRIMARY KEY ({members})")
+        for unique in table.get("unique", ()):
+            members = ", ".join(pbc_schema.quote_identifier(name) for name in unique)
+            column_lines.append(f"  UNIQUE ({members})")
+        # A column declared `... UNIQUE` inline is the same constraint written
+        # differently, and a foreign key may target it (`service_ticketing`'s
+        # `ticket_id`). The parser records it per field, so it is lifted to a
+        # table-level constraint here unless it is already covered.
+        covered = {tuple(unique) for unique in table.get("unique", ())}
+        covered |= {(name,) for name in table.get("composite_primary_key", ())}
+        for field in table["fields"]:
+            if field.get("unique") and (field["name"],) not in covered:
+                column_lines.append(f"  UNIQUE ({pbc_schema.quote_identifier(field['name'])})")
         for relationship in table["relationships"]:
             column_lines.append(
                 "  FOREIGN KEY "
-                f"({relationship['field']}) REFERENCES {relationship['target_table']}({relationship['target_column']})"
+                f"({pbc_schema.quote_identifier(relationship['field'])}) "
+                f"REFERENCES {relationship['target_table']}"
+                f"({pbc_schema.quote_identifier(relationship['target_column'])})"
             )
         statements.append(
             f"CREATE TABLE {table['owned_table']} (\n"
             + ",\n".join(column_lines)
             + "\n);"
         )
+    emitted = {table["owned_table"] for table in table_contracts}
     for table_name in (
         event_contract["outbox_table"],
         event_contract["inbox_table"],
         event_contract["dead_letter_table"],
     ):
+        # Some packages list the event trio in their own service contract, so it
+        # arrives here as a parsed table with the package's real columns. Emitting
+        # the generic form as well is `relation already exists`.
+        if table_name in emitted:
+            continue
         statements.append(
             f"CREATE TABLE {table_name} (\n"
             "  id INTEGER PRIMARY KEY,\n"
@@ -9113,6 +9188,43 @@ def _migration_sql(key: str, table_contracts: tuple[dict, ...], event_contract: 
             ");"
         )
     return "\n\n".join(statements)
+
+
+def _dependency_ordered(table_contracts: tuple[dict, ...]) -> tuple[dict, ...]:
+    """Order table contracts so every referenced table precedes its referrer.
+
+    A package's service contract lists tables in domain order, not dependency
+    order, so a foreign key can point forward. Only relationships whose target is
+    one of the emitted tables create an edge; a self-reference is ignored because
+    the table is created before its own constraint is added. A cycle, which a
+    schema with mutually-referencing tables can have, is emitted in declaration
+    order rather than dropped, and the constraint fails loudly at apply time
+    instead of a table vanishing from the migration.
+    """
+    by_name = {table["owned_table"]: table for table in table_contracts}
+    edges = {
+        name: {
+            relationship["target_table"]
+            for relationship in table["relationships"]
+            if relationship["target_table"] in by_name and relationship["target_table"] != name
+        }
+        for name, table in by_name.items()
+    }
+    ordered: list[dict] = []
+    placed: set[str] = set()
+    while len(ordered) < len(by_name):
+        progressed = False
+        for table in table_contracts:
+            name = table["owned_table"]
+            if name in placed or edges[name] - placed:
+                continue
+            ordered.append(table)
+            placed.add(name)
+            progressed = True
+        if not progressed:
+            ordered.extend(table for table in table_contracts if table["owned_table"] not in placed)
+            break
+    return tuple(ordered)
 
 
 def _selection_terms(key: str, pbc: dict) -> tuple[str, ...]:

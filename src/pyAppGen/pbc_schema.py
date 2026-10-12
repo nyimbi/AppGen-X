@@ -15,9 +15,10 @@ The parse is deliberately narrow. These files are machine-written by the same
 generator, so the grammar is a fixed subset: `CREATE TABLE`, comma-separated
 column definitions (68 packages write every table one column per line, 77 write
 every table on a single line, and 2 mix the two, so the split is on commas at
-parenthesis depth zero, not on newlines), and table-level `PRIMARY KEY` and
-`FOREIGN KEY` constraints. Anything outside that subset is skipped rather than
-guessed at.
+parenthesis depth zero, not on newlines), and table-level `PRIMARY KEY`,
+`FOREIGN KEY` and `UNIQUE` constraints. A multi-word type (`DOUBLE PRECISION`),
+an inline `UNIQUE`, and a quoted reserved-word identifier are all read. Anything
+outside that subset is skipped rather than guessed at.
 """
 
 from __future__ import annotations
@@ -34,6 +35,7 @@ __all__ = (
     "normalize_type",
     "owned_schema",
     "parse_migration",
+    "quote_identifier",
 )
 
 PACKAGE_ROOT = Path(__file__).resolve().parent / "pbcs"
@@ -43,12 +45,56 @@ _CREATE_TABLE = re.compile(
     r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?([A-Za-z0-9_]+)\s*\((.*?)\)\s*;",
     re.DOTALL | re.IGNORECASE,
 )
-_COLUMN = re.compile(r'^("?)([A-Za-z0-9_]+)\1\s+([A-Za-z]+(?:\s*\([0-9,\s]+\))?)')
+_COLUMN = re.compile(
+    r'^("?)([A-Za-z0-9_]+)\1\s+([A-Za-z]+(?:\s+(?:PRECISION|VARYING|WITH(?:OUT)?\s+TIME\s+ZONE))?(?:\s*\([0-9,\s]+\))?)',
+    re.IGNORECASE,
+)
 _TABLE_PRIMARY_KEY = re.compile(r"PRIMARY\s+KEY\s*\(([^)]*)\)", re.IGNORECASE)
 _TABLE_FOREIGN_KEY = re.compile(
     r"FOREIGN\s+KEY\s*\(([^)]*)\)\s*REFERENCES\s+([A-Za-z0-9_]+)\s*\(([^)]*)\)",
     re.IGNORECASE,
 )
+# Table-level `UNIQUE (a, b)`. Not `UNIQUE` inside a column definition: the
+# lookbehind rejects a preceding word character, so `ticket_id VARCHAR(255) NOT
+# NULL UNIQUE,` does not read as a table constraint, and `UNIQUE (a)` after a
+# comma does. 293 tables across the catalog carry one, and 787 parsed foreign
+# keys target a column that is unique but not the primary key, so a foreign key
+# re-emitted against that column needs the constraint to exist.
+_TABLE_UNIQUE = re.compile(r"(?<![A-Za-z0-9_])UNIQUE\s*\(([^)]*)\)", re.IGNORECASE)
+_INLINE_UNIQUE = re.compile(r"\bUNIQUE\b", re.IGNORECASE)
+
+# Identifiers that are reserved words and must stay quoted in emitted DDL.
+# `asset_lifecycle` and `api_gateway_mesh` name a column `"window"`; the
+# generator dropped the quotes and the statement died with
+# `syntax error at or near "window"`.
+_RESERVED = frozenset(
+    {
+        "all", "and", "any", "array", "as", "asc", "between", "both", "case",
+        "cast", "check", "column", "constraint", "cross", "current_date",
+        "current_time", "current_timestamp", "current_user", "default", "desc",
+        "distinct", "do", "else", "end", "except", "exists", "false", "foreign",
+        "from", "full", "grant", "group", "having", "in", "inner", "intersect",
+        "into", "is", "join", "key", "leading", "left", "like", "limit",
+        "natural", "not", "null", "offset", "on", "only", "or", "order", "outer",
+        "over", "partition", "primary", "range", "references", "right", "role",
+        "rows", "select", "session", "similar", "some", "table", "then", "time",
+        "to", "trailing", "true", "union", "unique", "user", "using", "values",
+        "when", "where", "window", "with",
+    }
+)
+
+
+def quote_identifier(name: str) -> str:
+    """Quote an identifier that is a reserved word or not plain lowercase.
+
+    Everything the packages emit is lower snake_case, so the common case is a
+    no-op; only the handful of reserved-word names change shape.
+    """
+    if name in _RESERVED or not re.fullmatch(r"[a-z_][a-z0-9_]*", name):
+        return f'"{name}"'
+    return name
+
+
 # Table-level constraints to skip. These are keywords, so the match is on the
 # keyword boundary rather than on a name prefix: a column named `check_id`,
 # `checksum`, `keywords`, or `index_id` begins with a constraint word and was
@@ -143,8 +189,8 @@ def parse_migration(text: str) -> dict[str, dict]:
     """Parse ``CREATE TABLE`` statements into owned-table contracts.
 
     Returns:
-        A mapping of physical table name to
-        ``{"fields": tuple[dict, ...], "relationships": tuple[dict, ...]}``.
+        A mapping of physical table name to ``{"fields": tuple[dict, ...],
+        "relationships": tuple[dict, ...], "unique": tuple[tuple[str, ...], ...]}``.
         A table with no parsable columns is omitted rather than returned empty.
     """
     tables: dict[str, dict] = {}
@@ -155,7 +201,15 @@ def parse_migration(text: str) -> dict[str, dict]:
             for match in _TABLE_PRIMARY_KEY.findall(body)
             for name in match.split(",")
         }
+        # A composite key sets `primary_key` on each of its columns but only one
+        # may carry the inline `PRIMARY KEY` clause, so the members are recorded
+        # here and the emitter writes a single table-level constraint instead.
+        composite_members = tuple(name for name in composite_pk if name)
         foreign_keys = _TABLE_FOREIGN_KEY.findall(body)
+        unique_keys = tuple(
+            tuple(column.strip() for column in match.split(",") if column.strip())
+            for match in _TABLE_UNIQUE.findall(body)
+        )
         fields: list[dict] = []
         for statement in statements:
             if _CONSTRAINT_KEYWORD.match(statement):
@@ -172,6 +226,7 @@ def parse_migration(text: str) -> dict[str, dict]:
                     "sql_type": sql_type.upper(),
                     "primary_key": "PRIMARY KEY" in upper or name in composite_pk,
                     "required": "NOT NULL" in upper or "PRIMARY KEY" in upper or name in composite_pk,
+                    "unique": bool(_INLINE_UNIQUE.search(statement)),
                 }
             )
         if not fields:
@@ -187,7 +242,12 @@ def parse_migration(text: str) -> dict[str, dict]:
             for columns, target, target_column in foreign_keys
             for column in columns.split(",")
         )
-        tables[table_name] = {"fields": tuple(fields), "relationships": relationships}
+        tables[table_name] = {
+            "fields": tuple(fields),
+            "relationships": relationships,
+            "composite_primary_key": composite_members,
+            "unique": unique_keys,
+        }
     return tables
 
 
