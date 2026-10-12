@@ -54,7 +54,11 @@ PBC_MANIFEST = {
         "SafetyReportingConsole",
         "MonitoringFindingsConsole",
         "DataLockReadinessBoard",
+        "TrialRuleStudio",
+        "RuntimeParameterConsole",
         "AssistantPreviewWorkbench",
+        "ClinicalTrialWizardLauncher",
+        "ClinicalTrialsControlCenter",
     ),
     "permissions": CLINICAL_TRIALS_MANAGEMENT_PERMISSIONS,
     "configuration": (

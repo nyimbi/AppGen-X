@@ -7992,12 +7992,17 @@ def _package_event_types(key: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
 # The declared surfaces whose runtime constant, where it exists, is the package's
 # own statement of them. `permissions` and `configuration` have no runtime
 # constant in any of the 147 packages, so the manifest is their only source and
-# they are absent here. Every constant listed either agrees with the manifest or
-# is the superset: `standard_features` agrees in 147 of 147, `advanced_capabilities`
-# in 146 (the manifest for `field_service_management` omits four capabilities the
-# runtime defines), and `ui_fragments` in 99 of 100 (the manifest for
-# `clinical_trials_management` omits four fragments). Where the two disagree the
-# runtime is the surface the code actually exposes, so it wins.
+# they are absent here.
+#
+# All three listed surfaces now agree with the manifest in 147 of 147. They did
+# not always: `field_service_management`'s `*_RUNTIME_CAPABILITY_KEYS` was a
+# stale 12 against a manifest and runtime function of 17, and
+# `clinical_trials_management`'s manifest listed 9 fragments against a runtime
+# constant of 13. Both packages were fixed rather than papered over, because the
+# runtime is the surface the code exposes and the manifest is a hand-copy of it.
+# An earlier version of this comment had the direction backwards, claiming the
+# manifest was the smaller side; it was the runtime constant. Where the two
+# disagree, treat the runtime as authoritative and fix the other side.
 _PBC_SURFACE_RUNTIME_CONSTANTS = {
     "ui_fragments": "UI_FRAGMENT_KEYS",
     "standard_features": "STANDARD_FEATURE_KEYS",
