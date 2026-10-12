@@ -117,51 +117,56 @@ def travel_management_parse_document_instruction(document, instruction):
     return {'ok': True, 'candidate_tables': TRAVEL_MANAGEMENT_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+TRAVEL_MANAGEMENT_TABLE_FIELDS = {
+    'travel_management_travel_request': ('id', 'tenant', 'trip_request_id', 'traveler_id', 'purpose', 'origin', 'destination', 'departure_date', 'return_date', 'trip_type', 'cost_estimate', 'currency', 'risk_level', 'policy_version', 'readiness_state', 'status', 'version', 'created_at', 'updated_at'),
+    'travel_management_travel_booking': ('id', 'tenant', 'booking_id', 'trip_request_id', 'booking_type', 'supplier_id', 'confirmation_number', 'amount', 'currency', 'booking_state', 'cancellation_deadline', 'status', 'version', 'created_at', 'updated_at'),
+    'travel_management_travel_itinerary': ('id', 'tenant', 'itinerary_id', 'trip_request_id', 'traveler_id', 'item_count', 'start_at', 'end_at', 'timezone', 'integrity_state', 'conflict_count', 'status', 'version', 'created_at', 'updated_at'),
+    'travel_management_travel_policy_check': ('id', 'tenant', 'check_id', 'trip_request_id', 'policy_id', 'policy_version', 'rule_id', 'decision', 'exception_required', 'severity', 'rationale', 'evaluated_at', 'created_at', 'updated_at'),
+    'travel_management_duty_of_care_alert': ('id', 'tenant', 'alert_id', 'trip_request_id', 'traveler_id', 'severity', 'risk_score', 'location_confidence', 'affected_region', 'contact_attempts', 'escalation_owner', 'alert_state', 'acknowledged_at', 'closed_at', 'status', 'version', 'created_at', 'updated_at'),
+    'travel_management_supplier_travel_feed': ('id', 'tenant', 'feed_id', 'supplier_id', 'feed_type', 'offer_count', 'payload_hash', 'freshness_state', 'scorecard_rating', 'received_at', 'created_at', 'updated_at'),
+    'travel_management_travel_expense_handoff': ('id', 'tenant', 'handoff_id', 'trip_request_id', 'expense_report_id', 'approved_budget', 'currency', 'expected_categories', 'per_diem_eligible', 'mileage_eligible', 'handoff_state', 'handed_off_at', 'created_at', 'updated_at'),
+    'travel_management_travel_carbon_record': ('id', 'tenant', 'carbon_record_id', 'trip_request_id', 'booking_id', 'transport_mode', 'distance_km', 'carbon_kg', 'data_source', 'confidence', 'assumptions', 'created_at', 'updated_at'),
+    'travel_management_trip_request': ('id', 'tenant', 'trip_request_id', 'traveler_id', 'purpose', 'origin', 'destination', 'departure_date', 'return_date', 'trip_type', 'cost_estimate', 'currency', 'risk_level', 'policy_version', 'approval_state', 'readiness_state', 'lifecycle_state', 'business_unit', 'cost_center', 'status', 'version', 'created_at', 'updated_at'),
+    'travel_management_traveler_profile': ('id', 'tenant', 'traveler_id', 'employee_id', 'full_name', 'home_region', 'preferred_language', 'nationality', 'passport_expiry', 'visa_state', 'emergency_contact', 'accessibility_needs', 'loyalty_identifiers', 'notification_preference', 'risk_consent', 'completeness_score', 'status', 'version', 'created_at', 'updated_at'),
+    'travel_management_travel_policy': ('id', 'tenant', 'policy_id', 'policy_name', 'policy_version', 'employee_level', 'business_unit', 'region', 'fare_class', 'hotel_cap', 'advance_booking_days', 'approval_threshold', 'supplier_category', 'effective_from', 'effective_to', 'status', 'version', 'created_at', 'updated_at'),
+    'travel_management_travel_approval_task': ('id', 'tenant', 'approval_task_id', 'trip_request_id', 'approver_id', 'approver_role', 'sequence_number', 'decision', 'route_rationale', 'skipped_approvers', 'delegation', 'escalation_due_at', 'emergency_lane', 'decided_at', 'status', 'version', 'created_at', 'updated_at'),
+    'travel_management_booking_intent': ('id', 'tenant', 'booking_intent_id', 'trip_request_id', 'traveler_id', 'travel_window_start', 'travel_window_end', 'budget_amount', 'currency', 'preferred_supplier', 'policy_constraints', 'risk_constraints', 'booking_deadline', 'compared_offer_count', 'selected_offer_id', 'intent_state', 'status', 'version', 'created_at', 'updated_at'),
+    'travel_management_air_booking': ('id', 'tenant', 'air_booking_id', 'booking_intent_id', 'ticket_number', 'carrier_code', 'fare_class', 'routing', 'layover_count', 'refundable', 'baggage_allowance', 'change_fee', 'ticketing_deadline', 'unused_ticket_eligible', 'status', 'version', 'created_at', 'updated_at'),
+    'travel_management_hotel_booking': ('id', 'tenant', 'hotel_booking_id', 'booking_intent_id', 'property_name', 'location', 'nightly_rate', 'rate_cap', 'total_stay_cost', 'currency', 'check_in', 'check_out', 'cancellation_window', 'safety_rating', 'accessible', 'preferred_supplier', 'status', 'version', 'created_at', 'updated_at'),
+    'travel_management_ground_booking': ('id', 'tenant', 'ground_booking_id', 'booking_intent_id', 'transport_mode', 'distance_km', 'rate_amount', 'currency', 'vehicle_class', 'insurance_included', 'driver_eligible', 'pickup_at', 'dropoff_at', 'carbon_kg', 'status', 'version', 'created_at', 'updated_at'),
+    'travel_management_itinerary_item': ('id', 'tenant', 'itinerary_item_id', 'itinerary_id', 'item_type', 'supplier_id', 'confirmation_number', 'location', 'timezone', 'starts_at', 'ends_at', 'depends_on_item_id', 'confirmation_state', 'source_evidence', 'status', 'version', 'created_at', 'updated_at'),
+    'travel_management_travel_disruption': ('id', 'tenant', 'disruption_id', 'trip_request_id', 'itinerary_item_id', 'source', 'severity', 'traveler_impact', 'options_considered', 'selected_option', 'rejected_rationale', 'policy_implication', 'expense_impact', 'disruption_state', 'opened_at', 'resolved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'travel_management_unused_ticket': ('id', 'tenant', 'unused_ticket_id', 'traveler_id', 'supplier_id', 'ticket_number', 'ticket_value', 'residual_value', 'currency', 'fare_rules', 'transferable', 'reuse_eligible', 'expires_at', 'owner_id', 'ticket_state', 'status', 'version', 'created_at', 'updated_at'),
+    'travel_management_travel_expense_link': ('id', 'tenant', 'expense_link_id', 'trip_request_id', 'expense_report_id', 'approved_budget', 'currency', 'expected_categories', 'per_diem_eligible', 'mileage_eligible', 'source_evidence', 'link_state', 'linked_at', 'status', 'version', 'created_at', 'updated_at'),
+    'travel_management_travel_risk_assessment': ('id', 'tenant', 'risk_assessment_id', 'trip_request_id', 'traveler_id', 'destination', 'risk_score', 'risk_level', 'confidence', 'risk_drivers', 'required_mitigation', 'mitigation_plan', 'assessed_at', 'status', 'version', 'created_at', 'updated_at'),
+    'travel_management_travel_supplier_offer': ('id', 'tenant', 'supplier_offer_id', 'booking_intent_id', 'supplier_id', 'offer_type', 'base_price', 'taxes', 'fees', 'currency', 'restrictions', 'refundable', 'loyalty_accrual', 'baggage_allowance', 'cancellation_terms', 'supplier_rating', 'carbon_estimate', 'source_payload_hash', 'preferred_supplier', 'offer_state', 'status', 'version', 'created_at', 'updated_at'),
+    'travel_management_travel_exception_case': ('id', 'tenant', 'exception_case_id', 'trip_request_id', 'exception_type', 'severity', 'owner_id', 'required_evidence', 'financial_exposure', 'currency', 'traveler_impact', 'resolution_action', 'closure_proof', 'case_state', 'resolved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'travel_management_travel_policy_rule': ('id', 'tenant', 'rule_id', 'policy_id', 'rule_name', 'predicate_text', 'ambiguity_flag', 'example_text', 'approver_role', 'effective_from', 'effective_to', 'compiled_hash', 'status', 'version', 'created_at', 'updated_at'),
+    'travel_management_travel_runtime_parameter': ('id', 'tenant', 'parameter_name', 'parameter_value', 'scope', 'bounded', 'effective_from', 'status', 'version', 'created_at', 'updated_at'),
+    'travel_management_travel_schema_extension': ('id', 'tenant', 'extension_id', 'target_table', 'field_name', 'field_type', 'registered_at', 'status', 'version', 'created_at', 'updated_at'),
+    'travel_management_travel_control_assertion': ('id', 'tenant', 'assertion_id', 'control_name', 'assertion_result', 'severity', 'remediation_task', 'evaluated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'travel_management_travel_governed_model': ('id', 'tenant', 'model_id', 'model_name', 'model_version', 'governance_state', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'travel_management_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'travel_management_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'travel_management_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_TRAVEL_MANAGEMENT_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _travel_management_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return TRAVEL_MANAGEMENT_TABLE_FIELDS.get(table, _TRAVEL_MANAGEMENT_DEFAULT_FIELDS)
 def travel_management_build_schema_contract():
-    table_contracts = ({'table': 'travel_management_travel_request',
-  'fields': ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'travel_management'},
- {'table': 'travel_management_travel_booking',
-  'fields': ('id', 'tenant', 'travel_request_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'travel_management'},
- {'table': 'travel_management_travel_itinerary',
-  'fields': ('id', 'tenant', 'travel_request_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'travel_management'},
- {'table': 'travel_management_travel_policy_check',
-  'fields': ('id', 'tenant', 'travel_request_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'travel_management'},
- {'table': 'travel_management_duty_of_care_alert',
-  'fields': ('id', 'tenant', 'travel_request_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'travel_management'},
- {'table': 'travel_management_supplier_travel_feed',
-  'fields': ('id', 'tenant', 'travel_request_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'travel_management'},
- {'table': 'travel_management_travel_expense_handoff',
-  'fields': ('id', 'tenant', 'travel_request_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'travel_management'},
- {'table': 'travel_management_travel_carbon_record',
-  'fields': ('id', 'tenant', 'travel_request_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'travel_management'},
- {'table': 'travel_management_appgen_outbox_event',
-  'fields': ('id', 'tenant', 'travel_request_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'travel_management'},
- {'table': 'travel_management_appgen_inbox_event',
-  'fields': ('id', 'tenant', 'travel_request_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'travel_management'},
- {'table': 'travel_management_appgen_dead_letter_event',
-  'fields': ('id', 'tenant', 'travel_request_id', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
-  'primary_key': ('id',),
-  'owned_by': 'travel_management'})
+    table_contracts = tuple(
+        {'table': table,
+         'fields': _travel_management_table_fields(table),
+         'primary_key': ('id',),
+         'owned_by': 'travel_management'}
+        for table in TRAVEL_MANAGEMENT_OWNED_TABLES
+    )
     return {'format': 'appgen.travel-management-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/travel_management/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': TRAVEL_MANAGEMENT_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': TRAVEL_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'database_backends': TRAVEL_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': TRAVEL_MANAGEMENT_OWNED_TABLES}
 
 
@@ -267,6 +272,9 @@ def travel_management_build_schema_contract():
     count in its schema evidence and the full count in its runtime. The domain
     contract is the one source that names them, so the builder folds it in here
     rather than leaving a second, staler list in `schema_contract.py`.
+
+    Columns come from `TRAVEL_MANAGEMENT_TABLE_FIELDS`, so the schema evidence,
+    the model evidence, and `migrations/001_initial.sql` name the same columns.
     """
     from .domain_depth import domain_depth_contract
 
@@ -275,7 +283,7 @@ def travel_management_build_schema_contract():
     additions = tuple(
         {
             'table': table,
-            'fields': ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at'),
+            'fields': _travel_management_table_fields(table),
             'primary_key': ('id',),
             'owned_by': PBC_KEY,
         }
