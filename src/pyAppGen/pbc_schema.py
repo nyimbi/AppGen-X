@@ -49,7 +49,16 @@ _TABLE_FOREIGN_KEY = re.compile(
     r"FOREIGN\s+KEY\s*\(([^)]*)\)\s*REFERENCES\s+([A-Za-z0-9_]+)\s*\(([^)]*)\)",
     re.IGNORECASE,
 )
-_CONSTRAINT_PREFIXES = ("FOREIGN KEY", "PRIMARY KEY", "CONSTRAINT", "UNIQUE", "CHECK", "KEY ", "INDEX")
+# Table-level constraints to skip. These are keywords, so the match is on the
+# keyword boundary rather than on a name prefix: a column named `check_id`,
+# `checksum`, `keywords`, or `index_id` begins with a constraint word and was
+# silently dropped by a `startswith` test. 40 columns across 18 packages were
+# lost that way, and the descriptor then reported those tables as missing the
+# very column that named them.
+_CONSTRAINT_KEYWORD = re.compile(
+    r"^(?:FOREIGN\s+KEY|PRIMARY\s+KEY|CONSTRAINT|UNIQUE|CHECK|KEY|INDEX)\b",
+    re.IGNORECASE,
+)
 
 # SQL type to the canonical lowercase vocabulary the rest of the generator
 # uses. The raw type is kept alongside it so nothing is lost on the way back
@@ -149,7 +158,7 @@ def parse_migration(text: str) -> dict[str, dict]:
         foreign_keys = _TABLE_FOREIGN_KEY.findall(body)
         fields: list[dict] = []
         for statement in statements:
-            if statement.upper().startswith(_CONSTRAINT_PREFIXES):
+            if _CONSTRAINT_KEYWORD.match(statement):
                 continue
             match = _COLUMN.match(statement)
             if not match:
