@@ -1,15 +1,313 @@
-CREATE TABLE hotel_revenue_management_room_type (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hotel_revenue_management_rate_plan (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hotel_revenue_management_channel_inventory (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hotel_revenue_management_demand_forecast (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hotel_revenue_management_overbooking_policy (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hotel_revenue_management_yield_decision (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hotel_revenue_management_revenue_snapshot (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hotel_revenue_management_hotel_revenue_management_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hotel_revenue_management_hotel_revenue_management_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hotel_revenue_management_hotel_revenue_management_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hotel_revenue_management_hotel_revenue_management_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hotel_revenue_management_hotel_revenue_management_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hotel_revenue_management_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hotel_revenue_management_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hotel_revenue_management_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS hotel_revenue_management;
+
+CREATE TABLE hotel_revenue_management_room_type (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  room_type_id VARCHAR(255) NOT NULL,
+  room_type_name VARCHAR(255) NOT NULL,
+  room_class VARCHAR(255) NOT NULL,
+  bed_configuration VARCHAR(255) NOT NULL,
+  max_occupancy INTEGER NOT NULL,
+  physical_room_count INTEGER NOT NULL,
+  sellable_room_count INTEGER NOT NULL,
+  maintenance_holdback_count INTEGER NOT NULL,
+  complimentary_allotment_count INTEGER NOT NULL,
+  substitute_room_type_id VARCHAR(255) NOT NULL,
+  sellable_from TIMESTAMP,
+  sellable_to TIMESTAMP,
+  inventory_matrix_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE hotel_revenue_management_rate_plan (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rate_plan_id VARCHAR(255) NOT NULL,
+  rate_plan_name VARCHAR(255) NOT NULL,
+  parent_rate_plan_id VARCHAR(255) NOT NULL,
+  rate_family VARCHAR(255) NOT NULL,
+  base_rate_amount DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  bar_position INTEGER NOT NULL,
+  discount_pct DECIMAL(18, 4) NOT NULL,
+  refundable BOOLEAN NOT NULL,
+  advance_purchase_days INTEGER NOT NULL,
+  member_fence VARCHAR(255) NOT NULL,
+  restriction_cta BOOLEAN NOT NULL,
+  restriction_ctd BOOLEAN NOT NULL,
+  min_los INTEGER NOT NULL,
+  max_los INTEGER NOT NULL,
+  channel_scope VARCHAR(255) NOT NULL,
+  override_marker VARCHAR(255) NOT NULL,
+  package_components TEXT NOT NULL,
+  publish_readiness_state VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (parent_rate_plan_id) REFERENCES hotel_revenue_management_rate_plan(rate_plan_id)
+);
+
+CREATE TABLE hotel_revenue_management_channel_inventory (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  channel_inventory_id VARCHAR(255) NOT NULL,
+  channel_code VARCHAR(255) NOT NULL,
+  room_type_id VARCHAR(255) NOT NULL,
+  rate_plan_id VARCHAR(255) NOT NULL,
+  stay_date TIMESTAMP,
+  allotment_count INTEGER NOT NULL,
+  sold_count INTEGER NOT NULL,
+  available_count INTEGER NOT NULL,
+  stop_sell BOOLEAN NOT NULL,
+  release_back_days INTEGER NOT NULL,
+  blackout_window VARCHAR(255) NOT NULL,
+  lra_account_type VARCHAR(255) NOT NULL,
+  group_block_code VARCHAR(255) NOT NULL,
+  parity_state VARCHAR(255) NOT NULL,
+  parity_reason_code VARCHAR(255) NOT NULL,
+  publish_state VARCHAR(255) NOT NULL,
+  correction_type VARCHAR(255) NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (room_type_id) REFERENCES hotel_revenue_management_room_type(room_type_id),
+  FOREIGN KEY (rate_plan_id) REFERENCES hotel_revenue_management_rate_plan(rate_plan_id)
+);
+
+CREATE TABLE hotel_revenue_management_demand_forecast (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  demand_forecast_id VARCHAR(255) NOT NULL,
+  room_type_id VARCHAR(255) NOT NULL,
+  stay_date TIMESTAMP,
+  booking_window_days INTEGER NOT NULL,
+  segment VARCHAR(255) NOT NULL,
+  forecast_rooms INTEGER NOT NULL,
+  pickup_rooms INTEGER NOT NULL,
+  baseline_rooms INTEGER NOT NULL,
+  confidence_low_pct DECIMAL(18, 4) NOT NULL,
+  confidence_high_pct DECIMAL(18, 4) NOT NULL,
+  event_tag VARCHAR(255) NOT NULL,
+  impact_coefficient DECIMAL(18, 4) NOT NULL,
+  cancellation_curve TEXT NOT NULL,
+  no_show_curve TEXT NOT NULL,
+  override_reason VARCHAR(255) NOT NULL,
+  override_approved_by VARCHAR(255) NOT NULL,
+  override_expires_at TIMESTAMP,
+  freshness_state VARCHAR(255) NOT NULL,
+  forecast_version VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (room_type_id) REFERENCES hotel_revenue_management_room_type(room_type_id)
+);
+
+CREATE TABLE hotel_revenue_management_overbooking_policy (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  overbooking_policy_id VARCHAR(255) NOT NULL,
+  room_type_id VARCHAR(255) NOT NULL,
+  oversell_cap_pct DECIMAL(18, 4) NOT NULL,
+  arrival_day_protection BOOLEAN NOT NULL,
+  day_of_week_adjustment VARCHAR(255) NOT NULL,
+  recovery_hierarchy TEXT NOT NULL,
+  substitute_room_type_id VARCHAR(255) NOT NULL,
+  no_show_assumption_pct DECIMAL(18, 4) NOT NULL,
+  override_approved_by VARCHAR(255) NOT NULL,
+  override_expires_at TIMESTAMP,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (room_type_id) REFERENCES hotel_revenue_management_room_type(room_type_id)
+);
+
+CREATE TABLE hotel_revenue_management_yield_decision (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  yield_decision_id VARCHAR(255) NOT NULL,
+  room_type_id VARCHAR(255) NOT NULL,
+  rate_plan_id VARCHAR(255) NOT NULL,
+  stay_date TIMESTAMP,
+  decision_type VARCHAR(255) NOT NULL,
+  recommended_rate DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  displacement_value DECIMAL(18, 4) NOT NULL,
+  minimum_acceptable_rate DECIMAL(18, 4) NOT NULL,
+  channel_mix_recommendation TEXT NOT NULL,
+  explanation_bundle TEXT NOT NULL,
+  compset_version VARCHAR(255) NOT NULL,
+  rule_reference VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  confidence_score DECIMAL(18, 4) NOT NULL,
+  accepted_by VARCHAR(255) NOT NULL,
+  accepted_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (room_type_id) REFERENCES hotel_revenue_management_room_type(room_type_id),
+  FOREIGN KEY (rate_plan_id) REFERENCES hotel_revenue_management_rate_plan(rate_plan_id)
+);
+
+CREATE TABLE hotel_revenue_management_revenue_snapshot (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  revenue_snapshot_id VARCHAR(255) NOT NULL,
+  snapshot_period_start TIMESTAMP,
+  snapshot_period_end TIMESTAMP,
+  occupancy_pct DECIMAL(18, 4) NOT NULL,
+  adr_amount DECIMAL(18, 4) NOT NULL,
+  revpar_amount DECIMAL(18, 4) NOT NULL,
+  room_revenue_amount DECIMAL(18, 4) NOT NULL,
+  net_room_revenue_amount DECIMAL(18, 4) NOT NULL,
+  pickup_rooms INTEGER NOT NULL,
+  channel_mix TEXT NOT NULL,
+  oversell_exposure_rooms INTEGER NOT NULL,
+  kpi_definition_reference VARCHAR(255) NOT NULL,
+  lineage_reference TEXT NOT NULL,
+  snapshot_version VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE hotel_revenue_management_hotel_revenue_management_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  rule_scope VARCHAR(255) NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  approver_role VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE hotel_revenue_management_hotel_revenue_management_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  parameter_scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  market_code VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE hotel_revenue_management_hotel_revenue_management_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  compatibility_rule VARCHAR(255) NOT NULL,
+  migration_note TEXT NOT NULL,
+  registered_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE hotel_revenue_management_hotel_revenue_management_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  rule_reference VARCHAR(255) NOT NULL,
+  date_range_start TIMESTAMP,
+  date_range_end TIMESTAMP,
+  remediation_task TEXT NOT NULL,
+  evaluated_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE hotel_revenue_management_hotel_revenue_management_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  model_purpose VARCHAR(255) NOT NULL,
+  feature_inputs TEXT NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  retirement_policy TEXT NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE hotel_revenue_management_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE hotel_revenue_management_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE hotel_revenue_management_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

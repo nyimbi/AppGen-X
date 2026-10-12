@@ -74,6 +74,34 @@ HOTEL_REVENUE_MANAGEMENT_BUSINESS_TABLES = ('hotel_revenue_management_room_type'
  'hotel_revenue_management_hotel_revenue_management_control_assertion',
  'hotel_revenue_management_hotel_revenue_management_governed_model')
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+HOTEL_REVENUE_MANAGEMENT_TABLE_FIELDS = {
+    'hotel_revenue_management_room_type': ('id', 'tenant', 'room_type_id', 'room_type_name', 'room_class', 'bed_configuration', 'max_occupancy', 'physical_room_count', 'sellable_room_count', 'maintenance_holdback_count', 'complimentary_allotment_count', 'substitute_room_type_id', 'sellable_from', 'sellable_to', 'inventory_matrix_state', 'status', 'version', 'created_at', 'updated_at'),
+    'hotel_revenue_management_rate_plan': ('id', 'tenant', 'rate_plan_id', 'rate_plan_name', 'parent_rate_plan_id', 'rate_family', 'base_rate_amount', 'currency', 'bar_position', 'discount_pct', 'refundable', 'advance_purchase_days', 'member_fence', 'restriction_cta', 'restriction_ctd', 'min_los', 'max_los', 'channel_scope', 'override_marker', 'package_components', 'publish_readiness_state', 'effective_from', 'effective_to', 'status', 'version', 'created_at', 'updated_at'),
+    'hotel_revenue_management_channel_inventory': ('id', 'tenant', 'channel_inventory_id', 'channel_code', 'room_type_id', 'rate_plan_id', 'stay_date', 'allotment_count', 'sold_count', 'available_count', 'stop_sell', 'release_back_days', 'blackout_window', 'lra_account_type', 'group_block_code', 'parity_state', 'parity_reason_code', 'publish_state', 'correction_type', 'idempotency_key', 'status', 'version', 'created_at', 'updated_at'),
+    'hotel_revenue_management_demand_forecast': ('id', 'tenant', 'demand_forecast_id', 'room_type_id', 'stay_date', 'booking_window_days', 'segment', 'forecast_rooms', 'pickup_rooms', 'baseline_rooms', 'confidence_low_pct', 'confidence_high_pct', 'event_tag', 'impact_coefficient', 'cancellation_curve', 'no_show_curve', 'override_reason', 'override_approved_by', 'override_expires_at', 'freshness_state', 'forecast_version', 'status', 'version', 'created_at', 'updated_at'),
+    'hotel_revenue_management_overbooking_policy': ('id', 'tenant', 'overbooking_policy_id', 'room_type_id', 'oversell_cap_pct', 'arrival_day_protection', 'day_of_week_adjustment', 'recovery_hierarchy', 'substitute_room_type_id', 'no_show_assumption_pct', 'override_approved_by', 'override_expires_at', 'effective_from', 'effective_to', 'status', 'version', 'created_at', 'updated_at'),
+    'hotel_revenue_management_yield_decision': ('id', 'tenant', 'yield_decision_id', 'room_type_id', 'rate_plan_id', 'stay_date', 'decision_type', 'recommended_rate', 'currency', 'displacement_value', 'minimum_acceptable_rate', 'channel_mix_recommendation', 'explanation_bundle', 'compset_version', 'rule_reference', 'model_version', 'confidence_score', 'accepted_by', 'accepted_at', 'status', 'version', 'created_at', 'updated_at'),
+    'hotel_revenue_management_revenue_snapshot': ('id', 'tenant', 'revenue_snapshot_id', 'snapshot_period_start', 'snapshot_period_end', 'occupancy_pct', 'adr_amount', 'revpar_amount', 'room_revenue_amount', 'net_room_revenue_amount', 'pickup_rooms', 'channel_mix', 'oversell_exposure_rooms', 'kpi_definition_reference', 'lineage_reference', 'snapshot_version', 'status', 'version', 'created_at', 'updated_at'),
+    'hotel_revenue_management_hotel_revenue_management_policy_rule': ('id', 'tenant', 'rule_id', 'rule_name', 'predicate_text', 'rule_scope', 'ambiguity_flag', 'approver_role', 'effective_from', 'effective_to', 'compiled_hash', 'status', 'version', 'created_at', 'updated_at'),
+    'hotel_revenue_management_hotel_revenue_management_runtime_parameter': ('id', 'tenant', 'parameter_name', 'parameter_value', 'parameter_scope', 'bounded', 'market_code', 'effective_from', 'effective_to', 'status', 'version', 'created_at', 'updated_at'),
+    'hotel_revenue_management_hotel_revenue_management_schema_extension': ('id', 'tenant', 'extension_id', 'target_table', 'field_name', 'field_type', 'compatibility_rule', 'migration_note', 'registered_at', 'status', 'version', 'created_at', 'updated_at'),
+    'hotel_revenue_management_hotel_revenue_management_control_assertion': ('id', 'tenant', 'assertion_id', 'control_name', 'assertion_result', 'severity', 'rule_reference', 'date_range_start', 'date_range_end', 'remediation_task', 'evaluated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'hotel_revenue_management_hotel_revenue_management_governed_model': ('id', 'tenant', 'model_id', 'model_name', 'model_version', 'model_purpose', 'feature_inputs', 'governance_state', 'approved_by', 'approved_at', 'retirement_policy', 'status', 'version', 'created_at', 'updated_at'),
+    'hotel_revenue_management_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'hotel_revenue_management_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'hotel_revenue_management_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_HOTEL_REVENUE_MANAGEMENT_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _hotel_revenue_management_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return HOTEL_REVENUE_MANAGEMENT_TABLE_FIELDS.get(table, _HOTEL_REVENUE_MANAGEMENT_DEFAULT_FIELDS)
+
+
 def hotel_revenue_management_empty_state():
     return {'records': {}, 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
 
@@ -131,24 +159,11 @@ def hotel_revenue_management_parse_document_instruction(document, instruction):
     return {'ok': True, 'candidate_tables': HOTEL_REVENUE_MANAGEMENT_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
 def hotel_revenue_management_build_schema_contract():
-    table_contracts = (
-        {'table': 'hotel_revenue_management_room_type', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'hotel_revenue_management_rate_plan', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'hotel_revenue_management_channel_inventory', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'hotel_revenue_management_demand_forecast', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'hotel_revenue_management_overbooking_policy', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'hotel_revenue_management_yield_decision', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'hotel_revenue_management_revenue_snapshot', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'hotel_revenue_management_hotel_revenue_management_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'hotel_revenue_management_hotel_revenue_management_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'hotel_revenue_management_hotel_revenue_management_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'hotel_revenue_management_hotel_revenue_management_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'hotel_revenue_management_hotel_revenue_management_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'hotel_revenue_management_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'hotel_revenue_management_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'hotel_revenue_management_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table, 'fields': _hotel_revenue_management_table_fields(table), 'primary_key': ('id',), 'owned_by': PBC_KEY}
+        for table in HOTEL_REVENUE_MANAGEMENT_OWNED_TABLES
     )
-    return {'format': 'appgen.hotel-revenue-management-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/hotel_revenue_management/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': HOTEL_REVENUE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': HOTEL_REVENUE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'database_backends': HOTEL_REVENUE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': HOTEL_REVENUE_MANAGEMENT_OWNED_TABLES}
+    return {'format': 'appgen.hotel-revenue-management-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/hotel_revenue_management/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': HOTEL_REVENUE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(HOTEL_REVENUE_MANAGEMENT_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _hotel_revenue_management_table_fields(table)} for table in HOTEL_REVENUE_MANAGEMENT_OWNED_TABLES), 'datastore_backends': HOTEL_REVENUE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'database_backends': HOTEL_REVENUE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': HOTEL_REVENUE_MANAGEMENT_OWNED_TABLES}
 
 def hotel_revenue_management_build_service_contract():
     return {'format': 'appgen.hotel-revenue-management-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_room_type','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}

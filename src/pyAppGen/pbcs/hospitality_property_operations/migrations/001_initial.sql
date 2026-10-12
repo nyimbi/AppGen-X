@@ -1,15 +1,338 @@
-CREATE TABLE hospitality_property_operations_room_inventory (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hospitality_property_operations_reservation (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hospitality_property_operations_guest_stay (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hospitality_property_operations_housekeeping_task (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hospitality_property_operations_guest_request (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hospitality_property_operations_occupancy_snapshot (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hospitality_property_operations_rate_plan (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hospitality_property_operations_hospitality_property_operations_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hospitality_property_operations_hospitality_property_operations_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hospitality_property_operations_hospitality_property_operations_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hospitality_property_operations_hospitality_property_operations_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hospitality_property_operations_hospitality_property_operations_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hospitality_property_operations_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hospitality_property_operations_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE hospitality_property_operations_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS hospitality_property_operations;
+
+CREATE TABLE hospitality_property_operations_room_inventory (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  room_inventory_id VARCHAR(255) NOT NULL,
+  room_number VARCHAR(255) NOT NULL,
+  room_class VARCHAR(255) NOT NULL,
+  bed_configuration VARCHAR(255) NOT NULL,
+  floor_code VARCHAR(255) NOT NULL,
+  zone_code VARCHAR(255) NOT NULL,
+  view_class VARCHAR(255) NOT NULL,
+  accessibility_flags TEXT NOT NULL,
+  adjoining_room_code VARCHAR(255) NOT NULL,
+  amenity_kit_ready BOOLEAN NOT NULL,
+  minibar_status VARCHAR(255) NOT NULL,
+  crib_compatible BOOLEAN NOT NULL,
+  rollaway_compatible BOOLEAN NOT NULL,
+  operational_status VARCHAR(255) NOT NULL,
+  housekeeping_status VARCHAR(255) NOT NULL,
+  inspection_status VARCHAR(255) NOT NULL,
+  maintenance_hold_type VARCHAR(255) NOT NULL,
+  hold_severity VARCHAR(255) NOT NULL,
+  expected_return_at TIMESTAMP,
+  engineering_owner VARCHAR(255) NOT NULL,
+  guest_impact_flag BOOLEAN NOT NULL,
+  sellable BOOLEAN NOT NULL,
+  last_cleaned_at TIMESTAMP,
+  last_inspected_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE hospitality_property_operations_reservation (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  reservation_id VARCHAR(255) NOT NULL,
+  reservation_number VARCHAR(255) NOT NULL,
+  guest_reference VARCHAR(255) NOT NULL,
+  room_class VARCHAR(255) NOT NULL,
+  arrival_date TIMESTAMP,
+  departure_date TIMESTAMP,
+  arrival_window_start TIMESTAMP,
+  arrival_window_end TIMESTAMP,
+  source_channel VARCHAR(255) NOT NULL,
+  guarantee_status VARCHAR(255) NOT NULL,
+  deposit_amount DECIMAL(18, 4) NOT NULL,
+  card_hold_reference VARCHAR(255) NOT NULL,
+  cancellation_window_hours INTEGER NOT NULL,
+  quoted_rate DECIMAL(18, 4) NOT NULL,
+  special_requests TEXT NOT NULL,
+  group_block_code VARCHAR(255) NOT NULL,
+  no_show_expectation DECIMAL(18, 4) NOT NULL,
+  oversell_threshold INTEGER NOT NULL,
+  waitlist_position INTEGER NOT NULL,
+  reinstatement_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE hospitality_property_operations_guest_stay (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  guest_stay_id VARCHAR(255) NOT NULL,
+  stay_number VARCHAR(255) NOT NULL,
+  reservation_id VARCHAR(255) NOT NULL,
+  room_inventory_id VARCHAR(255) NOT NULL,
+  guest_reference VARCHAR(255) NOT NULL,
+  checked_in_at TIMESTAMP,
+  expected_departure_at TIMESTAMP,
+  actual_departure_at TIMESTAMP,
+  stay_state VARCHAR(255) NOT NULL,
+  room_move_count INTEGER NOT NULL,
+  extension_count INTEGER NOT NULL,
+  late_checkout_approved BOOLEAN NOT NULL,
+  early_departure_flag BOOLEAN NOT NULL,
+  stay_notes TEXT NOT NULL,
+  service_flags TEXT NOT NULL,
+  departure_readiness VARCHAR(255) NOT NULL,
+  post_departure_review_state VARCHAR(255) NOT NULL,
+  guest_preference_freshness TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (reservation_id) REFERENCES hospitality_property_operations_reservation(reservation_id),
+  FOREIGN KEY (room_inventory_id) REFERENCES hospitality_property_operations_room_inventory(room_inventory_id)
+);
+
+CREATE TABLE hospitality_property_operations_housekeeping_task (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  housekeeping_task_id VARCHAR(255) NOT NULL,
+  task_number VARCHAR(255) NOT NULL,
+  room_inventory_id VARCHAR(255) NOT NULL,
+  zone_code VARCHAR(255) NOT NULL,
+  shift_code VARCHAR(255) NOT NULL,
+  task_type VARCHAR(255) NOT NULL,
+  attendant_id VARCHAR(255) NOT NULL,
+  supervisor_id VARCHAR(255) NOT NULL,
+  due_window_start TIMESTAMP,
+  due_window_end TIMESTAMP,
+  arrival_dependency BOOLEAN NOT NULL,
+  expedite_flag BOOLEAN NOT NULL,
+  completion_blockers TEXT NOT NULL,
+  inspection_required BOOLEAN NOT NULL,
+  inspector_id VARCHAR(255) NOT NULL,
+  defect_category VARCHAR(255) NOT NULL,
+  rework_count INTEGER NOT NULL,
+  quality_score DECIMAL(18, 4) NOT NULL,
+  evidence_note TEXT NOT NULL,
+  pass_fail_result VARCHAR(255) NOT NULL,
+  vendor_reference VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (room_inventory_id) REFERENCES hospitality_property_operations_room_inventory(room_inventory_id)
+);
+
+CREATE TABLE hospitality_property_operations_guest_request (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  guest_request_id VARCHAR(255) NOT NULL,
+  request_number VARCHAR(255) NOT NULL,
+  guest_stay_id VARCHAR(255) NOT NULL,
+  room_inventory_id VARCHAR(255) NOT NULL,
+  guest_reference VARCHAR(255) NOT NULL,
+  request_category VARCHAR(255) NOT NULL,
+  urgency VARCHAR(255) NOT NULL,
+  promised_by_at TIMESTAMP,
+  fulfillment_team VARCHAR(255) NOT NULL,
+  assigned_attendant VARCHAR(255) NOT NULL,
+  guest_impact VARCHAR(255) NOT NULL,
+  service_recovery_flag BOOLEAN NOT NULL,
+  sla_breach_flag BOOLEAN NOT NULL,
+  escalation_level VARCHAR(255) NOT NULL,
+  breach_minutes INTEGER NOT NULL,
+  closeout_evidence TEXT NOT NULL,
+  guest_confirmed BOOLEAN NOT NULL,
+  reopened_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (guest_stay_id) REFERENCES hospitality_property_operations_guest_stay(guest_stay_id),
+  FOREIGN KEY (room_inventory_id) REFERENCES hospitality_property_operations_room_inventory(room_inventory_id)
+);
+
+CREATE TABLE hospitality_property_operations_occupancy_snapshot (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  occupancy_snapshot_id VARCHAR(255) NOT NULL,
+  snapshot_date TIMESTAMP,
+  time_bucket VARCHAR(255) NOT NULL,
+  property_code VARCHAR(255) NOT NULL,
+  stayovers INTEGER NOT NULL,
+  arrivals_pending INTEGER NOT NULL,
+  departures_pending INTEGER NOT NULL,
+  rooms_occupied INTEGER NOT NULL,
+  rooms_vacant_ready INTEGER NOT NULL,
+  rooms_dirty INTEGER NOT NULL,
+  rooms_blocked INTEGER NOT NULL,
+  out_of_service_count INTEGER NOT NULL,
+  same_day_turn_pressure DECIMAL(18, 4) NOT NULL,
+  occupancy_pct DECIMAL(18, 4) NOT NULL,
+  sellable_rooms INTEGER NOT NULL,
+  pickup_rooms INTEGER NOT NULL,
+  wash_rooms INTEGER NOT NULL,
+  forecast_occupancy_pct DECIMAL(18, 4) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE hospitality_property_operations_rate_plan (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rate_plan_id VARCHAR(255) NOT NULL,
+  plan_code VARCHAR(255) NOT NULL,
+  plan_name VARCHAR(255) NOT NULL,
+  room_class VARCHAR(255) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  base_rate DECIMAL(18, 4) NOT NULL,
+  length_of_stay_min INTEGER NOT NULL,
+  length_of_stay_max INTEGER NOT NULL,
+  closed_to_arrival BOOLEAN NOT NULL,
+  shoulder_night_control BOOLEAN NOT NULL,
+  amenity_package TEXT NOT NULL,
+  housekeeping_sell_threshold INTEGER NOT NULL,
+  contractual_restriction TEXT NOT NULL,
+  fence_reason TEXT NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  sell_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE hospitality_property_operations_hospitality_property_operations_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  rule_scope VARCHAR(255) NOT NULL,
+  policy_domain VARCHAR(255) NOT NULL,
+  approver_role VARCHAR(255) NOT NULL,
+  override_justification_required BOOLEAN NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE hospitality_property_operations_hospitality_property_operations_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value DECIMAL(18, 4) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  unit VARCHAR(255) NOT NULL,
+  lower_bound DECIMAL(18, 4) NOT NULL,
+  upper_bound DECIMAL(18, 4) NOT NULL,
+  effective_from TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE hospitality_property_operations_hospitality_property_operations_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  compatibility_state VARCHAR(255) NOT NULL,
+  migration_preview_hash VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE hospitality_property_operations_hospitality_property_operations_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  control_domain VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  failure_context TEXT NOT NULL,
+  remediation_task TEXT NOT NULL,
+  evidence_hash VARCHAR(255) NOT NULL,
+  evaluated_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE hospitality_property_operations_hospitality_property_operations_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  model_purpose TEXT NOT NULL,
+  training_window_start TIMESTAMP,
+  training_window_end TIMESTAMP,
+  owner_role VARCHAR(255) NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  retirement_state VARCHAR(255) NOT NULL,
+  decision_trace_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE hospitality_property_operations_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE hospitality_property_operations_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE hospitality_property_operations_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

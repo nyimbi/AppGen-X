@@ -1,15 +1,320 @@
-CREATE TABLE humanitarian_relief_operations_needs_assessment (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE humanitarian_relief_operations_aid_item (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE humanitarian_relief_operations_distribution_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE humanitarian_relief_operations_field_partner (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE humanitarian_relief_operations_protection_case (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE humanitarian_relief_operations_relief_shipment (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE humanitarian_relief_operations_donor_accountability (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE humanitarian_relief_operations_humanitarian_relief_operations_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE humanitarian_relief_operations_humanitarian_relief_operations_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE humanitarian_relief_operations_humanitarian_relief_operations_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE humanitarian_relief_operations_humanitarian_relief_operations_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE humanitarian_relief_operations_humanitarian_relief_operations_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE humanitarian_relief_operations_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE humanitarian_relief_operations_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE humanitarian_relief_operations_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS humanitarian_relief_operations;
+
+CREATE TABLE humanitarian_relief_operations_needs_assessment (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  needs_assessment_id VARCHAR(255) NOT NULL,
+  assessment_reference VARCHAR(255) NOT NULL,
+  assessment_mode VARCHAR(255) NOT NULL,
+  assessment_date TIMESTAMP NOT NULL,
+  site VARCHAR(255) NOT NULL,
+  settlement VARCHAR(255) NOT NULL,
+  displacement_status VARCHAR(255) NOT NULL,
+  household_reference VARCHAR(255) NOT NULL,
+  household_size INTEGER NOT NULL,
+  household_composition VARCHAR(255),
+  vulnerability_factors TEXT,
+  sector VARCHAR(255) NOT NULL,
+  sector_severity VARCHAR(255) NOT NULL,
+  assessor VARCHAR(255) NOT NULL,
+  assessor_confidence DECIMAL(18, 4),
+  coverage_status VARCHAR(255) NOT NULL,
+  verification_state VARCHAR(255) NOT NULL,
+  verified_by VARCHAR(255),
+  verified_at TIMESTAMP,
+  duplicate_flag BOOLEAN NOT NULL,
+  duplicate_review_state VARCHAR(255),
+  offline_captured BOOLEAN NOT NULL,
+  device_identifier VARCHAR(255),
+  local_captured_at TIMESTAMP,
+  synced_at TIMESTAMP,
+  conflict_state VARCHAR(255),
+  protection_screening_state VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE humanitarian_relief_operations_aid_item (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  aid_item_id VARCHAR(255) NOT NULL,
+  item_code VARCHAR(255) NOT NULL,
+  item_name VARCHAR(255) NOT NULL,
+  sector VARCHAR(255) NOT NULL,
+  category VARCHAR(255) NOT NULL,
+  unit_of_issue VARCHAR(255) NOT NULL,
+  kit_composition TEXT,
+  kit_version VARCHAR(255) NOT NULL,
+  substitution_policy VARCHAR(255),
+  hazard_flags VARCHAR(255),
+  expiry_controlled BOOLEAN NOT NULL,
+  cold_chain_required BOOLEAN NOT NULL,
+  storage_conditions VARCHAR(255),
+  handling_notes TEXT,
+  program_eligibility TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE humanitarian_relief_operations_distribution_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  distribution_event_id VARCHAR(255) NOT NULL,
+  distribution_reference VARCHAR(255) NOT NULL,
+  site VARCHAR(255) NOT NULL,
+  distribution_date TIMESTAMP NOT NULL,
+  modality VARCHAR(255) NOT NULL,
+  transfer_value DECIMAL(18, 4),
+  currency VARCHAR(255),
+  payout_channel VARCHAR(255),
+  voucher_validity_end TIMESTAMP,
+  redemption_state VARCHAR(255),
+  planned_quantity DECIMAL(18, 4) NOT NULL,
+  loaded_quantity DECIMAL(18, 4),
+  arrived_quantity DECIMAL(18, 4),
+  handed_over_quantity DECIMAL(18, 4),
+  returned_quantity DECIMAL(18, 4),
+  damaged_quantity DECIMAL(18, 4),
+  unaccounted_quantity DECIMAL(18, 4),
+  variance_reason VARCHAR(255),
+  reconciliation_state VARCHAR(255) NOT NULL,
+  site_capacity INTEGER,
+  planned_attendance INTEGER,
+  staffing_level INTEGER,
+  time_slots TEXT,
+  priority_lanes BOOLEAN NOT NULL,
+  accessibility_arrangements TEXT,
+  payout_failure_state VARCHAR(255),
+  recovery_state VARCHAR(255),
+  incident_id VARCHAR(255),
+  needs_assessment_id VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (needs_assessment_id) REFERENCES humanitarian_relief_operations_needs_assessment(needs_assessment_id)
+);
+
+CREATE TABLE humanitarian_relief_operations_field_partner (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  field_partner_id VARCHAR(255) NOT NULL,
+  partner_name VARCHAR(255) NOT NULL,
+  partner_type VARCHAR(255) NOT NULL,
+  due_diligence_state VARCHAR(255) NOT NULL,
+  coverage_area VARCHAR(255) NOT NULL,
+  staffing_depth INTEGER,
+  safeguarding_state VARCHAR(255) NOT NULL,
+  financial_controls_state VARCHAR(255),
+  prior_performance_score DECIMAL(18, 4),
+  agreement_reference VARCHAR(255),
+  agreement_expires_at TIMESTAMP,
+  capacity_notes TEXT,
+  control_gaps TEXT,
+  readiness_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE humanitarian_relief_operations_protection_case (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  protection_case_id VARCHAR(255) NOT NULL,
+  case_reference VARCHAR(255) NOT NULL,
+  case_type VARCHAR(255) NOT NULL,
+  survivor_reference VARCHAR(255),
+  vulnerability_category VARCHAR(255) NOT NULL,
+  risk_level VARCHAR(255) NOT NULL,
+  restricted_narrative TEXT,
+  referral_state VARCHAR(255) NOT NULL,
+  referral_provider VARCHAR(255),
+  referral_deadline TIMESTAMP,
+  case_owner VARCHAR(255) NOT NULL,
+  disclosure_level VARCHAR(255) NOT NULL,
+  access_audit_state VARCHAR(255),
+  follow_up_state VARCHAR(255),
+  closure_outcome VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE humanitarian_relief_operations_relief_shipment (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  relief_shipment_id VARCHAR(255) NOT NULL,
+  shipment_reference VARCHAR(255) NOT NULL,
+  origin_warehouse VARCHAR(255) NOT NULL,
+  destination_site VARCHAR(255) NOT NULL,
+  carrier VARCHAR(255),
+  dispatched_at TIMESTAMP,
+  arrived_at TIMESTAMP,
+  route_plan TEXT,
+  checkpoint_delays INTEGER,
+  proof_of_delivery_state VARCHAR(255) NOT NULL,
+  handover_witness VARCHAR(255),
+  route_exception_state VARCHAR(255),
+  route_exception_reason VARCHAR(255),
+  pause_state VARCHAR(255),
+  reroute_state VARCHAR(255),
+  stockout_risk_score DECIMAL(18, 4),
+  sustainability_indicator DECIMAL(18, 4),
+  incident_id VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE humanitarian_relief_operations_donor_accountability (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  donor_accountability_id VARCHAR(255) NOT NULL,
+  donor_name VARCHAR(255) NOT NULL,
+  grant_reference VARCHAR(255) NOT NULL,
+  earmark_geography VARCHAR(255),
+  earmark_sector VARCHAR(255),
+  earmark_modality VARCHAR(255),
+  earmark_cost_category VARCHAR(255),
+  target_population VARCHAR(255),
+  reporting_period_start TIMESTAMP,
+  reporting_period_end TIMESTAMP,
+  restricted_amount DECIMAL(18, 4),
+  consumed_amount DECIMAL(18, 4),
+  currency VARCHAR(255),
+  report_state VARCHAR(255) NOT NULL,
+  pack_finalized_at TIMESTAMP,
+  suppression_policy VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE humanitarian_relief_operations_humanitarian_relief_operations_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  policy_rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  example_text TEXT,
+  approver_role VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE humanitarian_relief_operations_humanitarian_relief_operations_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE humanitarian_relief_operations_humanitarian_relief_operations_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE humanitarian_relief_operations_humanitarian_relief_operations_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  remediation_task VARCHAR(255),
+  evaluated_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE humanitarian_relief_operations_humanitarian_relief_operations_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  model_type VARCHAR(255) NOT NULL,
+  coverage_scope VARCHAR(255) NOT NULL,
+  backtest_exception_count INTEGER NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE humanitarian_relief_operations_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE humanitarian_relief_operations_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE humanitarian_relief_operations_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

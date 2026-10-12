@@ -130,25 +130,43 @@ def food_safety_quality_compliance_run_advanced_assessment(state, payload=None):
 def food_safety_quality_compliance_parse_document_instruction(document, instruction):
     return {'ok': True, 'candidate_tables': FOOD_SAFETY_QUALITY_COMPLIANCE_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+FOOD_SAFETY_QUALITY_COMPLIANCE_TABLE_FIELDS = {
+    'food_safety_quality_compliance_haccp_plan': ('id', 'tenant', 'haccp_plan_id', 'plan_name', 'plan_version', 'facility_id', 'product_scope', 'process_flow_reference', 'hazard_analysis_summary', 'approved_controls', 'prerequisite_programs', 'reviewer_role', 'supersession_reason', 'effective_from', 'effective_to', 'is_active', 'status', 'version', 'created_at', 'updated_at'),
+    'food_safety_quality_compliance_critical_control_point': ('id', 'tenant', 'critical_control_point_id', 'haccp_plan_id', 'process_step', 'hazard_type', 'hazard_likelihood', 'hazard_severity', 'limit_type', 'limit_minimum', 'limit_maximum', 'limit_unit', 'monitoring_method', 'monitoring_frequency', 'responsible_role', 'verification_requirement', 'preventive_control', 'is_verified', 'status', 'version', 'created_at', 'updated_at'),
+    'food_safety_quality_compliance_inspection': ('id', 'tenant', 'inspection_id', 'facility_id', 'area_id', 'inspection_type', 'checklist_reference', 'inspector_role', 'severity', 'quality_score', 'finding_count', 'finding_text', 'action_required', 'is_repeat_finding', 'inspected_at', 'status', 'version', 'created_at', 'updated_at'),
+    'food_safety_quality_compliance_nonconformance': ('id', 'tenant', 'nonconformance_id', 'category', 'severity', 'process_step', 'product_impact', 'containment_action', 'root_cause_method', 'root_cause_text', 'corrective_action', 'preventive_action', 'owner_role', 'effectiveness_check', 'is_recurrence', 'due_date', 'closed_at', 'status', 'version', 'created_at', 'updated_at'),
+    'food_safety_quality_compliance_recall_event': ('id', 'tenant', 'recall_event_id', 'classification', 'recall_reason', 'affected_lot_count', 'distribution_scope', 'consumer_risk', 'regulator_notification_state', 'communication_plan', 'is_mock_drill', 'elapsed_minutes', 'initiated_at', 'completed_at', 'status', 'version', 'created_at', 'updated_at'),
+    'food_safety_quality_compliance_supplier_audit': ('id', 'tenant', 'supplier_audit_id', 'supplier_reference', 'commodity', 'audit_type', 'risk_rating', 'audit_score', 'finding_count', 'corrective_action', 'approval_state', 'is_repeat_finding', 'audited_at', 'expires_at', 'status', 'version', 'created_at', 'updated_at'),
+    'food_safety_quality_compliance_quality_hold': ('id', 'tenant', 'quality_hold_id', 'hold_reason', 'affected_lot_reference', 'held_quantity', 'quantity_unit', 'location_reference', 'release_criteria', 'disposition', 'approver_role', 'released_quantity', 'held_at', 'released_at', 'status', 'version', 'created_at', 'updated_at'),
+    'food_safety_quality_compliance_food_safety_quality_compliance_policy_rule': ('id', 'tenant', 'rule_id', 'rule_name', 'scope', 'predicate_text', 'ambiguity_flag', 'example_text', 'approver_role', 'effective_from', 'effective_to', 'compiled_hash', 'status', 'version', 'created_at', 'updated_at'),
+    'food_safety_quality_compliance_food_safety_quality_compliance_runtime_parameter': ('id', 'tenant', 'parameter_name', 'parameter_value', 'scope', 'bounded', 'effective_from', 'status', 'version', 'created_at', 'updated_at'),
+    'food_safety_quality_compliance_food_safety_quality_compliance_schema_extension': ('id', 'tenant', 'extension_id', 'target_table', 'field_name', 'field_type', 'registered_at', 'status', 'version', 'created_at', 'updated_at'),
+    'food_safety_quality_compliance_food_safety_quality_compliance_control_assertion': ('id', 'tenant', 'assertion_id', 'control_name', 'population_count', 'threshold_value', 'failing_record_count', 'owner_role', 'remediation_task', 'assertion_result', 'severity', 'is_recurrence', 'closure_evidence', 'evaluated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'food_safety_quality_compliance_food_safety_quality_compliance_governed_model': ('id', 'tenant', 'model_id', 'model_name', 'model_version', 'governance_state', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'food_safety_quality_compliance_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'food_safety_quality_compliance_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'food_safety_quality_compliance_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_FOOD_SAFETY_QUALITY_COMPLIANCE_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _food_safety_quality_compliance_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return FOOD_SAFETY_QUALITY_COMPLIANCE_TABLE_FIELDS.get(table, _FOOD_SAFETY_QUALITY_COMPLIANCE_DEFAULT_FIELDS)
+
+
 def food_safety_quality_compliance_build_schema_contract():
-    table_contracts = (
-        {'table': 'food_safety_quality_compliance_haccp_plan', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'food_safety_quality_compliance_critical_control_point', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'food_safety_quality_compliance_inspection', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'food_safety_quality_compliance_nonconformance', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'food_safety_quality_compliance_recall_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'food_safety_quality_compliance_supplier_audit', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'food_safety_quality_compliance_quality_hold', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'food_safety_quality_compliance_food_safety_quality_compliance_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'food_safety_quality_compliance_food_safety_quality_compliance_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'food_safety_quality_compliance_food_safety_quality_compliance_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'food_safety_quality_compliance_food_safety_quality_compliance_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'food_safety_quality_compliance_food_safety_quality_compliance_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'food_safety_quality_compliance_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'food_safety_quality_compliance_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'food_safety_quality_compliance_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table,
+         'fields': _food_safety_quality_compliance_table_fields(table),
+         'primary_key': ('id',),
+         'owned_by': PBC_KEY}
+        for table in FOOD_SAFETY_QUALITY_COMPLIANCE_OWNED_TABLES
     )
-    return {'format': 'appgen.food-safety-quality-compliance-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/food_safety_quality_compliance/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': FOOD_SAFETY_QUALITY_COMPLIANCE_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': FOOD_SAFETY_QUALITY_COMPLIANCE_ALLOWED_DATABASE_BACKENDS, 'database_backends': FOOD_SAFETY_QUALITY_COMPLIANCE_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': FOOD_SAFETY_QUALITY_COMPLIANCE_OWNED_TABLES}
+    return {'format': 'appgen.food-safety-quality-compliance-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/food_safety_quality_compliance/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': FOOD_SAFETY_QUALITY_COMPLIANCE_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(FOOD_SAFETY_QUALITY_COMPLIANCE_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _food_safety_quality_compliance_table_fields(table)} for table in FOOD_SAFETY_QUALITY_COMPLIANCE_OWNED_TABLES), 'datastore_backends': FOOD_SAFETY_QUALITY_COMPLIANCE_ALLOWED_DATABASE_BACKENDS, 'database_backends': FOOD_SAFETY_QUALITY_COMPLIANCE_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': FOOD_SAFETY_QUALITY_COMPLIANCE_OWNED_TABLES}
 
 def food_safety_quality_compliance_build_service_contract():
     return {'format': 'appgen.food-safety-quality-compliance-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_haccp_plan','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
