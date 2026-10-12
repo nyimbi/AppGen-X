@@ -39,6 +39,7 @@ CLINICAL_TRIALS_MANAGEMENT_STANDARD_FEATURE_KEYS = (
     "workbench",
     "agentic_document_instruction_intake",
     "governed_datastore_crud",
+    "ai_agent_task_assistance",
     "configuration_workbench",
     "continuous_release_assurance",
 )
