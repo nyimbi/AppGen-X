@@ -317,23 +317,83 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `SubscriptionBillingWorkbench`
+- `SubscriptionBillingDetail`
 
 ### Permissions
 
-- None declared
+- `subscription_billing.read`
+- `subscription_billing.create`
+- `subscription_billing.update`
+- `subscription_billing.approve`
+- `subscription_billing.admin`
 
 ### Configuration Keys
 
-- None declared
+- `SUBSCRIPTION_BILLING_DATABASE_URL`
+- `SUBSCRIPTION_BILLING_EVENT_TOPIC`
+- `SUBSCRIPTION_BILLING_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `plan_catalog`
+- `trial_management`
+- `subscription_lifecycle`
+- `subscription_change_orders`
+- `subscription_cancellation`
+- `addon_management`
+- `usage_metering`
+- `invoice_line_rating`
+- `rating_and_invoice_approval`
+- `credit_memos`
+- `payment_application`
+- `renewal_management`
+- `proration_and_crediting`
+- `dunning_management`
+- `payment_handoff`
+- `tax_handoff`
+- `ledger_handoff`
+- `entitlement_handoff`
+- `tenant_isolation`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_subscription_lifecycle`
+- `graph_relational_subscription_topology`
+- `multi_tenant_subscription_isolation`
+- `schema_evolution_resilient_billing_schema`
+- `probabilistic_churn_payment_revenue_scoring`
+- `counterfactual_plan_proration_simulation`
+- `temporal_mrr_arr_renewal_forecasting`
+- `autonomous_billing_exception_resolution`
+- `semantic_billing_instruction_parsing`
+- `predictive_billing_risk`
+- `self_healing_billing_route_selection`
+- `cryptographic_billing_proof`
+- `immutable_billing_audit_trail`
+- `dynamic_billing_policy_screening`
+- `automated_billing_control_testing`
+- `cross_system_payment_tax_ledger_entitlement_federation`
+- `chaos_tolerant_appgen_eventing`
+- `crypto_agility`
+- `carbon_aware_invoice_batch_scheduling`
+- `mathematical_revenue_optimization`
+- `discount_credit_allocation_mechanism_design`
+- `billing_anomaly_detection`
+- `stochastic_revenue_exposure_modeling`
+- `governed_ml_model_evidence`
+- `universal_api_async_streaming`
+- `distributed_systems_engineering`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

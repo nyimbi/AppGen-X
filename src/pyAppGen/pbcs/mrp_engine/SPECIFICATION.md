@@ -296,23 +296,127 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `MrpEngineWorkbench`
+- `MrpEngineDetail`
 
 ### Permissions
 
-- None declared
+- `mrp_engine.read`
+- `mrp_engine.create`
+- `mrp_engine.update`
+- `mrp_engine.approve`
+- `mrp_engine.admin`
 
 ### Configuration Keys
 
-- None declared
+- `MRP_ENGINE_DATABASE_URL`
+- `MRP_ENGINE_EVENT_TOPIC`
+- `MRP_ENGINE_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `bom_master`
+- `bom_revision_control`
+- `bom_component_control`
+- `alternate_bom`
+- `substitution_rule`
+- `item_planning_profile`
+- `item_source_rule`
+- `bom_explosion`
+- `demand_projection`
+- `demand_projection_lines`
+- `forecast_snapshots`
+- `sales_order_demand`
+- `inventory_projection`
+- `inventory_lot_projection`
+- `inventory_reservation_projection`
+- `quality_hold_projection`
+- `supply_demand_netting`
+- `safety_stock`
+- `safety_stock_policy`
+- `lot_sizing`
+- `lead_time_planning`
+- `scrap_yield_planning`
+- `capacity_buckets`
+- `work_center_capacity`
+- `supplier_lead_time_projection`
+- `production_capacity_projection`
+- `mrp_run_creation`
+- `run_items`
+- `run_buckets`
+- `scenario_versioning`
+- `shortage_detection`
+- `planned_production_orders`
+- `planned_purchase_suggestions`
+- `planned_transfer_orders`
+- `capacity_readiness`
+- `pegging`
+- `shortage_pegging`
+- `supply_demand_pegging`
+- `exception_messages`
+- `exception_resolution`
+- `release_routes`
+- `scenario_simulation`
+- `multi_site_isolation`
+- `idempotent_handlers`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `schema_extension`
+- `policy_screening`
+- `audit_trace`
+- `supply_availability_proof`
+- `federation_projection`
+- `carbon_planning_window`
+- `material_allocation_optimization`
+- `capacity_allocation`
+- `shortage_anomaly_signal`
+- `risk_model`
+- `shortage_forecast`
+- `semantic_instruction_parser`
+- `control_assertion`
+- `governed_model`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_planning_lifecycle`
+- `graph_relational_bom_topology`
+- `multi_tenant_site_planning_isolation`
+- `schema_evolution_resilient_planning_schema`
+- `probabilistic_shortage_capacity_risk_scoring`
+- `real_time_material_plan_analytics`
+- `counterfactual_planning_policy_simulation`
+- `temporal_demand_shortage_forecasting`
+- `autonomous_planning_exception_resolution`
+- `semantic_demand_bom_instruction_parsing`
+- `predictive_material_capacity_compliance_risk`
+- `self_healing_supply_route_selection`
+- `zero_knowledge_supply_availability_proof`
+- `immutable_planning_audit_trail`
+- `dynamic_mrp_policy_screening`
+- `automated_mrp_control_testing`
+- `universal_api_async_streaming`
+- `cross_system_mrp_federation`
+- `inventory_order_forecast_integration`
+- `decentralized_item_source_identity`
+- `chaos_engineered_planning_tolerance`
+- `quantum_resistant_planning_authorization`
+- `carbon_aware_planning_batching`
+- `algebraic_material_allocation_optimization`
+- `mechanism_design_capacity_allocation`
+- `information_theoretic_shortage_anomaly_detection`
+- `temporal_material_exposure_stochastic_modeling`
+- `distributed_systems_engineering`
+- `probabilistic_ml_shortage_risk`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `planning_mlops_governance`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

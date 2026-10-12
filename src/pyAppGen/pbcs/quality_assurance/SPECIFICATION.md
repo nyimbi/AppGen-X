@@ -298,23 +298,96 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `QualityAssuranceWorkbench`
+- `QualityAssuranceDetail`
 
 ### Permissions
 
-- None declared
+- `quality_assurance.read`
+- `quality_assurance.create`
+- `quality_assurance.update`
+- `quality_assurance.approve`
+- `quality_assurance.admin`
 
 ### Configuration Keys
 
-- None declared
+- `QUALITY_ASSURANCE_DATABASE_URL`
+- `QUALITY_ASSURANCE_EVENT_TOPIC`
+- `QUALITY_ASSURANCE_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `inspection_plan_master`
+- `sampling_plan`
+- `lot_batch_profile`
+- `inspection_test_library`
+- `inspection_result_capture`
+- `measurement_recording`
+- `spc_metrics`
+- `quality_hold_creation`
+- `lot_isolation`
+- `nonconformance_creation`
+- `defect_classification`
+- `root_cause_tracking`
+- `disposition_workflow`
+- `hold_release`
+- `capa_evidence`
+- `quality_release_certificate`
+- `calibration_management`
+- `procedure_revision_control`
+- `supplier_quality_management`
+- `customer_quality_management`
+- `audit_evidence_packets`
+- `compliance_package`
+- `production_projection`
+- `goods_receipt_projection`
+- `quality_analytics`
+- `multi_site_isolation`
+- `idempotent_handlers`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `schema_extension_catalog`
+- `governed_model_registry`
+- `control_assertions`
+- `seed_data`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_quality_lifecycle`
+- `graph_relational_quality_topology`
+- `multi_tenant_quality_isolation`
+- `schema_evolution_resilient_quality_schema`
+- `probabilistic_defect_escape_compliance_scoring`
+- `real_time_spc_quality_analytics`
+- `counterfactual_sampling_release_simulation`
+- `temporal_defect_escape_forecasting`
+- `autonomous_quality_exception_resolution`
+- `semantic_inspection_instruction_parsing`
+- `predictive_quality_compliance_risk`
+- `self_healing_quality_route_selection`
+- `zero_knowledge_quality_compliance_proof`
+- `immutable_quality_audit_trail`
+- `dynamic_quality_policy_screening`
+- `automated_quality_control_testing`
+- `universal_api_async_streaming`
+- `cross_system_quality_federation`
+- `production_inventory_supplier_integration`
+- `decentralized_lot_item_identity`
+- `chaos_engineered_quality_tolerance`
+- `quantum_resistant_quality_authorization`
+- `carbon_aware_inspection_scheduling`
+- `algebraic_inspection_allocation`
+- `mechanism_design_disposition_allocation`
+- `information_theoretic_defect_anomaly_detection`
+- `temporal_quality_exposure_stochastic_modeling`
+- `distributed_systems_engineering`
+- `probabilistic_ml_quality_risk`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `quality_mlops_governance`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

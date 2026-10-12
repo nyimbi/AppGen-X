@@ -379,23 +379,107 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `PredictiveDemandWorkbench`
+- `PredictiveDemandDetail`
 
 ### Permissions
 
-- None declared
+- `predictive_demand.read`
+- `predictive_demand.create`
+- `predictive_demand.update`
+- `predictive_demand.approve`
+- `predictive_demand.admin`
 
 ### Configuration Keys
 
-- None declared
+- `PREDICTIVE_DEMAND_DATABASE_URL`
+- `PREDICTIVE_DEMAND_EVENT_TOPIC`
+- `PREDICTIVE_DEMAND_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `forecast_models`
+- `forecast_runs`
+- `demand_signals`
+- `forecast_results`
+- `planning_horizons`
+- `forecast_drivers`
+- `consensus_adjustments`
+- `scenario_versions`
+- `shortage_risks`
+- `replenishment_recommendations`
+- `forecast_exceptions`
+- `model_drift_signals`
+- `planning_rules`
+- `planning_parameters`
+- `governed_model_evidence`
+- `forecast_audit_proofs`
+- `shipment_projection`
+- `inventory_pool_projection`
+- `operational_kpi_projection`
+- `baseline_forecast`
+- `planner_overrides`
+- `promotion_lift_controls`
+- `seasonality_controls`
+- `service_level_targets`
+- `safety_stock_guidance`
+- `shortage_detection`
+- `inventory_coverage`
+- `causal_drivers`
+- `model_governance`
+- `tenant_isolation`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `schema_contract`
+- `service_contract`
+- `release_evidence`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_demand_signal_lifecycle`
+- `owned_planning_schema_boundary`
+- `multi_tenant_planning_isolation`
+- `schema_evolution_resilient_demand_context`
+- `forecast_model_registry`
+- `demand_signal_ingestion`
+- `event_driven_signal_projection`
+- `forecast_run_orchestration`
+- `forecast_result_publication`
+- `inventory_shortage_detection`
+- `consensus_demand_planning`
+- `service_level_and_safety_stock_controls`
+- `causal_driver_modeling`
+- `promotion_and_override_adjustments`
+- `probabilistic_forecast_banding`
+- `counterfactual_scenario_simulation`
+- `temporal_replenishment_forecasting`
+- `autonomous_forecast_exception_resolution`
+- `semantic_planning_rule_understanding`
+- `predictive_material_constraint_risk`
+- `self_healing_model_retraining`
+- `cryptographic_forecast_proof`
+- `immutable_planning_audit_trail`
+- `dynamic_policy_screening`
+- `automated_forecast_control_testing`
+- `cross_system_order_inventory_operations_federation`
+- `appgen_x_outbox_inbox_eventing`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions_governance_evidence`
+- `configuration_schema`
+- `parameter_engine`
+- `rule_engine`
+- `seed_data`
+- `workbench_ui`
+- `governed_model_evidence`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

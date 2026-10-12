@@ -336,23 +336,103 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `WmsCoreWorkbench`
+- `WmsCoreDetail`
 
 ### Permissions
 
-- None declared
+- `wms_core.read`
+- `wms_core.create`
+- `wms_core.update`
+- `wms_core.approve`
+- `wms_core.admin`
 
 ### Configuration Keys
 
-- None declared
+- `WMS_CORE_DATABASE_URL`
+- `WMS_CORE_EVENT_TOPIC`
+- `WMS_CORE_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `warehouse_master`
+- `warehouse_zone_master`
+- `warehouse_calendar`
+- `warehouse_identity`
+- `bin_location_master`
+- `bin_attributes`
+- `bin_capacity_snapshots`
+- `inbound_receipt`
+- `receipt_lines`
+- `dock_door_registration`
+- `dock_appointment`
+- `putaway_task`
+- `putaway_confirmation`
+- `replenishment_task`
+- `replenishment_trigger`
+- `allocation_consumption`
+- `pick_wave_planning`
+- `pick_task_execution`
+- `pick_exception_management`
+- `pack_task_creation`
+- `cartonization`
+- `label_evidence`
+- `pack_station_management`
+- `staging`
+- `ship_confirmation`
+- `shipment_labels`
+- `cross_dock`
+- `cycle_count`
+- `cycle_count_lines`
+- `exception_management`
+- `labor_task_priority`
+- `edge_device_replay`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `retry_dead_letter_evidence`
+- `multi_warehouse_isolation`
+- `idempotent_handlers`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_warehouse_lifecycle`
+- `graph_relational_warehouse_topology`
+- `multi_tenant_warehouse_isolation`
+- `schema_evolution_resilient_warehouse_schema`
+- `probabilistic_putaway_pick_estimation`
+- `real_time_warehouse_execution_analytics`
+- `counterfactual_wave_labor_simulation`
+- `temporal_throughput_dock_forecasting`
+- `autonomous_exception_resolution`
+- `semantic_warehouse_event_parsing`
+- `predictive_congestion_damage_risk`
+- `self_healing_edge_route_selection`
+- `zero_knowledge_shipment_proof`
+- `immutable_warehouse_traceability_trail`
+- `dynamic_warehouse_policy_screening`
+- `automated_warehouse_control_testing`
+- `universal_api_async_streaming`
+- `cross_system_warehouse_federation`
+- `edge_device_network_integration`
+- `decentralized_warehouse_identity`
+- `chaos_engineered_edge_tolerance`
+- `quantum_resistant_warehouse_authorization`
+- `carbon_aware_wave_scheduling`
+- `algebraic_pick_path_optimization`
+- `mechanism_design_labor_allocation`
+- `information_theoretic_warehouse_anomaly_detection`
+- `temporal_throughput_stochastic_modeling`
+- `distributed_systems_engineering`
+- `probabilistic_ml_warehouse_risk`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `warehouse_mlops_governance`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

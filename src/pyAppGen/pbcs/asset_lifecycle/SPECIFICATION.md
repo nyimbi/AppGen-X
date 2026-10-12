@@ -317,23 +317,106 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `AssetLifecycleWorkbench`
+- `AssetLifecycleDetail`
 
 ### Permissions
 
-- None declared
+- `asset_lifecycle.read`
+- `asset_lifecycle.create`
+- `asset_lifecycle.update`
+- `asset_lifecycle.approve`
+- `asset_lifecycle.admin`
 
 ### Configuration Keys
 
-- None declared
+- `ASSET_LIFECYCLE_DATABASE_URL`
+- `ASSET_LIFECYCLE_EVENT_TOPIC`
+- `ASSET_LIFECYCLE_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `asset_master`
+- `asset_register`
+- `asset_acquisition`
+- `capitalization`
+- `purchase_receipt_capitalization`
+- `placed_in_service`
+- `component_assets`
+- `component_history`
+- `asset_location_assignment`
+- `asset_custodian_assignment`
+- `cost_center_assignment`
+- `depreciation_books`
+- `book_assignment`
+- `depreciation_methods`
+- `depreciation_schedule`
+- `depreciation_schedule_lines`
+- `depreciation_run`
+- `depreciation_journal`
+- `asset_transfer`
+- `asset_revaluation`
+- `asset_impairment`
+- `impairment_indicator_management`
+- `maintenance_adjustment`
+- `insurance_warranty`
+- `insurance_claims`
+- `lease_right_of_use`
+- `asset_retirement`
+- `disposal_proceeds`
+- `disposal_gain_loss`
+- `journal_events`
+- `event_outbox`
+- `event_inbox`
+- `idempotent_handlers`
+- `retry_dead_letter`
+- `physical_verification`
+- `approval_controls`
+- `audit_trail`
+- `permissions`
+- `owned_datastore_boundary`
+- `release_gate`
+- `seed_data`
+- `appgen_event_contract`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_asset_lifecycle`
+- `graph_relational_asset_topology`
+- `multi_tenant_asset_book_isolation`
+- `schema_evolution_resilient_asset_schema`
+- `probabilistic_useful_life_estimation`
+- `real_time_depreciation_valuation_projection`
+- `counterfactual_lifecycle_optimization`
+- `temporal_asset_value_risk_forecasting`
+- `autonomous_impairment_revaluation`
+- `semantic_capitalization_parsing`
+- `predictive_maintenance_asset_risk`
+- `self_healing_depreciation_journal_routing`
+- `zero_knowledge_asset_audit_proof`
+- `immutable_asset_regulatory_trail`
+- `dynamic_policy_compliance_screening`
+- `automated_fixed_asset_control_testing`
+- `universal_api_async_streaming`
+- `cross_system_asset_federation`
+- `insurance_warranty_network_integration`
+- `decentralized_asset_identity`
+- `chaos_engineered_depreciation_tolerance`
+- `quantum_resistant_asset_authorization`
+- `carbon_aware_asset_scheduling`
+- `algebraic_asset_portfolio_optimization`
+- `mechanism_design_asset_allocation`
+- `information_theoretic_asset_anomaly_detection`
+- `temporal_asset_valuation_stochastic_modeling`
+- `distributed_systems_engineering`
+- `probabilistic_ml_asset_risk`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `financial_mlops_governance`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

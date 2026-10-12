@@ -290,25 +290,17 @@ This appendix is generated from the package manifest and is release-gated so the
 ### UI Fragments
 
 - `ProductionControlWorkbench`
-- `WorkCenterConsole`
-- `RoutingEditor`
-- `ProductionOrderBoard`
-- `FiniteScheduleBoard`
-- `DowntimeConsole`
-- `OeeDashboard`
-- `ProductionRuleStudio`
-- `ProductionParameterConsole`
-- `ProductionConfigurationPanel`
+- `ProductionControlDetail`
+- `ProductionExecutionLedger`
+- `ProductionQualityConsole`
 
 ### Permissions
 
-- `production_control.audit`
-- `production_control.complete`
-- `production_control.configure`
-- `production_control.event`
-- `production_control.operate`
 - `production_control.read`
-- `production_control.schedule`
+- `production_control.create`
+- `production_control.update`
+- `production_control.approve`
+- `production_control.admin`
 
 ### Configuration Keys
 

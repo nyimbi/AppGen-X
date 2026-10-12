@@ -304,23 +304,99 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `InventoryPositioningWorkbench`
+- `InventoryPositioningDetail`
 
 ### Permissions
 
-- None declared
+- `inventory_positioning.read`
+- `inventory_positioning.create`
+- `inventory_positioning.update`
+- `inventory_positioning.approve`
+- `inventory_positioning.admin`
 
 ### Configuration Keys
 
-- None declared
+- `INVENTORY_POSITIONING_DATABASE_URL`
+- `INVENTORY_POSITIONING_EVENT_TOPIC`
+- `INVENTORY_POSITIONING_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `item_master`
+- `item_attributes`
+- `item_substitution`
+- `lot_master`
+- `serial_tracking`
+- `inventory_node_master`
+- `node_calendar`
+- `node_capacity`
+- `node_identity`
+- `inventory_position`
+- `position_snapshots`
+- `goods_receipt`
+- `receipt_lines`
+- `inventory_adjustment`
+- `cycle_count`
+- `availability_to_promise`
+- `allocation_creation`
+- `allocation_lines`
+- `allocation_release`
+- `reservation_ttl`
+- `quality_hold`
+- `in_transit_projection`
+- `lot_serial_traceability`
+- `multi_node_isolation`
+- `substitution_availability`
+- `backorder_management`
+- `replenishment_planning`
+- `replenishment_signal`
+- `inventory_reconciliation`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `retry_dead_letter_evidence`
+- `idempotent_handlers`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_inventory_lifecycle`
+- `graph_relational_inventory_topology`
+- `multi_tenant_stock_isolation`
+- `schema_evolution_resilient_inventory_schema`
+- `probabilistic_availability_projection`
+- `real_time_atp_ctp_convergence`
+- `counterfactual_allocation_policy_simulation`
+- `temporal_demand_stockout_forecasting`
+- `autonomous_inventory_reconciliation`
+- `semantic_inventory_event_parsing`
+- `predictive_stockout_spoilage_risk`
+- `self_healing_allocation_route_selection`
+- `zero_knowledge_stock_proof`
+- `immutable_inventory_traceability_trail`
+- `dynamic_inventory_policy_screening`
+- `automated_inventory_control_testing`
+- `universal_api_async_streaming`
+- `cross_node_inventory_federation`
+- `warehouse_order_quality_integration`
+- `decentralized_node_lot_identity`
+- `chaos_engineered_node_tolerance`
+- `quantum_resistant_inventory_authorization`
+- `carbon_aware_fulfillment_scheduling`
+- `algebraic_allocation_optimization`
+- `mechanism_design_channel_allocation`
+- `information_theoretic_inventory_anomaly_detection`
+- `temporal_stock_exposure_stochastic_modeling`
+- `distributed_systems_engineering`
+- `probabilistic_ml_stock_risk`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `inventory_mlops_governance`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

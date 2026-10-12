@@ -394,23 +394,133 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `DamCoreWorkbench`
+- `DamCoreAssetWorkbench`
+- `DamCoreRightsWorkbench`
+- `DamCoreOperationsWorkbench`
+- `DamCoreLifecycleConsole`
+- `DamCoreReleaseWorkbench`
 
 ### Permissions
 
-- None declared
+- `dam_core.asset.write`
+- `dam_core.audit`
+- `dam_core.configure`
+- `dam_core.event.consume`
+- `dam_core.metadata.write`
+- `dam_core.rendition.write`
+- `dam_core.rights.evaluate`
+- `dam_core.rights.manage`
+- `dam_core.workflow`
 
 ### Configuration Keys
 
-- None declared
+- `database_backend`
+- `event_topic`
+- `retry_limit`
+- `default_storage_tier`
+- `allowed_mime_types`
+- `rendition_profiles`
+- `rights_default_decision`
+- `metadata_taxonomies`
+- `default_locale`
+- `workbench_limit`
 
 ### Standard Features
 
-- None declared
+- `asset_lifecycle`
+- `asset_versioning`
+- `asset_binary_storage`
+- `asset_binary_fingerprint`
+- `asset_collections`
+- `asset_rendition`
+- `transcoding_job`
+- `transcode_route_selection`
+- `rendition_profiles`
+- `metadata_tag`
+- `metadata_taxonomy`
+- `metadata_enrichment`
+- `semantic_annotation`
+- `rights_policy`
+- `rights_decision`
+- `license_agreement`
+- `usage_entitlement`
+- `product_published_dependency`
+- `campaign_projection`
+- `channel_asset_projection`
+- `asset_workflow_case`
+- `asset_review_task`
+- `asset_exception`
+- `asset_quality_score`
+- `asset_usage_snapshot`
+- `asset_usage_forecast`
+- `duplicate_candidate_detection`
+- `asset_lineage`
+- `tenant_isolation`
+- `cryptographic_asset_proofs`
+- `policy_screening`
+- `control_assertions`
+- `federation_views`
+- `resilience_drills`
+- `crypto_epoch_rotation`
+- `carbon_aware_transcoding`
+- `rendition_cost_simulation`
+- `route_allocation`
+- `anomaly_signals`
+- `exposure_forecasts`
+- `identity_attestation`
+- `governed_model_registry`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `workbench`
+- `immutable_audit`
+- `release_audit_evidence`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_asset_lifecycle`
+- `owned_media_schema_boundary`
+- `multi_tenant_asset_isolation`
+- `schema_evolution_resilient_asset_metadata`
+- `content_addressed_binary_fingerprinting`
+- `rendition_transcoding_pipeline`
+- `semantic_metadata_tagging`
+- `asset_collection_lifecycle`
+- `license_entitlement_lifecycle`
+- `metadata_taxonomy_enrichment_annotation_lifecycle`
+- `asset_workflow_review_exception_lifecycle`
+- `asset_usage_duplicate_lineage_lifecycle`
+- `intake_readiness_gate`
+- `asset_lifecycle_state_machine`
+- `rights_policy_enforcement`
+- `product_published_projection_handling`
+- `probabilistic_rights_and_quality_scoring`
+- `counterfactual_rendition_cost_simulation`
+- `temporal_asset_usage_forecasting`
+- `autonomous_asset_exception_resolution`
+- `semantic_asset_instruction_parsing`
+- `predictive_asset_governance_risk`
+- `self_healing_transcode_route_selection`
+- `cryptographic_asset_proof`
+- `immutable_asset_audit_trail`
+- `dynamic_policy_screening`
+- `automated_control_testing`
+- `appgen_x_outbox_inbox_eventing`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions_governance_evidence`
+- `configuration_schema`
+- `parameter_engine`
+- `rule_engine`
+- `seed_data`
+- `workbench_ui`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

@@ -386,23 +386,119 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `PersonnelIdentityWorkbench`
+- `PersonnelIdentityDetail`
 
 ### Permissions
 
-- None declared
+- `personnel_identity.read`
+- `personnel_identity.create`
+- `personnel_identity.update`
+- `personnel_identity.approve`
+- `personnel_identity.admin`
 
 ### Configuration Keys
 
-- None declared
+- `PERSONNEL_IDENTITY_DATABASE_URL`
+- `PERSONNEL_IDENTITY_EVENT_TOPIC`
+- `PERSONNEL_IDENTITY_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `department_master`
+- `department_hierarchy`
+- `position_management`
+- `job_catalog`
+- `employee_master`
+- `employee_contact_management`
+- `employee_document_management`
+- `employment_lifecycle`
+- `employment_status_history`
+- `manager_hierarchy`
+- `org_assignment`
+- `work_location_management`
+- `cost_center_assignment`
+- `org_chart`
+- `role_assignment`
+- `role_catalog`
+- `role_change`
+- `role_separation_check`
+- `identity_attribute`
+- `identity_verification`
+- `identity_proof`
+- `segregation_of_duties`
+- `identity_assurance`
+- `access_policy_projection`
+- `provisioning_handler`
+- `provisioning_replay`
+- `directory_projection`
+- `org_chart_projection`
+- `employee_events`
+- `multi_entity_isolation`
+- `privacy_residency_retention`
+- `privacy_consent`
+- `residency_rules`
+- `retention_policy`
+- `policy_screening`
+- `audit_trace`
+- `federation_projection`
+- `directory_search`
+- `approval_review`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `schema_extension`
+- `control_assertion`
+- `governed_model`
+- `carbon_processing_window`
+- `role_access_optimization`
+- `manager_capacity_allocation`
+- `identity_anomaly_signal`
+- `workforce_risk_model`
+- `workforce_risk_forecast`
+- `semantic_event_parser`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_workforce_identity_lifecycle`
+- `graph_relational_org_identity_topology`
+- `multi_tenant_workforce_identity_isolation`
+- `schema_evolution_resilient_identity_schema`
+- `probabilistic_identity_assurance_access_risk`
+- `real_time_directory_org_access_analytics`
+- `counterfactual_org_access_policy_simulation`
+- `temporal_workforce_access_risk_forecasting`
+- `autonomous_role_access_exception_recommendations`
+- `semantic_personnel_event_parsing`
+- `predictive_attrition_access_compliance_risk`
+- `self_healing_provisioning_route_selection`
+- `zero_knowledge_personnel_eligibility_proof`
+- `immutable_workforce_identity_audit_trail`
+- `dynamic_personnel_policy_screening`
+- `automated_identity_control_testing`
+- `universal_api_async_streaming`
+- `cross_system_people_federation`
+- `identity_provider_directory_integration`
+- `decentralized_employee_identity`
+- `chaos_engineered_provisioning_tolerance`
+- `quantum_resistant_identity_authorization`
+- `carbon_aware_identity_processing`
+- `algebraic_role_access_optimization`
+- `mechanism_design_manager_role_allocation`
+- `information_theoretic_identity_anomaly_detection`
+- `temporal_workforce_risk_stochastic_modeling`
+- `distributed_systems_engineering`
+- `probabilistic_ml_workforce_risk`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `people_mlops_governance`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

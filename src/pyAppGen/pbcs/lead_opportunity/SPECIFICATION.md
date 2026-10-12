@@ -328,23 +328,115 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `LeadOpportunityWorkbench`
+- `LeadOpportunityDetail`
+- `LeadEnrichmentBoard`
+- `DedupResolutionQueue`
+- `QualificationDecisionLedger`
+- `QuoteProposalHandoffPanel`
+- `WinLossOutcomeBoard`
+- `SalesCoachingPanel`
 
 ### Permissions
 
-- None declared
+- `lead_opportunity.read`
+- `lead_opportunity.create`
+- `lead_opportunity.update`
+- `lead_opportunity.approve`
+- `lead_opportunity.admin`
 
 ### Configuration Keys
 
-- None declared
+- `LEAD_OPPORTUNITY_DATABASE_URL`
+- `LEAD_OPPORTUNITY_EVENT_TOPIC`
+- `LEAD_OPPORTUNITY_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `lead_capture`
+- `lead_enrichment`
+- `lead_deduplication`
+- `lead_dedup_case_resolution`
+- `lead_assignment`
+- `lead_scoring`
+- `lead_qualification`
+- `qualification_decisions`
+- `opportunity_creation`
+- `pipeline_stage_management`
+- `opportunity_stage_history`
+- `pipeline_management`
+- `account_hierarchy`
+- `sales_activity_history`
+- `forecast_amount_rollup`
+- `forecast_snapshots`
+- `quote_proposal_handoff`
+- `win_loss_management`
+- `opportunity_outcomes`
+- `audit_evidence`
+- `coaching_insights`
+- `next_best_action`
+- `customer_segment_projection`
+- `customer_update_handoff`
+- `tenant_isolation`
+- `appgen_event_contract`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `owned_datastore_boundary`
+- `release_gate`
+- `governed_model_registry`
+- `seed_data`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_revenue_lifecycle`
+- `owned_pipeline_schema_boundary`
+- `multi_tenant_revenue_isolation`
+- `schema_evolution_resilient_lead_context`
+- `lead_capture_and_deduplication`
+- `lead_enrichment_snapshot_execution`
+- `lead_dedup_case_resolution`
+- `qualification_decision_execution`
+- `account_hierarchy_management`
+- `lead_scoring_and_qualification`
+- `opportunity_stage_management`
+- `quote_proposal_handoff_execution`
+- `win_loss_outcome_management`
+- `sales_activity_timeline`
+- `sales_coaching_insight_generation`
+- `pipeline_forecast_rollup`
+- `customer_segment_projection_handling`
+- `probabilistic_win_likelihood_scoring`
+- `counterfactual_deal_velocity_simulation`
+- `temporal_pipeline_forecasting`
+- `autonomous_next_best_action`
+- `semantic_interaction_understanding`
+- `predictive_churn_and_slippage_risk`
+- `self_healing_pipeline_assignment`
+- `cryptographic_pipeline_proof`
+- `immutable_pipeline_audit_trail`
+- `dynamic_sales_policy_screening`
+- `automated_revenue_control_testing`
+- `cross_system_customer_segment_billing_federation`
+- `appgen_x_outbox_inbox_eventing`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions_governance_evidence`
+- `configuration_schema`
+- `parameter_engine`
+- `rule_engine`
+- `seed_data`
+- `workbench_ui`
+- `governed_model_evidence`
+- `owned_schema_contract_generation`
+- `service_contract_generation`
+- `release_evidence_contract_generation`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

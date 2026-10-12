@@ -440,6 +440,7 @@ This appendix is generated from the package manifest and is release-gated so the
 - `service_ticketing.assignment.write`
 - `service_ticketing.escalation.write`
 - `service_ticketing.customer.update`
+- `service_ticketing.csat.write`
 - `service_ticketing.event.consume`
 - `service_ticketing.configure`
 - `service_ticketing.audit`

@@ -310,23 +310,126 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `Customer360Workbench`
+- `Customer360Detail`
 
 ### Permissions
 
-- None declared
+- `customer_360.read`
+- `customer_360.create`
+- `customer_360.update`
+- `customer_360.approve`
+- `customer_360.admin`
 
 ### Configuration Keys
 
-- None declared
+- `CUSTOMER_360_DATABASE_URL`
+- `CUSTOMER_360_EVENT_TOPIC`
+- `CUSTOMER_360_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `customer_profile`
+- `profile_versioning`
+- `profile_attribute_management`
+- `identity_resolution`
+- `identity_evidence`
+- `identity_match_review`
+- `survivorship_rules`
+- `relationship_graph`
+- `households`
+- `profile_merge_case`
+- `merge_decisions`
+- `customer_exception_management`
+- `remediation_tasks`
+- `consent_management`
+- `consent_policy_management`
+- `privacy_request_management`
+- `communication_preferences`
+- `preference_history`
+- `privacy_policy_screening`
+- `touchpoint_capture`
+- `channel_interactions`
+- `engagement_event_ingestion`
+- `engagement_scoring`
+- `timeline_projection`
+- `timeline_event_materialization`
+- `channel_history`
+- `rfm_metrics`
+- `sentiment_signal`
+- `churn_signal`
+- `customer_value_snapshots`
+- `customer_health_signals`
+- `churn_forecasting`
+- `segment_projection`
+- `segment_membership`
+- `customer_read_model`
+- `commerce_projection`
+- `billing_projection`
+- `service_projection`
+- `loyalty_projection`
+- `notification_projection`
+- `api_projection`
+- `cryptographic_profile_proofs`
+- `control_assertions`
+- `federation_views`
+- `resilience_drills`
+- `crypto_epoch_rotation`
+- `carbon_aware_processing`
+- `segment_optimization`
+- `channel_allocation`
+- `anomaly_signals`
+- `exposure_forecasts`
+- `identity_attestation`
+- `governed_model_registry`
+- `event_outbox`
+- `event_inbox`
+- `idempotent_handlers`
+- `retry_dead_letter`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `owned_datastore_boundary`
+- `release_gate`
+- `seed_data`
+- `appgen_event_contract`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_customer_lifecycle`
+- `graph_relational_customer_topology`
+- `multi_tenant_customer_isolation`
+- `schema_evolution_resilient_customer_schema`
+- `probabilistic_identity_consent_engagement_scoring`
+- `real_time_customer_timeline_analytics`
+- `counterfactual_preference_segment_simulation`
+- `temporal_customer_value_churn_forecasting`
+- `autonomous_customer_data_exception_resolution`
+- `semantic_customer_instruction_parsing`
+- `predictive_customer_health_risk`
+- `self_healing_customer_event_route_selection`
+- `zero_knowledge_customer_profile_proof`
+- `immutable_customer_audit_trail`
+- `dynamic_customer_privacy_policy_screening`
+- `automated_customer_control_testing`
+- `universal_api_async_streaming`
+- `cross_system_customer_federation`
+- `commerce_billing_service_loyalty_integration`
+- `decentralized_customer_identity`
+- `chaos_engineered_customer_tolerance`
+- `quantum_resistant_customer_authorization`
+- `carbon_aware_customer_processing`
+- `algebraic_customer_segment_optimization`
+- `mechanism_design_channel_allocation`
+- `information_theoretic_engagement_anomaly_detection`
+- `temporal_customer_exposure_stochastic_modeling`
+- `distributed_systems_engineering`
+- `probabilistic_ml_customer_health`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `customer_mlops_governance`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

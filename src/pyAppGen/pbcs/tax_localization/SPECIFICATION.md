@@ -308,23 +308,105 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `TaxLocalizationWorkbench`
+- `TaxLocalizationDetail`
 
 ### Permissions
 
-- None declared
+- `tax_localization.read`
+- `tax_localization.create`
+- `tax_localization.update`
+- `tax_localization.approve`
+- `tax_localization.admin`
 
 ### Configuration Keys
 
-- None declared
+- `TAX_LOCALIZATION_DATABASE_URL`
+- `TAX_LOCALIZATION_EVENT_TOPIC`
+- `TAX_LOCALIZATION_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `jurisdiction_master`
+- `jurisdiction_topology`
+- `authority_channel`
+- `authority_submission`
+- `filing_calendar`
+- `nexus_profile`
+- `tax_rule_authoring`
+- `tax_rule_impact_analysis`
+- `product_taxability`
+- `counterparty_tax_profile`
+- `exemption_review`
+- `quote_time_calculation`
+- `calculation_lines`
+- `invoice_tax_recording`
+- `filing_preparation`
+- `filing_lines`
+- `exemption_certificate_validation`
+- `cross_border_duties`
+- `duty_classification`
+- `landed_cost_components`
+- `reverse_charge`
+- `withholding_tax`
+- `environmental_levy`
+- `digital_tax_document`
+- `document_parsing`
+- `rule_versioning`
+- `effective_date_compilation`
+- `multi_entity_isolation`
+- `tax_reconciliation`
+- `tax_remittance_batch`
+- `payment_evidence`
+- `refund_claims`
+- `tax_adjustments`
+- `tax_notices`
+- `approval_controls`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `idempotent_handlers`
+- `retry_dead_letter`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_tax_lifecycle`
+- `graph_relational_jurisdiction_topology`
+- `multi_tenant_compliance_isolation`
+- `schema_evolution_resilient_tax_schema`
+- `probabilistic_taxability_classification`
+- `real_time_tax_quote_convergence`
+- `counterfactual_tax_policy_simulation`
+- `temporal_tax_liability_forecasting`
+- `autonomous_filing_reconciliation`
+- `semantic_tax_document_parsing`
+- `predictive_jurisdiction_risk_scoring`
+- `self_healing_filing_route_selection`
+- `zero_knowledge_tax_audit_proof`
+- `immutable_regulatory_trail`
+- `dynamic_tax_policy_screening`
+- `automated_tax_control_testing`
+- `universal_api_async_streaming`
+- `cross_border_tax_federation`
+- `digital_document_network_integration`
+- `decentralized_tax_identity`
+- `chaos_engineered_authority_tolerance`
+- `quantum_resistant_tax_authorization`
+- `carbon_aware_filing_scheduling`
+- `algebraic_tax_remittance_optimization`
+- `mechanism_design_tax_allocation`
+- `information_theoretic_tax_anomaly_detection`
+- `temporal_tax_exposure_stochastic_modeling`
+- `distributed_systems_engineering`
+- `probabilistic_ml_tax_risk`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `tax_mlops_governance`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

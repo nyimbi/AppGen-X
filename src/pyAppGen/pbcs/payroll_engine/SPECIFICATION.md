@@ -374,23 +374,128 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `PayrollEngineWorkbench`
+- `PayrollEngineDetail`
 
 ### Permissions
 
-- None declared
+- `payroll_engine.read`
+- `payroll_engine.create`
+- `payroll_engine.update`
+- `payroll_engine.approve`
+- `payroll_engine.admin`
 
 ### Configuration Keys
 
-- None declared
+- `PAYROLL_ENGINE_DATABASE_URL`
+- `PAYROLL_ENGINE_EVENT_TOPIC`
+- `PAYROLL_ENGINE_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `payroll_calendar`
+- `payroll_period`
+- `pay_group_management`
+- `legal_entity_payroll`
+- `payroll_run_creation`
+- `payroll_run_worker_roster`
+- `payroll_run_approval`
+- `payroll_run_lock`
+- `worker_projection`
+- `worker_pay_profile`
+- `worker_bank_instruction`
+- `labor_hours_ingestion`
+- `labor_hours_lines`
+- `earning_code_catalog`
+- `earning_calculation`
+- `gross_pay_calculation`
+- `overtime_calculation`
+- `gross_pay_component`
+- `payslip_lines`
+- `tax_withholding_projection`
+- `deduction_management`
+- `deduction_rule`
+- `deduction_arrear`
+- `garnishment_order`
+- `benefit_allocation`
+- `benefit_plan`
+- `employer_contribution`
+- `tax_basis_projection`
+- `net_pay_calculation`
+- `net_pay_distribution`
+- `payment_instruction`
+- `payment_batch_projection`
+- `journal_request_projection`
+- `payslip_generation`
+- `approval_workflow`
+- `payroll_posting`
+- `filing_preparation`
+- `filing_line`
+- `payment_batch_readiness`
+- `journal_handoff_readiness`
+- `retro_adjustment_plan`
+- `off_cycle_payroll`
+- `payroll_exception`
+- `policy_screening`
+- `audit_trace`
+- `payroll_proof`
+- `federation_projection`
+- `carbon_batch_window`
+- `batch_optimization`
+- `cash_allocation`
+- `anomaly_signal`
+- `payroll_risk_model`
+- `cash_forecast`
+- `semantic_instruction_parser`
+- `multi_entity_isolation`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `schema_extension`
+- `control_assertion`
+- `governed_model`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_payroll_lifecycle`
+- `graph_relational_compensation_topology`
+- `multi_tenant_payroll_isolation`
+- `schema_evolution_resilient_payroll_schema`
+- `probabilistic_payroll_anomaly_compliance_scoring`
+- `real_time_gross_to_net_analytics`
+- `counterfactual_pay_policy_simulation`
+- `temporal_payroll_cash_forecasting`
+- `autonomous_payroll_exception_resolution`
+- `semantic_payroll_instruction_parsing`
+- `predictive_payroll_compliance_liquidity_risk`
+- `self_healing_payment_filing_route_selection`
+- `zero_knowledge_net_pay_filing_proof`
+- `immutable_payroll_audit_trail`
+- `dynamic_payroll_policy_screening`
+- `automated_payroll_control_testing`
+- `universal_api_async_streaming`
+- `cross_system_payroll_federation`
+- `treasury_tax_ledger_integration`
+- `decentralized_worker_pay_identity`
+- `chaos_engineered_payroll_tolerance`
+- `quantum_resistant_payroll_authorization`
+- `carbon_aware_payroll_batching`
+- `algebraic_payroll_batch_optimization`
+- `mechanism_design_cash_allocation`
+- `information_theoretic_payroll_anomaly_detection`
+- `temporal_payroll_exposure_stochastic_modeling`
+- `distributed_systems_engineering`
+- `probabilistic_ml_payroll_risk`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `payroll_mlops_governance`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

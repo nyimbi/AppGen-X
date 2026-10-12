@@ -347,23 +347,128 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `EnterprisePimWorkbench`
+- `EnterprisePimDetail`
 
 ### Permissions
 
-- None declared
+- `enterprise_pim.read`
+- `enterprise_pim.create`
+- `enterprise_pim.update`
+- `enterprise_pim.approve`
+- `enterprise_pim.admin`
 
 ### Configuration Keys
 
-- None declared
+- `ENTERPRISE_PIM_DATABASE_URL`
+- `ENTERPRISE_PIM_EVENT_TOPIC`
+- `ENTERPRISE_PIM_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `enterprise_taxonomies`
+- `taxonomy_nodes`
+- `taxonomy_hierarchy`
+- `taxonomy_relationships`
+- `taxonomy_publication`
+- `classification_candidates`
+- `product_attribute_definitions`
+- `attribute_groups`
+- `attribute_value_options`
+- `typed_attribute_validation`
+- `attribute_inheritance`
+- `attribute_validation_rules`
+- `attribute_quality_signals`
+- `localized_attribute_overrides`
+- `multilingual_content`
+- `localized_content_versions`
+- `translation_memory`
+- `locale_fallback`
+- `content_completeness_scores`
+- `validation_workflows`
+- `validation_workflow_steps`
+- `approval_decisions`
+- `approval_controls`
+- `publication_readiness_checks`
+- `schema_accepted_dependency_handling`
+- `dependency_projections`
+- `media_dependency_projection`
+- `price_dependency_projection`
+- `tax_dependency_projection`
+- `inventory_dependency_projection`
+- `search_dependency_projection`
+- `catalog_publication_projection`
+- `channel_publication_policy`
+- `product_relationships`
+- `bundle_definitions`
+- `variant_families`
+- `assortment_assignments`
+- `data_steward_assignments`
+- `exceptions`
+- `exception_resolution`
+- `appgen_x_outbox_inbox_eventing`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `schema_extension`
+- `audit_trace`
+- `master_data_proof`
+- `policy_screening`
+- `federation_projection`
+- `carbon_enrichment_window`
+- `taxonomy_optimization`
+- `workflow_allocation`
+- `anomaly_signal`
+- `enrichment_forecast`
+- `risk_model`
+- `semantic_instruction_parser`
+- `control_assertion`
+- `workbench`
+- `immutable_audit`
+- `governed_model_evidence`
+- `attribute_group_option_validation_lifecycle`
+- `translation_memory_and_locale_fallback_lifecycle`
+- `relationship_bundle_variant_assortment_lifecycle`
+- `data_steward_and_exception_resolution_lifecycle`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_enterprise_pim_lifecycle`
+- `graph_relational_taxonomy_topology`
+- `multi_tenant_pim_isolation`
+- `schema_evolution_resilient_attribute_model`
+- `multilingual_inheritance_localization`
+- `probabilistic_content_completeness_scoring`
+- `counterfactual_taxonomy_publication_simulation`
+- `temporal_enrichment_readiness_forecasting`
+- `autonomous_enrichment_exception_resolution`
+- `semantic_pim_instruction_parsing`
+- `predictive_validation_risk`
+- `self_healing_dependency_route_selection`
+- `cryptographic_master_data_proof`
+- `immutable_pim_audit_trail`
+- `dynamic_pim_policy_screening`
+- `automated_pim_control_testing`
+- `schema_accepted_dependency_handling`
+- `universal_api_async_streaming`
+- `cross_system_catalog_media_pricing_tax_inventory_federation`
+- `appgen_x_outbox_inbox_eventing`
+- `idempotent_inbox_handlers`
+- `retry_dead_letter_evidence`
+- `permissions_governance_evidence`
+- `tenant_isolation`
+- `chaos_tolerant_pim_operations`
+- `crypto_agility`
+- `carbon_aware_enrichment_scheduling`
+- `mathematical_taxonomy_optimization`
+- `attribute_workflow_allocation_mechanism_design`
+- `pim_anomaly_detection`
+- `stochastic_enrichment_exposure_modeling`
+- `governed_ml_model_evidence`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

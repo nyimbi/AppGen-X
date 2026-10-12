@@ -329,16 +329,22 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- `CompositionEngineWorkbench`
-- `CompositionWorkspaceBoard`
-- `ComponentRegistryConsole`
-- `UiFragmentCatalog`
-- `LayoutBindingDesigner`
-- `CompositionPublicationConsole`
-- `CompositionReleaseEvidencePanel`
+- `CompositionWorkbench`
+- `WorkspaceSelector`
+- `SelectionImpactPreview`
+- `ComponentRegistry`
+- `FragmentCatalog`
+- `LayoutCanvas`
+- `ReleaseRehearsalPanel`
+- `ReleaseEvidenceBoard`
 - `CompositionRuleStudio`
 - `CompositionParameterConsole`
 - `CompositionConfigurationPanel`
+- `AssistantPreviewWorkbench`
+- `CompositionWizardLauncher`
+- `CompositionControlCenter`
+- `DocumentationMatrix`
+- `SecurityReviewPanel`
 
 ### Permissions
 
@@ -364,17 +370,23 @@ This appendix is generated from the package manifest and is release-gated so the
 
 - `workspace_management`
 - `pbc_selection`
+- `selection_impact_preview`
 - `component_registry`
 - `ui_fragment_registry`
 - `layout_binding`
 - `page_composition`
 - `route_map_generation`
+- `smoke_plan_synthesis`
+- `artifact_lineage`
 - `permission_mapping`
 - `schema_compatibility_check`
 - `composition_dsl_generation`
 - `package_registration_plan`
 - `publication_workflow`
+- `release_rehearsal`
 - `release_gate_evidence`
+- `documentation_matrix`
+- `security_review_panel`
 - `preview_rendering`
 - `responsive_layout_rules`
 - `fragment_slotting`
@@ -386,6 +398,13 @@ This appendix is generated from the package manifest and is release-gated so the
 - `parameter_engine`
 - `seed_data`
 - `workbench`
+- `workbench_forms`
+- `guided_wizards`
+- `control_center`
+- `assistant_document_preview`
+- `agent_competency_catalog`
+- `agent_routing_and_handoff`
+- `release_note_generation`
 - `audit_evidence`
 - `release_gate`
 - `package_registration_validation`

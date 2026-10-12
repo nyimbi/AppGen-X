@@ -448,23 +448,105 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `ProductCatalogPimWorkbench`
+- `ProductCatalogPimDetail`
 
 ### Permissions
 
-- None declared
+- `product_catalog_pim.read`
+- `product_catalog_pim.create`
+- `product_catalog_pim.update`
+- `product_catalog_pim.approve`
+- `product_catalog_pim.admin`
 
 ### Configuration Keys
 
-- None declared
+- `PRODUCT_CATALOG_PIM_DATABASE_URL`
+- `PRODUCT_CATALOG_PIM_EVENT_TOPIC`
+- `PRODUCT_CATALOG_PIM_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `product_master`
+- `product_family`
+- `variant_model`
+- `variant_options`
+- `sku_governance`
+- `taxonomy_assignment`
+- `taxonomy_hierarchy`
+- `category_management`
+- `attribute_schema`
+- `attribute_validation`
+- `attribute_value_options`
+- `enrichment_completeness`
+- `enrichment_tasking`
+- `localized_content`
+- `localization_memory`
+- `seo_metadata`
+- `media_reference`
+- `media_rights`
+- `price_metadata`
+- `channel_pricebooks`
+- `channel_projection`
+- `channel_policy`
+- `assortment_management`
+- `catalog_publication`
+- `catalog_syndication`
+- `product_lifecycle`
+- `approval_workflow`
+- `sellability_rules`
+- `compliance_claims`
+- `restricted_region_screening`
+- `data_quality_scores`
+- `product_relationships`
+- `bundle_definitions`
+- `search_index_signal`
+- `forecast_signal`
+- `appgen_x_outbox_inbox_eventing`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `workbench`
+- `owned_table_boundary`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_product_lifecycle`
+- `graph_relational_product_topology`
+- `multi_tenant_catalog_isolation`
+- `schema_evolution_resilient_attribute_schema`
+- `probabilistic_sellability_compliance_scoring`
+- `real_time_catalog_readiness_analytics`
+- `counterfactual_publication_simulation`
+- `temporal_content_sellability_forecasting`
+- `autonomous_enrichment_exception_resolution`
+- `semantic_product_instruction_parsing`
+- `predictive_product_readiness_risk`
+- `self_healing_publication_route_selection`
+- `zero_knowledge_catalog_publication_proof`
+- `immutable_catalog_audit_trail`
+- `dynamic_product_policy_screening`
+- `automated_catalog_control_testing`
+- `universal_api_async_streaming`
+- `cross_system_product_federation`
+- `commerce_inventory_tax_content_integration`
+- `decentralized_product_identity`
+- `chaos_engineered_catalog_tolerance`
+- `quantum_resistant_product_authorization`
+- `carbon_aware_catalog_publication`
+- `algebraic_catalog_optimization`
+- `mechanism_design_channel_allocation`
+- `information_theoretic_content_anomaly_detection`
+- `temporal_sellability_exposure_stochastic_modeling`
+- `distributed_systems_engineering`
+- `probabilistic_ml_product_readiness`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `product_mlops_governance`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

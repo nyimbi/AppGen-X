@@ -361,6 +361,8 @@ This appendix is generated from the package manifest and is release-gated so the
 - `hash_chain`
 - `signature_metadata`
 - `event_sealing`
+- `evidence_envelope_validation`
+- `canonical_payload_digest`
 - `chain_verification`
 - `tamper_detection`
 - `source_pbc_indexing`
@@ -370,10 +372,12 @@ This appendix is generated from the package manifest and is release-gated so the
 - `legal_hold`
 - `forensic_export`
 - `proof_bundle`
+- `release_notarization_bundle`
 - `control_assertion`
 - `release_blocking_controls`
 - `payload_digest`
 - `disclosure_minimization`
+- `immutable_correction_lineage`
 - `idempotent_handlers`
 - `retry_dead_letter`
 - `permissions`

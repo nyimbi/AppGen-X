@@ -249,23 +249,95 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `CheckoutWorkbench`
+- `CartConsole`
+- `CheckoutSessionConsole`
+- `CheckoutRuleStudio`
+- `InboxOutboxMonitor`
+- `AssistantPreviewWorkbench`
+- `ControlCenter`
 
 ### Permissions
 
-- None declared
+- `checkout_processing.cart`
+- `checkout_processing.checkout`
+- `checkout_processing.pricing`
+- `checkout_processing.promotion`
+- `checkout_processing.inventory`
+- `checkout_processing.payment`
+- `checkout_processing.risk`
+- `checkout_processing.event.consume`
+- `checkout_processing.configure`
+- `checkout_processing.audit`
 
 ### Configuration Keys
 
-- None declared
+- `CHECKOUT_PROCESSING_DATABASE_URL`
+- `CHECKOUT_PROCESSING_EVENT_TOPIC`
+- `CHECKOUT_PROCESSING_DEFAULT_CURRENCY`
+- `CHECKOUT_PROCESSING_DEFAULT_COUNTRY`
+- `CHECKOUT_PROCESSING_RETRY_LIMIT`
+- `CHECKOUT_PROCESSING_WORKBENCH_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `cart`
+- `cart_line`
+- `checkout_session`
+- `promotion_redemption`
+- `pricing_handoff`
+- `tax_handoff`
+- `inventory_reservation_handoff`
+- `payment_intent_handoff`
+- `fraud_risk_hook`
+- `address_validation`
+- `shipping_option_validation`
+- `tenant_isolation`
+- `appgen_x_outbox_inbox_eventing`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `workbench`
+- `immutable_audit`
+- `governed_model_evidence`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_checkout_lifecycle`
+- `graph_relational_cart_topology`
+- `multi_tenant_checkout_isolation`
+- `schema_evolution_resilient_checkout_schema`
+- `probabilistic_conversion_scoring`
+- `probabilistic_checkout_risk_scoring`
+- `real_time_checkout_analytics`
+- `checkout_fulfillment_payment_finalization`
+- `counterfactual_promotion_fulfillment_simulation`
+- `temporal_abandonment_forecasting`
+- `autonomous_checkout_exception_resolution`
+- `semantic_checkout_instruction_parsing`
+- `predictive_checkout_risk`
+- `self_healing_checkout_route_selection`
+- `cryptographic_checkout_proof`
+- `immutable_checkout_audit_trail`
+- `dynamic_checkout_policy_screening`
+- `automated_checkout_control_testing`
+- `cross_system_checkout_federation`
+- `appgen_x_outbox_inbox_eventing`
+- `idempotent_inbox_handlers`
+- `retry_dead_letter_evidence`
+- `chaos_tolerant_checkout_operations`
+- `crypto_agility`
+- `carbon_aware_fulfillment_option_selection`
+- `mathematical_checkout_optimization`
+- `promotion_allocation_mechanism_design`
+- `checkout_anomaly_detection`
+- `stochastic_checkout_exposure_modeling`
+- `governed_ml_model_evidence`
+- `permissions_governance_evidence`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

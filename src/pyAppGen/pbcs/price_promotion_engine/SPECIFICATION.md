@@ -428,23 +428,113 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `PricePromotionEngineWorkbench`
+- `PricePromotionEngineDetail`
+- `CustomerPriceAgreementBoard`
+- `TradePromotionPlanner`
+- `PriceExceptionCaseQueue`
+- `PromotionAccrualSettlementConsole`
 
 ### Permissions
 
-- None declared
+- `price_promotion_engine.read`
+- `price_promotion_engine.create`
+- `price_promotion_engine.update`
+- `price_promotion_engine.approve`
+- `price_promotion_engine.admin`
 
 ### Configuration Keys
 
-- None declared
+- `PRICE_PROMOTION_ENGINE_DATABASE_URL`
+- `PRICE_PROMOTION_ENGINE_EVENT_TOPIC`
+- `PRICE_PROMOTION_ENGINE_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `price_list_management`
+- `price_book_management`
+- `price_rule_catalog`
+- `customer_channel_currency_prices`
+- `promotion_lifecycle`
+- `promotion_rules`
+- `coupon_management`
+- `promotion_eligibility`
+- `promotion_stacking_exclusions`
+- `campaign_budgets`
+- `promotion_approvals`
+- `loyalty_tier_management`
+- `price_decision_history`
+- `price_simulations`
+- `margin_guardrails`
+- `performance_telemetry`
+- `contextual_price_quotes`
+- `promotion_redemption_validation`
+- `volume_breaks`
+- `customer_price_agreements`
+- `trade_promotion_plans`
+- `price_exception_cases`
+- `promotion_accruals`
+- `promotion_settlements`
+- `currency_region_constraints`
+- `customer_segment_inputs`
+- `forecast_signal_inputs`
+- `checkout_handoff`
+- `tenant_isolation`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_pricing_lifecycle`
+- `owned_price_schema_boundary`
+- `price_list_and_book_management`
+- `multi_tenant_price_isolation`
+- `schema_evolution_resilient_price_context`
+- `contextual_price_quote_optimization`
+- `promotion_stacking_and_exclusion_engine`
+- `coupon_and_eligibility_governance`
+- `campaign_budget_and_approval_evidence`
+- `loyalty_tier_price_personalization`
+- `volume_break_and_contract_price_support`
+- `customer_price_agreement_execution`
+- `trade_promotion_planning_execution`
+- `promotion_accrual_and_settlement_execution`
+- `price_exception_case_management`
+- `forecast_signal_price_adjustment`
+- `customer_segment_price_adjustment`
+- `probabilistic_margin_elasticity_scoring`
+- `counterfactual_promotion_margin_simulation`
+- `simulation_margin_guardrail_evidence`
+- `temporal_price_effectivity_forecasting`
+- `autonomous_price_exception_resolution`
+- `semantic_promotion_instruction_parsing`
+- `predictive_margin_and_demand_risk`
+- `self_healing_price_decision_selection`
+- `cryptographic_price_decision_proof`
+- `immutable_price_audit_trail`
+- `dynamic_price_policy_screening`
+- `automated_promotion_control_testing`
+- `performance_telemetry_evidence`
+- `cross_system_customer_forecast_checkout_federation`
+- `appgen_x_outbox_inbox_eventing`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions_governance_evidence`
+- `configuration_schema`
+- `parameter_engine`
+- `rule_engine`
+- `generated_schema_and_service_contracts`
+- `seed_data`
+- `workbench_ui`
+- `governed_model_evidence`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

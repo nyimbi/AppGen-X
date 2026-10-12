@@ -13017,17 +13017,20 @@ def _normalized_specification_token(value: object) -> str:
 
 def _pbc_specification_manifest_traceability(text: str, key: str) -> dict:
     manifest = PBC_CATALOG[key]
-    # Four of the nine traceability fields live on the descriptor, which reads
-    # them from the package, and five (`ui_fragments`, `permissions`,
-    # `configuration`, `standard_features`, `advanced_capabilities`) live only on
-    # the catalog literal. Reading the literal for all nine made the check
-    # vacuous exactly where it mattered: the three reference PBCs had their
-    # `tables`, `emits`, and `consumes` literals deleted, so the loop ran over an
-    # empty set, `missing` stayed empty, and the check certified a specification
-    # against nothing. `gl_core` passed while its appendix and its package were
-    # never compared. A check that loops over a deleted literal is the "gate that
-    # never ran" again, so the descriptor is consulted first and the literal is
-    # the fallback for the five fields the descriptor does not carry.
+    # All nine traceability fields now come from the descriptor, which reads each
+    # one from the package. Before, only four did, and the other five
+    # (`ui_fragments`, `permissions`, `configuration`, `standard_features`,
+    # `advanced_capabilities`) were read from the catalog literal -- which the
+    # descriptor migration had emptied. That made the check vacuous twice over:
+    # the three reference PBCs' `tables`/`emits`/`consumes` literals were deleted,
+    # so the loop ran over an empty set and certified a specification against
+    # nothing (`gl_core` passed while its appendix and its package were never
+    # compared), and the five literal-only fields were empty for every package, so
+    # the sectioned appendices said "None declared" while the packages declared
+    # thirteen fragments. A check that loops over a deleted literal is the "gate
+    # that never ran" again. The literal survives only as the fallback for an
+    # entry whose package cannot be imported, which the descriptor also falls back
+    # to, so a package that imports is checked against itself.
     descriptor = _pbc_descriptor(key, manifest)
     normalized_text = _normalized_specification_token(text)
     field_results = []
@@ -14849,10 +14852,51 @@ def _package_event_types(key: str) -> tuple[tuple[str, ...], tuple[str, ...]]:
     return emits, consumes
 
 
+# The declared surfaces whose runtime constant, where it exists, is the package's
+# own statement of them. `permissions` and `configuration` have no runtime
+# constant in any of the 147 packages, so the manifest is their only source and
+# they are absent here. Every constant listed either agrees with the manifest or
+# is the superset: `standard_features` agrees in 147 of 147, `advanced_capabilities`
+# in 146 (the manifest for `field_service_management` omits four capabilities the
+# runtime defines), and `ui_fragments` in 99 of 100 (the manifest for
+# `clinical_trials_management` omits four fragments). Where the two disagree the
+# runtime is the surface the code actually exposes, so it wins.
+_PBC_SURFACE_RUNTIME_CONSTANTS = {
+    "ui_fragments": "UI_FRAGMENT_KEYS",
+    "standard_features": "STANDARD_FEATURE_KEYS",
+    "advanced_capabilities": "RUNTIME_CAPABILITY_KEYS",
+}
+
+
+def _package_declared_surface(
+    key: str, field: str, manifest: dict, runtime: object | None
+) -> tuple:
+    """Return a declared surface from the package: runtime constant, else manifest.
+
+    These five surfaces are what the specification's traceability appendix claims
+    to cover, and the appendix must be checked against the package, not against
+    the catalog literal. The literal was the only source the check used to read,
+    and the descriptor migration had emptied it, so the check passed while the
+    appendix said "None declared" for a package with thirteen fragments. Reading
+    the package makes that vacuity impossible: an empty declared set can only mean
+    the package really declares nothing.
+    """
+    suffix = _PBC_SURFACE_RUNTIME_CONSTANTS.get(field)
+    if suffix and runtime is not None:
+        values = getattr(runtime, f"{key.upper()}_{suffix}", None)
+        if values:
+            return tuple(values)
+    return tuple(manifest.get(field, ()) or ())
+
+
 def _pbc_descriptor(key: str, pbc: dict) -> dict:
     manifest = _package_manifest(key)
     tables = tuple(manifest.get("tables", ()) or pbc.get("tables", ()))
     runtime_emits, runtime_consumes = _package_event_types(key)
+    try:
+        runtime = importlib.import_module(f"pyAppGen.pbcs.{key}.runtime")
+    except ImportError:
+        runtime = None
     emits = runtime_emits or tuple(manifest.get("emits", ()) or pbc.get("emits", ()))
     consumes = runtime_consumes or tuple(manifest.get("consumes", ()) or pbc.get("consumes", ()))
     # `tables` is the manifest's declared inventory in logical spelling, which
@@ -14906,6 +14950,23 @@ def _pbc_descriptor(key: str, pbc: dict) -> dict:
         "template": pbc["template"],
         "package_directory": f"pbcs/{key}",
         "selectable": True,
+        # The five declared surfaces the specification's traceability appendix
+        # claims to cover. They live on the descriptor so the check reads the
+        # package's own statement of them rather than the catalog literal, which
+        # the descriptor migration emptied. Carried here rather than read
+        # directly in the check because the descriptor is the one place a PBC's
+        # declared surface is assembled, and the check must not grow a second
+        # path to the package that can drift from this one.
+        **{
+            field: _package_declared_surface(key, field, manifest, runtime)
+            for field in (
+                "ui_fragments",
+                "permissions",
+                "configuration",
+                "standard_features",
+                "advanced_capabilities",
+            )
+        },
     }
 
 

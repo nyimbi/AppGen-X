@@ -297,23 +297,83 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `PaymentOrchestrationWorkbench`
+- `PaymentOrchestrationDetail`
 
 ### Permissions
 
-- None declared
+- `payment_orchestration.read`
+- `payment_orchestration.create`
+- `payment_orchestration.update`
+- `payment_orchestration.approve`
+- `payment_orchestration.admin`
 
 ### Configuration Keys
 
-- None declared
+- `PAYMENT_ORCHESTRATION_DATABASE_URL`
+- `PAYMENT_ORCHESTRATION_EVENT_TOPIC`
+- `PAYMENT_ORCHESTRATION_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `gateway_registry`
+- `gateway_health_evidence`
+- `payment_tokens`
+- `payment_intents`
+- `authorization_controls`
+- `authorization_capture_refund_void`
+- `provider_routing`
+- `fraud_handoff`
+- `settlement_execution`
+- `settlement_evidence`
+- `payout_scheduling`
+- `dispute_chargeback_workflow`
+- `reconciliation_handoff`
+- `tenant_isolation`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `schema_extension`
+- `audit_trace`
+- `payment_proof`
+- `policy_screening`
+- `control_assertion`
+- `governed_model`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_payment_lifecycle`
+- `graph_relational_payment_topology`
+- `multi_tenant_payment_isolation`
+- `schema_evolution_resilient_payment_schema`
+- `probabilistic_authorization_fraud_settlement_scoring`
+- `counterfactual_gateway_routing_simulation`
+- `temporal_authorization_settlement_forecasting`
+- `autonomous_payment_exception_resolution`
+- `semantic_payment_instruction_parsing`
+- `predictive_payment_risk`
+- `self_healing_gateway_route_selection`
+- `cryptographic_payment_proof`
+- `immutable_payment_audit_trail`
+- `dynamic_payment_policy_screening`
+- `automated_payment_control_testing`
+- `cross_system_checkout_billing_ledger_fraud_federation`
+- `chaos_tolerant_appgen_eventing`
+- `crypto_agility`
+- `carbon_aware_settlement_window`
+- `mathematical_gateway_optimization`
+- `provider_allocation_mechanism_design`
+- `payment_anomaly_detection`
+- `stochastic_payment_exposure_modeling`
+- `governed_ml_model_evidence`
+- `universal_api_async_streaming`
+- `distributed_systems_engineering`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

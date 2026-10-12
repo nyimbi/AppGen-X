@@ -365,23 +365,111 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `ProcurementSourcingWorkbench`
+- `ProcurementSourcingDetail`
 
 ### Permissions
 
-- None declared
+- `procurement_sourcing.read`
+- `procurement_sourcing.create`
+- `procurement_sourcing.update`
+- `procurement_sourcing.approve`
+- `procurement_sourcing.admin`
 
 ### Configuration Keys
 
-- None declared
+- `PROCUREMENT_SOURCING_DATABASE_URL`
+- `PROCUREMENT_SOURCING_EVENT_TOPIC`
+- `PROCUREMENT_SOURCING_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `purchase_requisition`
+- `purchase_requisition_lines`
+- `approval_routing`
+- `budget_policy_check`
+- `category_reference`
+- `category_strategy`
+- `category_policy`
+- `supplier_reference`
+- `supplier_profiles`
+- `supplier_sites`
+- `supplier_qualification`
+- `supplier_identity`
+- `supplier_risk_signals`
+- `preferred_supplier_policy`
+- `rfq_creation`
+- `rfq_lines`
+- `supplier_invitation`
+- `bid_capture`
+- `bid_lines`
+- `bid_normalization`
+- `supplier_scoring`
+- `supplier_scorecards`
+- `award_recommendation`
+- `split_award`
+- `contract_creation`
+- `contract_clauses`
+- `contract_compliance_obligations`
+- `contract_renewal_monitor`
+- `purchase_order_creation`
+- `purchase_order_lines`
+- `po_tolerance_check`
+- `change_order`
+- `payment_terms`
+- `supplier_risk_screening`
+- `spend_analytics`
+- `consumed_event_handlers`
+- `material_shortage_projection`
+- `vendor_performance_projection`
+- `budget_projection`
+- `contract_compliance_projection`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `retry_dead_letter_evidence`
+- `multi_entity_isolation`
+- `idempotent_handlers`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_source_to_order_lifecycle`
+- `graph_relational_supplier_topology`
+- `multi_tenant_procurement_isolation`
+- `schema_evolution_resilient_procurement_schema`
+- `probabilistic_supplier_award_confidence`
+- `real_time_sourcing_spend_analytics`
+- `counterfactual_sourcing_strategy_simulation`
+- `temporal_price_lead_time_forecasting`
+- `autonomous_supplier_selection`
+- `semantic_procurement_document_parsing`
+- `predictive_supplier_disruption_risk`
+- `self_healing_po_route_selection`
+- `zero_knowledge_supplier_compliance_proof`
+- `immutable_procurement_audit_trail`
+- `dynamic_procurement_policy_screening`
+- `automated_procurement_control_testing`
+- `universal_api_async_streaming`
+- `cross_system_procurement_federation`
+- `supplier_network_integration`
+- `decentralized_supplier_identity`
+- `chaos_engineered_supplier_route_tolerance`
+- `quantum_resistant_procurement_authorization`
+- `carbon_aware_sourcing_selection`
+- `algebraic_sourcing_award_optimization`
+- `mechanism_design_rfq_allocation`
+- `information_theoretic_bid_anomaly_detection`
+- `temporal_supply_exposure_stochastic_modeling`
+- `distributed_systems_engineering`
+- `probabilistic_ml_supplier_risk`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `procurement_mlops_governance`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

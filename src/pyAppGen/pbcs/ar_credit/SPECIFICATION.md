@@ -388,23 +388,117 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `AccountsReceivableWorkbench`
+- `CustomerCreditConsole`
+- `InvoiceIssueQueue`
+- `CreditAuthorityConsole`
+- `DeliveryConfirmationBoard`
+- `CashApplicationWorkbench`
+- `UnappliedCashTriage`
+- `DisputeResolutionBoard`
+- `CreditMemoConsole`
+- `DunningCollectionsConsole`
+- `CustomerStatementView`
+- `RevenueScheduleView`
+- `CustomerRiskPanel`
+- `ArRuleStudio`
+- `ArParameterConsole`
+- `ArConfigurationPanel`
 
 ### Permissions
 
-- None declared
+- `ar_credit.read`
+- `ar_credit.create`
+- `ar_credit.update`
+- `ar_credit.approve`
+- `ar_credit.admin`
 
 ### Configuration Keys
 
-- None declared
+- `AR_CREDIT_DATABASE_URL`
+- `AR_CREDIT_EVENT_TOPIC`
+- `AR_CREDIT_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `appgen_x_inbox`
+- `appgen_x_outbox`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `customer_master`
+- `customer_site_management`
+- `customer_onboarding`
+- `customer_credit_profile`
+- `customer_payment_terms`
+- `invoice_generation`
+- `invoice_line_management`
+- `tax_calculation_projection`
+- `performance_obligation_tracking`
+- `invoice_validation`
+- `delivery_confirmation`
+- `remittance_advice`
+- `cash_application`
+- `cash_application_batching`
+- `partial_payment`
+- `unapplied_cash`
+- `credit_memo`
+- `write_off`
+- `refund`
+- `dispute_case_management`
+- `aging`
+- `dunning`
+- `promise_to_pay`
+- `collection_actions`
+- `customer_statement`
+- `revenue_schedule`
+- `revenue_recognition`
+- `credit_limit`
+- `credit_decisioning`
+- `dispute_management`
+- `e_invoice_submission`
+- `cross_border_receivables`
+- `invoice_financing`
+- `controls`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_receivable_lifecycle`
+- `graph_relational_customer_topology`
+- `multi_tenant_cash_application_isolation`
+- `schema_evolution_resilient_receivable_schema`
+- `probabilistic_cash_application`
+- `real_time_liquidity_aware_credit_extension`
+- `counterfactual_collection_strategy_optimization`
+- `temporal_revenue_to_cash_forecasting`
+- `autonomous_dispute_resolution`
+- `semantic_remittance_parsing`
+- `predictive_customer_default_scoring`
+- `self_healing_collection_routing`
+- `zero_knowledge_revenue_verification`
+- `immutable_e_invoicing_tax_audit`
+- `dynamic_sanction_fraud_screening`
+- `automated_control_testing`
+- `universal_api_async_streaming`
+- `cross_border_receivable_federation`
+- `supply_chain_finance_network_integration`
+- `decentralized_customer_identity`
+- `chaos_engineered_payment_rail_tolerance`
+- `quantum_resistant_payment_authentication`
+- `carbon_aware_collection_scheduling`
+- `algebraic_collection_optimization`
+- `mechanism_design_payment_term_negotiation`
+- `information_theoretic_cash_application_anomaly_detection`
+- `temporal_receivable_stochastic_modeling`
+- `distributed_systems_engineering`
+- `probabilistic_ml_customer_risk`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `financial_mlops_governance`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

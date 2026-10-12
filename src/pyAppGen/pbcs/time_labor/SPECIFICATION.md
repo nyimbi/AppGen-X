@@ -378,23 +378,122 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `TimeLaborWorkbench`
+- `TimeLaborDetail`
 
 ### Permissions
 
-- None declared
+- `time_labor.read`
+- `time_labor.create`
+- `time_labor.update`
+- `time_labor.approve`
+- `time_labor.admin`
 
 ### Configuration Keys
 
-- None declared
+- `TIME_LABOR_DATABASE_URL`
+- `TIME_LABOR_EVENT_TOPIC`
+- `TIME_LABOR_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `shift_creation`
+- `shift_pattern_management`
+- `shift_assignment`
+- `shift_swap_request`
+- `schedule_bidding`
+- `labor_demand_forecasting`
+- `clock_event_ingestion`
+- `clock_device_registry`
+- `clock_source_route`
+- `clock_exception_queue`
+- `clock_sequence_validation`
+- `geofence_validation`
+- `time_entry_calculation`
+- `time_entry_lines`
+- `break_deduction`
+- `meal_penalty_tracking`
+- `overtime_calculation`
+- `overtime_bucket`
+- `premium_calculation`
+- `holiday_calendar`
+- `absence_recording`
+- `absence_balance`
+- `entitlement_check`
+- `absence_approval`
+- `labor_summary`
+- `labor_summary_line`
+- `labor_cost_allocation`
+- `labor_distribution`
+- `approval_workflow`
+- `approval_task`
+- `employee_projection`
+- `role_projection`
+- `payroll_labor_projection`
+- `warehouse_site_projection`
+- `manufacturing_shift_projection`
+- `project_cost_projection`
+- `payroll_ready_event`
+- `multi_entity_isolation`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `schema_extension`
+- `policy_screening`
+- `audit_trace`
+- `hours_proof`
+- `federation_projection`
+- `carbon_schedule_window`
+- `schedule_optimization`
+- `shift_allocation`
+- `time_anomaly_signal`
+- `labor_risk_model`
+- `labor_risk_forecast`
+- `semantic_event_parser`
+- `control_assertion`
+- `governed_model`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_labor_lifecycle`
+- `graph_relational_labor_topology`
+- `multi_tenant_time_isolation`
+- `schema_evolution_resilient_time_schema`
+- `probabilistic_time_fraud_exception_scoring`
+- `real_time_labor_execution_analytics`
+- `counterfactual_schedule_overtime_simulation`
+- `temporal_labor_demand_overtime_forecasting`
+- `autonomous_time_exception_resolution`
+- `semantic_clock_absence_event_parsing`
+- `predictive_burnout_absence_compliance_risk`
+- `self_healing_clock_source_route_selection`
+- `zero_knowledge_payroll_ready_hours_proof`
+- `immutable_labor_audit_trail`
+- `dynamic_labor_policy_screening`
+- `automated_time_control_testing`
+- `universal_api_async_streaming`
+- `cross_system_labor_federation`
+- `workforce_device_integration`
+- `decentralized_employee_time_identity`
+- `chaos_engineered_clock_approval_tolerance`
+- `quantum_resistant_time_authorization`
+- `carbon_aware_schedule_planning`
+- `algebraic_schedule_labor_optimization`
+- `mechanism_design_shift_allocation`
+- `information_theoretic_time_anomaly_detection`
+- `temporal_labor_exposure_stochastic_modeling`
+- `distributed_systems_engineering`
+- `probabilistic_ml_labor_risk`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `labor_mlops_governance`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

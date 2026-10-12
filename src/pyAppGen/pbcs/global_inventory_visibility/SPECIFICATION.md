@@ -297,23 +297,92 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `GlobalInventoryVisibilityWorkbench`
+- `GlobalInventoryVisibilityDetail`
 
 ### Permissions
 
-- None declared
+- `global_inventory_visibility.read`
+- `global_inventory_visibility.create`
+- `global_inventory_visibility.update`
+- `global_inventory_visibility.approve`
+- `global_inventory_visibility.admin`
 
 ### Configuration Keys
 
-- None declared
+- `GLOBAL_INVENTORY_VISIBILITY_DATABASE_URL`
+- `GLOBAL_INVENTORY_VISIBILITY_EVENT_TOPIC`
+- `GLOBAL_INVENTORY_VISIBILITY_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `inventory_pool_master`
+- `supply_node_master`
+- `availability_snapshot`
+- `inventory_projection`
+- `global_available_to_promise`
+- `capable_to_promise_projection`
+- `channel_projection`
+- `supply_demand_signal`
+- `reservation_visibility`
+- `allocation_visibility`
+- `inventory_reconciliation`
+- `exception_handling`
+- `in_transit_visibility`
+- `safety_stock_policy`
+- `freshness_staleness_checks`
+- `node_health_monitoring`
+- `tenant_isolation`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `workbench`
+- `immutable_audit_log`
+- `cross_system_federation`
+- `schema_contract`
+- `service_contract`
+- `release_evidence_contract`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_availability_projections`
+- `graph_relational_supply_topology`
+- `multi_tenant_inventory_pool_isolation`
+- `schema_evolution_resilient_availability_schema`
+- `probabilistic_availability_freshness_scoring`
+- `real_time_atp_visibility_convergence`
+- `counterfactual_allocation_simulation`
+- `temporal_availability_forecasting`
+- `autonomous_exception_resolution`
+- `semantic_availability_query_parsing`
+- `predictive_stockout_risk`
+- `self_healing_projection_route_selection`
+- `cryptographic_availability_proof`
+- `immutable_inventory_audit_trail`
+- `dynamic_allocation_policy_screening`
+- `automated_inventory_control_testing`
+- `universal_api_async_streaming`
+- `cross_system_inventory_federation`
+- `reservation_allocation_visibility_integration`
+- `decentralized_supply_identity`
+- `chaos_tolerant_projection_processing`
+- `crypto_agile_availability_authorization`
+- `carbon_aware_sourcing_window`
+- `algebraic_allocation_optimization`
+- `mechanism_design_pool_allocation`
+- `information_theoretic_inventory_anomaly_detection`
+- `stochastic_exposure_modeling`
+- `distributed_systems_engineering`
+- `governed_ml_availability_evidence`
+- `temporal_freshness_staleness_modeling`
+- `in_transit_network_visibility`
+- `deterministic_rule_compilation_evidence`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

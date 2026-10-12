@@ -364,23 +364,98 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `ApAutomationWorkbench`
+- `ApAutomationDetail`
 
 ### Permissions
 
-- None declared
+- `ap_automation.read`
+- `ap_automation.create`
+- `ap_automation.update`
+- `ap_automation.approve`
+- `ap_automation.admin`
 
 ### Configuration Keys
 
-- None declared
+- `AP_AUTOMATION_DATABASE_URL`
+- `AP_AUTOMATION_EVENT_TOPIC`
+- `AP_AUTOMATION_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `vendor_master`
+- `vendor_onboarding`
+- `purchase_order_reference`
+- `goods_receipt_reference`
+- `receipt_line_reconciliation`
+- `invoice_capture`
+- `ocr_extraction`
+- `electronic_invoice_ingestion`
+- `invoice_validation`
+- `three_way_match`
+- `two_way_service_match`
+- `contract_compliance_match`
+- `exception_management`
+- `approval_workflow`
+- `segregation_of_duties`
+- `tax_validation`
+- `payment_terms`
+- `payment_scheduling`
+- `payment_execution`
+- `discount_management`
+- `duplicate_invoice_detection`
+- `vendor_bank_validation`
+- `vendor_statement_reconciliation`
+- `withholding_tax`
+- `remittance_advice`
+- `payment_batching`
+- `bank_rail_routing`
+- `audit_trail`
+- `controls`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `idempotent_handlers`
+- `permissions`
+- `seed_data`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_invoice_lifecycle`
+- `graph_relational_vendor_data_model`
+- `multi_tenant_liquidity_isolation`
+- `schema_evolution_resilient_invoice_schema`
+- `probabilistic_three_way_matching`
+- `real_time_liquidity_aware_payment_scheduling`
+- `counterfactual_discount_analysis`
+- `temporal_cash_flow_forecasting`
+- `autonomous_exception_resolution`
+- `semantic_contract_to_invoice_alignment`
+- `predictive_vendor_risk_scoring`
+- `self_healing_payment_routing`
+- `zero_knowledge_tax_validation`
+- `immutable_regulatory_e_invoicing`
+- `dynamic_sanction_aml_screening`
+- `automated_control_testing`
+- `universal_api_async_streaming`
+- `cross_border_payment_federation`
+- `supply_chain_finance_network_integration`
+- `decentralized_vendor_identity`
+- `chaos_engineered_payment_rail_tolerance`
+- `quantum_resistant_payment_authentication`
+- `carbon_aware_settlement_scheduling`
+- `algebraic_payment_routing_optimization`
+- `mechanism_design_dynamic_discounting`
+- `information_theoretic_fraud_detection`
+- `temporal_liquidity_forecasting_construct`
+- `distributed_systems_engineering`
+- `probabilistic_ml_vendor_risk`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `financial_mlops_governance`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

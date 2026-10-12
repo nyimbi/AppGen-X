@@ -23,9 +23,21 @@ import pytest
 from pyAppGen import pbc
 from pyAppGen.pbc import IMPLEMENTED_PBC_KEYS
 
-# The four fields the descriptor carries; the other five live only on the
-# catalog literal, which is why they are not asserted here.
-DESCRIPTOR_BACKED_FIELDS = ("tables", "apis", "emits", "consumes")
+# Every field the check reads is carried on the descriptor, which sources it
+# from the package. Four come from the runtime constants directly; the five
+# declared surfaces come from a runtime constant where one exists and the
+# manifest otherwise.
+DESCRIPTOR_BACKED_FIELDS = (
+    "tables",
+    "apis",
+    "emits",
+    "consumes",
+    "ui_fragments",
+    "permissions",
+    "configuration",
+    "standard_features",
+    "advanced_capabilities",
+)
 
 
 @pytest.mark.parametrize("key", IMPLEMENTED_PBC_KEYS)
@@ -68,16 +80,41 @@ def test_the_check_fails_when_a_declared_surface_is_absent() -> None:
     key = "dam_core"
     path = pathlib.Path(f"src/pyAppGen/pbcs/{key}/SPECIFICATION.md")
     original = path.read_text()
-    target = "`asset_version`"
+    target = "`asset_fingerprint`"
     assert target in original, "canary target not found; the patch would be a no-op"
-    # The replacement must not contain the original token: the check matches by
-    # substring, so renaming `asset_version` to `asset_version_renamed` leaves the
-    # declared name inside the mutated text and the canary passes against
-    # untouched behaviour. That was the first version of this test, and it failed
+    # The target must occur exactly once: the check matches by substring over the
+    # whole specification, so a table name that is also a prefix of another
+    # declared surface survives the mutation inside that longer token and the
+    # canary passes against untouched behaviour. `asset_version` is a prefix of
+    # the standard feature `asset_versioning`, which is why this uses
+    # `asset_fingerprint`. That was the second version of this test, and it failed
     # for the right reason -- the canary, not the check.
     try:
         path.write_text(original.replace(target, "`zz_removed_table`", 1))
         contract = pbc.pbc_specification_contract(key)
         assert contract["ok"] is False, "the check passed with a declared table absent"
+    finally:
+        path.write_text(original)
+
+
+def test_the_check_fails_when_a_declared_ui_fragment_is_absent() -> None:
+    """Canary for a five-field surface, not just the four the descriptor had.
+
+    `ui_fragments` used to be read from the catalog literal, which the descriptor
+    migration emptied, so the check passed while `gl_core`'s appendix said "None
+    declared" for thirteen real fragments. Now the descriptor carries it from the
+    runtime constant, so removing a declared fragment from the appendix must fail
+    the check. This is the canary the four-field test could not be: the defect
+    lived in exactly the fields that test did not cover.
+    """
+    key = "gl_core"
+    path = pathlib.Path(f"src/pyAppGen/pbcs/{key}/SPECIFICATION.md")
+    original = path.read_text()
+    target = "`GeneralLedgerWorkbench`"
+    assert target in original, "canary target not found; the patch would be a no-op"
+    try:
+        path.write_text(original.replace(target, "`zz_removed_fragment`", 1))
+        contract = pbc.pbc_specification_contract(key)
+        assert contract["ok"] is False, "the check passed with a declared fragment absent"
     finally:
         path.write_text(original)

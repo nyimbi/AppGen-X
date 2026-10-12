@@ -333,23 +333,120 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `DomWorkbench`
+- `OrderCaptureConsole`
+- `FulfillmentPlanBoard`
+- `OrderExceptionConsole`
 
 ### Permissions
 
-- None declared
+- `dom.read`
+- `dom.create`
+- `dom.verify`
+- `dom.price`
+- `dom.allocate`
+- `dom.plan`
+- `dom.ship`
+- `dom.cancel`
+- `dom.event`
+- `dom.configure`
+- `dom.audit`
 
 ### Configuration Keys
 
-- None declared
+- `DOM_DATABASE_URL`
+- `DOM_EVENT_TOPIC`
+- `DOM_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `sales_order_capture`
+- `order_line_validation`
+- `order_notes`
+- `order_holds`
+- `order_promising`
+- `order_channel_context`
+- `payment_projection`
+- `customer_projection`
+- `customer_identity_projection`
+- `tax_projection`
+- `fraud_screening`
+- `fraud_signals`
+- `order_verification`
+- `order_pricing`
+- `price_components`
+- `discount_projection`
+- `inventory_allocation_projection`
+- `inventory_node_projection`
+- `fulfillment_planning`
+- `fulfillment_plan_lines`
+- `fulfillment_node_candidates`
+- `fulfillment_reservation_projection`
+- `split_shipment`
+- `backorder_management`
+- `substitution_management`
+- `cancellation_control`
+- `shipment_projection`
+- `shipment_status_projection`
+- `order_lifecycle_status`
+- `promise_demand_forecast`
+- `fulfillment_policy_simulation`
+- `fulfillment_route_replay`
+- `order_verification_proof`
+- `order_policy_screening`
+- `order_audit_trace`
+- `order_federation_projection`
+- `carbon_aware_fulfillment`
+- `fulfillment_optimization`
+- `node_allocation`
+- `order_anomaly_detection`
+- `stochastic_fulfillment_exposure`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `retry_dead_letter_evidence`
+- `multi_channel_isolation`
+- `idempotent_handlers`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_order_lifecycle`
+- `graph_relational_order_topology`
+- `multi_tenant_order_isolation`
+- `schema_evolution_resilient_order_schema`
+- `probabilistic_fraud_allocation_confidence`
+- `real_time_order_orchestration_analytics`
+- `counterfactual_sourcing_fulfillment_simulation`
+- `temporal_promise_demand_forecasting`
+- `autonomous_order_exception_resolution`
+- `semantic_order_event_parsing`
+- `predictive_cancellation_fulfillment_risk`
+- `self_healing_fulfillment_route_selection`
+- `zero_knowledge_order_verification_proof`
+- `immutable_order_audit_trail`
+- `dynamic_order_policy_screening`
+- `automated_order_control_testing`
+- `universal_api_async_streaming`
+- `cross_system_order_federation`
+- `commerce_service_channel_integration`
+- `decentralized_order_identity`
+- `chaos_engineered_orchestration_tolerance`
+- `quantum_resistant_order_authorization`
+- `carbon_aware_fulfillment_planning`
+- `algebraic_fulfillment_optimization`
+- `mechanism_design_node_allocation`
+- `information_theoretic_order_anomaly_detection`
+- `temporal_fulfillment_exposure_stochastic_modeling`
+- `distributed_systems_engineering`
+- `probabilistic_ml_order_risk`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `order_mlops_governance`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

@@ -333,23 +333,108 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `TransportationManagementWorkbench`
+- `TransportationManagementDetail`
 
 ### Permissions
 
-- None declared
+- `transportation_management.read`
+- `transportation_management.create`
+- `transportation_management.update`
+- `transportation_management.approve`
+- `transportation_management.admin`
 
 ### Configuration Keys
 
-- None declared
+- `TRANSPORTATION_MANAGEMENT_DATABASE_URL`
+- `TRANSPORTATION_MANAGEMENT_EVENT_TOPIC`
+- `TRANSPORTATION_MANAGEMENT_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `shipment_creation`
+- `shipment_lines`
+- `shipment_parties`
+- `shipment_references`
+- `shipment_packages`
+- `carrier_master`
+- `carrier_service_levels`
+- `carrier_lanes`
+- `carrier_contracts`
+- `carrier_identity`
+- `freight_route_planning`
+- `route_legs`
+- `route_constraints`
+- `carrier_selection`
+- `tendering`
+- `tender_response_capture`
+- `dispatch_confirmation`
+- `tracking_event_ingestion`
+- `eta_calculation`
+- `inbound_arrival`
+- `delivery_confirmation`
+- `delivery_exception_management`
+- `exception_management`
+- `freight_cost_accrual`
+- `freight_invoice_projection`
+- `multi_leg_support`
+- `cross_border_documents`
+- `temperature_hazard_controls`
+- `carrier_scorecard`
+- `carrier_risk_signals`
+- `carbon_distance_analytics`
+- `consumed_event_handlers`
+- `packed_order_projection`
+- `purchase_order_projection`
+- `return_authorization_projection`
+- `inventory_transfer_projection`
+- `access_policy_projection`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `retry_dead_letter_evidence`
+- `multi_entity_isolation`
+- `idempotent_handlers`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_shipment_lifecycle`
+- `graph_relational_freight_topology`
+- `multi_tenant_transportation_isolation`
+- `schema_evolution_resilient_transportation_schema`
+- `probabilistic_eta_delivery_confidence`
+- `real_time_freight_execution_analytics`
+- `counterfactual_carrier_route_simulation`
+- `temporal_eta_cost_delay_forecasting`
+- `autonomous_transport_exception_resolution`
+- `semantic_transport_event_parsing`
+- `predictive_delay_damage_carrier_risk`
+- `self_healing_carrier_telematics_route_selection`
+- `zero_knowledge_delivery_proof`
+- `immutable_transportation_traceability_trail`
+- `dynamic_transportation_policy_screening`
+- `automated_transportation_control_testing`
+- `universal_api_async_streaming`
+- `cross_system_transportation_federation`
+- `carrier_network_telematics_integration`
+- `decentralized_carrier_identity`
+- `chaos_engineered_carrier_telematics_tolerance`
+- `quantum_resistant_transportation_authorization`
+- `carbon_aware_carrier_route_selection`
+- `algebraic_route_carrier_optimization`
+- `mechanism_design_carrier_tender_allocation`
+- `information_theoretic_tracking_anomaly_detection`
+- `temporal_transit_exposure_stochastic_modeling`
+- `distributed_systems_engineering`
+- `probabilistic_ml_transportation_risk`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `transportation_mlops_governance`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

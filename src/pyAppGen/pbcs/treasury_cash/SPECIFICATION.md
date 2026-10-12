@@ -376,23 +376,97 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `TreasuryCashWorkbench`
+- `TreasuryCashDetail`
 
 ### Permissions
 
-- None declared
+- `treasury_cash.read`
+- `treasury_cash.create`
+- `treasury_cash.update`
+- `treasury_cash.approve`
+- `treasury_cash.admin`
 
 ### Configuration Keys
 
-- None declared
+- `TREASURY_CASH_DATABASE_URL`
+- `TREASURY_CASH_EVENT_TOPIC`
+- `TREASURY_CASH_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `bank_account_master`
+- `bank_signatory_management`
+- `counterparty_master`
+- `bank_topology`
+- `opening_balance_capture`
+- `intraday_balance_capture`
+- `cash_position`
+- `bank_statement_ingestion`
+- `statement_line_hash_chain`
+- `bank_reconciliation`
+- `reconciliation_exception_management`
+- `cash_forecast`
+- `forecast_line_confidence_bands`
+- `liquidity_pool`
+- `cash_concentration`
+- `cash_sweeping`
+- `payment_funding`
+- `payment_rail_routing`
+- `intercompany_netting`
+- `in_house_bank`
+- `fx_exposure`
+- `hedge_recommendation`
+- `debt_facility`
+- `investment_placement`
+- `bank_fee_analysis`
+- `counterparty_risk`
+- `approval_controls`
+- `audit_trail`
+- `appgen_x_inbox`
+- `appgen_x_outbox`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_cash_lifecycle`
+- `graph_relational_bank_topology`
+- `multi_tenant_liquidity_isolation`
+- `schema_evolution_resilient_cash_schema`
+- `probabilistic_cash_forecasting`
+- `real_time_liquidity_optimization`
+- `counterfactual_funding_analysis`
+- `temporal_cash_flow_stochastic_modeling`
+- `autonomous_bank_reconciliation`
+- `semantic_bank_narrative_parsing`
+- `predictive_counterparty_liquidity_risk`
+- `self_healing_payment_rail_routing`
+- `zero_knowledge_liquidity_covenant_proof`
+- `immutable_bank_connectivity_audit`
+- `dynamic_sanction_fraud_screening`
+- `automated_treasury_control_testing`
+- `universal_api_async_streaming`
+- `cross_border_liquidity_federation`
+- `working_capital_finance_integration`
+- `decentralized_counterparty_identity`
+- `chaos_engineered_bank_rail_tolerance`
+- `quantum_resistant_treasury_authentication`
+- `carbon_aware_liquidity_scheduling`
+- `algebraic_liquidity_optimization`
+- `mechanism_design_funding_allocation`
+- `information_theoretic_cash_anomaly_detection`
+- `temporal_liquidity_forecasting_construct`
+- `distributed_systems_engineering`
+- `probabilistic_ml_liquidity_risk`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `financial_mlops_governance`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

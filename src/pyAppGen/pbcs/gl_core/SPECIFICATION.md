@@ -347,23 +347,108 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `GeneralLedgerWorkbench`
+- `JournalEntryConsole`
+- `JournalLifecycleConsole`
+- `ChartOfAccountsConsole`
+- `TrialBalanceView`
+- `AccountProjectionExplorer`
+- `CloseCommandCenter`
+- `ReconciliationQueue`
+- `PolicyRuleStudio`
+- `LedgerParameterConsole`
+- `LedgerConfigurationPanel`
+- `AuditProofViewer`
+- `ControlsDashboard`
 
 ### Permissions
 
-- None declared
+- `gl_core.read`
+- `gl_core.create`
+- `gl_core.update`
+- `gl_core.approve`
+- `gl_core.admin`
 
 ### Configuration Keys
 
-- None declared
+- `GL_CORE_DATABASE_URL`
+- `GL_CORE_EVENT_TOPIC`
+- `GL_CORE_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `chart_of_accounts`
+- `journal_entry`
+- `journal_line_balancing`
+- `posting_periods`
+- `trial_balance`
+- `ledger_projection`
+- `account_reconciliation`
+- `financial_statement_projection`
+- `financial_statement_mapping`
+- `period_close`
+- `recurring_journals`
+- `reversal_entries`
+- `accruals_and_deferrals`
+- `allocations`
+- `consolidation`
+- `retained_earnings_rollforward`
+- `audit_trail`
+- `approval_policy`
+- `tax_and_reporting_dimensions`
+- `segment_reporting`
+- `statutory_reporting`
+- `electronic_audit_file`
+- `multi_entity_tenant_isolation`
+- `currency_and_revaluation`
+- `currency_translation`
+- `intercompany_support`
+- `subledger_integration`
+- `budget_control`
+- `attachments_and_source_documents`
+- `idempotent_handlers`
+- `retry_dead_letter`
+- `permissions`
+- `seed_data`
+- `appgen_event_contract`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_ledger_core`
+- `distributed_consensus_protocol`
+- `schema_on_read_extensibility`
+- `multi_tenant_isolation`
+- `real_time_olap_oltp_convergence`
+- `probabilistic_accounting_primitives`
+- `continuous_close_architecture`
+- `causal_inference_engine`
+- `autonomous_reconciliation`
+- `semantic_transaction_understanding`
+- `regulatory_logic_compilation`
+- `predictive_posting_validation`
+- `zero_knowledge_audit_proofs`
+- `dynamic_policy_enforcement`
+- `immutable_regulatory_trail`
+- `automated_control_testing`
+- `universal_api_contract`
+- `cross_system_ledger_federation`
+- `event_driven_subledger_synchronization`
+- `decentralized_identity_integration`
+- `chaos_engineered_fault_tolerance`
+- `quantum_resistant_cryptography`
+- `carbon_aware_processing`
+- `temporal_accounting_algebra`
+- `homomorphic_encryption_for_consolidation`
+- `game_theoretic_reconciliation`
+- `information_theoretic_auditability`
+- `formal_methods_ledger_invariants`
+- `distributed_systems_runtime`
+- `cryptographic_engineering`
+- `financial_mlops`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

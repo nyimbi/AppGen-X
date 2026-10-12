@@ -420,6 +420,7 @@ This appendix is generated from the package manifest and is release-gated so the
 - `audit_evidence`
 - `package_registration_validation`
 - `appgen_event_contract`
+- `standard_workflow_table_stakes_records`
 
 ### Advanced Capabilities
 

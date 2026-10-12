@@ -363,23 +363,127 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `TalentOnboardingWorkbench`
+- `TalentOnboardingDetail`
 
 ### Permissions
 
-- None declared
+- `talent_onboarding.read`
+- `talent_onboarding.create`
+- `talent_onboarding.update`
+- `talent_onboarding.approve`
+- `talent_onboarding.admin`
 
 ### Configuration Keys
 
-- None declared
+- `TALENT_ONBOARDING_DATABASE_URL`
+- `TALENT_ONBOARDING_EVENT_TOPIC`
+- `TALENT_ONBOARDING_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `job_requisition_management`
+- `job_requisition_approval`
+- `job_requisition_budget`
+- `job_requisition_skill`
+- `sourcing_campaign`
+- `candidate_source`
+- `candidate_capture`
+- `consent_management`
+- `candidate_profile`
+- `candidate_skill`
+- `stage_history`
+- `duplicate_check`
+- `privacy_request`
+- `candidate_pipeline`
+- `interview_plan`
+- `interview_panel`
+- `interview_schedule`
+- `interview_feedback`
+- `evaluation_evidence`
+- `scorecard`
+- `background_check`
+- `background_check_package`
+- `adjudication`
+- `adverse_action_notice`
+- `offer_management`
+- `offer_approval`
+- `offer_acceptance`
+- `compensation_projection`
+- `onboarding_task_generation`
+- `task_template`
+- `onboarding_checklist`
+- `equipment_request`
+- `task_assignment`
+- `task_completion`
+- `employee_provisioning`
+- `access_preload_projection`
+- `welcome_notification_projection`
+- `personnel_identity_projection`
+- `payroll_worker_projection`
+- `role_projection`
+- `privacy_retention_controls`
+- `policy_screening`
+- `audit_trace`
+- `candidate_proof`
+- `federation_projection`
+- `carbon_schedule_window`
+- `pipeline_optimization`
+- `interview_allocation`
+- `anomaly_signal`
+- `candidate_risk_model`
+- `hiring_forecast`
+- `semantic_instruction_parser`
+- `pipeline_analytics`
+- `multi_entity_isolation`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `schema_extension`
+- `control_assertion`
+- `governed_model`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_talent_lifecycle`
+- `graph_relational_hiring_topology`
+- `multi_tenant_talent_isolation`
+- `schema_evolution_resilient_talent_schema`
+- `probabilistic_candidate_match_compliance_scoring`
+- `real_time_pipeline_onboarding_analytics`
+- `counterfactual_hiring_policy_simulation`
+- `temporal_hiring_demand_cycle_forecasting`
+- `autonomous_candidate_exception_resolution`
+- `semantic_candidate_instruction_parsing`
+- `predictive_candidate_attrition_compliance_risk`
+- `self_healing_screening_provisioning_route_selection`
+- `zero_knowledge_candidate_eligibility_proof`
+- `immutable_talent_audit_trail`
+- `dynamic_talent_policy_screening`
+- `automated_talent_control_testing`
+- `universal_api_async_streaming`
+- `cross_system_talent_federation`
+- `identity_access_notification_integration`
+- `decentralized_candidate_identity`
+- `chaos_engineered_onboarding_tolerance`
+- `quantum_resistant_candidate_authorization`
+- `carbon_aware_interview_onboarding_scheduling`
+- `algebraic_pipeline_optimization`
+- `mechanism_design_interview_allocation`
+- `information_theoretic_hiring_anomaly_detection`
+- `temporal_hiring_exposure_stochastic_modeling`
+- `distributed_systems_engineering`
+- `probabilistic_ml_candidate_risk`
+- `cryptographic_engineering`
+- `mathematical_optimization`
+- `talent_mlops_governance`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

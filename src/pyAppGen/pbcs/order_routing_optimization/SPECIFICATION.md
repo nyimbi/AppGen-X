@@ -374,23 +374,90 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `OrderRoutingOptimizationWorkbench`
+- `OrderRoutingOptimizationDetail`
 
 ### Permissions
 
-- None declared
+- `order_routing_optimization.read`
+- `order_routing_optimization.create`
+- `order_routing_optimization.update`
+- `order_routing_optimization.approve`
+- `order_routing_optimization.admin`
 
 ### Configuration Keys
 
-- None declared
+- `ORDER_ROUTING_OPTIMIZATION_DATABASE_URL`
+- `ORDER_ROUTING_OPTIMIZATION_EVENT_TOPIC`
+- `ORDER_ROUTING_OPTIMIZATION_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `routing_plans`
+- `routing_nodes`
+- `routing_constraints`
+- `routing_costs`
+- `routing_promises`
+- `split_shipments`
+- `inventory_transport_service_inputs`
+- `routing_rules`
+- `route_candidates`
+- `capacity_snapshots`
+- `routing_decisions`
+- `node_reservation`
+- `route_simulations`
+- `optimization_runs`
+- `routing_exceptions`
+- `routing_approvals`
+- `routing_feedback`
+- `cost_sla_scoring`
+- `split_shipment_policy`
+- `substitution_eligibility`
+- `tenant_isolation`
+- `appgen_x_outbox`
+- `appgen_x_inbox`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `schema_contract`
+- `service_contract`
+- `release_evidence`
+- `api_descriptors`
+- `ui_workbench_binding_evidence`
+- `seed_data`
+- `workbench`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_routing_lifecycle`
+- `graph_relational_fulfillment_topology`
+- `multi_tenant_routing_isolation`
+- `schema_evolution_resilient_routing_schema`
+- `probabilistic_sla_cost_capacity_scoring`
+- `counterfactual_routing_simulation`
+- `temporal_capacity_forecasting`
+- `autonomous_routing_exception_resolution`
+- `semantic_route_request_parsing`
+- `predictive_fulfillment_risk`
+- `self_healing_route_selection`
+- `cryptographic_routing_proof`
+- `immutable_routing_audit_trail`
+- `dynamic_routing_policy_screening`
+- `automated_routing_control_testing`
+- `cross_system_order_inventory_tax_federation`
+- `chaos_tolerant_appgen_eventing`
+- `crypto_agility`
+- `carbon_aware_routing`
+- `mathematical_route_optimization`
+- `auction_style_capacity_clearing`
+- `routing_anomaly_detection`
+- `stochastic_routing_exposure_modeling`
+- `governed_ml_model_evidence`
+- `universal_api_async_streaming`
+- `distributed_systems_engineering`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 

@@ -310,23 +310,108 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### UI Fragments
 
-- None declared
+- `CrossBorderTradeWorkbench`
+- `CrossBorderTradeDetail`
 
 ### Permissions
 
-- None declared
+- `cross_border_trade.read`
+- `cross_border_trade.create`
+- `cross_border_trade.update`
+- `cross_border_trade.approve`
+- `cross_border_trade.admin`
 
 ### Configuration Keys
 
-- None declared
+- `CROSS_BORDER_TRADE_DATABASE_URL`
+- `CROSS_BORDER_TRADE_EVENT_TOPIC`
+- `CROSS_BORDER_TRADE_RETRY_LIMIT`
 
 ### Standard Features
 
-- None declared
+- `hs_classification`
+- `landed_cost_quote`
+- `export_control_check`
+- `customs_declaration`
+- `country_of_origin`
+- `duty_tax_fee_calculation`
+- `restricted_party_and_sanctions_screening`
+- `license_requirement_detection`
+- `incoterm_support`
+- `broker_submission_handoff`
+- `trade_document_evidence`
+- `order_inventory_payment_logistics_handoffs`
+- `tenant_isolation`
+- `appgen_x_outbox_inbox_eventing`
+- `idempotent_handlers`
+- `retry_dead_letter_evidence`
+- `permissions`
+- `configuration_schema`
+- `rule_engine`
+- `parameter_engine`
+- `seed_data`
+- `workbench`
+- `immutable_audit`
+- `governed_model_evidence`
+- `denied_party_screening`
+- `customs_documents`
+- `duties_taxes`
+- `broker_carrier_handoffs`
+- `country_restrictions`
+- `compliance_holds`
+- `declarations`
+- `audit_evidence`
+- `customs_release`
+- `broker_status_tracking`
+- `carrier_status_tracking`
+- `document_packet_lifecycle`
+- `denied_party_case_management`
+- `single_pbc_domain_app`
+- `forms`
+- `wizards`
+- `controls`
+- `denied_party_screening_lifecycle`
+- `country_restriction_policy_lifecycle`
+- `compliance_hold_resolution`
 
 ### Advanced Capabilities
 
-- None declared
+- `event_sourced_trade_lifecycle`
+- `owned_trade_schema_boundary`
+- `graph_relational_trade_topology`
+- `multi_tenant_trade_isolation`
+- `schema_evolution_resilient_trade_schema`
+- `probabilistic_hs_classification_scoring`
+- `counterfactual_landed_cost_simulation`
+- `temporal_duty_tax_exposure_forecasting`
+- `autonomous_trade_exception_resolution`
+- `semantic_trade_document_understanding`
+- `predictive_export_control_risk`
+- `self_healing_customs_broker_route_selection`
+- `cryptographic_trade_proof`
+- `immutable_trade_audit_trail`
+- `dynamic_trade_policy_screening`
+- `automated_trade_control_testing`
+- `cross_system_order_inventory_payment_logistics_federation`
+- `appgen_x_outbox_inbox_eventing`
+- `idempotent_inbox_handlers`
+- `retry_dead_letter_evidence`
+- `tenant_isolation`
+- `chaos_tolerant_trade_operations`
+- `crypto_agility`
+- `carbon_aware_trade_route_selection`
+- `mathematical_landed_cost_optimization`
+- `broker_allocation_mechanism_design`
+- `trade_anomaly_detection`
+- `stochastic_trade_exposure_modeling`
+- `governed_ml_model_evidence`
+- `permissions_governance_evidence`
+- `universal_api_async_streaming`
+- `configuration_schema`
+- `parameter_engine`
+- `rule_engine`
+- `seed_data`
+- `workbench_ui`
 
 <!-- APPGEN-X:PBC-MANIFEST-TRACEABILITY:END -->
 
