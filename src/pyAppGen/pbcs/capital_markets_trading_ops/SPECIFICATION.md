@@ -25,11 +25,11 @@ The `capital_markets_trading_ops` PBC is a packaged business capability for Trad
 - `capital_markets_trading_ops_settlement_instruction`: owns settlement instruction lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `capital_markets_trading_ops_trade_break`: owns trade break lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `capital_markets_trading_ops_position_snapshot`: owns position snapshot lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `capital_markets_trading_ops_capital_markets_trading_ops_policy_rule`: owns capital markets trading ops policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `capital_markets_trading_ops_capital_markets_trading_ops_runtime_parameter`: owns capital markets trading ops runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `capital_markets_trading_ops_capital_markets_trading_ops_schema_extension`: owns capital markets trading ops schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `capital_markets_trading_ops_capital_markets_trading_ops_control_assertion`: owns capital markets trading ops control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `capital_markets_trading_ops_capital_markets_trading_ops_governed_model`: owns capital markets trading ops governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `capital_markets_trading_ops_policy_rule`: owns capital markets trading ops policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `capital_markets_trading_ops_runtime_parameter`: owns capital markets trading ops runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `capital_markets_trading_ops_schema_extension`: owns capital markets trading ops schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `capital_markets_trading_ops_control_assertion`: owns capital markets trading ops control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `capital_markets_trading_ops_governed_model`: owns capital markets trading ops governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `capital_markets_trading_ops_appgen_outbox_event`, `capital_markets_trading_ops_appgen_inbox_event`, and `capital_markets_trading_ops_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /trade-orders', 'POST /executions', 'POST /allocations', 'POST /confirmations', 'POST /settlement-instructions', 'GET /capital-markets-trading-ops-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `capital_markets_trading_ops_appgen_outbox_eve
 - `simulate_settlement_instruction`: validates policy, writes owned `capital_markets_trading_ops_settlement_instruction` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_trade_break`: validates policy, writes owned `capital_markets_trading_ops_trade_break` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_position_snapshot`: validates policy, writes owned `capital_markets_trading_ops_position_snapshot` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_capital_markets_trading_ops_policy_rule`: validates policy, writes owned `capital_markets_trading_ops_capital_markets_trading_ops_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_capital_markets_trading_ops_runtime_parameter`: validates policy, writes owned `capital_markets_trading_ops_capital_markets_trading_ops_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_capital_markets_trading_ops_schema_extension`: validates policy, writes owned `capital_markets_trading_ops_capital_markets_trading_ops_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_capital_markets_trading_ops_control_assertion`: validates policy, writes owned `capital_markets_trading_ops_capital_markets_trading_ops_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_capital_markets_trading_ops_governed_model`: validates policy, writes owned `capital_markets_trading_ops_capital_markets_trading_ops_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_capital_markets_trading_ops_policy_rule`: validates policy, writes owned `capital_markets_trading_ops_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_capital_markets_trading_ops_runtime_parameter`: validates policy, writes owned `capital_markets_trading_ops_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_capital_markets_trading_ops_schema_extension`: validates policy, writes owned `capital_markets_trading_ops_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_capital_markets_trading_ops_control_assertion`: validates policy, writes owned `capital_markets_trading_ops_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_capital_markets_trading_ops_governed_model`: validates policy, writes owned `capital_markets_trading_ops_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_capital_markets_trading_ops_13`: validates policy, writes owned `capital_markets_trading_ops_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_capital_markets_trading_ops_14`: validates policy, writes owned `capital_markets_trading_ops_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_capital_markets_trading_ops_15`: validates policy, writes owned `capital_markets_trading_ops_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

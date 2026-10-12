@@ -226,7 +226,7 @@ CREATE TABLE identity_kyc_aml_compliance_compliance_review (
   FOREIGN KEY (kyc_profile_id) REFERENCES identity_kyc_aml_compliance_kyc_profile(kyc_profile_id)
 );
 
-CREATE TABLE identity_kyc_aml_compliance_identity_kyc_aml_compliance_policy_rule (
+CREATE TABLE identity_kyc_aml_compliance_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -252,7 +252,7 @@ CREATE TABLE identity_kyc_aml_compliance_identity_kyc_aml_compliance_policy_rule
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE identity_kyc_aml_compliance_identity_kyc_aml_compliance_runtime_parameter (
+CREATE TABLE identity_kyc_aml_compliance_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   runtime_parameter_id VARCHAR(255) NOT NULL,
@@ -275,7 +275,7 @@ CREATE TABLE identity_kyc_aml_compliance_identity_kyc_aml_compliance_runtime_par
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE identity_kyc_aml_compliance_identity_kyc_aml_compliance_schema_extension (
+CREATE TABLE identity_kyc_aml_compliance_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   schema_extension_id VARCHAR(255) NOT NULL,
@@ -293,7 +293,7 @@ CREATE TABLE identity_kyc_aml_compliance_identity_kyc_aml_compliance_schema_exte
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE identity_kyc_aml_compliance_identity_kyc_aml_compliance_control_assertion (
+CREATE TABLE identity_kyc_aml_compliance_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   control_assertion_id VARCHAR(255) NOT NULL,
@@ -312,7 +312,7 @@ CREATE TABLE identity_kyc_aml_compliance_identity_kyc_aml_compliance_control_ass
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE identity_kyc_aml_compliance_identity_kyc_aml_compliance_governed_model (
+CREATE TABLE identity_kyc_aml_compliance_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   governed_model_id VARCHAR(255) NOT NULL,

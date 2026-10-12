@@ -25,11 +25,11 @@ The `rail_operations_management` PBC is a packaged business capability for Train
 - `rail_operations_management_crew_assignment`: owns crew assignment lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `rail_operations_management_rail_incident`: owns rail incident lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `rail_operations_management_service_performance`: owns service performance lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `rail_operations_management_rail_operations_management_policy_rule`: owns rail operations management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `rail_operations_management_rail_operations_management_runtime_parameter`: owns rail operations management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `rail_operations_management_rail_operations_management_schema_extension`: owns rail operations management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `rail_operations_management_rail_operations_management_control_assertion`: owns rail operations management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `rail_operations_management_rail_operations_management_governed_model`: owns rail operations management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `rail_operations_management_policy_rule`: owns rail operations management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `rail_operations_management_runtime_parameter`: owns rail operations management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `rail_operations_management_schema_extension`: owns rail operations management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `rail_operations_management_control_assertion`: owns rail operations management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `rail_operations_management_governed_model`: owns rail operations management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `rail_operations_management_appgen_outbox_event`, `rail_operations_management_appgen_inbox_event`, and `rail_operations_management_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /train-plans', 'POST /consists', 'POST /track-windows', 'POST /yard-moves', 'POST /crew-assignments', 'GET /rail-operations-management-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `rail_operations_management_appgen_outbox_even
 - `simulate_crew_assignment`: validates policy, writes owned `rail_operations_management_crew_assignment` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_rail_incident`: validates policy, writes owned `rail_operations_management_rail_incident` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_service_performance`: validates policy, writes owned `rail_operations_management_service_performance` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_rail_operations_management_policy_rule`: validates policy, writes owned `rail_operations_management_rail_operations_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_rail_operations_management_runtime_parameter`: validates policy, writes owned `rail_operations_management_rail_operations_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_rail_operations_management_schema_extension`: validates policy, writes owned `rail_operations_management_rail_operations_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_rail_operations_management_control_assertion`: validates policy, writes owned `rail_operations_management_rail_operations_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_rail_operations_management_governed_model`: validates policy, writes owned `rail_operations_management_rail_operations_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_rail_operations_management_policy_rule`: validates policy, writes owned `rail_operations_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_rail_operations_management_runtime_parameter`: validates policy, writes owned `rail_operations_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_rail_operations_management_schema_extension`: validates policy, writes owned `rail_operations_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_rail_operations_management_control_assertion`: validates policy, writes owned `rail_operations_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_rail_operations_management_governed_model`: validates policy, writes owned `rail_operations_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_rail_operations_management_13`: validates policy, writes owned `rail_operations_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_rail_operations_management_14`: validates policy, writes owned `rail_operations_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_rail_operations_management_15`: validates policy, writes owned `rail_operations_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

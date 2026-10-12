@@ -25,11 +25,11 @@ The `defense_readiness_logistics` PBC is a packaged business capability for Unit
 - `defense_readiness_logistics_deployment_plan`: owns deployment plan lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `defense_readiness_logistics_readiness_inspection`: owns readiness inspection lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `defense_readiness_logistics_logistics_movement`: owns logistics movement lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `defense_readiness_logistics_defense_readiness_logistics_policy_rule`: owns defense readiness logistics policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `defense_readiness_logistics_defense_readiness_logistics_runtime_parameter`: owns defense readiness logistics runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `defense_readiness_logistics_defense_readiness_logistics_schema_extension`: owns defense readiness logistics schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `defense_readiness_logistics_defense_readiness_logistics_control_assertion`: owns defense readiness logistics control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `defense_readiness_logistics_defense_readiness_logistics_governed_model`: owns defense readiness logistics governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `defense_readiness_logistics_policy_rule`: owns defense readiness logistics policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `defense_readiness_logistics_runtime_parameter`: owns defense readiness logistics runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `defense_readiness_logistics_schema_extension`: owns defense readiness logistics schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `defense_readiness_logistics_control_assertion`: owns defense readiness logistics control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `defense_readiness_logistics_governed_model`: owns defense readiness logistics governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `defense_readiness_logistics_appgen_outbox_event`, `defense_readiness_logistics_appgen_inbox_event`, and `defense_readiness_logistics_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /unit-readinesss', 'POST /mission-assets', 'POST /supply-requests', 'POST /maintenance-statuss', 'POST /deployment-plans', 'GET /defense-readiness-logistics-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `defense_readiness_logistics_appgen_outbox_eve
 - `simulate_deployment_plan`: validates policy, writes owned `defense_readiness_logistics_deployment_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_readiness_inspection`: validates policy, writes owned `defense_readiness_logistics_readiness_inspection` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_logistics_movement`: validates policy, writes owned `defense_readiness_logistics_logistics_movement` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_defense_readiness_logistics_policy_rule`: validates policy, writes owned `defense_readiness_logistics_defense_readiness_logistics_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_defense_readiness_logistics_runtime_parameter`: validates policy, writes owned `defense_readiness_logistics_defense_readiness_logistics_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_defense_readiness_logistics_schema_extension`: validates policy, writes owned `defense_readiness_logistics_defense_readiness_logistics_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_defense_readiness_logistics_control_assertion`: validates policy, writes owned `defense_readiness_logistics_defense_readiness_logistics_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_defense_readiness_logistics_governed_model`: validates policy, writes owned `defense_readiness_logistics_defense_readiness_logistics_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_defense_readiness_logistics_policy_rule`: validates policy, writes owned `defense_readiness_logistics_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_defense_readiness_logistics_runtime_parameter`: validates policy, writes owned `defense_readiness_logistics_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_defense_readiness_logistics_schema_extension`: validates policy, writes owned `defense_readiness_logistics_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_defense_readiness_logistics_control_assertion`: validates policy, writes owned `defense_readiness_logistics_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_defense_readiness_logistics_governed_model`: validates policy, writes owned `defense_readiness_logistics_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_defense_readiness_logistics_13`: validates policy, writes owned `defense_readiness_logistics_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_defense_readiness_logistics_14`: validates policy, writes owned `defense_readiness_logistics_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_defense_readiness_logistics_15`: validates policy, writes owned `defense_readiness_logistics_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

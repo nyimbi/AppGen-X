@@ -191,7 +191,7 @@ CREATE TABLE court_case_management_court_order (
   FOREIGN KEY (court_case_id) REFERENCES court_case_management_court_case(court_case_id)
 );
 
-CREATE TABLE court_case_management_court_case_management_policy_rule (
+CREATE TABLE court_case_management_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   rule_id VARCHAR(255) NOT NULL,
@@ -209,7 +209,7 @@ CREATE TABLE court_case_management_court_case_management_policy_rule (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE court_case_management_court_case_management_runtime_parameter (
+CREATE TABLE court_case_management_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_name VARCHAR(255) NOT NULL,
@@ -223,7 +223,7 @@ CREATE TABLE court_case_management_court_case_management_runtime_parameter (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE court_case_management_court_case_management_schema_extension (
+CREATE TABLE court_case_management_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -237,7 +237,7 @@ CREATE TABLE court_case_management_court_case_management_schema_extension (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE court_case_management_court_case_management_control_assertion (
+CREATE TABLE court_case_management_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -252,7 +252,7 @@ CREATE TABLE court_case_management_court_case_management_control_assertion (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE court_case_management_court_case_management_governed_model (
+CREATE TABLE court_case_management_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

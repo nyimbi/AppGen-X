@@ -215,7 +215,7 @@ CREATE TABLE rail_operations_management_service_performance (
   FOREIGN KEY (train_plan_id) REFERENCES rail_operations_management_train_plan(train_plan_id)
 );
 
-CREATE TABLE rail_operations_management_rail_operations_management_policy_rule (
+CREATE TABLE rail_operations_management_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -235,7 +235,7 @@ CREATE TABLE rail_operations_management_rail_operations_management_policy_rule (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE rail_operations_management_rail_operations_management_runtime_parameter (
+CREATE TABLE rail_operations_management_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   runtime_parameter_id VARCHAR(255) NOT NULL,
@@ -257,7 +257,7 @@ CREATE TABLE rail_operations_management_rail_operations_management_runtime_param
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE rail_operations_management_rail_operations_management_schema_extension (
+CREATE TABLE rail_operations_management_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   schema_extension_id VARCHAR(255) NOT NULL,
@@ -277,7 +277,7 @@ CREATE TABLE rail_operations_management_rail_operations_management_schema_extens
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE rail_operations_management_rail_operations_management_control_assertion (
+CREATE TABLE rail_operations_management_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   control_assertion_id VARCHAR(255) NOT NULL,
@@ -300,7 +300,7 @@ CREATE TABLE rail_operations_management_rail_operations_management_control_asser
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE rail_operations_management_rail_operations_management_governed_model (
+CREATE TABLE rail_operations_management_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   governed_model_id VARCHAR(255) NOT NULL,

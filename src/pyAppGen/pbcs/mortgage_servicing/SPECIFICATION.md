@@ -25,11 +25,11 @@ The `mortgage_servicing` PBC is a packaged business capability for Mortgage acco
 - `mortgage_servicing_loss_mitigation_case`: owns loss mitigation case lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `mortgage_servicing_investor_report`: owns investor report lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `mortgage_servicing_foreclosure_milestone`: owns foreclosure milestone lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `mortgage_servicing_mortgage_servicing_policy_rule`: owns mortgage servicing policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `mortgage_servicing_mortgage_servicing_runtime_parameter`: owns mortgage servicing runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `mortgage_servicing_mortgage_servicing_schema_extension`: owns mortgage servicing schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `mortgage_servicing_mortgage_servicing_control_assertion`: owns mortgage servicing control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `mortgage_servicing_mortgage_servicing_governed_model`: owns mortgage servicing governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `mortgage_servicing_policy_rule`: owns mortgage servicing policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `mortgage_servicing_runtime_parameter`: owns mortgage servicing runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `mortgage_servicing_schema_extension`: owns mortgage servicing schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `mortgage_servicing_control_assertion`: owns mortgage servicing control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `mortgage_servicing_governed_model`: owns mortgage servicing governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `mortgage_servicing_appgen_outbox_event`, `mortgage_servicing_appgen_inbox_event`, and `mortgage_servicing_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /mortgage-loans', 'POST /escrow-accounts', 'POST /payment-events', 'POST /servicing-statements', 'POST /loss-mitigation-cases', 'GET /mortgage-servicing-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `mortgage_servicing_appgen_outbox_event`, `mor
 - `simulate_loss_mitigation_case`: validates policy, writes owned `mortgage_servicing_loss_mitigation_case` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_investor_report`: validates policy, writes owned `mortgage_servicing_investor_report` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_foreclosure_milestone`: validates policy, writes owned `mortgage_servicing_foreclosure_milestone` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_mortgage_servicing_policy_rule`: validates policy, writes owned `mortgage_servicing_mortgage_servicing_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_mortgage_servicing_runtime_parameter`: validates policy, writes owned `mortgage_servicing_mortgage_servicing_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_mortgage_servicing_schema_extension`: validates policy, writes owned `mortgage_servicing_mortgage_servicing_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_mortgage_servicing_control_assertion`: validates policy, writes owned `mortgage_servicing_mortgage_servicing_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_mortgage_servicing_governed_model`: validates policy, writes owned `mortgage_servicing_mortgage_servicing_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_mortgage_servicing_policy_rule`: validates policy, writes owned `mortgage_servicing_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_mortgage_servicing_runtime_parameter`: validates policy, writes owned `mortgage_servicing_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_mortgage_servicing_schema_extension`: validates policy, writes owned `mortgage_servicing_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_mortgage_servicing_control_assertion`: validates policy, writes owned `mortgage_servicing_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_mortgage_servicing_governed_model`: validates policy, writes owned `mortgage_servicing_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_mortgage_servicing_13`: validates policy, writes owned `mortgage_servicing_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_mortgage_servicing_14`: validates policy, writes owned `mortgage_servicing_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_mortgage_servicing_15`: validates policy, writes owned `mortgage_servicing_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

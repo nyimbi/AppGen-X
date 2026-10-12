@@ -26,13 +26,13 @@ def seed_plan() -> dict[str, Any]:
                 },
             },
             {
-                "table": f"{PBC_KEY}_cybersecurity_operations_center_policy_rule",
+                "table": f"{PBC_KEY}_policy_rule",
                 "code": "SECURITY_ALERT_POLICY",
                 "status": "active",
                 "payload": default_policy_bundle(),
             },
             {
-                "table": f"{PBC_KEY}_cybersecurity_operations_center_runtime_parameter",
+                "table": f"{PBC_KEY}_runtime_parameter",
                 "code": "WORKBENCH_LIMIT",
                 "status": "active",
                 "payload": default_parameter_records()[0],

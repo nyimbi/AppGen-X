@@ -252,7 +252,7 @@ CREATE TABLE nonprofit_program_impact_donor_report (
   FOREIGN KEY (grant_restriction_id) REFERENCES nonprofit_program_impact_grant_restriction(grant_restriction_id)
 );
 
-CREATE TABLE nonprofit_program_impact_nonprofit_program_impact_policy_rule (
+CREATE TABLE nonprofit_program_impact_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -273,7 +273,7 @@ CREATE TABLE nonprofit_program_impact_nonprofit_program_impact_policy_rule (
   FOREIGN KEY (program_id) REFERENCES nonprofit_program_impact_program(program_id)
 );
 
-CREATE TABLE nonprofit_program_impact_nonprofit_program_impact_runtime_parameter (
+CREATE TABLE nonprofit_program_impact_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   runtime_parameter_id VARCHAR(255) NOT NULL,
@@ -295,7 +295,7 @@ CREATE TABLE nonprofit_program_impact_nonprofit_program_impact_runtime_parameter
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE nonprofit_program_impact_nonprofit_program_impact_schema_extension (
+CREATE TABLE nonprofit_program_impact_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   schema_extension_id VARCHAR(255) NOT NULL,
@@ -314,7 +314,7 @@ CREATE TABLE nonprofit_program_impact_nonprofit_program_impact_schema_extension 
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE nonprofit_program_impact_nonprofit_program_impact_control_assertion (
+CREATE TABLE nonprofit_program_impact_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   control_assertion_id VARCHAR(255) NOT NULL,
@@ -336,7 +336,7 @@ CREATE TABLE nonprofit_program_impact_nonprofit_program_impact_control_assertion
   FOREIGN KEY (program_id) REFERENCES nonprofit_program_impact_program(program_id)
 );
 
-CREATE TABLE nonprofit_program_impact_nonprofit_program_impact_governed_model (
+CREATE TABLE nonprofit_program_impact_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   governed_model_id VARCHAR(255) NOT NULL,

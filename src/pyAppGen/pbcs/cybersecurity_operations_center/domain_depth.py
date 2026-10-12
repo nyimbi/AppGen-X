@@ -70,11 +70,11 @@ _OPERATION_TABLES = {
     "simulate_playbook_run": f"{PBC_KEY}_playbook_run",
     "create_containment_action": f"{PBC_KEY}_containment_action",
     "record_response_evidence": f"{PBC_KEY}_response_evidence",
-    "review_policy_rule": f"{PBC_KEY}_cybersecurity_operations_center_policy_rule",
-    "approve_runtime_parameter": f"{PBC_KEY}_cybersecurity_operations_center_runtime_parameter",
-    "simulate_schema_extension": f"{PBC_KEY}_cybersecurity_operations_center_schema_extension",
-    "create_control_assertion": f"{PBC_KEY}_cybersecurity_operations_center_control_assertion",
-    "record_governed_model": f"{PBC_KEY}_cybersecurity_operations_center_governed_model",
+    "review_policy_rule": f"{PBC_KEY}_policy_rule",
+    "approve_runtime_parameter": f"{PBC_KEY}_runtime_parameter",
+    "simulate_schema_extension": f"{PBC_KEY}_schema_extension",
+    "create_control_assertion": f"{PBC_KEY}_control_assertion",
+    "record_governed_model": f"{PBC_KEY}_governed_model",
     "generate_handoff_packet": f"{PBC_KEY}_security_incident",
 }
 

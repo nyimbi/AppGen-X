@@ -25,11 +25,11 @@ The `mining_operations_management` PBC is a packaged business capability for Min
 - `mining_operations_management_fleet_asset`: owns fleet asset lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `mining_operations_management_ore_quality`: owns ore quality lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `mining_operations_management_stockpile`: owns stockpile lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `mining_operations_management_mining_operations_management_policy_rule`: owns mining operations management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `mining_operations_management_mining_operations_management_runtime_parameter`: owns mining operations management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `mining_operations_management_mining_operations_management_schema_extension`: owns mining operations management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `mining_operations_management_mining_operations_management_control_assertion`: owns mining operations management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `mining_operations_management_mining_operations_management_governed_model`: owns mining operations management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `mining_operations_management_policy_rule`: owns mining operations management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `mining_operations_management_runtime_parameter`: owns mining operations management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `mining_operations_management_schema_extension`: owns mining operations management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `mining_operations_management_control_assertion`: owns mining operations management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `mining_operations_management_governed_model`: owns mining operations management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `mining_operations_management_appgen_outbox_event`, `mining_operations_management_appgen_inbox_event`, and `mining_operations_management_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /mine-plans', 'POST /pit-blocks', 'POST /extraction-shifts', 'POST /haulage-cycles', 'POST /fleet-assets', 'GET /mining-operations-management-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `mining_operations_management_appgen_outbox_ev
 - `simulate_fleet_asset`: validates policy, writes owned `mining_operations_management_fleet_asset` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_ore_quality`: validates policy, writes owned `mining_operations_management_ore_quality` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_stockpile`: validates policy, writes owned `mining_operations_management_stockpile` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_mining_operations_management_policy_rule`: validates policy, writes owned `mining_operations_management_mining_operations_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_mining_operations_management_runtime_parameter`: validates policy, writes owned `mining_operations_management_mining_operations_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_mining_operations_management_schema_extension`: validates policy, writes owned `mining_operations_management_mining_operations_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_mining_operations_management_control_assertion`: validates policy, writes owned `mining_operations_management_mining_operations_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_mining_operations_management_governed_model`: validates policy, writes owned `mining_operations_management_mining_operations_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_mining_operations_management_policy_rule`: validates policy, writes owned `mining_operations_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_mining_operations_management_runtime_parameter`: validates policy, writes owned `mining_operations_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_mining_operations_management_schema_extension`: validates policy, writes owned `mining_operations_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_mining_operations_management_control_assertion`: validates policy, writes owned `mining_operations_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_mining_operations_management_governed_model`: validates policy, writes owned `mining_operations_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_mining_operations_management_13`: validates policy, writes owned `mining_operations_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_mining_operations_management_14`: validates policy, writes owned `mining_operations_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_mining_operations_management_15`: validates policy, writes owned `mining_operations_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

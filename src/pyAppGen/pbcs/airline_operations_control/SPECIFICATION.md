@@ -25,11 +25,11 @@ The `airline_operations_control` PBC is a packaged business capability for Fleet
 - `airline_operations_control_reaccommodation_plan`: owns reaccommodation plan lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `airline_operations_control_operations_decision`: owns operations decision lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `airline_operations_control_delay_code`: owns delay code lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `airline_operations_control_airline_operations_control_policy_rule`: owns airline operations control policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `airline_operations_control_airline_operations_control_runtime_parameter`: owns airline operations control runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `airline_operations_control_airline_operations_control_schema_extension`: owns airline operations control schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `airline_operations_control_airline_operations_control_control_assertion`: owns airline operations control control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `airline_operations_control_airline_operations_control_governed_model`: owns airline operations control governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `airline_operations_control_policy_rule`: owns airline operations control policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `airline_operations_control_runtime_parameter`: owns airline operations control runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `airline_operations_control_schema_extension`: owns airline operations control schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `airline_operations_control_control_assertion`: owns airline operations control control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `airline_operations_control_governed_model`: owns airline operations control governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `airline_operations_control_appgen_outbox_event`, `airline_operations_control_appgen_inbox_event`, and `airline_operations_control_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /flight-legs', 'POST /aircraft-rotations', 'POST /crew-pairings', 'POST /disruption-events', 'POST /reaccommodation-plans', 'GET /airline-operations-control-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `airline_operations_control_appgen_outbox_even
 - `simulate_reaccommodation_plan`: validates policy, writes owned `airline_operations_control_reaccommodation_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_operations_decision`: validates policy, writes owned `airline_operations_control_operations_decision` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_delay_code`: validates policy, writes owned `airline_operations_control_delay_code` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_airline_operations_control_policy_rule`: validates policy, writes owned `airline_operations_control_airline_operations_control_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_airline_operations_control_runtime_parameter`: validates policy, writes owned `airline_operations_control_airline_operations_control_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_airline_operations_control_schema_extension`: validates policy, writes owned `airline_operations_control_airline_operations_control_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_airline_operations_control_control_assertion`: validates policy, writes owned `airline_operations_control_airline_operations_control_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_airline_operations_control_governed_model`: validates policy, writes owned `airline_operations_control_airline_operations_control_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_airline_operations_control_policy_rule`: validates policy, writes owned `airline_operations_control_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_airline_operations_control_runtime_parameter`: validates policy, writes owned `airline_operations_control_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_airline_operations_control_schema_extension`: validates policy, writes owned `airline_operations_control_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_airline_operations_control_control_assertion`: validates policy, writes owned `airline_operations_control_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_airline_operations_control_governed_model`: validates policy, writes owned `airline_operations_control_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_airline_operations_control_13`: validates policy, writes owned `airline_operations_control_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_airline_operations_control_14`: validates policy, writes owned `airline_operations_control_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_airline_operations_control_15`: validates policy, writes owned `airline_operations_control_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

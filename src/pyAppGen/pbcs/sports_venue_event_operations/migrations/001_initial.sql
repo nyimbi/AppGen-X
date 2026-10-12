@@ -219,7 +219,7 @@ CREATE TABLE sports_venue_event_operations_event_settlement (
   FOREIGN KEY (venue_event_id) REFERENCES sports_venue_event_operations_venue_event(venue_event_id)
 );
 
-CREATE TABLE sports_venue_event_operations_sports_venue_event_operations_policy_rule (
+CREATE TABLE sports_venue_event_operations_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   rule_id VARCHAR(255) NOT NULL,
@@ -237,7 +237,7 @@ CREATE TABLE sports_venue_event_operations_sports_venue_event_operations_policy_
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE sports_venue_event_operations_sports_venue_event_operations_runtime_parameter (
+CREATE TABLE sports_venue_event_operations_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_name VARCHAR(255) NOT NULL,
@@ -251,7 +251,7 @@ CREATE TABLE sports_venue_event_operations_sports_venue_event_operations_runtime
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE sports_venue_event_operations_sports_venue_event_operations_schema_extension (
+CREATE TABLE sports_venue_event_operations_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -265,7 +265,7 @@ CREATE TABLE sports_venue_event_operations_sports_venue_event_operations_schema_
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE sports_venue_event_operations_sports_venue_event_operations_control_assertion (
+CREATE TABLE sports_venue_event_operations_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -280,7 +280,7 @@ CREATE TABLE sports_venue_event_operations_sports_venue_event_operations_control
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE sports_venue_event_operations_sports_venue_event_operations_governed_model (
+CREATE TABLE sports_venue_event_operations_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

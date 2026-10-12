@@ -25,11 +25,11 @@ The `actuarial_pricing_reserving` PBC is a packaged business capability for Rati
 - `actuarial_pricing_reserving_loss_triangle`: owns loss triangle lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `actuarial_pricing_reserving_capital_scenario`: owns capital scenario lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `actuarial_pricing_reserving_model_validation`: owns model validation lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `actuarial_pricing_reserving_actuarial_pricing_reserving_policy_rule`: owns actuarial pricing reserving policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `actuarial_pricing_reserving_actuarial_pricing_reserving_runtime_parameter`: owns actuarial pricing reserving runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `actuarial_pricing_reserving_actuarial_pricing_reserving_schema_extension`: owns actuarial pricing reserving schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `actuarial_pricing_reserving_actuarial_pricing_reserving_control_assertion`: owns actuarial pricing reserving control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `actuarial_pricing_reserving_actuarial_pricing_reserving_governed_model`: owns actuarial pricing reserving governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `actuarial_pricing_reserving_policy_rule`: owns actuarial pricing reserving policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `actuarial_pricing_reserving_runtime_parameter`: owns actuarial pricing reserving runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `actuarial_pricing_reserving_schema_extension`: owns actuarial pricing reserving schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `actuarial_pricing_reserving_control_assertion`: owns actuarial pricing reserving control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `actuarial_pricing_reserving_governed_model`: owns actuarial pricing reserving governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `actuarial_pricing_reserving_appgen_outbox_event`, `actuarial_pricing_reserving_appgen_inbox_event`, and `actuarial_pricing_reserving_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /rating-models', 'POST /actuarial-assumptions', 'POST /experience-studys', 'POST /reserve-estimates', 'POST /loss-triangles', 'GET /actuarial-pricing-reserving-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `actuarial_pricing_reserving_appgen_outbox_eve
 - `simulate_loss_triangle`: validates policy, writes owned `actuarial_pricing_reserving_loss_triangle` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_capital_scenario`: validates policy, writes owned `actuarial_pricing_reserving_capital_scenario` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_model_validation`: validates policy, writes owned `actuarial_pricing_reserving_model_validation` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_actuarial_pricing_reserving_policy_rule`: validates policy, writes owned `actuarial_pricing_reserving_actuarial_pricing_reserving_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_actuarial_pricing_reserving_runtime_parameter`: validates policy, writes owned `actuarial_pricing_reserving_actuarial_pricing_reserving_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_actuarial_pricing_reserving_schema_extension`: validates policy, writes owned `actuarial_pricing_reserving_actuarial_pricing_reserving_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_actuarial_pricing_reserving_control_assertion`: validates policy, writes owned `actuarial_pricing_reserving_actuarial_pricing_reserving_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_actuarial_pricing_reserving_governed_model`: validates policy, writes owned `actuarial_pricing_reserving_actuarial_pricing_reserving_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_actuarial_pricing_reserving_policy_rule`: validates policy, writes owned `actuarial_pricing_reserving_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_actuarial_pricing_reserving_runtime_parameter`: validates policy, writes owned `actuarial_pricing_reserving_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_actuarial_pricing_reserving_schema_extension`: validates policy, writes owned `actuarial_pricing_reserving_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_actuarial_pricing_reserving_control_assertion`: validates policy, writes owned `actuarial_pricing_reserving_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_actuarial_pricing_reserving_governed_model`: validates policy, writes owned `actuarial_pricing_reserving_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_actuarial_pricing_reserving_13`: validates policy, writes owned `actuarial_pricing_reserving_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_actuarial_pricing_reserving_14`: validates policy, writes owned `actuarial_pricing_reserving_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_actuarial_pricing_reserving_15`: validates policy, writes owned `actuarial_pricing_reserving_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

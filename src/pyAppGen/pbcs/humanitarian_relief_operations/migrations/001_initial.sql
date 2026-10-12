@@ -199,7 +199,7 @@ CREATE TABLE humanitarian_relief_operations_donor_accountability (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE humanitarian_relief_operations_humanitarian_relief_operations_policy_rule (
+CREATE TABLE humanitarian_relief_operations_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -217,7 +217,7 @@ CREATE TABLE humanitarian_relief_operations_humanitarian_relief_operations_polic
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE humanitarian_relief_operations_humanitarian_relief_operations_runtime_parameter (
+CREATE TABLE humanitarian_relief_operations_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_name VARCHAR(255) NOT NULL,
@@ -231,7 +231,7 @@ CREATE TABLE humanitarian_relief_operations_humanitarian_relief_operations_runti
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE humanitarian_relief_operations_humanitarian_relief_operations_schema_extension (
+CREATE TABLE humanitarian_relief_operations_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -245,7 +245,7 @@ CREATE TABLE humanitarian_relief_operations_humanitarian_relief_operations_schem
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE humanitarian_relief_operations_humanitarian_relief_operations_control_assertion (
+CREATE TABLE humanitarian_relief_operations_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -260,7 +260,7 @@ CREATE TABLE humanitarian_relief_operations_humanitarian_relief_operations_contr
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE humanitarian_relief_operations_humanitarian_relief_operations_governed_model (
+CREATE TABLE humanitarian_relief_operations_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

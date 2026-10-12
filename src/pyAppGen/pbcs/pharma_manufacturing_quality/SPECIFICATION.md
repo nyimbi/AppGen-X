@@ -25,11 +25,11 @@ The `pharma_manufacturing_quality` PBC is a packaged business capability for Bat
 - `pharma_manufacturing_quality_capa`: owns capa lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `pharma_manufacturing_quality_quality_release`: owns quality release lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `pharma_manufacturing_quality_serialization_event`: owns serialization event lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `pharma_manufacturing_quality_pharma_manufacturing_quality_policy_rule`: owns pharma manufacturing quality policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `pharma_manufacturing_quality_pharma_manufacturing_quality_runtime_parameter`: owns pharma manufacturing quality runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `pharma_manufacturing_quality_pharma_manufacturing_quality_schema_extension`: owns pharma manufacturing quality schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `pharma_manufacturing_quality_pharma_manufacturing_quality_control_assertion`: owns pharma manufacturing quality control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `pharma_manufacturing_quality_pharma_manufacturing_quality_governed_model`: owns pharma manufacturing quality governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `pharma_manufacturing_quality_policy_rule`: owns pharma manufacturing quality policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `pharma_manufacturing_quality_runtime_parameter`: owns pharma manufacturing quality runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `pharma_manufacturing_quality_schema_extension`: owns pharma manufacturing quality schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `pharma_manufacturing_quality_control_assertion`: owns pharma manufacturing quality control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `pharma_manufacturing_quality_governed_model`: owns pharma manufacturing quality governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `pharma_manufacturing_quality_appgen_outbox_event`, `pharma_manufacturing_quality_appgen_inbox_event`, and `pharma_manufacturing_quality_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /pharma-batchs', 'POST /master-batch-records', 'POST /validation-protocols', 'POST /deviations', 'POST /capas', 'GET /pharma-manufacturing-quality-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `pharma_manufacturing_quality_appgen_outbox_ev
 - `simulate_capa`: validates policy, writes owned `pharma_manufacturing_quality_capa` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_quality_release`: validates policy, writes owned `pharma_manufacturing_quality_quality_release` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_serialization_event`: validates policy, writes owned `pharma_manufacturing_quality_serialization_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_pharma_manufacturing_quality_policy_rule`: validates policy, writes owned `pharma_manufacturing_quality_pharma_manufacturing_quality_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_pharma_manufacturing_quality_runtime_parameter`: validates policy, writes owned `pharma_manufacturing_quality_pharma_manufacturing_quality_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_pharma_manufacturing_quality_schema_extension`: validates policy, writes owned `pharma_manufacturing_quality_pharma_manufacturing_quality_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_pharma_manufacturing_quality_control_assertion`: validates policy, writes owned `pharma_manufacturing_quality_pharma_manufacturing_quality_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_pharma_manufacturing_quality_governed_model`: validates policy, writes owned `pharma_manufacturing_quality_pharma_manufacturing_quality_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_pharma_manufacturing_quality_policy_rule`: validates policy, writes owned `pharma_manufacturing_quality_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_pharma_manufacturing_quality_runtime_parameter`: validates policy, writes owned `pharma_manufacturing_quality_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_pharma_manufacturing_quality_schema_extension`: validates policy, writes owned `pharma_manufacturing_quality_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_pharma_manufacturing_quality_control_assertion`: validates policy, writes owned `pharma_manufacturing_quality_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_pharma_manufacturing_quality_governed_model`: validates policy, writes owned `pharma_manufacturing_quality_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_pharma_manufacturing_quality_13`: validates policy, writes owned `pharma_manufacturing_quality_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_pharma_manufacturing_quality_14`: validates policy, writes owned `pharma_manufacturing_quality_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_pharma_manufacturing_quality_15`: validates policy, writes owned `pharma_manufacturing_quality_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

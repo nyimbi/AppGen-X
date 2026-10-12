@@ -216,7 +216,7 @@ CREATE TABLE fleet_mobility_operations_safety_event (
   FOREIGN KEY (route_plan_id) REFERENCES fleet_mobility_operations_route_plan(route_plan_id)
 );
 
-CREATE TABLE fleet_mobility_operations_fleet_mobility_operations_policy_rule (
+CREATE TABLE fleet_mobility_operations_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   rule_id VARCHAR(255) NOT NULL,
@@ -234,7 +234,7 @@ CREATE TABLE fleet_mobility_operations_fleet_mobility_operations_policy_rule (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE fleet_mobility_operations_fleet_mobility_operations_runtime_parameter (
+CREATE TABLE fleet_mobility_operations_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_name VARCHAR(255) NOT NULL,
@@ -248,7 +248,7 @@ CREATE TABLE fleet_mobility_operations_fleet_mobility_operations_runtime_paramet
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE fleet_mobility_operations_fleet_mobility_operations_schema_extension (
+CREATE TABLE fleet_mobility_operations_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -262,7 +262,7 @@ CREATE TABLE fleet_mobility_operations_fleet_mobility_operations_schema_extensio
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE fleet_mobility_operations_fleet_mobility_operations_control_assertion (
+CREATE TABLE fleet_mobility_operations_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -277,7 +277,7 @@ CREATE TABLE fleet_mobility_operations_fleet_mobility_operations_control_asserti
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE fleet_mobility_operations_fleet_mobility_operations_governed_model (
+CREATE TABLE fleet_mobility_operations_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

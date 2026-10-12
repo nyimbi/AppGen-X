@@ -113,7 +113,7 @@ CREATE TABLE chemical_batch_compliance_compliance_hold (
     updated_at TEXT NOT NULL
 );
 
-CREATE TABLE chemical_batch_compliance_chemical_batch_compliance_policy_rule (
+CREATE TABLE chemical_batch_compliance_policy_rule (
     id TEXT PRIMARY KEY,
     tenant TEXT NOT NULL,
     rule_id TEXT NOT NULL,
@@ -126,7 +126,7 @@ CREATE TABLE chemical_batch_compliance_chemical_batch_compliance_policy_rule (
     updated_at TEXT NOT NULL
 );
 
-CREATE TABLE chemical_batch_compliance_chemical_batch_compliance_runtime_parameter (
+CREATE TABLE chemical_batch_compliance_runtime_parameter (
     id TEXT PRIMARY KEY,
     tenant TEXT NOT NULL,
     parameter_name TEXT NOT NULL,
@@ -138,7 +138,7 @@ CREATE TABLE chemical_batch_compliance_chemical_batch_compliance_runtime_paramet
     updated_at TEXT NOT NULL
 );
 
-CREATE TABLE chemical_batch_compliance_chemical_batch_compliance_schema_extension (
+CREATE TABLE chemical_batch_compliance_schema_extension (
     id TEXT PRIMARY KEY,
     tenant TEXT NOT NULL,
     table_name TEXT NOT NULL,
@@ -149,7 +149,7 @@ CREATE TABLE chemical_batch_compliance_chemical_batch_compliance_schema_extensio
     updated_at TEXT NOT NULL
 );
 
-CREATE TABLE chemical_batch_compliance_chemical_batch_compliance_control_assertion (
+CREATE TABLE chemical_batch_compliance_control_assertion (
     id TEXT PRIMARY KEY,
     tenant TEXT NOT NULL,
     control_id TEXT NOT NULL,
@@ -162,7 +162,7 @@ CREATE TABLE chemical_batch_compliance_chemical_batch_compliance_control_asserti
     updated_at TEXT NOT NULL
 );
 
-CREATE TABLE chemical_batch_compliance_chemical_batch_compliance_governed_model (
+CREATE TABLE chemical_batch_compliance_governed_model (
     id TEXT PRIMARY KEY,
     tenant TEXT NOT NULL,
     artifact_type TEXT NOT NULL,

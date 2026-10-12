@@ -1,7 +1,7 @@
 """Executable seed-data contract for the procurement_sourcing PBC."""
 
 PBC_KEY = 'procurement_sourcing'
-SEED_DATA = ({'table': 'procurement_sourcing_procurement_sourcing_purchase_requisition', 'rows': ({'code': 'PROCUREMENT_SOURCING-001', 'status': 'active'},)}, {'table': 'procurement_sourcing_procurement_sourcing_purchase_requisition_line', 'rows': ({'code': 'PROCUREMENT_SOURCING-002', 'status': 'active'},)})
+SEED_DATA = ({'table': 'procurement_sourcing_purchase_requisition', 'rows': ({'code': 'PROCUREMENT_SOURCING-001', 'status': 'active'},)}, {'table': 'procurement_sourcing_purchase_requisition_line', 'rows': ({'code': 'PROCUREMENT_SOURCING-002', 'status': 'active'},)})
 
 
 def seed_plan():

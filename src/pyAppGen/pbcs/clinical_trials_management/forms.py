@@ -175,7 +175,7 @@ CLINICAL_TRIALS_MANAGEMENT_FORM_DEFINITIONS = (
         "route": "POST /api/pbc/clinical_trials_management/policy-rules",
         "operation": "command_policy_rules",
         "permission": "clinical_trials_management.configure",
-        "owned_tables": ("clinical_trials_management_clinical_trials_management_policy_rule",),
+        "owned_tables": ("clinical_trials_management_policy_rule",),
         "fields": (
             {"name": "tenant", "type": "string", "required": True},
             {"name": "rule_id", "type": "string", "required": True},
@@ -195,7 +195,7 @@ CLINICAL_TRIALS_MANAGEMENT_FORM_DEFINITIONS = (
         "route": "POST /api/pbc/clinical_trials_management/runtime-parameters",
         "operation": "command_runtime_parameters",
         "permission": "clinical_trials_management.configure",
-        "owned_tables": ("clinical_trials_management_clinical_trials_management_runtime_parameter",),
+        "owned_tables": ("clinical_trials_management_runtime_parameter",),
         "fields": (
             {"name": "tenant", "type": "string", "required": True},
             {
@@ -228,8 +228,8 @@ CLINICAL_TRIALS_MANAGEMENT_FORM_DEFINITIONS = (
             "clinical_trials_management_visit_schedule",
             "clinical_trials_management_adverse_event",
             "clinical_trials_management_monitoring_finding",
-            "clinical_trials_management_clinical_trials_management_policy_rule",
-            "clinical_trials_management_clinical_trials_management_runtime_parameter",
+            "clinical_trials_management_policy_rule",
+            "clinical_trials_management_runtime_parameter",
         ),
         "fields": (
             {"name": "document_text", "type": "text", "required": True},

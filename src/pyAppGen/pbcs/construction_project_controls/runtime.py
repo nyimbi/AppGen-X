@@ -18,11 +18,11 @@ CONSTRUCTION_PROJECT_CONTROLS_OWNED_TABLES = (
     "construction_project_controls_site_progress",
     "construction_project_controls_change_event",
     "construction_project_controls_schedule_risk",
-    "construction_project_controls_construction_project_controls_policy_rule",
-    "construction_project_controls_construction_project_controls_runtime_parameter",
-    "construction_project_controls_construction_project_controls_schema_extension",
-    "construction_project_controls_construction_project_controls_control_assertion",
-    "construction_project_controls_construction_project_controls_governed_model",
+    "construction_project_controls_policy_rule",
+    "construction_project_controls_runtime_parameter",
+    "construction_project_controls_schema_extension",
+    "construction_project_controls_control_assertion",
+    "construction_project_controls_governed_model",
     "construction_project_controls_appgen_outbox_event",
     "construction_project_controls_appgen_inbox_event",
     "construction_project_controls_appgen_dead_letter_event",
@@ -1603,7 +1603,7 @@ CONSTRUCTION_PROJECT_CONTROLS_TABLE_FIELDS = {
         "created_at",
         "updated_at",
     ),
-    "construction_project_controls_construction_project_controls_policy_rule": (
+    "construction_project_controls_policy_rule": (
         "id",
         "tenant",
         "policy_rule_id",
@@ -1622,7 +1622,7 @@ CONSTRUCTION_PROJECT_CONTROLS_TABLE_FIELDS = {
         "created_at",
         "updated_at",
     ),
-    "construction_project_controls_construction_project_controls_runtime_parameter": (
+    "construction_project_controls_runtime_parameter": (
         "id",
         "tenant",
         "parameter_name",
@@ -1636,7 +1636,7 @@ CONSTRUCTION_PROJECT_CONTROLS_TABLE_FIELDS = {
         "created_at",
         "updated_at",
     ),
-    "construction_project_controls_construction_project_controls_schema_extension": (
+    "construction_project_controls_schema_extension": (
         "id",
         "tenant",
         "extension_id",
@@ -1649,7 +1649,7 @@ CONSTRUCTION_PROJECT_CONTROLS_TABLE_FIELDS = {
         "created_at",
         "updated_at",
     ),
-    "construction_project_controls_construction_project_controls_control_assertion": (
+    "construction_project_controls_control_assertion": (
         "id",
         "tenant",
         "assertion_id",
@@ -1669,7 +1669,7 @@ CONSTRUCTION_PROJECT_CONTROLS_TABLE_FIELDS = {
         "created_at",
         "updated_at",
     ),
-    "construction_project_controls_construction_project_controls_governed_model": (
+    "construction_project_controls_governed_model": (
         "id",
         "tenant",
         "model_id",

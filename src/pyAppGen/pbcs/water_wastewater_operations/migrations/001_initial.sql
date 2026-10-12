@@ -197,7 +197,7 @@ CREATE TABLE water_wastewater_operations_compliance_sample (
   FOREIGN KEY (permit_limit_id) REFERENCES water_wastewater_operations_permit_limit(permit_limit_id)
 );
 
-CREATE TABLE water_wastewater_operations_water_wastewater_operations_policy_rule (
+CREATE TABLE water_wastewater_operations_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -215,7 +215,7 @@ CREATE TABLE water_wastewater_operations_water_wastewater_operations_policy_rule
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE water_wastewater_operations_water_wastewater_operations_runtime_parameter (
+CREATE TABLE water_wastewater_operations_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   runtime_parameter_id VARCHAR(255) NOT NULL,
@@ -237,7 +237,7 @@ CREATE TABLE water_wastewater_operations_water_wastewater_operations_runtime_par
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE water_wastewater_operations_water_wastewater_operations_schema_extension (
+CREATE TABLE water_wastewater_operations_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -251,7 +251,7 @@ CREATE TABLE water_wastewater_operations_water_wastewater_operations_schema_exte
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE water_wastewater_operations_water_wastewater_operations_control_assertion (
+CREATE TABLE water_wastewater_operations_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -266,7 +266,7 @@ CREATE TABLE water_wastewater_operations_water_wastewater_operations_control_ass
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE water_wastewater_operations_water_wastewater_operations_governed_model (
+CREATE TABLE water_wastewater_operations_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

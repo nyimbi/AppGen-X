@@ -232,7 +232,7 @@ CREATE TABLE insurance_underwriting_exclusion (
   FOREIGN KEY (bind_package_id) REFERENCES insurance_underwriting_bind_package(bind_package_id)
 );
 
-CREATE TABLE insurance_underwriting_insurance_underwriting_policy_rule (
+CREATE TABLE insurance_underwriting_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   rule_id VARCHAR(255) NOT NULL,
@@ -250,7 +250,7 @@ CREATE TABLE insurance_underwriting_insurance_underwriting_policy_rule (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE insurance_underwriting_insurance_underwriting_runtime_parameter (
+CREATE TABLE insurance_underwriting_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_name VARCHAR(255) NOT NULL,
@@ -264,7 +264,7 @@ CREATE TABLE insurance_underwriting_insurance_underwriting_runtime_parameter (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE insurance_underwriting_insurance_underwriting_schema_extension (
+CREATE TABLE insurance_underwriting_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -278,7 +278,7 @@ CREATE TABLE insurance_underwriting_insurance_underwriting_schema_extension (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE insurance_underwriting_insurance_underwriting_control_assertion (
+CREATE TABLE insurance_underwriting_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -293,7 +293,7 @@ CREATE TABLE insurance_underwriting_insurance_underwriting_control_assertion (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE insurance_underwriting_insurance_underwriting_governed_model (
+CREATE TABLE insurance_underwriting_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

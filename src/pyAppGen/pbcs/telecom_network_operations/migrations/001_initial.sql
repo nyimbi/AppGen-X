@@ -205,7 +205,7 @@ CREATE TABLE telecom_network_operations_sla_impact (
   FOREIGN KEY (network_incident_id) REFERENCES telecom_network_operations_network_incident(network_incident_id)
 );
 
-CREATE TABLE telecom_network_operations_telecom_network_operations_policy_rule (
+CREATE TABLE telecom_network_operations_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -225,7 +225,7 @@ CREATE TABLE telecom_network_operations_telecom_network_operations_policy_rule (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE telecom_network_operations_telecom_network_operations_runtime_parameter (
+CREATE TABLE telecom_network_operations_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   runtime_parameter_id VARCHAR(255) NOT NULL,
@@ -247,7 +247,7 @@ CREATE TABLE telecom_network_operations_telecom_network_operations_runtime_param
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE telecom_network_operations_telecom_network_operations_schema_extension (
+CREATE TABLE telecom_network_operations_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   schema_extension_id VARCHAR(255) NOT NULL,
@@ -267,7 +267,7 @@ CREATE TABLE telecom_network_operations_telecom_network_operations_schema_extens
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE telecom_network_operations_telecom_network_operations_control_assertion (
+CREATE TABLE telecom_network_operations_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   control_assertion_id VARCHAR(255) NOT NULL,
@@ -287,7 +287,7 @@ CREATE TABLE telecom_network_operations_telecom_network_operations_control_asser
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE telecom_network_operations_telecom_network_operations_governed_model (
+CREATE TABLE telecom_network_operations_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   governed_model_id VARCHAR(255) NOT NULL,

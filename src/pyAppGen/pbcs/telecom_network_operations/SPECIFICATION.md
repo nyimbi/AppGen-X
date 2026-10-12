@@ -25,11 +25,11 @@ The `telecom_network_operations` PBC is a packaged business capability for Netwo
 - `telecom_network_operations_service_assurance_case`: owns service assurance case lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `telecom_network_operations_maintenance_window`: owns maintenance window lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `telecom_network_operations_sla_impact`: owns sla impact lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `telecom_network_operations_telecom_network_operations_policy_rule`: owns telecom network operations policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `telecom_network_operations_telecom_network_operations_runtime_parameter`: owns telecom network operations runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `telecom_network_operations_telecom_network_operations_schema_extension`: owns telecom network operations schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `telecom_network_operations_telecom_network_operations_control_assertion`: owns telecom network operations control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `telecom_network_operations_telecom_network_operations_governed_model`: owns telecom network operations governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `telecom_network_operations_policy_rule`: owns telecom network operations policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `telecom_network_operations_runtime_parameter`: owns telecom network operations runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `telecom_network_operations_schema_extension`: owns telecom network operations schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `telecom_network_operations_control_assertion`: owns telecom network operations control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `telecom_network_operations_governed_model`: owns telecom network operations governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `telecom_network_operations_appgen_outbox_event`, `telecom_network_operations_appgen_inbox_event`, and `telecom_network_operations_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /network-elements', 'POST /capacity-segments', 'POST /network-incidents', 'POST /alarm-events', 'POST /service-assurance-cases', 'GET /telecom-network-operations-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `telecom_network_operations_appgen_outbox_even
 - `simulate_service_assurance_case`: validates policy, writes owned `telecom_network_operations_service_assurance_case` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_maintenance_window`: validates policy, writes owned `telecom_network_operations_maintenance_window` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_sla_impact`: validates policy, writes owned `telecom_network_operations_sla_impact` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_telecom_network_operations_policy_rule`: validates policy, writes owned `telecom_network_operations_telecom_network_operations_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_telecom_network_operations_runtime_parameter`: validates policy, writes owned `telecom_network_operations_telecom_network_operations_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_telecom_network_operations_schema_extension`: validates policy, writes owned `telecom_network_operations_telecom_network_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_telecom_network_operations_control_assertion`: validates policy, writes owned `telecom_network_operations_telecom_network_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_telecom_network_operations_governed_model`: validates policy, writes owned `telecom_network_operations_telecom_network_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_telecom_network_operations_policy_rule`: validates policy, writes owned `telecom_network_operations_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_telecom_network_operations_runtime_parameter`: validates policy, writes owned `telecom_network_operations_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_telecom_network_operations_schema_extension`: validates policy, writes owned `telecom_network_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_telecom_network_operations_control_assertion`: validates policy, writes owned `telecom_network_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_telecom_network_operations_governed_model`: validates policy, writes owned `telecom_network_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_telecom_network_operations_13`: validates policy, writes owned `telecom_network_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_telecom_network_operations_14`: validates policy, writes owned `telecom_network_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_telecom_network_operations_15`: validates policy, writes owned `telecom_network_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

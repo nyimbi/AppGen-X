@@ -182,7 +182,7 @@ CREATE TABLE utility_outage_restoration_reliability_metric (
   FOREIGN KEY (outage_incident_id) REFERENCES utility_outage_restoration_outage_incident(outage_incident_id)
 );
 
-CREATE TABLE utility_outage_restoration_utility_outage_restoration_policy_rule (
+CREATE TABLE utility_outage_restoration_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   rule_id VARCHAR(255) NOT NULL,
@@ -200,7 +200,7 @@ CREATE TABLE utility_outage_restoration_utility_outage_restoration_policy_rule (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE utility_outage_restoration_utility_outage_restoration_runtime_parameter (
+CREATE TABLE utility_outage_restoration_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_name VARCHAR(255) NOT NULL,
@@ -214,7 +214,7 @@ CREATE TABLE utility_outage_restoration_utility_outage_restoration_runtime_param
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE utility_outage_restoration_utility_outage_restoration_schema_extension (
+CREATE TABLE utility_outage_restoration_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -228,7 +228,7 @@ CREATE TABLE utility_outage_restoration_utility_outage_restoration_schema_extens
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE utility_outage_restoration_utility_outage_restoration_control_assertion (
+CREATE TABLE utility_outage_restoration_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -243,7 +243,7 @@ CREATE TABLE utility_outage_restoration_utility_outage_restoration_control_asser
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE utility_outage_restoration_utility_outage_restoration_governed_model (
+CREATE TABLE utility_outage_restoration_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

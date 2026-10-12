@@ -25,11 +25,11 @@ The `hotel_revenue_management` PBC is a packaged business capability for Room in
 - `hotel_revenue_management_overbooking_policy`: owns overbooking policy lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `hotel_revenue_management_yield_decision`: owns yield decision lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `hotel_revenue_management_revenue_snapshot`: owns revenue snapshot lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `hotel_revenue_management_hotel_revenue_management_policy_rule`: owns hotel revenue management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `hotel_revenue_management_hotel_revenue_management_runtime_parameter`: owns hotel revenue management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `hotel_revenue_management_hotel_revenue_management_schema_extension`: owns hotel revenue management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `hotel_revenue_management_hotel_revenue_management_control_assertion`: owns hotel revenue management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `hotel_revenue_management_hotel_revenue_management_governed_model`: owns hotel revenue management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `hotel_revenue_management_policy_rule`: owns hotel revenue management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `hotel_revenue_management_runtime_parameter`: owns hotel revenue management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `hotel_revenue_management_schema_extension`: owns hotel revenue management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `hotel_revenue_management_control_assertion`: owns hotel revenue management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `hotel_revenue_management_governed_model`: owns hotel revenue management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `hotel_revenue_management_appgen_outbox_event`, `hotel_revenue_management_appgen_inbox_event`, and `hotel_revenue_management_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /room-types', 'POST /rate-plans', 'POST /channel-inventorys', 'POST /demand-forecasts', 'POST /overbooking-policys', 'GET /hotel-revenue-management-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `hotel_revenue_management_appgen_outbox_event`
 - `simulate_overbooking_policy`: validates policy, writes owned `hotel_revenue_management_overbooking_policy` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_yield_decision`: validates policy, writes owned `hotel_revenue_management_yield_decision` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_revenue_snapshot`: validates policy, writes owned `hotel_revenue_management_revenue_snapshot` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_hotel_revenue_management_policy_rule`: validates policy, writes owned `hotel_revenue_management_hotel_revenue_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_hotel_revenue_management_runtime_parameter`: validates policy, writes owned `hotel_revenue_management_hotel_revenue_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_hotel_revenue_management_schema_extension`: validates policy, writes owned `hotel_revenue_management_hotel_revenue_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_hotel_revenue_management_control_assertion`: validates policy, writes owned `hotel_revenue_management_hotel_revenue_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_hotel_revenue_management_governed_model`: validates policy, writes owned `hotel_revenue_management_hotel_revenue_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_hotel_revenue_management_policy_rule`: validates policy, writes owned `hotel_revenue_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_hotel_revenue_management_runtime_parameter`: validates policy, writes owned `hotel_revenue_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_hotel_revenue_management_schema_extension`: validates policy, writes owned `hotel_revenue_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_hotel_revenue_management_control_assertion`: validates policy, writes owned `hotel_revenue_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_hotel_revenue_management_governed_model`: validates policy, writes owned `hotel_revenue_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_hotel_revenue_management_13`: validates policy, writes owned `hotel_revenue_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_hotel_revenue_management_14`: validates policy, writes owned `hotel_revenue_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_hotel_revenue_management_15`: validates policy, writes owned `hotel_revenue_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

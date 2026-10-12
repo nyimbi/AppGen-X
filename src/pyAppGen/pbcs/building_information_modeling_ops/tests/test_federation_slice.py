@@ -169,7 +169,7 @@ class BuildingInformationModelingOpsFederationTests(unittest.TestCase):
 
         self.assertIn("building_information_modeling_ops_model_version", tables)
         self.assertIn(
-            "building_information_modeling_ops_building_information_modeling_ops_governed_model",
+            "building_information_modeling_ops_governed_model",
             tables,
         )
         self.assertIn("building_information_modeling_ops_appgen_outbox_event", tables)

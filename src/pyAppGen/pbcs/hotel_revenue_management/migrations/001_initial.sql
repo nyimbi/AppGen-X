@@ -186,7 +186,7 @@ CREATE TABLE hotel_revenue_management_revenue_snapshot (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE hotel_revenue_management_hotel_revenue_management_policy_rule (
+CREATE TABLE hotel_revenue_management_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   rule_id VARCHAR(255) NOT NULL,
@@ -204,7 +204,7 @@ CREATE TABLE hotel_revenue_management_hotel_revenue_management_policy_rule (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE hotel_revenue_management_hotel_revenue_management_runtime_parameter (
+CREATE TABLE hotel_revenue_management_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_name VARCHAR(255) NOT NULL,
@@ -220,7 +220,7 @@ CREATE TABLE hotel_revenue_management_hotel_revenue_management_runtime_parameter
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE hotel_revenue_management_hotel_revenue_management_schema_extension (
+CREATE TABLE hotel_revenue_management_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -236,7 +236,7 @@ CREATE TABLE hotel_revenue_management_hotel_revenue_management_schema_extension 
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE hotel_revenue_management_hotel_revenue_management_control_assertion (
+CREATE TABLE hotel_revenue_management_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -254,7 +254,7 @@ CREATE TABLE hotel_revenue_management_hotel_revenue_management_control_assertion
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE hotel_revenue_management_hotel_revenue_management_governed_model (
+CREATE TABLE hotel_revenue_management_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

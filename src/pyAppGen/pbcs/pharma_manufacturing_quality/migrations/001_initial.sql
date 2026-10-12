@@ -175,7 +175,7 @@ CREATE TABLE pharma_manufacturing_quality_serialization_event (
   FOREIGN KEY (pharma_batch_id) REFERENCES pharma_manufacturing_quality_pharma_batch(pharma_batch_id)
 );
 
-CREATE TABLE pharma_manufacturing_quality_pharma_manufacturing_quality_policy_rule (
+CREATE TABLE pharma_manufacturing_quality_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -195,7 +195,7 @@ CREATE TABLE pharma_manufacturing_quality_pharma_manufacturing_quality_policy_ru
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE pharma_manufacturing_quality_pharma_manufacturing_quality_runtime_parameter (
+CREATE TABLE pharma_manufacturing_quality_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   runtime_parameter_id VARCHAR(255) NOT NULL,
@@ -217,7 +217,7 @@ CREATE TABLE pharma_manufacturing_quality_pharma_manufacturing_quality_runtime_p
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE pharma_manufacturing_quality_pharma_manufacturing_quality_schema_extension (
+CREATE TABLE pharma_manufacturing_quality_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   schema_extension_id VARCHAR(255) NOT NULL,
@@ -237,7 +237,7 @@ CREATE TABLE pharma_manufacturing_quality_pharma_manufacturing_quality_schema_ex
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE pharma_manufacturing_quality_pharma_manufacturing_quality_control_assertion (
+CREATE TABLE pharma_manufacturing_quality_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   control_assertion_id VARCHAR(255) NOT NULL,
@@ -257,7 +257,7 @@ CREATE TABLE pharma_manufacturing_quality_pharma_manufacturing_quality_control_a
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE pharma_manufacturing_quality_pharma_manufacturing_quality_governed_model (
+CREATE TABLE pharma_manufacturing_quality_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   governed_model_id VARCHAR(255) NOT NULL,

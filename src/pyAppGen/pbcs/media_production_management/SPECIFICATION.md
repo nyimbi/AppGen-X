@@ -25,11 +25,11 @@ The `media_production_management` PBC is a packaged business capability for Prod
 - `media_production_management_shoot_day`: owns shoot day lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `media_production_management_post_production_task`: owns post production task lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `media_production_management_delivery_asset`: owns delivery asset lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `media_production_management_media_production_management_policy_rule`: owns media production management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `media_production_management_media_production_management_runtime_parameter`: owns media production management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `media_production_management_media_production_management_schema_extension`: owns media production management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `media_production_management_media_production_management_control_assertion`: owns media production management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `media_production_management_media_production_management_governed_model`: owns media production management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `media_production_management_policy_rule`: owns media production management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `media_production_management_runtime_parameter`: owns media production management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `media_production_management_schema_extension`: owns media production management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `media_production_management_control_assertion`: owns media production management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `media_production_management_governed_model`: owns media production management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `media_production_management_appgen_outbox_event`, `media_production_management_appgen_inbox_event`, and `media_production_management_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /productions', 'POST /budget-lines', 'POST /crew-bookings', 'POST /location-permits', 'POST /shoot-days', 'GET /media-production-management-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `media_production_management_appgen_outbox_eve
 - `simulate_shoot_day`: validates policy, writes owned `media_production_management_shoot_day` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_post_production_task`: validates policy, writes owned `media_production_management_post_production_task` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_delivery_asset`: validates policy, writes owned `media_production_management_delivery_asset` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_media_production_management_policy_rule`: validates policy, writes owned `media_production_management_media_production_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_media_production_management_runtime_parameter`: validates policy, writes owned `media_production_management_media_production_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_media_production_management_schema_extension`: validates policy, writes owned `media_production_management_media_production_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_media_production_management_control_assertion`: validates policy, writes owned `media_production_management_media_production_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_media_production_management_governed_model`: validates policy, writes owned `media_production_management_media_production_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_media_production_management_policy_rule`: validates policy, writes owned `media_production_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_media_production_management_runtime_parameter`: validates policy, writes owned `media_production_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_media_production_management_schema_extension`: validates policy, writes owned `media_production_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_media_production_management_control_assertion`: validates policy, writes owned `media_production_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_media_production_management_governed_model`: validates policy, writes owned `media_production_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_media_production_management_13`: validates policy, writes owned `media_production_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_media_production_management_14`: validates policy, writes owned `media_production_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_media_production_management_15`: validates policy, writes owned `media_production_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

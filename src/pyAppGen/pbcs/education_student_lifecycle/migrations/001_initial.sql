@@ -154,7 +154,7 @@ CREATE TABLE education_student_lifecycle_credential (
   FOREIGN KEY (student_applicant_id) REFERENCES education_student_lifecycle_student_applicant(student_applicant_id)
 );
 
-CREATE TABLE education_student_lifecycle_education_student_lifecycle_policy_rule (
+CREATE TABLE education_student_lifecycle_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   rule_id VARCHAR(255) NOT NULL,
@@ -171,7 +171,7 @@ CREATE TABLE education_student_lifecycle_education_student_lifecycle_policy_rule
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE education_student_lifecycle_education_student_lifecycle_runtime_parameter (
+CREATE TABLE education_student_lifecycle_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_name VARCHAR(255) NOT NULL,
@@ -185,7 +185,7 @@ CREATE TABLE education_student_lifecycle_education_student_lifecycle_runtime_par
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE education_student_lifecycle_education_student_lifecycle_schema_extension (
+CREATE TABLE education_student_lifecycle_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -199,7 +199,7 @@ CREATE TABLE education_student_lifecycle_education_student_lifecycle_schema_exte
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE education_student_lifecycle_education_student_lifecycle_control_assertion (
+CREATE TABLE education_student_lifecycle_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -214,7 +214,7 @@ CREATE TABLE education_student_lifecycle_education_student_lifecycle_control_ass
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE education_student_lifecycle_education_student_lifecycle_governed_model (
+CREATE TABLE education_student_lifecycle_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

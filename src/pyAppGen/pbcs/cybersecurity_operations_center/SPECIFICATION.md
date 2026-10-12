@@ -15,11 +15,11 @@ This package writes only to these owned tables:
 - `cybersecurity_operations_center_playbook_run`
 - `cybersecurity_operations_center_containment_action`
 - `cybersecurity_operations_center_response_evidence`
-- `cybersecurity_operations_center_cybersecurity_operations_center_policy_rule`
-- `cybersecurity_operations_center_cybersecurity_operations_center_runtime_parameter`
-- `cybersecurity_operations_center_cybersecurity_operations_center_schema_extension`
-- `cybersecurity_operations_center_cybersecurity_operations_center_control_assertion`
-- `cybersecurity_operations_center_cybersecurity_operations_center_governed_model`
+- `cybersecurity_operations_center_policy_rule`
+- `cybersecurity_operations_center_runtime_parameter`
+- `cybersecurity_operations_center_schema_extension`
+- `cybersecurity_operations_center_control_assertion`
+- `cybersecurity_operations_center_governed_model`
 - `cybersecurity_operations_center_appgen_outbox_event`
 - `cybersecurity_operations_center_appgen_inbox_event`
 - `cybersecurity_operations_center_appgen_dead_letter_event`

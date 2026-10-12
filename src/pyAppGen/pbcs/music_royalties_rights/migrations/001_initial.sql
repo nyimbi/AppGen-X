@@ -182,7 +182,7 @@ CREATE TABLE music_royalties_rights_rights_dispute (
   FOREIGN KEY (musical_work_id) REFERENCES music_royalties_rights_musical_work(musical_work_id)
 );
 
-CREATE TABLE music_royalties_rights_music_royalties_rights_policy_rule (
+CREATE TABLE music_royalties_rights_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -202,7 +202,7 @@ CREATE TABLE music_royalties_rights_music_royalties_rights_policy_rule (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE music_royalties_rights_music_royalties_rights_runtime_parameter (
+CREATE TABLE music_royalties_rights_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   runtime_parameter_id VARCHAR(255) NOT NULL,
@@ -224,7 +224,7 @@ CREATE TABLE music_royalties_rights_music_royalties_rights_runtime_parameter (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE music_royalties_rights_music_royalties_rights_schema_extension (
+CREATE TABLE music_royalties_rights_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   schema_extension_id VARCHAR(255) NOT NULL,
@@ -244,7 +244,7 @@ CREATE TABLE music_royalties_rights_music_royalties_rights_schema_extension (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE music_royalties_rights_music_royalties_rights_control_assertion (
+CREATE TABLE music_royalties_rights_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   control_assertion_id VARCHAR(255) NOT NULL,
@@ -264,7 +264,7 @@ CREATE TABLE music_royalties_rights_music_royalties_rights_control_assertion (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE music_royalties_rights_music_royalties_rights_governed_model (
+CREATE TABLE music_royalties_rights_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   governed_model_id VARCHAR(255) NOT NULL,

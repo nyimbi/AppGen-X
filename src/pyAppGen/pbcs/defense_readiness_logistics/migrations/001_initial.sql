@@ -368,7 +368,7 @@ CREATE TABLE defense_readiness_logistics_readiness_exception (
   FOREIGN KEY (unit_readiness_id) REFERENCES defense_readiness_logistics_unit_readiness(unit_readiness_id)
 );
 
-CREATE TABLE defense_readiness_logistics_defense_readiness_logistics_policy_rule (
+CREATE TABLE defense_readiness_logistics_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   rule_id VARCHAR(255) NOT NULL,
@@ -386,7 +386,7 @@ CREATE TABLE defense_readiness_logistics_defense_readiness_logistics_policy_rule
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE defense_readiness_logistics_defense_readiness_logistics_runtime_parameter (
+CREATE TABLE defense_readiness_logistics_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_name VARCHAR(255) NOT NULL,
@@ -401,7 +401,7 @@ CREATE TABLE defense_readiness_logistics_defense_readiness_logistics_runtime_par
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE defense_readiness_logistics_defense_readiness_logistics_schema_extension (
+CREATE TABLE defense_readiness_logistics_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -416,7 +416,7 @@ CREATE TABLE defense_readiness_logistics_defense_readiness_logistics_schema_exte
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE defense_readiness_logistics_defense_readiness_logistics_control_assertion (
+CREATE TABLE defense_readiness_logistics_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -432,7 +432,7 @@ CREATE TABLE defense_readiness_logistics_defense_readiness_logistics_control_ass
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE defense_readiness_logistics_defense_readiness_logistics_governed_model (
+CREATE TABLE defense_readiness_logistics_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

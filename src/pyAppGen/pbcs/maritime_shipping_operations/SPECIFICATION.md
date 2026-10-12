@@ -25,11 +25,11 @@ The `maritime_shipping_operations` PBC is a packaged business capability for Voy
 - `maritime_shipping_operations_port_call`: owns port call lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `maritime_shipping_operations_demurrage_claim`: owns demurrage claim lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `maritime_shipping_operations_bunker_event`: owns bunker event lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `maritime_shipping_operations_maritime_shipping_operations_policy_rule`: owns maritime shipping operations policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `maritime_shipping_operations_maritime_shipping_operations_runtime_parameter`: owns maritime shipping operations runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `maritime_shipping_operations_maritime_shipping_operations_schema_extension`: owns maritime shipping operations schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `maritime_shipping_operations_maritime_shipping_operations_control_assertion`: owns maritime shipping operations control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `maritime_shipping_operations_maritime_shipping_operations_governed_model`: owns maritime shipping operations governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `maritime_shipping_operations_policy_rule`: owns maritime shipping operations policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `maritime_shipping_operations_runtime_parameter`: owns maritime shipping operations runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `maritime_shipping_operations_schema_extension`: owns maritime shipping operations schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `maritime_shipping_operations_control_assertion`: owns maritime shipping operations control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `maritime_shipping_operations_governed_model`: owns maritime shipping operations governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `maritime_shipping_operations_appgen_outbox_event`, `maritime_shipping_operations_appgen_inbox_event`, and `maritime_shipping_operations_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /voyages', 'POST /vessels', 'POST /cargo-bookings', 'POST /charter-partys', 'POST /port-calls', 'GET /maritime-shipping-operations-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `maritime_shipping_operations_appgen_outbox_ev
 - `simulate_port_call`: validates policy, writes owned `maritime_shipping_operations_port_call` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_demurrage_claim`: validates policy, writes owned `maritime_shipping_operations_demurrage_claim` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_bunker_event`: validates policy, writes owned `maritime_shipping_operations_bunker_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_maritime_shipping_operations_policy_rule`: validates policy, writes owned `maritime_shipping_operations_maritime_shipping_operations_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_maritime_shipping_operations_runtime_parameter`: validates policy, writes owned `maritime_shipping_operations_maritime_shipping_operations_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_maritime_shipping_operations_schema_extension`: validates policy, writes owned `maritime_shipping_operations_maritime_shipping_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_maritime_shipping_operations_control_assertion`: validates policy, writes owned `maritime_shipping_operations_maritime_shipping_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_maritime_shipping_operations_governed_model`: validates policy, writes owned `maritime_shipping_operations_maritime_shipping_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_maritime_shipping_operations_policy_rule`: validates policy, writes owned `maritime_shipping_operations_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_maritime_shipping_operations_runtime_parameter`: validates policy, writes owned `maritime_shipping_operations_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_maritime_shipping_operations_schema_extension`: validates policy, writes owned `maritime_shipping_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_maritime_shipping_operations_control_assertion`: validates policy, writes owned `maritime_shipping_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_maritime_shipping_operations_governed_model`: validates policy, writes owned `maritime_shipping_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_maritime_shipping_operations_13`: validates policy, writes owned `maritime_shipping_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_maritime_shipping_operations_14`: validates policy, writes owned `maritime_shipping_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_maritime_shipping_operations_15`: validates policy, writes owned `maritime_shipping_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

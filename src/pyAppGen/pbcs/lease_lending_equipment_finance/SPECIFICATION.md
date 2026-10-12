@@ -25,11 +25,11 @@ The `lease_lending_equipment_finance` PBC is a packaged business capability for 
 - `lease_lending_equipment_finance_buyout_quote`: owns buyout quote lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `lease_lending_equipment_finance_repo_case`: owns repo case lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `lease_lending_equipment_finance_lease_servicing_event`: owns lease servicing event lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `lease_lending_equipment_finance_lease_lending_equipment_finance_policy_rule`: owns lease lending equipment finance policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `lease_lending_equipment_finance_lease_lending_equipment_finance_runtime_parameter`: owns lease lending equipment finance runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `lease_lending_equipment_finance_lease_lending_equipment_finance_schema_extension`: owns lease lending equipment finance schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `lease_lending_equipment_finance_lease_lending_equipment_finance_control_assertion`: owns lease lending equipment finance control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `lease_lending_equipment_finance_lease_lending_equipment_finance_governed_model`: owns lease lending equipment finance governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `lease_lending_equipment_finance_policy_rule`: owns lease lending equipment finance policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `lease_lending_equipment_finance_runtime_parameter`: owns lease lending equipment finance runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `lease_lending_equipment_finance_schema_extension`: owns lease lending equipment finance schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `lease_lending_equipment_finance_control_assertion`: owns lease lending equipment finance control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `lease_lending_equipment_finance_governed_model`: owns lease lending equipment finance governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `lease_lending_equipment_finance_appgen_outbox_event`, `lease_lending_equipment_finance_appgen_inbox_event`, and `lease_lending_equipment_finance_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /equipment-leases', 'POST /leased-assets', 'POST /payment-schedules', 'POST /residual-values', 'POST /buyout-quotes', 'GET /lease-lending-equipment-finance-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `lease_lending_equipment_finance_appgen_outbox
 - `simulate_buyout_quote`: validates policy, writes owned `lease_lending_equipment_finance_buyout_quote` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_repo_case`: validates policy, writes owned `lease_lending_equipment_finance_repo_case` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_lease_servicing_event`: validates policy, writes owned `lease_lending_equipment_finance_lease_servicing_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_lease_lending_equipment_finance_policy_rule`: validates policy, writes owned `lease_lending_equipment_finance_lease_lending_equipment_finance_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_lease_lending_equipment_finance_runtime_parameter`: validates policy, writes owned `lease_lending_equipment_finance_lease_lending_equipment_finance_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_lease_lending_equipment_finance_schema_extension`: validates policy, writes owned `lease_lending_equipment_finance_lease_lending_equipment_finance_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_lease_lending_equipment_finance_control_assertion`: validates policy, writes owned `lease_lending_equipment_finance_lease_lending_equipment_finance_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_lease_lending_equipment_finance_governed_model`: validates policy, writes owned `lease_lending_equipment_finance_lease_lending_equipment_finance_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_lease_lending_equipment_finance_policy_rule`: validates policy, writes owned `lease_lending_equipment_finance_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_lease_lending_equipment_finance_runtime_parameter`: validates policy, writes owned `lease_lending_equipment_finance_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_lease_lending_equipment_finance_schema_extension`: validates policy, writes owned `lease_lending_equipment_finance_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_lease_lending_equipment_finance_control_assertion`: validates policy, writes owned `lease_lending_equipment_finance_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_lease_lending_equipment_finance_governed_model`: validates policy, writes owned `lease_lending_equipment_finance_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_lease_lending_equipment_finance_13`: validates policy, writes owned `lease_lending_equipment_finance_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_lease_lending_equipment_finance_14`: validates policy, writes owned `lease_lending_equipment_finance_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_lease_lending_equipment_finance_15`: validates policy, writes owned `lease_lending_equipment_finance_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

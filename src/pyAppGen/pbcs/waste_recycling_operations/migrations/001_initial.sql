@@ -208,7 +208,7 @@ CREATE TABLE waste_recycling_operations_recycling_yield (
   FOREIGN KEY (material_stream_id) REFERENCES waste_recycling_operations_material_stream(material_stream_id)
 );
 
-CREATE TABLE waste_recycling_operations_waste_recycling_operations_policy_rule (
+CREATE TABLE waste_recycling_operations_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   rule_id VARCHAR(255) NOT NULL,
@@ -226,7 +226,7 @@ CREATE TABLE waste_recycling_operations_waste_recycling_operations_policy_rule (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE waste_recycling_operations_waste_recycling_operations_runtime_parameter (
+CREATE TABLE waste_recycling_operations_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_name VARCHAR(255) NOT NULL,
@@ -240,7 +240,7 @@ CREATE TABLE waste_recycling_operations_waste_recycling_operations_runtime_param
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE waste_recycling_operations_waste_recycling_operations_schema_extension (
+CREATE TABLE waste_recycling_operations_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -254,7 +254,7 @@ CREATE TABLE waste_recycling_operations_waste_recycling_operations_schema_extens
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE waste_recycling_operations_waste_recycling_operations_control_assertion (
+CREATE TABLE waste_recycling_operations_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -269,7 +269,7 @@ CREATE TABLE waste_recycling_operations_waste_recycling_operations_control_asser
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE waste_recycling_operations_waste_recycling_operations_governed_model (
+CREATE TABLE waste_recycling_operations_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

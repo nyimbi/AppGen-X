@@ -423,7 +423,7 @@ MODEL_REGISTRY = (
     {
         "class_name": "PolicyRule",
         "logical_name": "cybersecurity_operations_center_policy_rule",
-        "table": _owned_table("cybersecurity_operations_center_policy_rule"),
+        "table": _owned_table("policy_rule"),
         "fields": (
             "id",
             "tenant",
@@ -441,7 +441,7 @@ MODEL_REGISTRY = (
     {
         "class_name": "RuntimeParameter",
         "logical_name": "cybersecurity_operations_center_runtime_parameter",
-        "table": _owned_table("cybersecurity_operations_center_runtime_parameter"),
+        "table": _owned_table("runtime_parameter"),
         "fields": (
             "id",
             "tenant",
@@ -461,7 +461,7 @@ MODEL_REGISTRY = (
     {
         "class_name": "SchemaExtension",
         "logical_name": "cybersecurity_operations_center_schema_extension",
-        "table": _owned_table("cybersecurity_operations_center_schema_extension"),
+        "table": _owned_table("schema_extension"),
         "fields": (
             "id",
             "tenant",
@@ -478,7 +478,7 @@ MODEL_REGISTRY = (
     {
         "class_name": "ControlAssertion",
         "logical_name": "cybersecurity_operations_center_control_assertion",
-        "table": _owned_table("cybersecurity_operations_center_control_assertion"),
+        "table": _owned_table("control_assertion"),
         "fields": (
             "id",
             "tenant",
@@ -496,7 +496,7 @@ MODEL_REGISTRY = (
     {
         "class_name": "GovernedModel",
         "logical_name": "cybersecurity_operations_center_governed_model",
-        "table": _owned_table("cybersecurity_operations_center_governed_model"),
+        "table": _owned_table("governed_model"),
         "fields": (
             "id",
             "tenant",

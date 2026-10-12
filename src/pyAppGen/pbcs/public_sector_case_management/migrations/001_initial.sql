@@ -198,7 +198,7 @@ CREATE TABLE public_sector_case_management_service_outcome (
   FOREIGN KEY (citizen_case_id) REFERENCES public_sector_case_management_citizen_case(citizen_case_id)
 );
 
-CREATE TABLE public_sector_case_management_public_sector_case_management_policy_rule (
+CREATE TABLE public_sector_case_management_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -222,7 +222,7 @@ CREATE TABLE public_sector_case_management_public_sector_case_management_policy_
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE public_sector_case_management_public_sector_case_management_runtime_parameter (
+CREATE TABLE public_sector_case_management_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   runtime_parameter_id VARCHAR(255) NOT NULL,
@@ -244,7 +244,7 @@ CREATE TABLE public_sector_case_management_public_sector_case_management_runtime
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE public_sector_case_management_public_sector_case_management_schema_extension (
+CREATE TABLE public_sector_case_management_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   schema_extension_id VARCHAR(255) NOT NULL,
@@ -264,7 +264,7 @@ CREATE TABLE public_sector_case_management_public_sector_case_management_schema_
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE public_sector_case_management_public_sector_case_management_control_assertion (
+CREATE TABLE public_sector_case_management_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   control_assertion_id VARCHAR(255) NOT NULL,
@@ -284,7 +284,7 @@ CREATE TABLE public_sector_case_management_public_sector_case_management_control
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE public_sector_case_management_public_sector_case_management_governed_model (
+CREATE TABLE public_sector_case_management_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   governed_model_id VARCHAR(255) NOT NULL,

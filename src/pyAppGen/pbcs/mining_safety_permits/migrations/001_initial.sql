@@ -227,7 +227,7 @@ CREATE TABLE mining_safety_permits_control_action (
   FOREIGN KEY (mine_permit_id) REFERENCES mining_safety_permits_mine_permit(mine_permit_id)
 );
 
-CREATE TABLE mining_safety_permits_mining_safety_permits_policy_rule (
+CREATE TABLE mining_safety_permits_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -256,7 +256,7 @@ CREATE TABLE mining_safety_permits_mining_safety_permits_policy_rule (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE mining_safety_permits_mining_safety_permits_runtime_parameter (
+CREATE TABLE mining_safety_permits_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   runtime_parameter_id VARCHAR(255) NOT NULL,
@@ -280,7 +280,7 @@ CREATE TABLE mining_safety_permits_mining_safety_permits_runtime_parameter (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE mining_safety_permits_mining_safety_permits_schema_extension (
+CREATE TABLE mining_safety_permits_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   schema_extension_id VARCHAR(255) NOT NULL,
@@ -298,7 +298,7 @@ CREATE TABLE mining_safety_permits_mining_safety_permits_schema_extension (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE mining_safety_permits_mining_safety_permits_control_assertion (
+CREATE TABLE mining_safety_permits_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   control_assertion_id VARCHAR(255) NOT NULL,
@@ -319,7 +319,7 @@ CREATE TABLE mining_safety_permits_mining_safety_permits_control_assertion (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE mining_safety_permits_mining_safety_permits_governed_model (
+CREATE TABLE mining_safety_permits_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   governed_model_id VARCHAR(255) NOT NULL,

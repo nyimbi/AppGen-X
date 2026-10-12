@@ -25,11 +25,11 @@ The `insurance_underwriting` PBC is a packaged business capability for Risk subm
 - `insurance_underwriting_underwriting_decision`: owns underwriting decision lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `insurance_underwriting_bind_package`: owns bind package lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `insurance_underwriting_exclusion`: owns exclusion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `insurance_underwriting_insurance_underwriting_policy_rule`: owns insurance underwriting policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `insurance_underwriting_insurance_underwriting_runtime_parameter`: owns insurance underwriting runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `insurance_underwriting_insurance_underwriting_schema_extension`: owns insurance underwriting schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `insurance_underwriting_insurance_underwriting_control_assertion`: owns insurance underwriting control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `insurance_underwriting_insurance_underwriting_governed_model`: owns insurance underwriting governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `insurance_underwriting_policy_rule`: owns insurance underwriting policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `insurance_underwriting_runtime_parameter`: owns insurance underwriting runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `insurance_underwriting_schema_extension`: owns insurance underwriting schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `insurance_underwriting_control_assertion`: owns insurance underwriting control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `insurance_underwriting_governed_model`: owns insurance underwriting governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `insurance_underwriting_appgen_outbox_event`, `insurance_underwriting_appgen_inbox_event`, and `insurance_underwriting_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /underwriting-submissions', 'POST /risk-profiles', 'POST /rating-factors', 'POST /quotes', 'POST /underwriting-decisions', 'GET /insurance-underwriting-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `insurance_underwriting_appgen_outbox_event`, 
 - `simulate_underwriting_decision`: validates policy, writes owned `insurance_underwriting_underwriting_decision` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_bind_package`: validates policy, writes owned `insurance_underwriting_bind_package` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_exclusion`: validates policy, writes owned `insurance_underwriting_exclusion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_insurance_underwriting_policy_rule`: validates policy, writes owned `insurance_underwriting_insurance_underwriting_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_insurance_underwriting_runtime_parameter`: validates policy, writes owned `insurance_underwriting_insurance_underwriting_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_insurance_underwriting_schema_extension`: validates policy, writes owned `insurance_underwriting_insurance_underwriting_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_insurance_underwriting_control_assertion`: validates policy, writes owned `insurance_underwriting_insurance_underwriting_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_insurance_underwriting_governed_model`: validates policy, writes owned `insurance_underwriting_insurance_underwriting_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_insurance_underwriting_policy_rule`: validates policy, writes owned `insurance_underwriting_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_insurance_underwriting_runtime_parameter`: validates policy, writes owned `insurance_underwriting_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_insurance_underwriting_schema_extension`: validates policy, writes owned `insurance_underwriting_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_insurance_underwriting_control_assertion`: validates policy, writes owned `insurance_underwriting_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_insurance_underwriting_governed_model`: validates policy, writes owned `insurance_underwriting_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_insurance_underwriting_13`: validates policy, writes owned `insurance_underwriting_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_insurance_underwriting_14`: validates policy, writes owned `insurance_underwriting_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_insurance_underwriting_15`: validates policy, writes owned `insurance_underwriting_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

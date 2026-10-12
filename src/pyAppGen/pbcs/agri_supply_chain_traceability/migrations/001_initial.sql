@@ -174,7 +174,7 @@ CREATE TABLE agri_supply_chain_traceability_provenance_proof (
   FOREIGN KEY (farm_lot_id) REFERENCES agri_supply_chain_traceability_farm_lot(farm_lot_id)
 );
 
-CREATE TABLE agri_supply_chain_traceability_agri_supply_chain_traceability_policy_rule (
+CREATE TABLE agri_supply_chain_traceability_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -193,7 +193,7 @@ CREATE TABLE agri_supply_chain_traceability_agri_supply_chain_traceability_polic
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE agri_supply_chain_traceability_agri_supply_chain_traceability_runtime_parameter (
+CREATE TABLE agri_supply_chain_traceability_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   runtime_parameter_id VARCHAR(255) NOT NULL,
@@ -208,7 +208,7 @@ CREATE TABLE agri_supply_chain_traceability_agri_supply_chain_traceability_runti
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE agri_supply_chain_traceability_agri_supply_chain_traceability_schema_extension (
+CREATE TABLE agri_supply_chain_traceability_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   schema_extension_id VARCHAR(255) NOT NULL,
@@ -222,7 +222,7 @@ CREATE TABLE agri_supply_chain_traceability_agri_supply_chain_traceability_schem
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE agri_supply_chain_traceability_agri_supply_chain_traceability_control_assertion (
+CREATE TABLE agri_supply_chain_traceability_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   control_assertion_id VARCHAR(255) NOT NULL,
@@ -237,7 +237,7 @@ CREATE TABLE agri_supply_chain_traceability_agri_supply_chain_traceability_contr
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE agri_supply_chain_traceability_agri_supply_chain_traceability_governed_model (
+CREATE TABLE agri_supply_chain_traceability_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   governed_model_id VARCHAR(255) NOT NULL,

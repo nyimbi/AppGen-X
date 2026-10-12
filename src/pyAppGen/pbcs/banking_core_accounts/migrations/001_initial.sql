@@ -176,7 +176,7 @@ CREATE TABLE banking_core_accounts_account_service_case (
   FOREIGN KEY (deposit_account_id) REFERENCES banking_core_accounts_deposit_account(account_number)
 );
 
-CREATE TABLE banking_core_accounts_banking_core_accounts_policy_rule (
+CREATE TABLE banking_core_accounts_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   code VARCHAR(255),
@@ -199,7 +199,7 @@ CREATE TABLE banking_core_accounts_banking_core_accounts_policy_rule (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE banking_core_accounts_banking_core_accounts_runtime_parameter (
+CREATE TABLE banking_core_accounts_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   code VARCHAR(255),
@@ -221,7 +221,7 @@ CREATE TABLE banking_core_accounts_banking_core_accounts_runtime_parameter (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE banking_core_accounts_banking_core_accounts_schema_extension (
+CREATE TABLE banking_core_accounts_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   code VARCHAR(255),
@@ -241,7 +241,7 @@ CREATE TABLE banking_core_accounts_banking_core_accounts_schema_extension (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE banking_core_accounts_banking_core_accounts_control_assertion (
+CREATE TABLE banking_core_accounts_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   code VARCHAR(255),
@@ -265,7 +265,7 @@ CREATE TABLE banking_core_accounts_banking_core_accounts_control_assertion (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE banking_core_accounts_banking_core_accounts_governed_model (
+CREATE TABLE banking_core_accounts_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   code VARCHAR(255),

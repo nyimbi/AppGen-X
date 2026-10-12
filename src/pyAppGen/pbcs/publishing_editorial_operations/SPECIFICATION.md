@@ -25,11 +25,11 @@ The `publishing_editorial_operations` PBC is a packaged business capability for 
 - `publishing_editorial_operations_production_schedule`: owns production schedule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `publishing_editorial_operations_rights_grant`: owns rights grant lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `publishing_editorial_operations_distribution_plan`: owns distribution plan lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `publishing_editorial_operations_publishing_editorial_operations_policy_rule`: owns publishing editorial operations policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `publishing_editorial_operations_publishing_editorial_operations_runtime_parameter`: owns publishing editorial operations runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `publishing_editorial_operations_publishing_editorial_operations_schema_extension`: owns publishing editorial operations schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `publishing_editorial_operations_publishing_editorial_operations_control_assertion`: owns publishing editorial operations control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `publishing_editorial_operations_publishing_editorial_operations_governed_model`: owns publishing editorial operations governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `publishing_editorial_operations_policy_rule`: owns publishing editorial operations policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `publishing_editorial_operations_runtime_parameter`: owns publishing editorial operations runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `publishing_editorial_operations_schema_extension`: owns publishing editorial operations schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `publishing_editorial_operations_control_assertion`: owns publishing editorial operations control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `publishing_editorial_operations_governed_model`: owns publishing editorial operations governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `publishing_editorial_operations_appgen_outbox_event`, `publishing_editorial_operations_appgen_inbox_event`, and `publishing_editorial_operations_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /manuscripts', 'POST /editorial-tasks', 'POST /author-contracts', 'POST /editions', 'POST /production-schedules', 'GET /publishing-editorial-operations-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `publishing_editorial_operations_appgen_outbox
 - `simulate_production_schedule`: validates policy, writes owned `publishing_editorial_operations_production_schedule` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_rights_grant`: validates policy, writes owned `publishing_editorial_operations_rights_grant` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_distribution_plan`: validates policy, writes owned `publishing_editorial_operations_distribution_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_publishing_editorial_operations_policy_rule`: validates policy, writes owned `publishing_editorial_operations_publishing_editorial_operations_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_publishing_editorial_operations_runtime_parameter`: validates policy, writes owned `publishing_editorial_operations_publishing_editorial_operations_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_publishing_editorial_operations_schema_extension`: validates policy, writes owned `publishing_editorial_operations_publishing_editorial_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_publishing_editorial_operations_control_assertion`: validates policy, writes owned `publishing_editorial_operations_publishing_editorial_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_publishing_editorial_operations_governed_model`: validates policy, writes owned `publishing_editorial_operations_publishing_editorial_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_publishing_editorial_operations_policy_rule`: validates policy, writes owned `publishing_editorial_operations_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_publishing_editorial_operations_runtime_parameter`: validates policy, writes owned `publishing_editorial_operations_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_publishing_editorial_operations_schema_extension`: validates policy, writes owned `publishing_editorial_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_publishing_editorial_operations_control_assertion`: validates policy, writes owned `publishing_editorial_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_publishing_editorial_operations_governed_model`: validates policy, writes owned `publishing_editorial_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_publishing_editorial_operations_13`: validates policy, writes owned `publishing_editorial_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_publishing_editorial_operations_14`: validates policy, writes owned `publishing_editorial_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_publishing_editorial_operations_15`: validates policy, writes owned `publishing_editorial_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

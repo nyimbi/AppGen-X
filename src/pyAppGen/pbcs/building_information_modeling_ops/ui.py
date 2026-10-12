@@ -48,7 +48,7 @@ def building_information_modeling_ops_forms_contract() -> dict:
         {
             "form_id": "federation_assembly_form",
             "title": "Federation Assembly",
-            "table": f"{PBC_KEY}_building_information_modeling_ops_governed_model",
+            "table": f"{PBC_KEY}_governed_model",
             "fields": ("federation_id", "intended_use", "version_ids"),
             "submit_action": "assemble_federation",
             "database_backed": True,

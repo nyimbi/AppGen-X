@@ -25,11 +25,11 @@ The `wealth_portfolio_management` PBC is a packaged business capability for Clie
 - `wealth_portfolio_management_performance_snapshot`: owns performance snapshot lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `wealth_portfolio_management_fee_schedule`: owns fee schedule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `wealth_portfolio_management_advisory_review`: owns advisory review lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `wealth_portfolio_management_wealth_portfolio_management_policy_rule`: owns wealth portfolio management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `wealth_portfolio_management_wealth_portfolio_management_runtime_parameter`: owns wealth portfolio management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `wealth_portfolio_management_wealth_portfolio_management_schema_extension`: owns wealth portfolio management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `wealth_portfolio_management_wealth_portfolio_management_control_assertion`: owns wealth portfolio management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `wealth_portfolio_management_wealth_portfolio_management_governed_model`: owns wealth portfolio management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `wealth_portfolio_management_policy_rule`: owns wealth portfolio management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `wealth_portfolio_management_runtime_parameter`: owns wealth portfolio management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `wealth_portfolio_management_schema_extension`: owns wealth portfolio management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `wealth_portfolio_management_control_assertion`: owns wealth portfolio management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `wealth_portfolio_management_governed_model`: owns wealth portfolio management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `wealth_portfolio_management_appgen_outbox_event`, `wealth_portfolio_management_appgen_inbox_event`, and `wealth_portfolio_management_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /client-portfolios', 'POST /investment-mandates', 'POST /suitability-profiles', 'POST /rebalance-orders', 'POST /performance-snapshots', 'GET /wealth-portfolio-management-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `wealth_portfolio_management_appgen_outbox_eve
 - `simulate_performance_snapshot`: validates policy, writes owned `wealth_portfolio_management_performance_snapshot` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_fee_schedule`: validates policy, writes owned `wealth_portfolio_management_fee_schedule` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_advisory_review`: validates policy, writes owned `wealth_portfolio_management_advisory_review` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_wealth_portfolio_management_policy_rule`: validates policy, writes owned `wealth_portfolio_management_wealth_portfolio_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_wealth_portfolio_management_runtime_parameter`: validates policy, writes owned `wealth_portfolio_management_wealth_portfolio_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_wealth_portfolio_management_schema_extension`: validates policy, writes owned `wealth_portfolio_management_wealth_portfolio_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_wealth_portfolio_management_control_assertion`: validates policy, writes owned `wealth_portfolio_management_wealth_portfolio_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_wealth_portfolio_management_governed_model`: validates policy, writes owned `wealth_portfolio_management_wealth_portfolio_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_wealth_portfolio_management_policy_rule`: validates policy, writes owned `wealth_portfolio_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_wealth_portfolio_management_runtime_parameter`: validates policy, writes owned `wealth_portfolio_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_wealth_portfolio_management_schema_extension`: validates policy, writes owned `wealth_portfolio_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_wealth_portfolio_management_control_assertion`: validates policy, writes owned `wealth_portfolio_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_wealth_portfolio_management_governed_model`: validates policy, writes owned `wealth_portfolio_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_wealth_portfolio_management_13`: validates policy, writes owned `wealth_portfolio_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_wealth_portfolio_management_14`: validates policy, writes owned `wealth_portfolio_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_wealth_portfolio_management_15`: validates policy, writes owned `wealth_portfolio_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

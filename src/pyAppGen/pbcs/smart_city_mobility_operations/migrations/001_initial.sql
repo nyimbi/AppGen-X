@@ -192,7 +192,7 @@ CREATE TABLE smart_city_mobility_operations_service_disruption (
   FOREIGN KEY (transit_service_id) REFERENCES smart_city_mobility_operations_transit_service(transit_service_id)
 );
 
-CREATE TABLE smart_city_mobility_operations_smart_city_mobility_operations_policy_rule (
+CREATE TABLE smart_city_mobility_operations_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   rule_id VARCHAR(255) NOT NULL,
@@ -217,7 +217,7 @@ CREATE TABLE smart_city_mobility_operations_smart_city_mobility_operations_polic
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE smart_city_mobility_operations_smart_city_mobility_operations_runtime_parameter (
+CREATE TABLE smart_city_mobility_operations_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_id VARCHAR(255) NOT NULL,
@@ -238,7 +238,7 @@ CREATE TABLE smart_city_mobility_operations_smart_city_mobility_operations_runti
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE smart_city_mobility_operations_smart_city_mobility_operations_schema_extension (
+CREATE TABLE smart_city_mobility_operations_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -254,7 +254,7 @@ CREATE TABLE smart_city_mobility_operations_smart_city_mobility_operations_schem
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE smart_city_mobility_operations_smart_city_mobility_operations_control_assertion (
+CREATE TABLE smart_city_mobility_operations_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -275,7 +275,7 @@ CREATE TABLE smart_city_mobility_operations_smart_city_mobility_operations_contr
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE smart_city_mobility_operations_smart_city_mobility_operations_governed_model (
+CREATE TABLE smart_city_mobility_operations_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

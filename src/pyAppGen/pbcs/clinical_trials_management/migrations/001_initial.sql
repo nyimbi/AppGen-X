@@ -112,7 +112,7 @@ CREATE TABLE clinical_trials_management_monitoring_finding (
     updated_at TEXT
 );
 
-CREATE TABLE clinical_trials_management_clinical_trials_management_policy_rule (
+CREATE TABLE clinical_trials_management_policy_rule (
     tenant TEXT NOT NULL,
     rule_id TEXT PRIMARY KEY,
     rule_type TEXT NOT NULL,
@@ -125,7 +125,7 @@ CREATE TABLE clinical_trials_management_clinical_trials_management_policy_rule (
     updated_at TEXT
 );
 
-CREATE TABLE clinical_trials_management_clinical_trials_management_runtime_parameter (
+CREATE TABLE clinical_trials_management_runtime_parameter (
     tenant TEXT NOT NULL,
     parameter_id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -137,7 +137,7 @@ CREATE TABLE clinical_trials_management_clinical_trials_management_runtime_param
     updated_at TEXT
 );
 
-CREATE TABLE clinical_trials_management_clinical_trials_management_schema_extension (
+CREATE TABLE clinical_trials_management_schema_extension (
     tenant TEXT NOT NULL,
     extension_id TEXT PRIMARY KEY,
     table_name TEXT NOT NULL,
@@ -148,7 +148,7 @@ CREATE TABLE clinical_trials_management_clinical_trials_management_schema_extens
     updated_at TEXT
 );
 
-CREATE TABLE clinical_trials_management_clinical_trials_management_control_assertion (
+CREATE TABLE clinical_trials_management_control_assertion (
     tenant TEXT NOT NULL,
     control_id TEXT PRIMARY KEY,
     focus_area TEXT NOT NULL,
@@ -161,7 +161,7 @@ CREATE TABLE clinical_trials_management_clinical_trials_management_control_asser
     updated_at TEXT
 );
 
-CREATE TABLE clinical_trials_management_clinical_trials_management_governed_model (
+CREATE TABLE clinical_trials_management_governed_model (
     tenant TEXT NOT NULL,
     model_id TEXT PRIMARY KEY,
     use_case TEXT NOT NULL,

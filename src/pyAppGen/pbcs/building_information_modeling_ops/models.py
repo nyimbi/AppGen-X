@@ -127,7 +127,7 @@ OWNED_MODELS = (
     ),
     OwnedModelDefinition(
         class_name="BuildingInformationModelingOpsPolicyRule",
-        table=f"{PBC_KEY}_building_information_modeling_ops_policy_rule",
+        table=f"{PBC_KEY}_policy_rule",
         fields=(
             "id",
             "tenant",
@@ -141,7 +141,7 @@ OWNED_MODELS = (
     ),
     OwnedModelDefinition(
         class_name="BuildingInformationModelingOpsRuntimeParameter",
-        table=f"{PBC_KEY}_building_information_modeling_ops_runtime_parameter",
+        table=f"{PBC_KEY}_runtime_parameter",
         fields=(
             "id",
             "tenant",
@@ -155,7 +155,7 @@ OWNED_MODELS = (
     ),
     OwnedModelDefinition(
         class_name="BuildingInformationModelingOpsSchemaExtension",
-        table=f"{PBC_KEY}_building_information_modeling_ops_schema_extension",
+        table=f"{PBC_KEY}_schema_extension",
         fields=(
             "id",
             "tenant",
@@ -169,7 +169,7 @@ OWNED_MODELS = (
     ),
     OwnedModelDefinition(
         class_name="BuildingInformationModelingOpsControlAssertion",
-        table=f"{PBC_KEY}_building_information_modeling_ops_control_assertion",
+        table=f"{PBC_KEY}_control_assertion",
         fields=(
             "id",
             "tenant",
@@ -183,7 +183,7 @@ OWNED_MODELS = (
     ),
     OwnedModelDefinition(
         class_name="BuildingInformationModelingOpsGovernedModel",
-        table=f"{PBC_KEY}_building_information_modeling_ops_governed_model",
+        table=f"{PBC_KEY}_governed_model",
         fields=(
             "id",
             "tenant",

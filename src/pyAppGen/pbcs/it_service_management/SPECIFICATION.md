@@ -25,11 +25,11 @@ The `it_service_management` PBC is a packaged business capability for Incidents,
 - `it_service_management_configuration_item`: owns configuration item lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `it_service_management_sla_clock`: owns sla clock lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `it_service_management_knowledge_article`: owns knowledge article lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `it_service_management_it_service_management_policy_rule`: owns it service management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `it_service_management_it_service_management_runtime_parameter`: owns it service management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `it_service_management_it_service_management_schema_extension`: owns it service management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `it_service_management_it_service_management_control_assertion`: owns it service management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `it_service_management_it_service_management_governed_model`: owns it service management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `it_service_management_policy_rule`: owns it service management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `it_service_management_runtime_parameter`: owns it service management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `it_service_management_schema_extension`: owns it service management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `it_service_management_control_assertion`: owns it service management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `it_service_management_governed_model`: owns it service management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `it_service_management_appgen_outbox_event`, `it_service_management_appgen_inbox_event`, and `it_service_management_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /it-incidents', 'POST /service-requests', 'POST /change-requests', 'POST /problem-records', 'POST /configuration-items', 'GET /it-service-management-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `it_service_management_appgen_outbox_event`, `
 - `simulate_configuration_item`: validates policy, writes owned `it_service_management_configuration_item` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_sla_clock`: validates policy, writes owned `it_service_management_sla_clock` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_knowledge_article`: validates policy, writes owned `it_service_management_knowledge_article` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_it_service_management_policy_rule`: validates policy, writes owned `it_service_management_it_service_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_it_service_management_runtime_parameter`: validates policy, writes owned `it_service_management_it_service_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_it_service_management_schema_extension`: validates policy, writes owned `it_service_management_it_service_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_it_service_management_control_assertion`: validates policy, writes owned `it_service_management_it_service_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_it_service_management_governed_model`: validates policy, writes owned `it_service_management_it_service_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_it_service_management_policy_rule`: validates policy, writes owned `it_service_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_it_service_management_runtime_parameter`: validates policy, writes owned `it_service_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_it_service_management_schema_extension`: validates policy, writes owned `it_service_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_it_service_management_control_assertion`: validates policy, writes owned `it_service_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_it_service_management_governed_model`: validates policy, writes owned `it_service_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_it_service_management_13`: validates policy, writes owned `it_service_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_it_service_management_14`: validates policy, writes owned `it_service_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_it_service_management_15`: validates policy, writes owned `it_service_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

@@ -180,7 +180,7 @@ CREATE TABLE clinical_care_coordination_outcome_measure (
   FOREIGN KEY (patient_care_plan_id) REFERENCES clinical_care_coordination_patient_care_plan(patient_care_plan_id)
 );
 
-CREATE TABLE clinical_care_coordination_clinical_care_coordination_policy_rule (
+CREATE TABLE clinical_care_coordination_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   rule_id VARCHAR(255) NOT NULL,
@@ -197,7 +197,7 @@ CREATE TABLE clinical_care_coordination_clinical_care_coordination_policy_rule (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE clinical_care_coordination_clinical_care_coordination_runtime_parameter (
+CREATE TABLE clinical_care_coordination_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_name VARCHAR(255) NOT NULL,
@@ -211,7 +211,7 @@ CREATE TABLE clinical_care_coordination_clinical_care_coordination_runtime_param
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE clinical_care_coordination_clinical_care_coordination_schema_extension (
+CREATE TABLE clinical_care_coordination_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -225,7 +225,7 @@ CREATE TABLE clinical_care_coordination_clinical_care_coordination_schema_extens
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE clinical_care_coordination_clinical_care_coordination_control_assertion (
+CREATE TABLE clinical_care_coordination_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -240,7 +240,7 @@ CREATE TABLE clinical_care_coordination_clinical_care_coordination_control_asser
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE clinical_care_coordination_clinical_care_coordination_governed_model (
+CREATE TABLE clinical_care_coordination_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

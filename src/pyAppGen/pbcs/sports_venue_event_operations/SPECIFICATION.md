@@ -25,11 +25,11 @@ The `sports_venue_event_operations` PBC is a packaged business capability for Ve
 - `sports_venue_event_operations_event_staff`: owns event staff lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `sports_venue_event_operations_fan_issue`: owns fan issue lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `sports_venue_event_operations_event_settlement`: owns event settlement lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `sports_venue_event_operations_sports_venue_event_operations_policy_rule`: owns sports venue event operations policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `sports_venue_event_operations_sports_venue_event_operations_runtime_parameter`: owns sports venue event operations runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `sports_venue_event_operations_sports_venue_event_operations_schema_extension`: owns sports venue event operations schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `sports_venue_event_operations_sports_venue_event_operations_control_assertion`: owns sports venue event operations control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `sports_venue_event_operations_sports_venue_event_operations_governed_model`: owns sports venue event operations governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `sports_venue_event_operations_policy_rule`: owns sports venue event operations policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `sports_venue_event_operations_runtime_parameter`: owns sports venue event operations runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `sports_venue_event_operations_schema_extension`: owns sports venue event operations schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `sports_venue_event_operations_control_assertion`: owns sports venue event operations control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `sports_venue_event_operations_governed_model`: owns sports venue event operations governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `sports_venue_event_operations_appgen_outbox_event`, `sports_venue_event_operations_appgen_inbox_event`, and `sports_venue_event_operations_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /venue-events', 'POST /seating-manifests', 'POST /concession-plans', 'POST /security-posts', 'POST /event-staffs', 'GET /sports-venue-event-operations-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `sports_venue_event_operations_appgen_outbox_e
 - `simulate_event_staff`: validates policy, writes owned `sports_venue_event_operations_event_staff` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_fan_issue`: validates policy, writes owned `sports_venue_event_operations_fan_issue` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_event_settlement`: validates policy, writes owned `sports_venue_event_operations_event_settlement` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_sports_venue_event_operations_policy_rule`: validates policy, writes owned `sports_venue_event_operations_sports_venue_event_operations_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_sports_venue_event_operations_runtime_parameter`: validates policy, writes owned `sports_venue_event_operations_sports_venue_event_operations_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_sports_venue_event_operations_schema_extension`: validates policy, writes owned `sports_venue_event_operations_sports_venue_event_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_sports_venue_event_operations_control_assertion`: validates policy, writes owned `sports_venue_event_operations_sports_venue_event_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_sports_venue_event_operations_governed_model`: validates policy, writes owned `sports_venue_event_operations_sports_venue_event_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_sports_venue_event_operations_policy_rule`: validates policy, writes owned `sports_venue_event_operations_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_sports_venue_event_operations_runtime_parameter`: validates policy, writes owned `sports_venue_event_operations_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_sports_venue_event_operations_schema_extension`: validates policy, writes owned `sports_venue_event_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_sports_venue_event_operations_control_assertion`: validates policy, writes owned `sports_venue_event_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_sports_venue_event_operations_governed_model`: validates policy, writes owned `sports_venue_event_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_sports_venue_event_operations_13`: validates policy, writes owned `sports_venue_event_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_sports_venue_event_operations_14`: validates policy, writes owned `sports_venue_event_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_sports_venue_event_operations_15`: validates policy, writes owned `sports_venue_event_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

@@ -42,11 +42,11 @@ The package owns the following business tables:
 - `chemical_batch_compliance_regulatory_submission`
 - `chemical_batch_compliance_quality_test`
 - `chemical_batch_compliance_compliance_hold`
-- `chemical_batch_compliance_chemical_batch_compliance_policy_rule`
-- `chemical_batch_compliance_chemical_batch_compliance_runtime_parameter`
-- `chemical_batch_compliance_chemical_batch_compliance_schema_extension`
-- `chemical_batch_compliance_chemical_batch_compliance_control_assertion`
-- `chemical_batch_compliance_chemical_batch_compliance_governed_model`
+- `chemical_batch_compliance_policy_rule`
+- `chemical_batch_compliance_runtime_parameter`
+- `chemical_batch_compliance_schema_extension`
+- `chemical_batch_compliance_control_assertion`
+- `chemical_batch_compliance_governed_model`
 
 It also owns the AppGen-X event tables:
 

@@ -25,11 +25,11 @@ The `donor_grant_fundraising` PBC is a packaged business capability for Donors, 
 - `donor_grant_fundraising_restriction`: owns restriction lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `donor_grant_fundraising_grant_application`: owns grant application lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `donor_grant_fundraising_stewardship_touchpoint`: owns stewardship touchpoint lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `donor_grant_fundraising_donor_grant_fundraising_policy_rule`: owns donor grant fundraising policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `donor_grant_fundraising_donor_grant_fundraising_runtime_parameter`: owns donor grant fundraising runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `donor_grant_fundraising_donor_grant_fundraising_schema_extension`: owns donor grant fundraising schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `donor_grant_fundraising_donor_grant_fundraising_control_assertion`: owns donor grant fundraising control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `donor_grant_fundraising_donor_grant_fundraising_governed_model`: owns donor grant fundraising governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `donor_grant_fundraising_policy_rule`: owns donor grant fundraising policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `donor_grant_fundraising_runtime_parameter`: owns donor grant fundraising runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `donor_grant_fundraising_schema_extension`: owns donor grant fundraising schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `donor_grant_fundraising_control_assertion`: owns donor grant fundraising control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `donor_grant_fundraising_governed_model`: owns donor grant fundraising governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `donor_grant_fundraising_appgen_outbox_event`, `donor_grant_fundraising_appgen_inbox_event`, and `donor_grant_fundraising_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'CustomerUpdated', 'SupplierQualified') and API contracts ('POST /donors', 'POST /campaigns', 'POST /pledges', 'POST /gifts', 'POST /restrictions', 'GET /donor-grant-fundraising-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `donor_grant_fundraising_appgen_outbox_event`,
 - `simulate_restriction`: validates policy, writes owned `donor_grant_fundraising_restriction` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_grant_application`: validates policy, writes owned `donor_grant_fundraising_grant_application` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_stewardship_touchpoint`: validates policy, writes owned `donor_grant_fundraising_stewardship_touchpoint` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_donor_grant_fundraising_policy_rule`: validates policy, writes owned `donor_grant_fundraising_donor_grant_fundraising_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_donor_grant_fundraising_runtime_parameter`: validates policy, writes owned `donor_grant_fundraising_donor_grant_fundraising_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_donor_grant_fundraising_schema_extension`: validates policy, writes owned `donor_grant_fundraising_donor_grant_fundraising_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_donor_grant_fundraising_control_assertion`: validates policy, writes owned `donor_grant_fundraising_donor_grant_fundraising_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_donor_grant_fundraising_governed_model`: validates policy, writes owned `donor_grant_fundraising_donor_grant_fundraising_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_donor_grant_fundraising_policy_rule`: validates policy, writes owned `donor_grant_fundraising_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_donor_grant_fundraising_runtime_parameter`: validates policy, writes owned `donor_grant_fundraising_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_donor_grant_fundraising_schema_extension`: validates policy, writes owned `donor_grant_fundraising_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_donor_grant_fundraising_control_assertion`: validates policy, writes owned `donor_grant_fundraising_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_donor_grant_fundraising_governed_model`: validates policy, writes owned `donor_grant_fundraising_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_donor_grant_fundraising_13`: validates policy, writes owned `donor_grant_fundraising_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_donor_grant_fundraising_14`: validates policy, writes owned `donor_grant_fundraising_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_donor_grant_fundraising_15`: validates policy, writes owned `donor_grant_fundraising_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

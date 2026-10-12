@@ -25,11 +25,11 @@ The `nonprofit_program_impact` PBC is a packaged business capability for Program
 - `nonprofit_program_impact_grant_restriction`: owns grant restriction lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `nonprofit_program_impact_impact_evidence`: owns impact evidence lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `nonprofit_program_impact_donor_report`: owns donor report lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `nonprofit_program_impact_nonprofit_program_impact_policy_rule`: owns nonprofit program impact policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `nonprofit_program_impact_nonprofit_program_impact_runtime_parameter`: owns nonprofit program impact runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `nonprofit_program_impact_nonprofit_program_impact_schema_extension`: owns nonprofit program impact schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `nonprofit_program_impact_nonprofit_program_impact_control_assertion`: owns nonprofit program impact control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `nonprofit_program_impact_nonprofit_program_impact_governed_model`: owns nonprofit program impact governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `nonprofit_program_impact_policy_rule`: owns nonprofit program impact policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `nonprofit_program_impact_runtime_parameter`: owns nonprofit program impact runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `nonprofit_program_impact_schema_extension`: owns nonprofit program impact schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `nonprofit_program_impact_control_assertion`: owns nonprofit program impact control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `nonprofit_program_impact_governed_model`: owns nonprofit program impact governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `nonprofit_program_impact_appgen_outbox_event`, `nonprofit_program_impact_appgen_inbox_event`, and `nonprofit_program_impact_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'CustomerUpdated', 'SupplierQualified') and API contracts ('POST /programs', 'POST /beneficiarys', 'POST /service-episodes', 'POST /outcome-measures', 'POST /grant-restrictions', 'GET /nonprofit-program-impact-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `nonprofit_program_impact_appgen_outbox_event`
 - `simulate_grant_restriction`: validates policy, writes owned `nonprofit_program_impact_grant_restriction` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_impact_evidence`: validates policy, writes owned `nonprofit_program_impact_impact_evidence` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_donor_report`: validates policy, writes owned `nonprofit_program_impact_donor_report` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_nonprofit_program_impact_policy_rule`: validates policy, writes owned `nonprofit_program_impact_nonprofit_program_impact_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_nonprofit_program_impact_runtime_parameter`: validates policy, writes owned `nonprofit_program_impact_nonprofit_program_impact_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_nonprofit_program_impact_schema_extension`: validates policy, writes owned `nonprofit_program_impact_nonprofit_program_impact_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_nonprofit_program_impact_control_assertion`: validates policy, writes owned `nonprofit_program_impact_nonprofit_program_impact_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_nonprofit_program_impact_governed_model`: validates policy, writes owned `nonprofit_program_impact_nonprofit_program_impact_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_nonprofit_program_impact_policy_rule`: validates policy, writes owned `nonprofit_program_impact_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_nonprofit_program_impact_runtime_parameter`: validates policy, writes owned `nonprofit_program_impact_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_nonprofit_program_impact_schema_extension`: validates policy, writes owned `nonprofit_program_impact_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_nonprofit_program_impact_control_assertion`: validates policy, writes owned `nonprofit_program_impact_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_nonprofit_program_impact_governed_model`: validates policy, writes owned `nonprofit_program_impact_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_nonprofit_program_impact_13`: validates policy, writes owned `nonprofit_program_impact_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_nonprofit_program_impact_14`: validates policy, writes owned `nonprofit_program_impact_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_nonprofit_program_impact_15`: validates policy, writes owned `nonprofit_program_impact_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

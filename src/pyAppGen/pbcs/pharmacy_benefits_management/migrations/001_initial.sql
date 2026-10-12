@@ -290,7 +290,7 @@ CREATE TABLE pharmacy_benefits_management_utilization_review (
   FOREIGN KEY (pharmacy_claim_id) REFERENCES pharmacy_benefits_management_pharmacy_claim(pharmacy_claim_id)
 );
 
-CREATE TABLE pharmacy_benefits_management_pharmacy_benefits_management_policy_rule (
+CREATE TABLE pharmacy_benefits_management_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -310,7 +310,7 @@ CREATE TABLE pharmacy_benefits_management_pharmacy_benefits_management_policy_ru
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE pharmacy_benefits_management_pharmacy_benefits_management_runtime_parameter (
+CREATE TABLE pharmacy_benefits_management_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_name VARCHAR(255) NOT NULL,
@@ -325,7 +325,7 @@ CREATE TABLE pharmacy_benefits_management_pharmacy_benefits_management_runtime_p
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE pharmacy_benefits_management_pharmacy_benefits_management_schema_extension (
+CREATE TABLE pharmacy_benefits_management_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -339,7 +339,7 @@ CREATE TABLE pharmacy_benefits_management_pharmacy_benefits_management_schema_ex
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE pharmacy_benefits_management_pharmacy_benefits_management_control_assertion (
+CREATE TABLE pharmacy_benefits_management_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -360,7 +360,7 @@ CREATE TABLE pharmacy_benefits_management_pharmacy_benefits_management_control_a
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE pharmacy_benefits_management_pharmacy_benefits_management_governed_model (
+CREATE TABLE pharmacy_benefits_management_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

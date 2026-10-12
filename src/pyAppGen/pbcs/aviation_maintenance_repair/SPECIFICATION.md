@@ -25,11 +25,11 @@ The `aviation_maintenance_repair` PBC is a packaged business capability for Airc
 - `aviation_maintenance_repair_airworthiness_directive`: owns airworthiness directive lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `aviation_maintenance_repair_deferred_defect`: owns deferred defect lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `aviation_maintenance_repair_compliance_release`: owns compliance release lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `aviation_maintenance_repair_aviation_maintenance_repair_policy_rule`: owns aviation maintenance repair policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `aviation_maintenance_repair_aviation_maintenance_repair_runtime_parameter`: owns aviation maintenance repair runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `aviation_maintenance_repair_aviation_maintenance_repair_schema_extension`: owns aviation maintenance repair schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `aviation_maintenance_repair_aviation_maintenance_repair_control_assertion`: owns aviation maintenance repair control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `aviation_maintenance_repair_aviation_maintenance_repair_governed_model`: owns aviation maintenance repair governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `aviation_maintenance_repair_policy_rule`: owns aviation maintenance repair policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `aviation_maintenance_repair_runtime_parameter`: owns aviation maintenance repair runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `aviation_maintenance_repair_schema_extension`: owns aviation maintenance repair schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `aviation_maintenance_repair_control_assertion`: owns aviation maintenance repair control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `aviation_maintenance_repair_governed_model`: owns aviation maintenance repair governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `aviation_maintenance_repair_appgen_outbox_event`, `aviation_maintenance_repair_appgen_inbox_event`, and `aviation_maintenance_repair_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /aircrafts', 'POST /components', 'POST /work-cards', 'POST /maintenance-visits', 'POST /airworthiness-directives', 'GET /aviation-maintenance-repair-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `aviation_maintenance_repair_appgen_outbox_eve
 - `simulate_airworthiness_directive`: validates policy, writes owned `aviation_maintenance_repair_airworthiness_directive` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_deferred_defect`: validates policy, writes owned `aviation_maintenance_repair_deferred_defect` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_compliance_release`: validates policy, writes owned `aviation_maintenance_repair_compliance_release` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_aviation_maintenance_repair_policy_rule`: validates policy, writes owned `aviation_maintenance_repair_aviation_maintenance_repair_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_aviation_maintenance_repair_runtime_parameter`: validates policy, writes owned `aviation_maintenance_repair_aviation_maintenance_repair_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_aviation_maintenance_repair_schema_extension`: validates policy, writes owned `aviation_maintenance_repair_aviation_maintenance_repair_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_aviation_maintenance_repair_control_assertion`: validates policy, writes owned `aviation_maintenance_repair_aviation_maintenance_repair_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_aviation_maintenance_repair_governed_model`: validates policy, writes owned `aviation_maintenance_repair_aviation_maintenance_repair_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_aviation_maintenance_repair_policy_rule`: validates policy, writes owned `aviation_maintenance_repair_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_aviation_maintenance_repair_runtime_parameter`: validates policy, writes owned `aviation_maintenance_repair_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_aviation_maintenance_repair_schema_extension`: validates policy, writes owned `aviation_maintenance_repair_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_aviation_maintenance_repair_control_assertion`: validates policy, writes owned `aviation_maintenance_repair_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_aviation_maintenance_repair_governed_model`: validates policy, writes owned `aviation_maintenance_repair_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_aviation_maintenance_repair_13`: validates policy, writes owned `aviation_maintenance_repair_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_aviation_maintenance_repair_14`: validates policy, writes owned `aviation_maintenance_repair_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_aviation_maintenance_repair_15`: validates policy, writes owned `aviation_maintenance_repair_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

@@ -25,11 +25,11 @@ The `lending_origination_servicing` PBC is a packaged business capability for Lo
 - `lending_origination_servicing_disbursement`: owns disbursement lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `lending_origination_servicing_repayment_schedule`: owns repayment schedule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `lending_origination_servicing_servicing_case`: owns servicing case lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `lending_origination_servicing_lending_origination_servicing_policy_rule`: owns lending origination servicing policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `lending_origination_servicing_lending_origination_servicing_runtime_parameter`: owns lending origination servicing runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `lending_origination_servicing_lending_origination_servicing_schema_extension`: owns lending origination servicing schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `lending_origination_servicing_lending_origination_servicing_control_assertion`: owns lending origination servicing control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `lending_origination_servicing_lending_origination_servicing_governed_model`: owns lending origination servicing governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `lending_origination_servicing_policy_rule`: owns lending origination servicing policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `lending_origination_servicing_runtime_parameter`: owns lending origination servicing runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `lending_origination_servicing_schema_extension`: owns lending origination servicing schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `lending_origination_servicing_control_assertion`: owns lending origination servicing control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `lending_origination_servicing_governed_model`: owns lending origination servicing governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `lending_origination_servicing_appgen_outbox_event`, `lending_origination_servicing_appgen_inbox_event`, and `lending_origination_servicing_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /loan-applications', 'POST /borrower-profiles', 'POST /underwriting-decisions', 'POST /loan-offers', 'POST /disbursements', 'GET /lending-origination-servicing-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `lending_origination_servicing_appgen_outbox_e
 - `simulate_disbursement`: validates policy, writes owned `lending_origination_servicing_disbursement` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_repayment_schedule`: validates policy, writes owned `lending_origination_servicing_repayment_schedule` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_servicing_case`: validates policy, writes owned `lending_origination_servicing_servicing_case` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_lending_origination_servicing_policy_rule`: validates policy, writes owned `lending_origination_servicing_lending_origination_servicing_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_lending_origination_servicing_runtime_parameter`: validates policy, writes owned `lending_origination_servicing_lending_origination_servicing_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_lending_origination_servicing_schema_extension`: validates policy, writes owned `lending_origination_servicing_lending_origination_servicing_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_lending_origination_servicing_control_assertion`: validates policy, writes owned `lending_origination_servicing_lending_origination_servicing_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_lending_origination_servicing_governed_model`: validates policy, writes owned `lending_origination_servicing_lending_origination_servicing_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_lending_origination_servicing_policy_rule`: validates policy, writes owned `lending_origination_servicing_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_lending_origination_servicing_runtime_parameter`: validates policy, writes owned `lending_origination_servicing_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_lending_origination_servicing_schema_extension`: validates policy, writes owned `lending_origination_servicing_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_lending_origination_servicing_control_assertion`: validates policy, writes owned `lending_origination_servicing_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_lending_origination_servicing_governed_model`: validates policy, writes owned `lending_origination_servicing_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_lending_origination_servicing_13`: validates policy, writes owned `lending_origination_servicing_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_lending_origination_servicing_14`: validates policy, writes owned `lending_origination_servicing_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_lending_origination_servicing_15`: validates policy, writes owned `lending_origination_servicing_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

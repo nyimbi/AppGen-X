@@ -25,11 +25,11 @@ The `clinical_trials_management` PBC is a packaged business capability for Proto
 - `clinical_trials_management_visit_schedule`: owns visit schedule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `clinical_trials_management_adverse_event`: owns adverse event lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `clinical_trials_management_monitoring_finding`: owns monitoring finding lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `clinical_trials_management_clinical_trials_management_policy_rule`: owns clinical trials management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `clinical_trials_management_clinical_trials_management_runtime_parameter`: owns clinical trials management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `clinical_trials_management_clinical_trials_management_schema_extension`: owns clinical trials management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `clinical_trials_management_clinical_trials_management_control_assertion`: owns clinical trials management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `clinical_trials_management_clinical_trials_management_governed_model`: owns clinical trials management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `clinical_trials_management_policy_rule`: owns clinical trials management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `clinical_trials_management_runtime_parameter`: owns clinical trials management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `clinical_trials_management_schema_extension`: owns clinical trials management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `clinical_trials_management_control_assertion`: owns clinical trials management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `clinical_trials_management_governed_model`: owns clinical trials management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `clinical_trials_management_appgen_outbox_event`, `clinical_trials_management_appgen_inbox_event`, and `clinical_trials_management_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'CustomerUpdated', 'SupplierQualified') and API contracts ('POST /trial-protocols', 'POST /study-sites', 'POST /subjects', 'POST /consent-records', 'POST /visit-schedules', 'GET /clinical-trials-management-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `clinical_trials_management_appgen_outbox_even
 - `simulate_visit_schedule`: validates policy, writes owned `clinical_trials_management_visit_schedule` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_adverse_event`: validates policy, writes owned `clinical_trials_management_adverse_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_monitoring_finding`: validates policy, writes owned `clinical_trials_management_monitoring_finding` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_clinical_trials_management_policy_rule`: validates policy, writes owned `clinical_trials_management_clinical_trials_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_clinical_trials_management_runtime_parameter`: validates policy, writes owned `clinical_trials_management_clinical_trials_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_clinical_trials_management_schema_extension`: validates policy, writes owned `clinical_trials_management_clinical_trials_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_clinical_trials_management_control_assertion`: validates policy, writes owned `clinical_trials_management_clinical_trials_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_clinical_trials_management_governed_model`: validates policy, writes owned `clinical_trials_management_clinical_trials_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_clinical_trials_management_policy_rule`: validates policy, writes owned `clinical_trials_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_clinical_trials_management_runtime_parameter`: validates policy, writes owned `clinical_trials_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_clinical_trials_management_schema_extension`: validates policy, writes owned `clinical_trials_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_clinical_trials_management_control_assertion`: validates policy, writes owned `clinical_trials_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_clinical_trials_management_governed_model`: validates policy, writes owned `clinical_trials_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_clinical_trials_management_13`: validates policy, writes owned `clinical_trials_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_clinical_trials_management_14`: validates policy, writes owned `clinical_trials_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_clinical_trials_management_15`: validates policy, writes owned `clinical_trials_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

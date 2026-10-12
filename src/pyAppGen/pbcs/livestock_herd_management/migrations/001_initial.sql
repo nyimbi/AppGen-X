@@ -198,7 +198,7 @@ CREATE TABLE livestock_herd_management_treatment (
   FOREIGN KEY (animal_id) REFERENCES livestock_herd_management_animal(animal_id)
 );
 
-CREATE TABLE livestock_herd_management_livestock_herd_management_policy_rule (
+CREATE TABLE livestock_herd_management_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -218,7 +218,7 @@ CREATE TABLE livestock_herd_management_livestock_herd_management_policy_rule (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE livestock_herd_management_livestock_herd_management_runtime_parameter (
+CREATE TABLE livestock_herd_management_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   runtime_parameter_id VARCHAR(255) NOT NULL,
@@ -240,7 +240,7 @@ CREATE TABLE livestock_herd_management_livestock_herd_management_runtime_paramet
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE livestock_herd_management_livestock_herd_management_schema_extension (
+CREATE TABLE livestock_herd_management_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   schema_extension_id VARCHAR(255) NOT NULL,
@@ -260,7 +260,7 @@ CREATE TABLE livestock_herd_management_livestock_herd_management_schema_extensio
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE livestock_herd_management_livestock_herd_management_control_assertion (
+CREATE TABLE livestock_herd_management_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   control_assertion_id VARCHAR(255) NOT NULL,
@@ -280,7 +280,7 @@ CREATE TABLE livestock_herd_management_livestock_herd_management_control_asserti
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE livestock_herd_management_livestock_herd_management_governed_model (
+CREATE TABLE livestock_herd_management_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   governed_model_id VARCHAR(255) NOT NULL,

@@ -76,11 +76,11 @@ BUSINESS_TABLES = (
     "construction_contracts_commercials_commercial_claim",
     "construction_contracts_commercials_lien_waiver",
     "construction_contracts_commercials_subcontract_package",
-    "construction_contracts_commercials_construction_contracts_commercials_policy_rule",
-    "construction_contracts_commercials_construction_contracts_commercials_runtime_parameter",
-    "construction_contracts_commercials_construction_contracts_commercials_schema_extension",
-    "construction_contracts_commercials_construction_contracts_commercials_control_assertion",
-    "construction_contracts_commercials_construction_contracts_commercials_governed_model",
+    "construction_contracts_commercials_policy_rule",
+    "construction_contracts_commercials_runtime_parameter",
+    "construction_contracts_commercials_schema_extension",
+    "construction_contracts_commercials_control_assertion",
+    "construction_contracts_commercials_governed_model",
 )
 EVENT_TABLES = (
     "construction_contracts_commercials_appgen_outbox_event",

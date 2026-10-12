@@ -66,9 +66,9 @@ def _owned_tables() -> tuple[str, ...]:
         "dom_cancellation_request",
         "dom_shipment_projection",
         "dom_order_exception",
-        "dom_dom_appgen_outbox_event",
-        "dom_dom_appgen_inbox_event",
-        "dom_dom_dead_letter_event",
+        "dom_appgen_outbox_event",
+        "dom_appgen_inbox_event",
+        "dom_dead_letter_event",
     )
 
 

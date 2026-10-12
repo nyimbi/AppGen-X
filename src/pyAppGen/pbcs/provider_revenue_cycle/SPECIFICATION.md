@@ -25,11 +25,11 @@ The `provider_revenue_cycle` PBC is a packaged business capability for Healthcar
 - `provider_revenue_cycle_denial_case`: owns denial case lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `provider_revenue_cycle_payment_posting`: owns payment posting lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `provider_revenue_cycle_collection_account`: owns collection account lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `provider_revenue_cycle_provider_revenue_cycle_policy_rule`: owns provider revenue cycle policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `provider_revenue_cycle_provider_revenue_cycle_runtime_parameter`: owns provider revenue cycle runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `provider_revenue_cycle_provider_revenue_cycle_schema_extension`: owns provider revenue cycle schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `provider_revenue_cycle_provider_revenue_cycle_control_assertion`: owns provider revenue cycle control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `provider_revenue_cycle_provider_revenue_cycle_governed_model`: owns provider revenue cycle governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `provider_revenue_cycle_policy_rule`: owns provider revenue cycle policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `provider_revenue_cycle_runtime_parameter`: owns provider revenue cycle runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `provider_revenue_cycle_schema_extension`: owns provider revenue cycle schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `provider_revenue_cycle_control_assertion`: owns provider revenue cycle control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `provider_revenue_cycle_governed_model`: owns provider revenue cycle governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `provider_revenue_cycle_appgen_outbox_event`, `provider_revenue_cycle_appgen_inbox_event`, and `provider_revenue_cycle_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /patient-accounts', 'POST /charge-captures', 'POST /coding-workqueues', 'POST /claim-batchs', 'POST /denial-cases', 'GET /provider-revenue-cycle-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `provider_revenue_cycle_appgen_outbox_event`, 
 - `simulate_denial_case`: validates policy, writes owned `provider_revenue_cycle_denial_case` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_payment_posting`: validates policy, writes owned `provider_revenue_cycle_payment_posting` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_collection_account`: validates policy, writes owned `provider_revenue_cycle_collection_account` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_provider_revenue_cycle_policy_rule`: validates policy, writes owned `provider_revenue_cycle_provider_revenue_cycle_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_provider_revenue_cycle_runtime_parameter`: validates policy, writes owned `provider_revenue_cycle_provider_revenue_cycle_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_provider_revenue_cycle_schema_extension`: validates policy, writes owned `provider_revenue_cycle_provider_revenue_cycle_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_provider_revenue_cycle_control_assertion`: validates policy, writes owned `provider_revenue_cycle_provider_revenue_cycle_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_provider_revenue_cycle_governed_model`: validates policy, writes owned `provider_revenue_cycle_provider_revenue_cycle_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_provider_revenue_cycle_policy_rule`: validates policy, writes owned `provider_revenue_cycle_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_provider_revenue_cycle_runtime_parameter`: validates policy, writes owned `provider_revenue_cycle_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_provider_revenue_cycle_schema_extension`: validates policy, writes owned `provider_revenue_cycle_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_provider_revenue_cycle_control_assertion`: validates policy, writes owned `provider_revenue_cycle_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_provider_revenue_cycle_governed_model`: validates policy, writes owned `provider_revenue_cycle_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_provider_revenue_cycle_13`: validates policy, writes owned `provider_revenue_cycle_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_provider_revenue_cycle_14`: validates policy, writes owned `provider_revenue_cycle_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_provider_revenue_cycle_15`: validates policy, writes owned `provider_revenue_cycle_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

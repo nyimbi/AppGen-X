@@ -197,7 +197,7 @@ CREATE TABLE oil_gas_field_operations_lifting_cost (
   FOREIGN KEY (well_id) REFERENCES oil_gas_field_operations_well(well_id)
 );
 
-CREATE TABLE oil_gas_field_operations_oil_gas_field_operations_policy_rule (
+CREATE TABLE oil_gas_field_operations_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   rule_id VARCHAR(255) NOT NULL,
@@ -218,7 +218,7 @@ CREATE TABLE oil_gas_field_operations_oil_gas_field_operations_policy_rule (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE oil_gas_field_operations_oil_gas_field_operations_runtime_parameter (
+CREATE TABLE oil_gas_field_operations_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_id VARCHAR(255) NOT NULL,
@@ -235,7 +235,7 @@ CREATE TABLE oil_gas_field_operations_oil_gas_field_operations_runtime_parameter
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE oil_gas_field_operations_oil_gas_field_operations_schema_extension (
+CREATE TABLE oil_gas_field_operations_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -251,7 +251,7 @@ CREATE TABLE oil_gas_field_operations_oil_gas_field_operations_schema_extension 
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE oil_gas_field_operations_oil_gas_field_operations_control_assertion (
+CREATE TABLE oil_gas_field_operations_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -271,7 +271,7 @@ CREATE TABLE oil_gas_field_operations_oil_gas_field_operations_control_assertion
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE oil_gas_field_operations_oil_gas_field_operations_governed_model (
+CREATE TABLE oil_gas_field_operations_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

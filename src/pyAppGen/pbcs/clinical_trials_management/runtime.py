@@ -255,7 +255,7 @@ _TABLE_FIELDS = {
         "created_at",
         "updated_at",
     ),
-    "clinical_trials_management_clinical_trials_management_policy_rule": (
+    "clinical_trials_management_policy_rule": (
         "tenant",
         "rule_id",
         "rule_type",
@@ -267,7 +267,7 @@ _TABLE_FIELDS = {
         "created_at",
         "updated_at",
     ),
-    "clinical_trials_management_clinical_trials_management_runtime_parameter": (
+    "clinical_trials_management_runtime_parameter": (
         "tenant",
         "parameter_id",
         "name",
@@ -278,7 +278,7 @@ _TABLE_FIELDS = {
         "created_at",
         "updated_at",
     ),
-    "clinical_trials_management_clinical_trials_management_schema_extension": (
+    "clinical_trials_management_schema_extension": (
         "tenant",
         "extension_id",
         "table_name",
@@ -288,7 +288,7 @@ _TABLE_FIELDS = {
         "created_at",
         "updated_at",
     ),
-    "clinical_trials_management_clinical_trials_management_control_assertion": (
+    "clinical_trials_management_control_assertion": (
         "tenant",
         "control_id",
         "focus_area",
@@ -300,7 +300,7 @@ _TABLE_FIELDS = {
         "created_at",
         "updated_at",
     ),
-    "clinical_trials_management_clinical_trials_management_governed_model": (
+    "clinical_trials_management_governed_model": (
         "tenant",
         "model_id",
         "use_case",
@@ -361,11 +361,11 @@ _ALIAS_TO_TABLE = {
     "visit_schedule": "clinical_trials_management_visit_schedule",
     "adverse_event": "clinical_trials_management_adverse_event",
     "monitoring_finding": "clinical_trials_management_monitoring_finding",
-    "policy_rule": "clinical_trials_management_clinical_trials_management_policy_rule",
-    "runtime_parameter": "clinical_trials_management_clinical_trials_management_runtime_parameter",
-    "schema_extension": "clinical_trials_management_clinical_trials_management_schema_extension",
-    "control_assertion": "clinical_trials_management_clinical_trials_management_control_assertion",
-    "governed_model": "clinical_trials_management_clinical_trials_management_governed_model",
+    "policy_rule": "clinical_trials_management_policy_rule",
+    "runtime_parameter": "clinical_trials_management_runtime_parameter",
+    "schema_extension": "clinical_trials_management_schema_extension",
+    "control_assertion": "clinical_trials_management_control_assertion",
+    "governed_model": "clinical_trials_management_governed_model",
     "appgen_outbox_event": "clinical_trials_management_appgen_outbox_event",
     "appgen_inbox_event": "clinical_trials_management_appgen_inbox_event",
     "appgen_dead_letter_event": "clinical_trials_management_appgen_dead_letter_event",
@@ -960,9 +960,9 @@ def clinical_trials_management_parse_document_instruction(document, instruction)
     elif "site" in combined:
         candidate_table = "clinical_trials_management_study_site"
     elif "rule" in combined or "policy" in combined:
-        candidate_table = "clinical_trials_management_clinical_trials_management_policy_rule"
+        candidate_table = "clinical_trials_management_policy_rule"
     elif "parameter" in combined or "sla" in combined:
-        candidate_table = "clinical_trials_management_clinical_trials_management_runtime_parameter"
+        candidate_table = "clinical_trials_management_runtime_parameter"
     else:
         candidate_table = "clinical_trials_management_trial_protocol"
     return {

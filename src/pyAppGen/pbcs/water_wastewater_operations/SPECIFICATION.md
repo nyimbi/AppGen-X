@@ -25,11 +25,11 @@ The `water_wastewater_operations` PBC is a packaged business capability for Trea
 - `water_wastewater_operations_service_interruption`: owns service interruption lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `water_wastewater_operations_field_work_order`: owns field work order lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `water_wastewater_operations_compliance_sample`: owns compliance sample lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `water_wastewater_operations_water_wastewater_operations_policy_rule`: owns water wastewater operations policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `water_wastewater_operations_water_wastewater_operations_runtime_parameter`: owns water wastewater operations runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `water_wastewater_operations_water_wastewater_operations_schema_extension`: owns water wastewater operations schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `water_wastewater_operations_water_wastewater_operations_control_assertion`: owns water wastewater operations control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `water_wastewater_operations_water_wastewater_operations_governed_model`: owns water wastewater operations governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `water_wastewater_operations_policy_rule`: owns water wastewater operations policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `water_wastewater_operations_runtime_parameter`: owns water wastewater operations runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `water_wastewater_operations_schema_extension`: owns water wastewater operations schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `water_wastewater_operations_control_assertion`: owns water wastewater operations control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `water_wastewater_operations_governed_model`: owns water wastewater operations governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `water_wastewater_operations_appgen_outbox_event`, `water_wastewater_operations_appgen_inbox_event`, and `water_wastewater_operations_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /treatment-plants', 'POST /water-quality-samples', 'POST /permit-limits', 'POST /pump-assets', 'POST /service-interruptions', 'GET /water-wastewater-operations-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `water_wastewater_operations_appgen_outbox_eve
 - `simulate_service_interruption`: validates policy, writes owned `water_wastewater_operations_service_interruption` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_field_work_order`: validates policy, writes owned `water_wastewater_operations_field_work_order` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_compliance_sample`: validates policy, writes owned `water_wastewater_operations_compliance_sample` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_water_wastewater_operations_policy_rule`: validates policy, writes owned `water_wastewater_operations_water_wastewater_operations_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_water_wastewater_operations_runtime_parameter`: validates policy, writes owned `water_wastewater_operations_water_wastewater_operations_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_water_wastewater_operations_schema_extension`: validates policy, writes owned `water_wastewater_operations_water_wastewater_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_water_wastewater_operations_control_assertion`: validates policy, writes owned `water_wastewater_operations_water_wastewater_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_water_wastewater_operations_governed_model`: validates policy, writes owned `water_wastewater_operations_water_wastewater_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_water_wastewater_operations_policy_rule`: validates policy, writes owned `water_wastewater_operations_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_water_wastewater_operations_runtime_parameter`: validates policy, writes owned `water_wastewater_operations_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_water_wastewater_operations_schema_extension`: validates policy, writes owned `water_wastewater_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_water_wastewater_operations_control_assertion`: validates policy, writes owned `water_wastewater_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_water_wastewater_operations_governed_model`: validates policy, writes owned `water_wastewater_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_water_wastewater_operations_13`: validates policy, writes owned `water_wastewater_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_water_wastewater_operations_14`: validates policy, writes owned `water_wastewater_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_water_wastewater_operations_15`: validates policy, writes owned `water_wastewater_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

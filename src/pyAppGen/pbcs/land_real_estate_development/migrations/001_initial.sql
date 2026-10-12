@@ -165,7 +165,7 @@ CREATE TABLE land_real_estate_development_land_option (
   FOREIGN KEY (land_parcel_id) REFERENCES land_real_estate_development_land_parcel(land_parcel_id)
 );
 
-CREATE TABLE land_real_estate_development_land_real_estate_development_policy_rule (
+CREATE TABLE land_real_estate_development_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   rule_id VARCHAR(255) NOT NULL,
@@ -183,7 +183,7 @@ CREATE TABLE land_real_estate_development_land_real_estate_development_policy_ru
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE land_real_estate_development_land_real_estate_development_runtime_parameter (
+CREATE TABLE land_real_estate_development_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_name VARCHAR(255) NOT NULL,
@@ -199,7 +199,7 @@ CREATE TABLE land_real_estate_development_land_real_estate_development_runtime_p
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE land_real_estate_development_land_real_estate_development_schema_extension (
+CREATE TABLE land_real_estate_development_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -215,7 +215,7 @@ CREATE TABLE land_real_estate_development_land_real_estate_development_schema_ex
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE land_real_estate_development_land_real_estate_development_control_assertion (
+CREATE TABLE land_real_estate_development_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -234,7 +234,7 @@ CREATE TABLE land_real_estate_development_land_real_estate_development_control_a
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE land_real_estate_development_land_real_estate_development_governed_model (
+CREATE TABLE land_real_estate_development_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

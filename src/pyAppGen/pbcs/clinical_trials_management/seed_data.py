@@ -7,7 +7,7 @@ PBC_KEY = "clinical_trials_management"
 SEED_SCENARIOS = {
     "new_protocol": (
         {"table": "clinical_trials_management_trial_protocol", "record_id": "PROT-101", "status": "active"},
-        {"table": "clinical_trials_management_clinical_trials_management_policy_rule", "record_id": "trial.safety.sla", "status": "active"},
+        {"table": "clinical_trials_management_policy_rule", "record_id": "trial.safety.sla", "status": "active"},
     ),
     "site_activation": (
         {"table": "clinical_trials_management_study_site", "record_id": "SITE-001", "status": "active"},
@@ -23,7 +23,7 @@ SEED_SCENARIOS = {
         {"table": "clinical_trials_management_monitoring_finding", "record_id": "MON-001", "status": "resolved"},
     ),
     "data_lock": (
-        {"table": "clinical_trials_management_clinical_trials_management_control_assertion", "record_id": "LOCK-READINESS", "status": "ready"},
+        {"table": "clinical_trials_management_control_assertion", "record_id": "LOCK-READINESS", "status": "ready"},
     ),
 }
 

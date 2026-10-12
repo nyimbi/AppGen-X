@@ -25,11 +25,11 @@ The `environment_health_safety` PBC is a packaged business capability for EHS in
 - `environment_health_safety_corrective_action`: owns corrective action lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `environment_health_safety_safety_training`: owns safety training lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `environment_health_safety_audit_finding`: owns audit finding lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `environment_health_safety_environment_health_safety_policy_rule`: owns environment health safety policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `environment_health_safety_environment_health_safety_runtime_parameter`: owns environment health safety runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `environment_health_safety_environment_health_safety_schema_extension`: owns environment health safety schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `environment_health_safety_environment_health_safety_control_assertion`: owns environment health safety control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `environment_health_safety_environment_health_safety_governed_model`: owns environment health safety governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `environment_health_safety_policy_rule`: owns environment health safety policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `environment_health_safety_runtime_parameter`: owns environment health safety runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `environment_health_safety_schema_extension`: owns environment health safety schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `environment_health_safety_control_assertion`: owns environment health safety control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `environment_health_safety_governed_model`: owns environment health safety governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `environment_health_safety_appgen_outbox_event`, `environment_health_safety_appgen_inbox_event`, and `environment_health_safety_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /ehs-incidents', 'POST /hazards', 'POST /inspections', 'POST /permits', 'POST /corrective-actions', 'GET /environment-health-safety-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `environment_health_safety_appgen_outbox_event
 - `simulate_corrective_action`: validates policy, writes owned `environment_health_safety_corrective_action` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_safety_training`: validates policy, writes owned `environment_health_safety_safety_training` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_audit_finding`: validates policy, writes owned `environment_health_safety_audit_finding` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_environment_health_safety_policy_rule`: validates policy, writes owned `environment_health_safety_environment_health_safety_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_environment_health_safety_runtime_parameter`: validates policy, writes owned `environment_health_safety_environment_health_safety_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_environment_health_safety_schema_extension`: validates policy, writes owned `environment_health_safety_environment_health_safety_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_environment_health_safety_control_assertion`: validates policy, writes owned `environment_health_safety_environment_health_safety_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_environment_health_safety_governed_model`: validates policy, writes owned `environment_health_safety_environment_health_safety_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_environment_health_safety_policy_rule`: validates policy, writes owned `environment_health_safety_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_environment_health_safety_runtime_parameter`: validates policy, writes owned `environment_health_safety_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_environment_health_safety_schema_extension`: validates policy, writes owned `environment_health_safety_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_environment_health_safety_control_assertion`: validates policy, writes owned `environment_health_safety_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_environment_health_safety_governed_model`: validates policy, writes owned `environment_health_safety_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_environment_health_safety_13`: validates policy, writes owned `environment_health_safety_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_environment_health_safety_14`: validates policy, writes owned `environment_health_safety_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_environment_health_safety_15`: validates policy, writes owned `environment_health_safety_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

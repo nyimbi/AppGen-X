@@ -25,11 +25,11 @@ The `airport_operations_management` PBC is a packaged business capability for Ga
 - `airport_operations_management_baggage_belt`: owns baggage belt lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `airport_operations_management_passenger_flow`: owns passenger flow lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `airport_operations_management_airport_disruption`: owns airport disruption lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `airport_operations_management_airport_operations_management_policy_rule`: owns airport operations management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `airport_operations_management_airport_operations_management_runtime_parameter`: owns airport operations management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `airport_operations_management_airport_operations_management_schema_extension`: owns airport operations management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `airport_operations_management_airport_operations_management_control_assertion`: owns airport operations management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `airport_operations_management_airport_operations_management_governed_model`: owns airport operations management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `airport_operations_management_policy_rule`: owns airport operations management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `airport_operations_management_runtime_parameter`: owns airport operations management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `airport_operations_management_schema_extension`: owns airport operations management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `airport_operations_management_control_assertion`: owns airport operations management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `airport_operations_management_governed_model`: owns airport operations management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `airport_operations_management_appgen_outbox_event`, `airport_operations_management_appgen_inbox_event`, and `airport_operations_management_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /gate-assignments', 'POST /stand-allocations', 'POST /slots', 'POST /turndown-tasks', 'POST /baggage-belts', 'GET /airport-operations-management-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `airport_operations_management_appgen_outbox_e
 - `simulate_baggage_belt`: validates policy, writes owned `airport_operations_management_baggage_belt` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_passenger_flow`: validates policy, writes owned `airport_operations_management_passenger_flow` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_airport_disruption`: validates policy, writes owned `airport_operations_management_airport_disruption` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_airport_operations_management_policy_rule`: validates policy, writes owned `airport_operations_management_airport_operations_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_airport_operations_management_runtime_parameter`: validates policy, writes owned `airport_operations_management_airport_operations_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_airport_operations_management_schema_extension`: validates policy, writes owned `airport_operations_management_airport_operations_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_airport_operations_management_control_assertion`: validates policy, writes owned `airport_operations_management_airport_operations_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_airport_operations_management_governed_model`: validates policy, writes owned `airport_operations_management_airport_operations_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_airport_operations_management_policy_rule`: validates policy, writes owned `airport_operations_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_airport_operations_management_runtime_parameter`: validates policy, writes owned `airport_operations_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_airport_operations_management_schema_extension`: validates policy, writes owned `airport_operations_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_airport_operations_management_control_assertion`: validates policy, writes owned `airport_operations_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_airport_operations_management_governed_model`: validates policy, writes owned `airport_operations_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_airport_operations_management_13`: validates policy, writes owned `airport_operations_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_airport_operations_management_14`: validates policy, writes owned `airport_operations_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_airport_operations_management_15`: validates policy, writes owned `airport_operations_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

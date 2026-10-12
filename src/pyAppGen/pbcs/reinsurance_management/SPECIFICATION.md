@@ -25,11 +25,11 @@ The `reinsurance_management` PBC is a packaged business capability for Treaties,
 - `reinsurance_management_recoverable`: owns recoverable lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `reinsurance_management_claim_recovery`: owns claim recovery lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `reinsurance_management_exposure_layer`: owns exposure layer lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `reinsurance_management_reinsurance_management_policy_rule`: owns reinsurance management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `reinsurance_management_reinsurance_management_runtime_parameter`: owns reinsurance management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `reinsurance_management_reinsurance_management_schema_extension`: owns reinsurance management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `reinsurance_management_reinsurance_management_control_assertion`: owns reinsurance management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `reinsurance_management_reinsurance_management_governed_model`: owns reinsurance management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `reinsurance_management_policy_rule`: owns reinsurance management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `reinsurance_management_runtime_parameter`: owns reinsurance management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `reinsurance_management_schema_extension`: owns reinsurance management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `reinsurance_management_control_assertion`: owns reinsurance management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `reinsurance_management_governed_model`: owns reinsurance management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `reinsurance_management_appgen_outbox_event`, `reinsurance_management_appgen_inbox_event`, and `reinsurance_management_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /reinsurance-treatys', 'POST /facultative-placements', 'POST /cessions', 'POST /bordereaus', 'POST /recoverables', 'GET /reinsurance-management-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `reinsurance_management_appgen_outbox_event`, 
 - `simulate_recoverable`: validates policy, writes owned `reinsurance_management_recoverable` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_claim_recovery`: validates policy, writes owned `reinsurance_management_claim_recovery` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_exposure_layer`: validates policy, writes owned `reinsurance_management_exposure_layer` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_reinsurance_management_policy_rule`: validates policy, writes owned `reinsurance_management_reinsurance_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_reinsurance_management_runtime_parameter`: validates policy, writes owned `reinsurance_management_reinsurance_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_reinsurance_management_schema_extension`: validates policy, writes owned `reinsurance_management_reinsurance_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_reinsurance_management_control_assertion`: validates policy, writes owned `reinsurance_management_reinsurance_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_reinsurance_management_governed_model`: validates policy, writes owned `reinsurance_management_reinsurance_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_reinsurance_management_policy_rule`: validates policy, writes owned `reinsurance_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_reinsurance_management_runtime_parameter`: validates policy, writes owned `reinsurance_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_reinsurance_management_schema_extension`: validates policy, writes owned `reinsurance_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_reinsurance_management_control_assertion`: validates policy, writes owned `reinsurance_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_reinsurance_management_governed_model`: validates policy, writes owned `reinsurance_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_reinsurance_management_13`: validates policy, writes owned `reinsurance_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_reinsurance_management_14`: validates policy, writes owned `reinsurance_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_reinsurance_management_15`: validates policy, writes owned `reinsurance_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

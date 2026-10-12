@@ -25,11 +25,11 @@ The `smart_city_mobility_operations` PBC is a packaged business capability for T
 - `smart_city_mobility_operations_curb_allocation`: owns curb allocation lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `smart_city_mobility_operations_mobility_sensor`: owns mobility sensor lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `smart_city_mobility_operations_service_disruption`: owns service disruption lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `smart_city_mobility_operations_smart_city_mobility_operations_policy_rule`: owns smart city mobility operations policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `smart_city_mobility_operations_smart_city_mobility_operations_runtime_parameter`: owns smart city mobility operations runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `smart_city_mobility_operations_smart_city_mobility_operations_schema_extension`: owns smart city mobility operations schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `smart_city_mobility_operations_smart_city_mobility_operations_control_assertion`: owns smart city mobility operations control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `smart_city_mobility_operations_smart_city_mobility_operations_governed_model`: owns smart city mobility operations governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `smart_city_mobility_operations_policy_rule`: owns smart city mobility operations policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `smart_city_mobility_operations_runtime_parameter`: owns smart city mobility operations runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `smart_city_mobility_operations_schema_extension`: owns smart city mobility operations schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `smart_city_mobility_operations_control_assertion`: owns smart city mobility operations control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `smart_city_mobility_operations_governed_model`: owns smart city mobility operations governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `smart_city_mobility_operations_appgen_outbox_event`, `smart_city_mobility_operations_appgen_inbox_event`, and `smart_city_mobility_operations_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /transit-services', 'POST /parking-assets', 'POST /signal-plans', 'POST /traffic-incidents', 'POST /curb-allocations', 'GET /smart-city-mobility-operations-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `smart_city_mobility_operations_appgen_outbox_
 - `simulate_curb_allocation`: validates policy, writes owned `smart_city_mobility_operations_curb_allocation` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_mobility_sensor`: validates policy, writes owned `smart_city_mobility_operations_mobility_sensor` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_service_disruption`: validates policy, writes owned `smart_city_mobility_operations_service_disruption` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_smart_city_mobility_operations_policy_rule`: validates policy, writes owned `smart_city_mobility_operations_smart_city_mobility_operations_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_smart_city_mobility_operations_runtime_parameter`: validates policy, writes owned `smart_city_mobility_operations_smart_city_mobility_operations_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_smart_city_mobility_operations_schema_extension`: validates policy, writes owned `smart_city_mobility_operations_smart_city_mobility_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_smart_city_mobility_operations_control_assertion`: validates policy, writes owned `smart_city_mobility_operations_smart_city_mobility_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_smart_city_mobility_operations_governed_model`: validates policy, writes owned `smart_city_mobility_operations_smart_city_mobility_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_smart_city_mobility_operations_policy_rule`: validates policy, writes owned `smart_city_mobility_operations_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_smart_city_mobility_operations_runtime_parameter`: validates policy, writes owned `smart_city_mobility_operations_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_smart_city_mobility_operations_schema_extension`: validates policy, writes owned `smart_city_mobility_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_smart_city_mobility_operations_control_assertion`: validates policy, writes owned `smart_city_mobility_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_smart_city_mobility_operations_governed_model`: validates policy, writes owned `smart_city_mobility_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_smart_city_mobility_operations_13`: validates policy, writes owned `smart_city_mobility_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_smart_city_mobility_operations_14`: validates policy, writes owned `smart_city_mobility_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_smart_city_mobility_operations_15`: validates policy, writes owned `smart_city_mobility_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

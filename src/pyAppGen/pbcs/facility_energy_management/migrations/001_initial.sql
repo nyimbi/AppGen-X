@@ -214,7 +214,7 @@ CREATE TABLE facility_energy_management_tariff_signal (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE facility_energy_management_facility_energy_management_policy_rule (
+CREATE TABLE facility_energy_management_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   rule_id VARCHAR(255) NOT NULL,
@@ -235,7 +235,7 @@ CREATE TABLE facility_energy_management_facility_energy_management_policy_rule (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE facility_energy_management_facility_energy_management_runtime_parameter (
+CREATE TABLE facility_energy_management_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_name VARCHAR(255) NOT NULL,
@@ -253,7 +253,7 @@ CREATE TABLE facility_energy_management_facility_energy_management_runtime_param
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE facility_energy_management_facility_energy_management_schema_extension (
+CREATE TABLE facility_energy_management_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -271,7 +271,7 @@ CREATE TABLE facility_energy_management_facility_energy_management_schema_extens
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE facility_energy_management_facility_energy_management_control_assertion (
+CREATE TABLE facility_energy_management_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -293,7 +293,7 @@ CREATE TABLE facility_energy_management_facility_energy_management_control_asser
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE facility_energy_management_facility_energy_management_governed_model (
+CREATE TABLE facility_energy_management_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

@@ -25,11 +25,11 @@ The `construction_project_controls` PBC is a packaged business capability for Co
 - `construction_project_controls_site_progress`: owns site progress lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `construction_project_controls_change_event`: owns change event lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `construction_project_controls_schedule_risk`: owns schedule risk lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `construction_project_controls_construction_project_controls_policy_rule`: owns construction project controls policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `construction_project_controls_construction_project_controls_runtime_parameter`: owns construction project controls runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `construction_project_controls_construction_project_controls_schema_extension`: owns construction project controls schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `construction_project_controls_construction_project_controls_control_assertion`: owns construction project controls control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `construction_project_controls_construction_project_controls_governed_model`: owns construction project controls governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `construction_project_controls_policy_rule`: owns construction project controls policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `construction_project_controls_runtime_parameter`: owns construction project controls runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `construction_project_controls_schema_extension`: owns construction project controls schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `construction_project_controls_control_assertion`: owns construction project controls control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `construction_project_controls_governed_model`: owns construction project controls governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `construction_project_controls_appgen_outbox_event`, `construction_project_controls_appgen_inbox_event`, and `construction_project_controls_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /construction-projects', 'POST /work-packages', 'POST /rfis', 'POST /submittals', 'POST /site-progresss', 'GET /construction-project-controls-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `construction_project_controls_appgen_outbox_e
 - `simulate_site_progress`: validates policy, writes owned `construction_project_controls_site_progress` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_change_event`: validates policy, writes owned `construction_project_controls_change_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_schedule_risk`: validates policy, writes owned `construction_project_controls_schedule_risk` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_construction_project_controls_policy_rule`: validates policy, writes owned `construction_project_controls_construction_project_controls_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_construction_project_controls_runtime_parameter`: validates policy, writes owned `construction_project_controls_construction_project_controls_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_construction_project_controls_schema_extension`: validates policy, writes owned `construction_project_controls_construction_project_controls_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_construction_project_controls_control_assertion`: validates policy, writes owned `construction_project_controls_construction_project_controls_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_construction_project_controls_governed_model`: validates policy, writes owned `construction_project_controls_construction_project_controls_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_construction_project_controls_policy_rule`: validates policy, writes owned `construction_project_controls_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_construction_project_controls_runtime_parameter`: validates policy, writes owned `construction_project_controls_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_construction_project_controls_schema_extension`: validates policy, writes owned `construction_project_controls_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_construction_project_controls_control_assertion`: validates policy, writes owned `construction_project_controls_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_construction_project_controls_governed_model`: validates policy, writes owned `construction_project_controls_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_construction_project_controls_13`: validates policy, writes owned `construction_project_controls_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_construction_project_controls_14`: validates policy, writes owned `construction_project_controls_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_construction_project_controls_15`: validates policy, writes owned `construction_project_controls_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

@@ -12,7 +12,7 @@ def seed_plan():
                 "discipline": "architectural",
             },
             {
-                "table": f"{PBC_KEY}_building_information_modeling_ops_policy_rule",
+                "table": f"{PBC_KEY}_policy_rule",
                 "code": "SEED-COORDINATE-TOLERANCE",
                 "rule_scope": "federation-governance",
             },

@@ -25,11 +25,11 @@ The `clinical_care_coordination` PBC is a packaged business capability for Care 
 - `clinical_care_coordination_care_gap`: owns care gap lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `clinical_care_coordination_transition_plan`: owns transition plan lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `clinical_care_coordination_outcome_measure`: owns outcome measure lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `clinical_care_coordination_clinical_care_coordination_policy_rule`: owns clinical care coordination policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `clinical_care_coordination_clinical_care_coordination_runtime_parameter`: owns clinical care coordination runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `clinical_care_coordination_clinical_care_coordination_schema_extension`: owns clinical care coordination schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `clinical_care_coordination_clinical_care_coordination_control_assertion`: owns clinical care coordination control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `clinical_care_coordination_clinical_care_coordination_governed_model`: owns clinical care coordination governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `clinical_care_coordination_policy_rule`: owns clinical care coordination policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `clinical_care_coordination_runtime_parameter`: owns clinical care coordination runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `clinical_care_coordination_schema_extension`: owns clinical care coordination schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `clinical_care_coordination_control_assertion`: owns clinical care coordination control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `clinical_care_coordination_governed_model`: owns clinical care coordination governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `clinical_care_coordination_appgen_outbox_event`, `clinical_care_coordination_appgen_inbox_event`, and `clinical_care_coordination_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'CustomerUpdated', 'SupplierQualified') and API contracts ('POST /patient-care-plans', 'POST /care-teams', 'POST /referrals', 'POST /encounters', 'POST /care-gaps', 'GET /clinical-care-coordination-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `clinical_care_coordination_appgen_outbox_even
 - `simulate_care_gap`: validates policy, writes owned `clinical_care_coordination_care_gap` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_transition_plan`: validates policy, writes owned `clinical_care_coordination_transition_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_outcome_measure`: validates policy, writes owned `clinical_care_coordination_outcome_measure` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_clinical_care_coordination_policy_rule`: validates policy, writes owned `clinical_care_coordination_clinical_care_coordination_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_clinical_care_coordination_runtime_parameter`: validates policy, writes owned `clinical_care_coordination_clinical_care_coordination_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_clinical_care_coordination_schema_extension`: validates policy, writes owned `clinical_care_coordination_clinical_care_coordination_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_clinical_care_coordination_control_assertion`: validates policy, writes owned `clinical_care_coordination_clinical_care_coordination_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_clinical_care_coordination_governed_model`: validates policy, writes owned `clinical_care_coordination_clinical_care_coordination_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_clinical_care_coordination_policy_rule`: validates policy, writes owned `clinical_care_coordination_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_clinical_care_coordination_runtime_parameter`: validates policy, writes owned `clinical_care_coordination_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_clinical_care_coordination_schema_extension`: validates policy, writes owned `clinical_care_coordination_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_clinical_care_coordination_control_assertion`: validates policy, writes owned `clinical_care_coordination_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_clinical_care_coordination_governed_model`: validates policy, writes owned `clinical_care_coordination_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_clinical_care_coordination_13`: validates policy, writes owned `clinical_care_coordination_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_clinical_care_coordination_14`: validates policy, writes owned `clinical_care_coordination_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_clinical_care_coordination_15`: validates policy, writes owned `clinical_care_coordination_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

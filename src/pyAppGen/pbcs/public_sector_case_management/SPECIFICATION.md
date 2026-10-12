@@ -25,11 +25,11 @@ The `public_sector_case_management` PBC is a packaged business capability for Ci
 - `public_sector_case_management_notice`: owns notice lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `public_sector_case_management_appeal`: owns appeal lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `public_sector_case_management_service_outcome`: owns service outcome lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `public_sector_case_management_public_sector_case_management_policy_rule`: owns public sector case management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `public_sector_case_management_public_sector_case_management_runtime_parameter`: owns public sector case management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `public_sector_case_management_public_sector_case_management_schema_extension`: owns public sector case management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `public_sector_case_management_public_sector_case_management_control_assertion`: owns public sector case management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `public_sector_case_management_public_sector_case_management_governed_model`: owns public sector case management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `public_sector_case_management_policy_rule`: owns public sector case management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `public_sector_case_management_runtime_parameter`: owns public sector case management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `public_sector_case_management_schema_extension`: owns public sector case management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `public_sector_case_management_control_assertion`: owns public sector case management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `public_sector_case_management_governed_model`: owns public sector case management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `public_sector_case_management_appgen_outbox_event`, `public_sector_case_management_appgen_inbox_event`, and `public_sector_case_management_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'CustomerUpdated', 'SupplierQualified') and API contracts ('POST /citizen-cases', 'POST /eligibility-determinations', 'POST /benefit-decisions', 'POST /inspections', 'POST /notices', 'GET /public-sector-case-management-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `public_sector_case_management_appgen_outbox_e
 - `simulate_notice`: validates policy, writes owned `public_sector_case_management_notice` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_appeal`: validates policy, writes owned `public_sector_case_management_appeal` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_service_outcome`: validates policy, writes owned `public_sector_case_management_service_outcome` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_public_sector_case_management_policy_rule`: validates policy, writes owned `public_sector_case_management_public_sector_case_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_public_sector_case_management_runtime_parameter`: validates policy, writes owned `public_sector_case_management_public_sector_case_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_public_sector_case_management_schema_extension`: validates policy, writes owned `public_sector_case_management_public_sector_case_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_public_sector_case_management_control_assertion`: validates policy, writes owned `public_sector_case_management_public_sector_case_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_public_sector_case_management_governed_model`: validates policy, writes owned `public_sector_case_management_public_sector_case_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_public_sector_case_management_policy_rule`: validates policy, writes owned `public_sector_case_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_public_sector_case_management_runtime_parameter`: validates policy, writes owned `public_sector_case_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_public_sector_case_management_schema_extension`: validates policy, writes owned `public_sector_case_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_public_sector_case_management_control_assertion`: validates policy, writes owned `public_sector_case_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_public_sector_case_management_governed_model`: validates policy, writes owned `public_sector_case_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_public_sector_case_management_13`: validates policy, writes owned `public_sector_case_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_public_sector_case_management_14`: validates policy, writes owned `public_sector_case_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_public_sector_case_management_15`: validates policy, writes owned `public_sector_case_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

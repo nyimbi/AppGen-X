@@ -168,7 +168,7 @@ CREATE TABLE electronic_health_records_core_care_note (
   FOREIGN KEY (clinical_encounter_id) REFERENCES electronic_health_records_core_clinical_encounter(clinical_encounter_id)
 );
 
-CREATE TABLE electronic_health_records_core_electronic_health_records_core_policy_rule (
+CREATE TABLE electronic_health_records_core_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   rule_id VARCHAR(255) NOT NULL,
@@ -185,7 +185,7 @@ CREATE TABLE electronic_health_records_core_electronic_health_records_core_polic
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE electronic_health_records_core_electronic_health_records_core_runtime_parameter (
+CREATE TABLE electronic_health_records_core_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_name VARCHAR(255) NOT NULL,
@@ -199,7 +199,7 @@ CREATE TABLE electronic_health_records_core_electronic_health_records_core_runti
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE electronic_health_records_core_electronic_health_records_core_schema_extension (
+CREATE TABLE electronic_health_records_core_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -216,7 +216,7 @@ CREATE TABLE electronic_health_records_core_electronic_health_records_core_schem
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE electronic_health_records_core_electronic_health_records_core_control_assertion (
+CREATE TABLE electronic_health_records_core_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -231,7 +231,7 @@ CREATE TABLE electronic_health_records_core_electronic_health_records_core_contr
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE electronic_health_records_core_electronic_health_records_core_governed_model (
+CREATE TABLE electronic_health_records_core_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

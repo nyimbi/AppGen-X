@@ -29,11 +29,11 @@ CAPITAL_PROJECTS_DELIVERY_OWNED_TABLES = (
     "capital_projects_delivery_commissioning_system",
     "capital_projects_delivery_project_risk",
     "capital_projects_delivery_turnover_package",
-    "capital_projects_delivery_capital_projects_delivery_policy_rule",
-    "capital_projects_delivery_capital_projects_delivery_runtime_parameter",
-    "capital_projects_delivery_capital_projects_delivery_schema_extension",
-    "capital_projects_delivery_capital_projects_delivery_control_assertion",
-    "capital_projects_delivery_capital_projects_delivery_governed_model",
+    "capital_projects_delivery_policy_rule",
+    "capital_projects_delivery_runtime_parameter",
+    "capital_projects_delivery_schema_extension",
+    "capital_projects_delivery_control_assertion",
+    "capital_projects_delivery_governed_model",
     "capital_projects_delivery_appgen_outbox_event",
     "capital_projects_delivery_appgen_inbox_event",
     "capital_projects_delivery_appgen_dead_letter_event",
@@ -569,30 +569,30 @@ CAPITAL_PROJECTS_DELIVERY_TABLE_FIELDS = {
         "handover_acceptance_date", "payload", "status", "version",
         "created_at", "updated_at",
     ),
-    "capital_projects_delivery_capital_projects_delivery_policy_rule": (
+    "capital_projects_delivery_policy_rule": (
         "id", "tenant", "code", "policy_rule_id", "rule_name", "scope",
         "predicate_text", "ambiguity_flag", "example_text", "approver_role",
         "effective_from", "effective_to", "compiled_hash", "conflict_reference",
         "payload", "status", "version", "created_at", "updated_at",
     ),
-    "capital_projects_delivery_capital_projects_delivery_runtime_parameter": (
+    "capital_projects_delivery_runtime_parameter": (
         "id", "tenant", "code", "parameter_name", "parameter_value", "scope",
         "bounded", "impact_simulation_reference", "effective_from", "payload",
         "status", "version", "created_at", "updated_at",
     ),
-    "capital_projects_delivery_capital_projects_delivery_schema_extension": (
+    "capital_projects_delivery_schema_extension": (
         "id", "tenant", "code", "extension_id", "target_table", "field_name",
         "field_type", "registered_at", "payload", "status", "version",
         "created_at", "updated_at",
     ),
-    "capital_projects_delivery_capital_projects_delivery_control_assertion": (
+    "capital_projects_delivery_control_assertion": (
         "id", "tenant", "code", "assertion_id", "control_name",
         "population_count", "threshold_value", "failing_record_count",
         "owner_role", "remediation_task", "assertion_result", "severity",
         "is_recurrence", "closure_evidence", "evaluated_at", "payload",
         "status", "version", "created_at", "updated_at",
     ),
-    "capital_projects_delivery_capital_projects_delivery_governed_model": (
+    "capital_projects_delivery_governed_model": (
         "id", "tenant", "code", "model_id", "model_name", "model_version",
         "intended_use", "governance_state", "feature_set",
         "evaluation_evidence_reference", "confidence_threshold",

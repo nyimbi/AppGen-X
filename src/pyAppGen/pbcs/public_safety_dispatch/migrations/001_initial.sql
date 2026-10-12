@@ -197,7 +197,7 @@ CREATE TABLE public_safety_dispatch_case_disposition (
   FOREIGN KEY (incident_id) REFERENCES public_safety_dispatch_incident(incident_id)
 );
 
-CREATE TABLE public_safety_dispatch_public_safety_dispatch_policy_rule (
+CREATE TABLE public_safety_dispatch_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -215,7 +215,7 @@ CREATE TABLE public_safety_dispatch_public_safety_dispatch_policy_rule (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE public_safety_dispatch_public_safety_dispatch_runtime_parameter (
+CREATE TABLE public_safety_dispatch_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   runtime_parameter_id VARCHAR(255) NOT NULL,
@@ -230,7 +230,7 @@ CREATE TABLE public_safety_dispatch_public_safety_dispatch_runtime_parameter (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE public_safety_dispatch_public_safety_dispatch_schema_extension (
+CREATE TABLE public_safety_dispatch_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   schema_extension_id VARCHAR(255) NOT NULL,
@@ -244,7 +244,7 @@ CREATE TABLE public_safety_dispatch_public_safety_dispatch_schema_extension (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE public_safety_dispatch_public_safety_dispatch_control_assertion (
+CREATE TABLE public_safety_dispatch_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   control_assertion_id VARCHAR(255) NOT NULL,
@@ -259,7 +259,7 @@ CREATE TABLE public_safety_dispatch_public_safety_dispatch_control_assertion (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE public_safety_dispatch_public_safety_dispatch_governed_model (
+CREATE TABLE public_safety_dispatch_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   governed_model_id VARCHAR(255) NOT NULL,

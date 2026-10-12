@@ -270,7 +270,7 @@ CREATE TABLE environment_health_safety_audit_finding (
   FOREIGN KEY (inspection_id) REFERENCES environment_health_safety_inspection(inspection_id)
 );
 
-CREATE TABLE environment_health_safety_environment_health_safety_policy_rule (
+CREATE TABLE environment_health_safety_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -307,7 +307,7 @@ CREATE TABLE environment_health_safety_environment_health_safety_policy_rule (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE environment_health_safety_environment_health_safety_runtime_parameter (
+CREATE TABLE environment_health_safety_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   runtime_parameter_id VARCHAR(255) NOT NULL,
@@ -337,7 +337,7 @@ CREATE TABLE environment_health_safety_environment_health_safety_runtime_paramet
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE environment_health_safety_environment_health_safety_schema_extension (
+CREATE TABLE environment_health_safety_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   schema_extension_id VARCHAR(255) NOT NULL,
@@ -362,7 +362,7 @@ CREATE TABLE environment_health_safety_environment_health_safety_schema_extensio
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE environment_health_safety_environment_health_safety_control_assertion (
+CREATE TABLE environment_health_safety_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   control_assertion_id VARCHAR(255) NOT NULL,
@@ -389,7 +389,7 @@ CREATE TABLE environment_health_safety_environment_health_safety_control_asserti
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE environment_health_safety_environment_health_safety_governed_model (
+CREATE TABLE environment_health_safety_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   governed_model_id VARCHAR(255) NOT NULL,

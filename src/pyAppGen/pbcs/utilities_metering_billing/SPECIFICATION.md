@@ -25,11 +25,11 @@ The `utilities_metering_billing` PBC is a packaged business capability for Meter
 - `utilities_metering_billing_utility_bill`: owns utility bill lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `utilities_metering_billing_billing_adjustment`: owns billing adjustment lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `utilities_metering_billing_customer_meter_account`: owns customer meter account lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `utilities_metering_billing_utilities_metering_billing_policy_rule`: owns utilities metering billing policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `utilities_metering_billing_utilities_metering_billing_runtime_parameter`: owns utilities metering billing runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `utilities_metering_billing_utilities_metering_billing_schema_extension`: owns utilities metering billing schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `utilities_metering_billing_utilities_metering_billing_control_assertion`: owns utilities metering billing control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `utilities_metering_billing_utilities_metering_billing_governed_model`: owns utilities metering billing governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `utilities_metering_billing_policy_rule`: owns utilities metering billing policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `utilities_metering_billing_runtime_parameter`: owns utilities metering billing runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `utilities_metering_billing_schema_extension`: owns utilities metering billing schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `utilities_metering_billing_control_assertion`: owns utilities metering billing control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `utilities_metering_billing_governed_model`: owns utilities metering billing governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `utilities_metering_billing_appgen_outbox_event`, `utilities_metering_billing_appgen_inbox_event`, and `utilities_metering_billing_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /meter-reads', 'POST /usage-intervals', 'POST /tariffs', 'POST /service-orders', 'POST /utility-bills', 'GET /utilities-metering-billing-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `utilities_metering_billing_appgen_outbox_even
 - `simulate_utility_bill`: validates policy, writes owned `utilities_metering_billing_utility_bill` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_billing_adjustment`: validates policy, writes owned `utilities_metering_billing_billing_adjustment` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_customer_meter_account`: validates policy, writes owned `utilities_metering_billing_customer_meter_account` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_utilities_metering_billing_policy_rule`: validates policy, writes owned `utilities_metering_billing_utilities_metering_billing_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_utilities_metering_billing_runtime_parameter`: validates policy, writes owned `utilities_metering_billing_utilities_metering_billing_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_utilities_metering_billing_schema_extension`: validates policy, writes owned `utilities_metering_billing_utilities_metering_billing_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_utilities_metering_billing_control_assertion`: validates policy, writes owned `utilities_metering_billing_utilities_metering_billing_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_utilities_metering_billing_governed_model`: validates policy, writes owned `utilities_metering_billing_utilities_metering_billing_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_utilities_metering_billing_policy_rule`: validates policy, writes owned `utilities_metering_billing_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_utilities_metering_billing_runtime_parameter`: validates policy, writes owned `utilities_metering_billing_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_utilities_metering_billing_schema_extension`: validates policy, writes owned `utilities_metering_billing_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_utilities_metering_billing_control_assertion`: validates policy, writes owned `utilities_metering_billing_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_utilities_metering_billing_governed_model`: validates policy, writes owned `utilities_metering_billing_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_utilities_metering_billing_13`: validates policy, writes owned `utilities_metering_billing_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_utilities_metering_billing_14`: validates policy, writes owned `utilities_metering_billing_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_utilities_metering_billing_15`: validates policy, writes owned `utilities_metering_billing_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

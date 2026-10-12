@@ -220,7 +220,7 @@ CREATE TABLE capital_projects_delivery_turnover_package (
   FOREIGN KEY (package_id) REFERENCES capital_projects_delivery_epc_package(epc_package_id)
 );
 
-CREATE TABLE capital_projects_delivery_capital_projects_delivery_policy_rule (
+CREATE TABLE capital_projects_delivery_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   code VARCHAR(255) NOT NULL,
@@ -242,7 +242,7 @@ CREATE TABLE capital_projects_delivery_capital_projects_delivery_policy_rule (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE capital_projects_delivery_capital_projects_delivery_runtime_parameter (
+CREATE TABLE capital_projects_delivery_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   code VARCHAR(255) NOT NULL,
@@ -259,7 +259,7 @@ CREATE TABLE capital_projects_delivery_capital_projects_delivery_runtime_paramet
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE capital_projects_delivery_capital_projects_delivery_schema_extension (
+CREATE TABLE capital_projects_delivery_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   code VARCHAR(255) NOT NULL,
@@ -275,7 +275,7 @@ CREATE TABLE capital_projects_delivery_capital_projects_delivery_schema_extensio
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE capital_projects_delivery_capital_projects_delivery_control_assertion (
+CREATE TABLE capital_projects_delivery_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   code VARCHAR(255) NOT NULL,
@@ -298,7 +298,7 @@ CREATE TABLE capital_projects_delivery_capital_projects_delivery_control_asserti
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE capital_projects_delivery_capital_projects_delivery_governed_model (
+CREATE TABLE capital_projects_delivery_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   code VARCHAR(255) NOT NULL,

@@ -189,7 +189,7 @@ CREATE TABLE airport_operations_management_airport_disruption (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE airport_operations_management_airport_operations_management_policy_rule (
+CREATE TABLE airport_operations_management_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   rule_id VARCHAR(255) NOT NULL,
@@ -206,7 +206,7 @@ CREATE TABLE airport_operations_management_airport_operations_management_policy_
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE airport_operations_management_airport_operations_management_runtime_parameter (
+CREATE TABLE airport_operations_management_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_name VARCHAR(255) NOT NULL,
@@ -220,7 +220,7 @@ CREATE TABLE airport_operations_management_airport_operations_management_runtime
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE airport_operations_management_airport_operations_management_schema_extension (
+CREATE TABLE airport_operations_management_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -234,7 +234,7 @@ CREATE TABLE airport_operations_management_airport_operations_management_schema_
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE airport_operations_management_airport_operations_management_control_assertion (
+CREATE TABLE airport_operations_management_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -252,7 +252,7 @@ CREATE TABLE airport_operations_management_airport_operations_management_control
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE airport_operations_management_airport_operations_management_governed_model (
+CREATE TABLE airport_operations_management_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

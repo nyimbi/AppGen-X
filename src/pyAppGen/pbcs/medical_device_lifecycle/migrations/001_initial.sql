@@ -187,7 +187,7 @@ CREATE TABLE medical_device_lifecycle_regulatory_evidence (
   FOREIGN KEY (medical_device_id) REFERENCES medical_device_lifecycle_medical_device(medical_device_id)
 );
 
-CREATE TABLE medical_device_lifecycle_medical_device_lifecycle_policy_rule (
+CREATE TABLE medical_device_lifecycle_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -207,7 +207,7 @@ CREATE TABLE medical_device_lifecycle_medical_device_lifecycle_policy_rule (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE medical_device_lifecycle_medical_device_lifecycle_runtime_parameter (
+CREATE TABLE medical_device_lifecycle_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   runtime_parameter_id VARCHAR(255) NOT NULL,
@@ -229,7 +229,7 @@ CREATE TABLE medical_device_lifecycle_medical_device_lifecycle_runtime_parameter
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE medical_device_lifecycle_medical_device_lifecycle_schema_extension (
+CREATE TABLE medical_device_lifecycle_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   schema_extension_id VARCHAR(255) NOT NULL,
@@ -249,7 +249,7 @@ CREATE TABLE medical_device_lifecycle_medical_device_lifecycle_schema_extension 
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE medical_device_lifecycle_medical_device_lifecycle_control_assertion (
+CREATE TABLE medical_device_lifecycle_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   control_assertion_id VARCHAR(255) NOT NULL,
@@ -269,7 +269,7 @@ CREATE TABLE medical_device_lifecycle_medical_device_lifecycle_control_assertion
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE medical_device_lifecycle_medical_device_lifecycle_governed_model (
+CREATE TABLE medical_device_lifecycle_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   governed_model_id VARCHAR(255) NOT NULL,

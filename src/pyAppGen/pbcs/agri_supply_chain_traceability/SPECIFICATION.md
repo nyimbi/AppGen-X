@@ -25,11 +25,11 @@ The `agri_supply_chain_traceability` PBC is a packaged business capability for F
 - `agri_supply_chain_traceability_transport_leg`: owns transport leg lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `agri_supply_chain_traceability_recall_link`: owns recall link lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `agri_supply_chain_traceability_provenance_proof`: owns provenance proof lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `agri_supply_chain_traceability_agri_supply_chain_traceability_policy_rule`: owns agri supply chain traceability policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `agri_supply_chain_traceability_agri_supply_chain_traceability_runtime_parameter`: owns agri supply chain traceability runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `agri_supply_chain_traceability_agri_supply_chain_traceability_schema_extension`: owns agri supply chain traceability schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `agri_supply_chain_traceability_agri_supply_chain_traceability_control_assertion`: owns agri supply chain traceability control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `agri_supply_chain_traceability_agri_supply_chain_traceability_governed_model`: owns agri supply chain traceability governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `agri_supply_chain_traceability_policy_rule`: owns agri supply chain traceability policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `agri_supply_chain_traceability_runtime_parameter`: owns agri supply chain traceability runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `agri_supply_chain_traceability_schema_extension`: owns agri supply chain traceability schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `agri_supply_chain_traceability_control_assertion`: owns agri supply chain traceability control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `agri_supply_chain_traceability_governed_model`: owns agri supply chain traceability governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `agri_supply_chain_traceability_appgen_outbox_event`, `agri_supply_chain_traceability_appgen_inbox_event`, and `agri_supply_chain_traceability_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /farm-lots', 'POST /input-batchs', 'POST /certifications', 'POST /storage-events', 'POST /transport-legs', 'GET /agri-supply-chain-traceability-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `agri_supply_chain_traceability_appgen_outbox_
 - `simulate_transport_leg`: validates policy, writes owned `agri_supply_chain_traceability_transport_leg` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_recall_link`: validates policy, writes owned `agri_supply_chain_traceability_recall_link` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_provenance_proof`: validates policy, writes owned `agri_supply_chain_traceability_provenance_proof` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_agri_supply_chain_traceability_policy_rule`: validates policy, writes owned `agri_supply_chain_traceability_agri_supply_chain_traceability_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_agri_supply_chain_traceability_runtime_parameter`: validates policy, writes owned `agri_supply_chain_traceability_agri_supply_chain_traceability_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_agri_supply_chain_traceability_schema_extension`: validates policy, writes owned `agri_supply_chain_traceability_agri_supply_chain_traceability_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_agri_supply_chain_traceability_control_assertion`: validates policy, writes owned `agri_supply_chain_traceability_agri_supply_chain_traceability_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_agri_supply_chain_traceability_governed_model`: validates policy, writes owned `agri_supply_chain_traceability_agri_supply_chain_traceability_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_agri_supply_chain_traceability_policy_rule`: validates policy, writes owned `agri_supply_chain_traceability_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_agri_supply_chain_traceability_runtime_parameter`: validates policy, writes owned `agri_supply_chain_traceability_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_agri_supply_chain_traceability_schema_extension`: validates policy, writes owned `agri_supply_chain_traceability_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_agri_supply_chain_traceability_control_assertion`: validates policy, writes owned `agri_supply_chain_traceability_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_agri_supply_chain_traceability_governed_model`: validates policy, writes owned `agri_supply_chain_traceability_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_agri_supply_chain_traceability_13`: validates policy, writes owned `agri_supply_chain_traceability_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_agri_supply_chain_traceability_14`: validates policy, writes owned `agri_supply_chain_traceability_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_agri_supply_chain_traceability_15`: validates policy, writes owned `agri_supply_chain_traceability_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

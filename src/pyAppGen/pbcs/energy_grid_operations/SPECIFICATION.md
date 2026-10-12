@@ -25,11 +25,11 @@ The `energy_grid_operations` PBC is a packaged business capability for Grid asse
 - `energy_grid_operations_outage_event`: owns outage event lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `energy_grid_operations_reliability_constraint`: owns reliability constraint lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `energy_grid_operations_grid_topology`: owns grid topology lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `energy_grid_operations_energy_grid_operations_policy_rule`: owns energy grid operations policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `energy_grid_operations_energy_grid_operations_runtime_parameter`: owns energy grid operations runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `energy_grid_operations_energy_grid_operations_schema_extension`: owns energy grid operations schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `energy_grid_operations_energy_grid_operations_control_assertion`: owns energy grid operations control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `energy_grid_operations_energy_grid_operations_governed_model`: owns energy grid operations governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `energy_grid_operations_policy_rule`: owns energy grid operations policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `energy_grid_operations_runtime_parameter`: owns energy grid operations runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `energy_grid_operations_schema_extension`: owns energy grid operations schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `energy_grid_operations_control_assertion`: owns energy grid operations control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `energy_grid_operations_governed_model`: owns energy grid operations governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `energy_grid_operations_appgen_outbox_event`, `energy_grid_operations_appgen_inbox_event`, and `energy_grid_operations_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /grid-assets', 'POST /load-forecasts', 'POST /switching-orders', 'POST /dispatch-instructions', 'POST /outage-events', 'GET /energy-grid-operations-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `energy_grid_operations_appgen_outbox_event`, 
 - `simulate_outage_event`: validates policy, writes owned `energy_grid_operations_outage_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_reliability_constraint`: validates policy, writes owned `energy_grid_operations_reliability_constraint` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_grid_topology`: validates policy, writes owned `energy_grid_operations_grid_topology` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_energy_grid_operations_policy_rule`: validates policy, writes owned `energy_grid_operations_energy_grid_operations_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_energy_grid_operations_runtime_parameter`: validates policy, writes owned `energy_grid_operations_energy_grid_operations_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_energy_grid_operations_schema_extension`: validates policy, writes owned `energy_grid_operations_energy_grid_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_energy_grid_operations_control_assertion`: validates policy, writes owned `energy_grid_operations_energy_grid_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_energy_grid_operations_governed_model`: validates policy, writes owned `energy_grid_operations_energy_grid_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_energy_grid_operations_policy_rule`: validates policy, writes owned `energy_grid_operations_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_energy_grid_operations_runtime_parameter`: validates policy, writes owned `energy_grid_operations_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_energy_grid_operations_schema_extension`: validates policy, writes owned `energy_grid_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_energy_grid_operations_control_assertion`: validates policy, writes owned `energy_grid_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_energy_grid_operations_governed_model`: validates policy, writes owned `energy_grid_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_energy_grid_operations_13`: validates policy, writes owned `energy_grid_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_energy_grid_operations_14`: validates policy, writes owned `energy_grid_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_energy_grid_operations_15`: validates policy, writes owned `energy_grid_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

@@ -219,7 +219,7 @@ CREATE TABLE telecom_subscription_lifecycle_churn_risk (
   FOREIGN KEY (subscriber_account_id) REFERENCES telecom_subscription_lifecycle_subscriber_account(subscriber_account_id)
 );
 
-CREATE TABLE telecom_subscription_lifecycle_telecom_subscription_lifecycle_policy_rule (
+CREATE TABLE telecom_subscription_lifecycle_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   telecom_subscription_lifecycle_policy_rule_id VARCHAR(255) NOT NULL,
@@ -240,7 +240,7 @@ CREATE TABLE telecom_subscription_lifecycle_telecom_subscription_lifecycle_polic
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE telecom_subscription_lifecycle_telecom_subscription_lifecycle_runtime_parameter (
+CREATE TABLE telecom_subscription_lifecycle_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   telecom_subscription_lifecycle_runtime_parameter_id VARCHAR(255) NOT NULL,
@@ -260,7 +260,7 @@ CREATE TABLE telecom_subscription_lifecycle_telecom_subscription_lifecycle_runti
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE telecom_subscription_lifecycle_telecom_subscription_lifecycle_schema_extension (
+CREATE TABLE telecom_subscription_lifecycle_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   telecom_subscription_lifecycle_schema_extension_id VARCHAR(255) NOT NULL,
@@ -278,7 +278,7 @@ CREATE TABLE telecom_subscription_lifecycle_telecom_subscription_lifecycle_schem
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE telecom_subscription_lifecycle_telecom_subscription_lifecycle_control_assertion (
+CREATE TABLE telecom_subscription_lifecycle_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   telecom_subscription_lifecycle_control_assertion_id VARCHAR(255) NOT NULL,
@@ -298,7 +298,7 @@ CREATE TABLE telecom_subscription_lifecycle_telecom_subscription_lifecycle_contr
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE telecom_subscription_lifecycle_telecom_subscription_lifecycle_governed_model (
+CREATE TABLE telecom_subscription_lifecycle_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   telecom_subscription_lifecycle_governed_model_id VARCHAR(255) NOT NULL,

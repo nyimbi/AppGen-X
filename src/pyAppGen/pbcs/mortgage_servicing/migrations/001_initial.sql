@@ -277,7 +277,7 @@ CREATE TABLE mortgage_servicing_foreclosure_milestone (
   FOREIGN KEY (mortgage_loan_id) REFERENCES mortgage_servicing_mortgage_loan(mortgage_loan_id)
 );
 
-CREATE TABLE mortgage_servicing_mortgage_servicing_policy_rule (
+CREATE TABLE mortgage_servicing_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -296,7 +296,7 @@ CREATE TABLE mortgage_servicing_mortgage_servicing_policy_rule (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE mortgage_servicing_mortgage_servicing_runtime_parameter (
+CREATE TABLE mortgage_servicing_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   runtime_parameter_id VARCHAR(255) NOT NULL,
@@ -317,7 +317,7 @@ CREATE TABLE mortgage_servicing_mortgage_servicing_runtime_parameter (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE mortgage_servicing_mortgage_servicing_schema_extension (
+CREATE TABLE mortgage_servicing_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   schema_extension_id VARCHAR(255) NOT NULL,
@@ -335,7 +335,7 @@ CREATE TABLE mortgage_servicing_mortgage_servicing_schema_extension (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE mortgage_servicing_mortgage_servicing_control_assertion (
+CREATE TABLE mortgage_servicing_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   control_assertion_id VARCHAR(255) NOT NULL,
@@ -354,7 +354,7 @@ CREATE TABLE mortgage_servicing_mortgage_servicing_control_assertion (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE mortgage_servicing_mortgage_servicing_governed_model (
+CREATE TABLE mortgage_servicing_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   governed_model_id VARCHAR(255) NOT NULL,

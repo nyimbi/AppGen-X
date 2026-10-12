@@ -25,11 +25,11 @@ The `telecom_subscription_lifecycle` PBC is a packaged business capability for P
 - `telecom_subscription_lifecycle_usage_session`: owns usage session lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `telecom_subscription_lifecycle_roaming_event`: owns roaming event lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `telecom_subscription_lifecycle_churn_risk`: owns churn risk lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `telecom_subscription_lifecycle_telecom_subscription_lifecycle_policy_rule`: owns telecom subscription lifecycle policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `telecom_subscription_lifecycle_telecom_subscription_lifecycle_runtime_parameter`: owns telecom subscription lifecycle runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `telecom_subscription_lifecycle_telecom_subscription_lifecycle_schema_extension`: owns telecom subscription lifecycle schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `telecom_subscription_lifecycle_telecom_subscription_lifecycle_control_assertion`: owns telecom subscription lifecycle control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `telecom_subscription_lifecycle_telecom_subscription_lifecycle_governed_model`: owns telecom subscription lifecycle governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `telecom_subscription_lifecycle_policy_rule`: owns telecom subscription lifecycle policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `telecom_subscription_lifecycle_runtime_parameter`: owns telecom subscription lifecycle runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `telecom_subscription_lifecycle_schema_extension`: owns telecom subscription lifecycle schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `telecom_subscription_lifecycle_control_assertion`: owns telecom subscription lifecycle control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `telecom_subscription_lifecycle_governed_model`: owns telecom subscription lifecycle governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `telecom_subscription_lifecycle_appgen_outbox_event`, `telecom_subscription_lifecycle_appgen_inbox_event`, and `telecom_subscription_lifecycle_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'CustomerUpdated', 'SupplierQualified') and API contracts ('POST /subscriber-accounts', 'POST /service-plans', 'POST /sim-profiles', 'POST /activation-requests', 'POST /usage-sessions', 'GET /telecom-subscription-lifecycle-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `telecom_subscription_lifecycle_appgen_outbox_
 - `simulate_usage_session`: validates policy, writes owned `telecom_subscription_lifecycle_usage_session` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_roaming_event`: validates policy, writes owned `telecom_subscription_lifecycle_roaming_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_churn_risk`: validates policy, writes owned `telecom_subscription_lifecycle_churn_risk` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_telecom_subscription_lifecycle_policy_rule`: validates policy, writes owned `telecom_subscription_lifecycle_telecom_subscription_lifecycle_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_telecom_subscription_lifecycle_runtime_parameter`: validates policy, writes owned `telecom_subscription_lifecycle_telecom_subscription_lifecycle_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_telecom_subscription_lifecycle_schema_extension`: validates policy, writes owned `telecom_subscription_lifecycle_telecom_subscription_lifecycle_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_telecom_subscription_lifecycle_control_assertion`: validates policy, writes owned `telecom_subscription_lifecycle_telecom_subscription_lifecycle_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_telecom_subscription_lifecycle_governed_model`: validates policy, writes owned `telecom_subscription_lifecycle_telecom_subscription_lifecycle_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_telecom_subscription_lifecycle_policy_rule`: validates policy, writes owned `telecom_subscription_lifecycle_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_telecom_subscription_lifecycle_runtime_parameter`: validates policy, writes owned `telecom_subscription_lifecycle_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_telecom_subscription_lifecycle_schema_extension`: validates policy, writes owned `telecom_subscription_lifecycle_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_telecom_subscription_lifecycle_control_assertion`: validates policy, writes owned `telecom_subscription_lifecycle_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_telecom_subscription_lifecycle_governed_model`: validates policy, writes owned `telecom_subscription_lifecycle_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_telecom_subscription_lifecycle_13`: validates policy, writes owned `telecom_subscription_lifecycle_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_telecom_subscription_lifecycle_14`: validates policy, writes owned `telecom_subscription_lifecycle_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_telecom_subscription_lifecycle_15`: validates policy, writes owned `telecom_subscription_lifecycle_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

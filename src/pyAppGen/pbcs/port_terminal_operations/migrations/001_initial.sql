@@ -292,7 +292,7 @@ CREATE TABLE port_terminal_operations_customs_handoff (
   FOREIGN KEY (container_move_id) REFERENCES port_terminal_operations_container_move(container_move_id)
 );
 
-CREATE TABLE port_terminal_operations_port_terminal_operations_policy_rule (
+CREATE TABLE port_terminal_operations_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -312,7 +312,7 @@ CREATE TABLE port_terminal_operations_port_terminal_operations_policy_rule (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE port_terminal_operations_port_terminal_operations_runtime_parameter (
+CREATE TABLE port_terminal_operations_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   runtime_parameter_id VARCHAR(255) NOT NULL,
@@ -334,7 +334,7 @@ CREATE TABLE port_terminal_operations_port_terminal_operations_runtime_parameter
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE port_terminal_operations_port_terminal_operations_schema_extension (
+CREATE TABLE port_terminal_operations_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   schema_extension_id VARCHAR(255) NOT NULL,
@@ -354,7 +354,7 @@ CREATE TABLE port_terminal_operations_port_terminal_operations_schema_extension 
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE port_terminal_operations_port_terminal_operations_control_assertion (
+CREATE TABLE port_terminal_operations_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   control_assertion_id VARCHAR(255) NOT NULL,
@@ -374,7 +374,7 @@ CREATE TABLE port_terminal_operations_port_terminal_operations_control_assertion
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE port_terminal_operations_port_terminal_operations_governed_model (
+CREATE TABLE port_terminal_operations_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   governed_model_id VARCHAR(255) NOT NULL,

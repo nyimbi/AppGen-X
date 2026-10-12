@@ -25,11 +25,11 @@ The `court_case_management` PBC is a packaged business capability for Filings, h
 - `court_case_management_party`: owns party lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `court_case_management_judgment`: owns judgment lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `court_case_management_court_order`: owns court order lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `court_case_management_court_case_management_policy_rule`: owns court case management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `court_case_management_court_case_management_runtime_parameter`: owns court case management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `court_case_management_court_case_management_schema_extension`: owns court case management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `court_case_management_court_case_management_control_assertion`: owns court case management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `court_case_management_court_case_management_governed_model`: owns court case management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `court_case_management_policy_rule`: owns court case management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `court_case_management_runtime_parameter`: owns court case management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `court_case_management_schema_extension`: owns court case management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `court_case_management_control_assertion`: owns court case management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `court_case_management_governed_model`: owns court case management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `court_case_management_appgen_outbox_event`, `court_case_management_appgen_inbox_event`, and `court_case_management_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'CustomerUpdated', 'SupplierQualified') and API contracts ('POST /court-cases', 'POST /filings', 'POST /hearings', 'POST /docket-entrys', 'POST /partys', 'GET /court-case-management-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `court_case_management_appgen_outbox_event`, `
 - `simulate_party`: validates policy, writes owned `court_case_management_party` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_judgment`: validates policy, writes owned `court_case_management_judgment` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_court_order`: validates policy, writes owned `court_case_management_court_order` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_court_case_management_policy_rule`: validates policy, writes owned `court_case_management_court_case_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_court_case_management_runtime_parameter`: validates policy, writes owned `court_case_management_court_case_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_court_case_management_schema_extension`: validates policy, writes owned `court_case_management_court_case_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_court_case_management_control_assertion`: validates policy, writes owned `court_case_management_court_case_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_court_case_management_governed_model`: validates policy, writes owned `court_case_management_court_case_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_court_case_management_policy_rule`: validates policy, writes owned `court_case_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_court_case_management_runtime_parameter`: validates policy, writes owned `court_case_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_court_case_management_schema_extension`: validates policy, writes owned `court_case_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_court_case_management_control_assertion`: validates policy, writes owned `court_case_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_court_case_management_governed_model`: validates policy, writes owned `court_case_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_court_case_management_13`: validates policy, writes owned `court_case_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_court_case_management_14`: validates policy, writes owned `court_case_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_court_case_management_15`: validates policy, writes owned `court_case_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

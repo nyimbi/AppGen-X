@@ -233,7 +233,7 @@ CREATE TABLE utilities_metering_billing_customer_meter_account (
   FOREIGN KEY (tariff_id) REFERENCES utilities_metering_billing_tariff(tariff_id)
 );
 
-CREATE TABLE utilities_metering_billing_utilities_metering_billing_policy_rule (
+CREATE TABLE utilities_metering_billing_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -255,7 +255,7 @@ CREATE TABLE utilities_metering_billing_utilities_metering_billing_policy_rule (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE utilities_metering_billing_utilities_metering_billing_runtime_parameter (
+CREATE TABLE utilities_metering_billing_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   runtime_parameter_id VARCHAR(255) NOT NULL,
@@ -277,7 +277,7 @@ CREATE TABLE utilities_metering_billing_utilities_metering_billing_runtime_param
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE utilities_metering_billing_utilities_metering_billing_schema_extension (
+CREATE TABLE utilities_metering_billing_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   schema_extension_id VARCHAR(255) NOT NULL,
@@ -297,7 +297,7 @@ CREATE TABLE utilities_metering_billing_utilities_metering_billing_schema_extens
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE utilities_metering_billing_utilities_metering_billing_control_assertion (
+CREATE TABLE utilities_metering_billing_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   control_assertion_id VARCHAR(255) NOT NULL,
@@ -317,7 +317,7 @@ CREATE TABLE utilities_metering_billing_utilities_metering_billing_control_asser
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE utilities_metering_billing_utilities_metering_billing_governed_model (
+CREATE TABLE utilities_metering_billing_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   governed_model_id VARCHAR(255) NOT NULL,

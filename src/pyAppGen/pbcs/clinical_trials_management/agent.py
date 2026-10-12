@@ -35,8 +35,8 @@ _ENTITY_TO_TABLE = {
     "visit_schedule": "clinical_trials_management_visit_schedule",
     "adverse_event": "clinical_trials_management_adverse_event",
     "monitoring_finding": "clinical_trials_management_monitoring_finding",
-    "policy_rule": "clinical_trials_management_clinical_trials_management_policy_rule",
-    "runtime_parameter": "clinical_trials_management_clinical_trials_management_runtime_parameter",
+    "policy_rule": "clinical_trials_management_policy_rule",
+    "runtime_parameter": "clinical_trials_management_runtime_parameter",
 }
 _ENTITY_TO_PERMISSION = {
     "trial_protocol": "clinical_trials_management.protocol_admin",

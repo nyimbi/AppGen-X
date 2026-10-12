@@ -207,7 +207,7 @@ CREATE TABLE maritime_shipping_operations_bunker_event (
   FOREIGN KEY (voyage_id) REFERENCES maritime_shipping_operations_voyage(voyage_id)
 );
 
-CREATE TABLE maritime_shipping_operations_maritime_shipping_operations_policy_rule (
+CREATE TABLE maritime_shipping_operations_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -227,7 +227,7 @@ CREATE TABLE maritime_shipping_operations_maritime_shipping_operations_policy_ru
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE maritime_shipping_operations_maritime_shipping_operations_runtime_parameter (
+CREATE TABLE maritime_shipping_operations_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   runtime_parameter_id VARCHAR(255) NOT NULL,
@@ -249,7 +249,7 @@ CREATE TABLE maritime_shipping_operations_maritime_shipping_operations_runtime_p
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE maritime_shipping_operations_maritime_shipping_operations_schema_extension (
+CREATE TABLE maritime_shipping_operations_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   schema_extension_id VARCHAR(255) NOT NULL,
@@ -269,7 +269,7 @@ CREATE TABLE maritime_shipping_operations_maritime_shipping_operations_schema_ex
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE maritime_shipping_operations_maritime_shipping_operations_control_assertion (
+CREATE TABLE maritime_shipping_operations_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   control_assertion_id VARCHAR(255) NOT NULL,
@@ -289,7 +289,7 @@ CREATE TABLE maritime_shipping_operations_maritime_shipping_operations_control_a
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE maritime_shipping_operations_maritime_shipping_operations_governed_model (
+CREATE TABLE maritime_shipping_operations_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   governed_model_id VARCHAR(255) NOT NULL,

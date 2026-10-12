@@ -25,11 +25,11 @@ The `hospitality_property_operations` PBC is a packaged business capability for 
 - `hospitality_property_operations_guest_request`: owns guest request lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `hospitality_property_operations_occupancy_snapshot`: owns occupancy snapshot lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `hospitality_property_operations_rate_plan`: owns rate plan lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `hospitality_property_operations_hospitality_property_operations_policy_rule`: owns hospitality property operations policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `hospitality_property_operations_hospitality_property_operations_runtime_parameter`: owns hospitality property operations runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `hospitality_property_operations_hospitality_property_operations_schema_extension`: owns hospitality property operations schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `hospitality_property_operations_hospitality_property_operations_control_assertion`: owns hospitality property operations control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `hospitality_property_operations_hospitality_property_operations_governed_model`: owns hospitality property operations governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `hospitality_property_operations_policy_rule`: owns hospitality property operations policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `hospitality_property_operations_runtime_parameter`: owns hospitality property operations runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `hospitality_property_operations_schema_extension`: owns hospitality property operations schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `hospitality_property_operations_control_assertion`: owns hospitality property operations control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `hospitality_property_operations_governed_model`: owns hospitality property operations governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `hospitality_property_operations_appgen_outbox_event`, `hospitality_property_operations_appgen_inbox_event`, and `hospitality_property_operations_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'CustomerUpdated', 'SupplierQualified') and API contracts ('POST /room-inventorys', 'POST /reservations', 'POST /guest-stays', 'POST /housekeeping-tasks', 'POST /guest-requests', 'GET /hospitality-property-operations-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `hospitality_property_operations_appgen_outbox
 - `simulate_guest_request`: validates policy, writes owned `hospitality_property_operations_guest_request` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_occupancy_snapshot`: validates policy, writes owned `hospitality_property_operations_occupancy_snapshot` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_rate_plan`: validates policy, writes owned `hospitality_property_operations_rate_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_hospitality_property_operations_policy_rule`: validates policy, writes owned `hospitality_property_operations_hospitality_property_operations_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_hospitality_property_operations_runtime_parameter`: validates policy, writes owned `hospitality_property_operations_hospitality_property_operations_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_hospitality_property_operations_schema_extension`: validates policy, writes owned `hospitality_property_operations_hospitality_property_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_hospitality_property_operations_control_assertion`: validates policy, writes owned `hospitality_property_operations_hospitality_property_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_hospitality_property_operations_governed_model`: validates policy, writes owned `hospitality_property_operations_hospitality_property_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_hospitality_property_operations_policy_rule`: validates policy, writes owned `hospitality_property_operations_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_hospitality_property_operations_runtime_parameter`: validates policy, writes owned `hospitality_property_operations_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_hospitality_property_operations_schema_extension`: validates policy, writes owned `hospitality_property_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_hospitality_property_operations_control_assertion`: validates policy, writes owned `hospitality_property_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_hospitality_property_operations_governed_model`: validates policy, writes owned `hospitality_property_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_hospitality_property_operations_13`: validates policy, writes owned `hospitality_property_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_hospitality_property_operations_14`: validates policy, writes owned `hospitality_property_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_hospitality_property_operations_15`: validates policy, writes owned `hospitality_property_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

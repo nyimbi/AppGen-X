@@ -25,11 +25,11 @@ The `facility_energy_management` PBC is a packaged business capability for Facil
 - `facility_energy_management_energy_optimization`: owns energy optimization lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `facility_energy_management_tariff_signal`: owns tariff signal lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `facility_energy_management_energy_baseline`: owns energy baseline lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `facility_energy_management_facility_energy_management_policy_rule`: owns facility energy management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `facility_energy_management_facility_energy_management_runtime_parameter`: owns facility energy management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `facility_energy_management_facility_energy_management_schema_extension`: owns facility energy management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `facility_energy_management_facility_energy_management_control_assertion`: owns facility energy management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `facility_energy_management_facility_energy_management_governed_model`: owns facility energy management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `facility_energy_management_policy_rule`: owns facility energy management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `facility_energy_management_runtime_parameter`: owns facility energy management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `facility_energy_management_schema_extension`: owns facility energy management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `facility_energy_management_control_assertion`: owns facility energy management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `facility_energy_management_governed_model`: owns facility energy management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `facility_energy_management_appgen_outbox_event`, `facility_energy_management_appgen_inbox_event`, and `facility_energy_management_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /energy-meters', 'POST /load-profiles', 'POST /equipment-schedules', 'POST /demand-response-events', 'POST /energy-optimizations', 'GET /facility-energy-management-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `facility_energy_management_appgen_outbox_even
 - `simulate_energy_optimization`: validates policy, writes owned `facility_energy_management_energy_optimization` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_tariff_signal`: validates policy, writes owned `facility_energy_management_tariff_signal` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_energy_baseline`: validates policy, writes owned `facility_energy_management_energy_baseline` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_facility_energy_management_policy_rule`: validates policy, writes owned `facility_energy_management_facility_energy_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_facility_energy_management_runtime_parameter`: validates policy, writes owned `facility_energy_management_facility_energy_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_facility_energy_management_schema_extension`: validates policy, writes owned `facility_energy_management_facility_energy_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_facility_energy_management_control_assertion`: validates policy, writes owned `facility_energy_management_facility_energy_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_facility_energy_management_governed_model`: validates policy, writes owned `facility_energy_management_facility_energy_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_facility_energy_management_policy_rule`: validates policy, writes owned `facility_energy_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_facility_energy_management_runtime_parameter`: validates policy, writes owned `facility_energy_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_facility_energy_management_schema_extension`: validates policy, writes owned `facility_energy_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_facility_energy_management_control_assertion`: validates policy, writes owned `facility_energy_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_facility_energy_management_governed_model`: validates policy, writes owned `facility_energy_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_facility_energy_management_13`: validates policy, writes owned `facility_energy_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_facility_energy_management_14`: validates policy, writes owned `facility_energy_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_facility_energy_management_15`: validates policy, writes owned `facility_energy_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

@@ -25,11 +25,11 @@ The `education_student_lifecycle` PBC is a packaged business capability for Admi
 - `education_student_lifecycle_course_attempt`: owns course attempt lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `education_student_lifecycle_assessment_result`: owns assessment result lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `education_student_lifecycle_credential`: owns credential lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `education_student_lifecycle_education_student_lifecycle_policy_rule`: owns education student lifecycle policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `education_student_lifecycle_education_student_lifecycle_runtime_parameter`: owns education student lifecycle runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `education_student_lifecycle_education_student_lifecycle_schema_extension`: owns education student lifecycle schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `education_student_lifecycle_education_student_lifecycle_control_assertion`: owns education student lifecycle control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `education_student_lifecycle_education_student_lifecycle_governed_model`: owns education student lifecycle governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `education_student_lifecycle_policy_rule`: owns education student lifecycle policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `education_student_lifecycle_runtime_parameter`: owns education student lifecycle runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `education_student_lifecycle_schema_extension`: owns education student lifecycle schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `education_student_lifecycle_control_assertion`: owns education student lifecycle control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `education_student_lifecycle_governed_model`: owns education student lifecycle governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `education_student_lifecycle_appgen_outbox_event`, `education_student_lifecycle_appgen_inbox_event`, and `education_student_lifecycle_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'CustomerUpdated', 'SupplierQualified') and API contracts ('POST /student-applicants', 'POST /enrollments', 'POST /curriculum-plans', 'POST /advising-cases', 'POST /course-attempts', 'GET /education-student-lifecycle-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `education_student_lifecycle_appgen_outbox_eve
 - `simulate_course_attempt`: validates policy, writes owned `education_student_lifecycle_course_attempt` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_assessment_result`: validates policy, writes owned `education_student_lifecycle_assessment_result` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_credential`: validates policy, writes owned `education_student_lifecycle_credential` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_education_student_lifecycle_policy_rule`: validates policy, writes owned `education_student_lifecycle_education_student_lifecycle_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_education_student_lifecycle_runtime_parameter`: validates policy, writes owned `education_student_lifecycle_education_student_lifecycle_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_education_student_lifecycle_schema_extension`: validates policy, writes owned `education_student_lifecycle_education_student_lifecycle_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_education_student_lifecycle_control_assertion`: validates policy, writes owned `education_student_lifecycle_education_student_lifecycle_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_education_student_lifecycle_governed_model`: validates policy, writes owned `education_student_lifecycle_education_student_lifecycle_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_education_student_lifecycle_policy_rule`: validates policy, writes owned `education_student_lifecycle_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_education_student_lifecycle_runtime_parameter`: validates policy, writes owned `education_student_lifecycle_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_education_student_lifecycle_schema_extension`: validates policy, writes owned `education_student_lifecycle_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_education_student_lifecycle_control_assertion`: validates policy, writes owned `education_student_lifecycle_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_education_student_lifecycle_governed_model`: validates policy, writes owned `education_student_lifecycle_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_education_student_lifecycle_13`: validates policy, writes owned `education_student_lifecycle_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_education_student_lifecycle_14`: validates policy, writes owned `education_student_lifecycle_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_education_student_lifecycle_15`: validates policy, writes owned `education_student_lifecycle_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

@@ -183,7 +183,7 @@ CREATE TABLE energy_grid_operations_grid_topology (
   FOREIGN KEY (grid_asset_id) REFERENCES energy_grid_operations_grid_asset(grid_asset_id)
 );
 
-CREATE TABLE energy_grid_operations_energy_grid_operations_policy_rule (
+CREATE TABLE energy_grid_operations_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   rule_id VARCHAR(255) NOT NULL,
@@ -202,7 +202,7 @@ CREATE TABLE energy_grid_operations_energy_grid_operations_policy_rule (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE energy_grid_operations_energy_grid_operations_runtime_parameter (
+CREATE TABLE energy_grid_operations_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_name VARCHAR(255) NOT NULL,
@@ -216,7 +216,7 @@ CREATE TABLE energy_grid_operations_energy_grid_operations_runtime_parameter (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE energy_grid_operations_energy_grid_operations_schema_extension (
+CREATE TABLE energy_grid_operations_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -230,7 +230,7 @@ CREATE TABLE energy_grid_operations_energy_grid_operations_schema_extension (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE energy_grid_operations_energy_grid_operations_control_assertion (
+CREATE TABLE energy_grid_operations_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -245,7 +245,7 @@ CREATE TABLE energy_grid_operations_energy_grid_operations_control_assertion (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE energy_grid_operations_energy_grid_operations_governed_model (
+CREATE TABLE energy_grid_operations_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

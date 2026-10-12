@@ -156,7 +156,7 @@ CREATE TABLE construction_project_controls_schedule_risk (
   FOREIGN KEY (work_package_id) REFERENCES construction_project_controls_work_package(work_package_id)
 );
 
-CREATE TABLE construction_project_controls_construction_project_controls_policy_rule (
+CREATE TABLE construction_project_controls_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   policy_rule_id VARCHAR(255) NOT NULL,
@@ -176,7 +176,7 @@ CREATE TABLE construction_project_controls_construction_project_controls_policy_
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE construction_project_controls_construction_project_controls_runtime_parameter (
+CREATE TABLE construction_project_controls_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_name VARCHAR(255) NOT NULL,
@@ -191,7 +191,7 @@ CREATE TABLE construction_project_controls_construction_project_controls_runtime
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE construction_project_controls_construction_project_controls_schema_extension (
+CREATE TABLE construction_project_controls_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -205,7 +205,7 @@ CREATE TABLE construction_project_controls_construction_project_controls_schema_
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE construction_project_controls_construction_project_controls_control_assertion (
+CREATE TABLE construction_project_controls_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -226,7 +226,7 @@ CREATE TABLE construction_project_controls_construction_project_controls_control
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE construction_project_controls_construction_project_controls_governed_model (
+CREATE TABLE construction_project_controls_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

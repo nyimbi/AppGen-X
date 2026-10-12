@@ -25,11 +25,11 @@ The `permitting_licensing_inspections` PBC is a packaged business capability for
 - `permitting_licensing_inspections_fee_assessment`: owns fee assessment lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `permitting_licensing_inspections_inspection`: owns inspection lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `permitting_licensing_inspections_violation`: owns violation lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `permitting_licensing_inspections_permitting_licensing_inspections_policy_rule`: owns permitting licensing inspections policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `permitting_licensing_inspections_permitting_licensing_inspections_runtime_parameter`: owns permitting licensing inspections runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `permitting_licensing_inspections_permitting_licensing_inspections_schema_extension`: owns permitting licensing inspections schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `permitting_licensing_inspections_permitting_licensing_inspections_control_assertion`: owns permitting licensing inspections control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `permitting_licensing_inspections_permitting_licensing_inspections_governed_model`: owns permitting licensing inspections governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `permitting_licensing_inspections_policy_rule`: owns permitting licensing inspections policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `permitting_licensing_inspections_runtime_parameter`: owns permitting licensing inspections runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `permitting_licensing_inspections_schema_extension`: owns permitting licensing inspections schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `permitting_licensing_inspections_control_assertion`: owns permitting licensing inspections control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `permitting_licensing_inspections_governed_model`: owns permitting licensing inspections governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `permitting_licensing_inspections_appgen_outbox_event`, `permitting_licensing_inspections_appgen_inbox_event`, and `permitting_licensing_inspections_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'CustomerUpdated', 'SupplierQualified') and API contracts ('POST /applications', 'POST /permits', 'POST /licenses', 'POST /review-tasks', 'POST /fee-assessments', 'GET /permitting-licensing-inspections-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `permitting_licensing_inspections_appgen_outbo
 - `simulate_fee_assessment`: validates policy, writes owned `permitting_licensing_inspections_fee_assessment` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_inspection`: validates policy, writes owned `permitting_licensing_inspections_inspection` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_violation`: validates policy, writes owned `permitting_licensing_inspections_violation` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_permitting_licensing_inspections_policy_rule`: validates policy, writes owned `permitting_licensing_inspections_permitting_licensing_inspections_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_permitting_licensing_inspections_runtime_parameter`: validates policy, writes owned `permitting_licensing_inspections_permitting_licensing_inspections_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_permitting_licensing_inspections_schema_extension`: validates policy, writes owned `permitting_licensing_inspections_permitting_licensing_inspections_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_permitting_licensing_inspections_control_assertion`: validates policy, writes owned `permitting_licensing_inspections_permitting_licensing_inspections_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_permitting_licensing_inspections_governed_model`: validates policy, writes owned `permitting_licensing_inspections_permitting_licensing_inspections_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_permitting_licensing_inspections_policy_rule`: validates policy, writes owned `permitting_licensing_inspections_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_permitting_licensing_inspections_runtime_parameter`: validates policy, writes owned `permitting_licensing_inspections_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_permitting_licensing_inspections_schema_extension`: validates policy, writes owned `permitting_licensing_inspections_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_permitting_licensing_inspections_control_assertion`: validates policy, writes owned `permitting_licensing_inspections_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_permitting_licensing_inspections_governed_model`: validates policy, writes owned `permitting_licensing_inspections_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_permitting_licensing_inspections_13`: validates policy, writes owned `permitting_licensing_inspections_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_permitting_licensing_inspections_14`: validates policy, writes owned `permitting_licensing_inspections_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_permitting_licensing_inspections_15`: validates policy, writes owned `permitting_licensing_inspections_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

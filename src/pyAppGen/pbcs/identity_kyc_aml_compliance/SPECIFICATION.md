@@ -25,11 +25,11 @@ The `identity_kyc_aml_compliance` PBC is a packaged business capability for Cust
 - `identity_kyc_aml_compliance_monitoring_alert`: owns monitoring alert lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `identity_kyc_aml_compliance_suspicious_activity_case`: owns suspicious activity case lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `identity_kyc_aml_compliance_compliance_review`: owns compliance review lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `identity_kyc_aml_compliance_identity_kyc_aml_compliance_policy_rule`: owns identity kyc aml compliance policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `identity_kyc_aml_compliance_identity_kyc_aml_compliance_runtime_parameter`: owns identity kyc aml compliance runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `identity_kyc_aml_compliance_identity_kyc_aml_compliance_schema_extension`: owns identity kyc aml compliance schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `identity_kyc_aml_compliance_identity_kyc_aml_compliance_control_assertion`: owns identity kyc aml compliance control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `identity_kyc_aml_compliance_identity_kyc_aml_compliance_governed_model`: owns identity kyc aml compliance governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `identity_kyc_aml_compliance_policy_rule`: owns identity kyc aml compliance policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `identity_kyc_aml_compliance_runtime_parameter`: owns identity kyc aml compliance runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `identity_kyc_aml_compliance_schema_extension`: owns identity kyc aml compliance schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `identity_kyc_aml_compliance_control_assertion`: owns identity kyc aml compliance control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `identity_kyc_aml_compliance_governed_model`: owns identity kyc aml compliance governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `identity_kyc_aml_compliance_appgen_outbox_event`, `identity_kyc_aml_compliance_appgen_inbox_event`, and `identity_kyc_aml_compliance_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /kyc-profiles', 'POST /identity-documents', 'POST /beneficial-owners', 'POST /screening-hits', 'POST /monitoring-alerts', 'GET /identity-kyc-aml-compliance-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `identity_kyc_aml_compliance_appgen_outbox_eve
 - `simulate_monitoring_alert`: validates policy, writes owned `identity_kyc_aml_compliance_monitoring_alert` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_suspicious_activity_case`: validates policy, writes owned `identity_kyc_aml_compliance_suspicious_activity_case` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_compliance_review`: validates policy, writes owned `identity_kyc_aml_compliance_compliance_review` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_identity_kyc_aml_compliance_policy_rule`: validates policy, writes owned `identity_kyc_aml_compliance_identity_kyc_aml_compliance_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_identity_kyc_aml_compliance_runtime_parameter`: validates policy, writes owned `identity_kyc_aml_compliance_identity_kyc_aml_compliance_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_identity_kyc_aml_compliance_schema_extension`: validates policy, writes owned `identity_kyc_aml_compliance_identity_kyc_aml_compliance_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_identity_kyc_aml_compliance_control_assertion`: validates policy, writes owned `identity_kyc_aml_compliance_identity_kyc_aml_compliance_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_identity_kyc_aml_compliance_governed_model`: validates policy, writes owned `identity_kyc_aml_compliance_identity_kyc_aml_compliance_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_identity_kyc_aml_compliance_policy_rule`: validates policy, writes owned `identity_kyc_aml_compliance_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_identity_kyc_aml_compliance_runtime_parameter`: validates policy, writes owned `identity_kyc_aml_compliance_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_identity_kyc_aml_compliance_schema_extension`: validates policy, writes owned `identity_kyc_aml_compliance_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_identity_kyc_aml_compliance_control_assertion`: validates policy, writes owned `identity_kyc_aml_compliance_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_identity_kyc_aml_compliance_governed_model`: validates policy, writes owned `identity_kyc_aml_compliance_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_identity_kyc_aml_compliance_13`: validates policy, writes owned `identity_kyc_aml_compliance_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_identity_kyc_aml_compliance_14`: validates policy, writes owned `identity_kyc_aml_compliance_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_identity_kyc_aml_compliance_15`: validates policy, writes owned `identity_kyc_aml_compliance_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

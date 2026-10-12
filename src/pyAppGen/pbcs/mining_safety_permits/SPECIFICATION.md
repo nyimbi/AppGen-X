@@ -25,11 +25,11 @@ The `mining_safety_permits` PBC is a packaged business capability for Mine permi
 - `mining_safety_permits_incident_report`: owns incident report lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `mining_safety_permits_regulatory_submission`: owns regulatory submission lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `mining_safety_permits_control_action`: owns control action lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `mining_safety_permits_mining_safety_permits_policy_rule`: owns mining safety permits policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `mining_safety_permits_mining_safety_permits_runtime_parameter`: owns mining safety permits runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `mining_safety_permits_mining_safety_permits_schema_extension`: owns mining safety permits schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `mining_safety_permits_mining_safety_permits_control_assertion`: owns mining safety permits control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `mining_safety_permits_mining_safety_permits_governed_model`: owns mining safety permits governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `mining_safety_permits_policy_rule`: owns mining safety permits policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `mining_safety_permits_runtime_parameter`: owns mining safety permits runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `mining_safety_permits_schema_extension`: owns mining safety permits schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `mining_safety_permits_control_assertion`: owns mining safety permits control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `mining_safety_permits_governed_model`: owns mining safety permits governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `mining_safety_permits_appgen_outbox_event`, `mining_safety_permits_appgen_inbox_event`, and `mining_safety_permits_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /mine-permits', 'POST /shift-rosters', 'POST /blast-plans', 'POST /safety-inspections', 'POST /incident-reports', 'GET /mining-safety-permits-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `mining_safety_permits_appgen_outbox_event`, `
 - `simulate_incident_report`: validates policy, writes owned `mining_safety_permits_incident_report` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_regulatory_submission`: validates policy, writes owned `mining_safety_permits_regulatory_submission` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_control_action`: validates policy, writes owned `mining_safety_permits_control_action` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_mining_safety_permits_policy_rule`: validates policy, writes owned `mining_safety_permits_mining_safety_permits_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_mining_safety_permits_runtime_parameter`: validates policy, writes owned `mining_safety_permits_mining_safety_permits_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_mining_safety_permits_schema_extension`: validates policy, writes owned `mining_safety_permits_mining_safety_permits_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_mining_safety_permits_control_assertion`: validates policy, writes owned `mining_safety_permits_mining_safety_permits_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_mining_safety_permits_governed_model`: validates policy, writes owned `mining_safety_permits_mining_safety_permits_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_mining_safety_permits_policy_rule`: validates policy, writes owned `mining_safety_permits_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_mining_safety_permits_runtime_parameter`: validates policy, writes owned `mining_safety_permits_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_mining_safety_permits_schema_extension`: validates policy, writes owned `mining_safety_permits_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_mining_safety_permits_control_assertion`: validates policy, writes owned `mining_safety_permits_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_mining_safety_permits_governed_model`: validates policy, writes owned `mining_safety_permits_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_mining_safety_permits_13`: validates policy, writes owned `mining_safety_permits_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_mining_safety_permits_14`: validates policy, writes owned `mining_safety_permits_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_mining_safety_permits_15`: validates policy, writes owned `mining_safety_permits_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

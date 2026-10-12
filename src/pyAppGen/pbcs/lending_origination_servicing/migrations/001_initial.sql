@@ -190,7 +190,7 @@ CREATE TABLE lending_origination_servicing_servicing_case (
   FOREIGN KEY (loan_offer_id) REFERENCES lending_origination_servicing_loan_offer(loan_offer_id)
 );
 
-CREATE TABLE lending_origination_servicing_lending_origination_servicing_policy_rule (
+CREATE TABLE lending_origination_servicing_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   rule_id VARCHAR(255) NOT NULL,
@@ -211,7 +211,7 @@ CREATE TABLE lending_origination_servicing_lending_origination_servicing_policy_
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE lending_origination_servicing_lending_origination_servicing_runtime_parameter (
+CREATE TABLE lending_origination_servicing_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_id VARCHAR(255) NOT NULL,
@@ -229,7 +229,7 @@ CREATE TABLE lending_origination_servicing_lending_origination_servicing_runtime
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE lending_origination_servicing_lending_origination_servicing_schema_extension (
+CREATE TABLE lending_origination_servicing_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -245,7 +245,7 @@ CREATE TABLE lending_origination_servicing_lending_origination_servicing_schema_
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE lending_origination_servicing_lending_origination_servicing_control_assertion (
+CREATE TABLE lending_origination_servicing_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -265,7 +265,7 @@ CREATE TABLE lending_origination_servicing_lending_origination_servicing_control
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE lending_origination_servicing_lending_origination_servicing_governed_model (
+CREATE TABLE lending_origination_servicing_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

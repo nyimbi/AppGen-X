@@ -17,7 +17,7 @@ SEED_DATA = (
         ),
     },
     {
-        'table': 'cdp_segmentation_cdp_segmentation_parameter',
+        'table': 'cdp_segmentation_parameter',
         'rows': (
             {'code': 'membership_score_threshold', 'status': 'active', 'value': 0.68},
             {'code': 'consent_risk_threshold', 'status': 'active', 'value': 0.60},

@@ -25,11 +25,11 @@ The `library_archives_management` PBC is a packaged business capability for Coll
 - `library_archives_management_rights_statement`: owns rights statement lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `library_archives_management_preservation_action`: owns preservation action lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `library_archives_management_archive_request`: owns archive request lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `library_archives_management_library_archives_management_policy_rule`: owns library archives management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `library_archives_management_library_archives_management_runtime_parameter`: owns library archives management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `library_archives_management_library_archives_management_schema_extension`: owns library archives management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `library_archives_management_library_archives_management_control_assertion`: owns library archives management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `library_archives_management_library_archives_management_governed_model`: owns library archives management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `library_archives_management_policy_rule`: owns library archives management policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `library_archives_management_runtime_parameter`: owns library archives management runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `library_archives_management_schema_extension`: owns library archives management schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `library_archives_management_control_assertion`: owns library archives management control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `library_archives_management_governed_model`: owns library archives management governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `library_archives_management_appgen_outbox_event`, `library_archives_management_appgen_inbox_event`, and `library_archives_management_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /collection-items', 'POST /catalog-records', 'POST /circulation-loans', 'POST /digitization-jobs', 'POST /rights-statements', 'GET /library-archives-management-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `library_archives_management_appgen_outbox_eve
 - `simulate_rights_statement`: validates policy, writes owned `library_archives_management_rights_statement` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_preservation_action`: validates policy, writes owned `library_archives_management_preservation_action` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_archive_request`: validates policy, writes owned `library_archives_management_archive_request` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_library_archives_management_policy_rule`: validates policy, writes owned `library_archives_management_library_archives_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_library_archives_management_runtime_parameter`: validates policy, writes owned `library_archives_management_library_archives_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_library_archives_management_schema_extension`: validates policy, writes owned `library_archives_management_library_archives_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_library_archives_management_control_assertion`: validates policy, writes owned `library_archives_management_library_archives_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_library_archives_management_governed_model`: validates policy, writes owned `library_archives_management_library_archives_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_library_archives_management_policy_rule`: validates policy, writes owned `library_archives_management_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_library_archives_management_runtime_parameter`: validates policy, writes owned `library_archives_management_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_library_archives_management_schema_extension`: validates policy, writes owned `library_archives_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_library_archives_management_control_assertion`: validates policy, writes owned `library_archives_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_library_archives_management_governed_model`: validates policy, writes owned `library_archives_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_library_archives_management_13`: validates policy, writes owned `library_archives_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_library_archives_management_14`: validates policy, writes owned `library_archives_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_library_archives_management_15`: validates policy, writes owned `library_archives_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

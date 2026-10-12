@@ -159,7 +159,7 @@ CREATE TABLE food_safety_quality_compliance_quality_hold (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE food_safety_quality_compliance_food_safety_quality_compliance_policy_rule (
+CREATE TABLE food_safety_quality_compliance_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   rule_id VARCHAR(255) NOT NULL,
@@ -178,7 +178,7 @@ CREATE TABLE food_safety_quality_compliance_food_safety_quality_compliance_polic
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE food_safety_quality_compliance_food_safety_quality_compliance_runtime_parameter (
+CREATE TABLE food_safety_quality_compliance_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_name VARCHAR(255) NOT NULL,
@@ -192,7 +192,7 @@ CREATE TABLE food_safety_quality_compliance_food_safety_quality_compliance_runti
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE food_safety_quality_compliance_food_safety_quality_compliance_schema_extension (
+CREATE TABLE food_safety_quality_compliance_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -206,7 +206,7 @@ CREATE TABLE food_safety_quality_compliance_food_safety_quality_compliance_schem
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE food_safety_quality_compliance_food_safety_quality_compliance_control_assertion (
+CREATE TABLE food_safety_quality_compliance_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -227,7 +227,7 @@ CREATE TABLE food_safety_quality_compliance_food_safety_quality_compliance_contr
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE food_safety_quality_compliance_food_safety_quality_compliance_governed_model (
+CREATE TABLE food_safety_quality_compliance_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

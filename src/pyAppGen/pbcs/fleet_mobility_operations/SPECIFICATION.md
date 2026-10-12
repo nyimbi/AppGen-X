@@ -25,11 +25,11 @@ The `fleet_mobility_operations` PBC is a packaged business capability for Vehicl
 - `fleet_mobility_operations_fuel_transaction`: owns fuel transaction lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `fleet_mobility_operations_maintenance_schedule`: owns maintenance schedule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `fleet_mobility_operations_safety_event`: owns safety event lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `fleet_mobility_operations_fleet_mobility_operations_policy_rule`: owns fleet mobility operations policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `fleet_mobility_operations_fleet_mobility_operations_runtime_parameter`: owns fleet mobility operations runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `fleet_mobility_operations_fleet_mobility_operations_schema_extension`: owns fleet mobility operations schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `fleet_mobility_operations_fleet_mobility_operations_control_assertion`: owns fleet mobility operations control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `fleet_mobility_operations_fleet_mobility_operations_governed_model`: owns fleet mobility operations governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `fleet_mobility_operations_policy_rule`: owns fleet mobility operations policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `fleet_mobility_operations_runtime_parameter`: owns fleet mobility operations runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `fleet_mobility_operations_schema_extension`: owns fleet mobility operations schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `fleet_mobility_operations_control_assertion`: owns fleet mobility operations control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `fleet_mobility_operations_governed_model`: owns fleet mobility operations governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `fleet_mobility_operations_appgen_outbox_event`, `fleet_mobility_operations_appgen_inbox_event`, and `fleet_mobility_operations_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'AuditEventSealed', 'OperationalKpiChanged') and API contracts ('POST /vehicles', 'POST /driver-assignments', 'POST /telematics-events', 'POST /route-plans', 'POST /fuel-transactions', 'GET /fleet-mobility-operations-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `fleet_mobility_operations_appgen_outbox_event
 - `simulate_fuel_transaction`: validates policy, writes owned `fleet_mobility_operations_fuel_transaction` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_maintenance_schedule`: validates policy, writes owned `fleet_mobility_operations_maintenance_schedule` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_safety_event`: validates policy, writes owned `fleet_mobility_operations_safety_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_fleet_mobility_operations_policy_rule`: validates policy, writes owned `fleet_mobility_operations_fleet_mobility_operations_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_fleet_mobility_operations_runtime_parameter`: validates policy, writes owned `fleet_mobility_operations_fleet_mobility_operations_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_fleet_mobility_operations_schema_extension`: validates policy, writes owned `fleet_mobility_operations_fleet_mobility_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_fleet_mobility_operations_control_assertion`: validates policy, writes owned `fleet_mobility_operations_fleet_mobility_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_fleet_mobility_operations_governed_model`: validates policy, writes owned `fleet_mobility_operations_fleet_mobility_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_fleet_mobility_operations_policy_rule`: validates policy, writes owned `fleet_mobility_operations_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_fleet_mobility_operations_runtime_parameter`: validates policy, writes owned `fleet_mobility_operations_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_fleet_mobility_operations_schema_extension`: validates policy, writes owned `fleet_mobility_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_fleet_mobility_operations_control_assertion`: validates policy, writes owned `fleet_mobility_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_fleet_mobility_operations_governed_model`: validates policy, writes owned `fleet_mobility_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_fleet_mobility_operations_13`: validates policy, writes owned `fleet_mobility_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_fleet_mobility_operations_14`: validates policy, writes owned `fleet_mobility_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_fleet_mobility_operations_15`: validates policy, writes owned `fleet_mobility_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.

@@ -226,7 +226,7 @@ CREATE TABLE capital_markets_trading_ops_position_snapshot (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE capital_markets_trading_ops_capital_markets_trading_ops_policy_rule (
+CREATE TABLE capital_markets_trading_ops_policy_rule (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   rule_id VARCHAR(255) NOT NULL,
@@ -243,7 +243,7 @@ CREATE TABLE capital_markets_trading_ops_capital_markets_trading_ops_policy_rule
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE capital_markets_trading_ops_capital_markets_trading_ops_runtime_parameter (
+CREATE TABLE capital_markets_trading_ops_runtime_parameter (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   parameter_name VARCHAR(255) NOT NULL,
@@ -257,7 +257,7 @@ CREATE TABLE capital_markets_trading_ops_capital_markets_trading_ops_runtime_par
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE capital_markets_trading_ops_capital_markets_trading_ops_schema_extension (
+CREATE TABLE capital_markets_trading_ops_schema_extension (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   extension_id VARCHAR(255) NOT NULL,
@@ -271,7 +271,7 @@ CREATE TABLE capital_markets_trading_ops_capital_markets_trading_ops_schema_exte
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE capital_markets_trading_ops_capital_markets_trading_ops_control_assertion (
+CREATE TABLE capital_markets_trading_ops_control_assertion (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   assertion_id VARCHAR(255) NOT NULL,
@@ -286,7 +286,7 @@ CREATE TABLE capital_markets_trading_ops_capital_markets_trading_ops_control_ass
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE capital_markets_trading_ops_capital_markets_trading_ops_governed_model (
+CREATE TABLE capital_markets_trading_ops_governed_model (
   id INTEGER PRIMARY KEY NOT NULL,
   tenant VARCHAR(255) NOT NULL,
   model_id VARCHAR(255) NOT NULL,

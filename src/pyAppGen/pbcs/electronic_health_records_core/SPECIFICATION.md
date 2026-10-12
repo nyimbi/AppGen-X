@@ -25,11 +25,11 @@ The `electronic_health_records_core` PBC is a packaged business capability for C
 - `electronic_health_records_core_allergy`: owns allergy lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `electronic_health_records_core_medication_list`: owns medication list lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 - `electronic_health_records_core_care_note`: owns care note lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `electronic_health_records_core_electronic_health_records_core_policy_rule`: owns electronic health records core policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `electronic_health_records_core_electronic_health_records_core_runtime_parameter`: owns electronic health records core runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `electronic_health_records_core_electronic_health_records_core_schema_extension`: owns electronic health records core schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `electronic_health_records_core_electronic_health_records_core_control_assertion`: owns electronic health records core control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
-- `electronic_health_records_core_electronic_health_records_core_governed_model`: owns electronic health records core governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `electronic_health_records_core_policy_rule`: owns electronic health records core policy rule lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `electronic_health_records_core_runtime_parameter`: owns electronic health records core runtime parameter lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `electronic_health_records_core_schema_extension`: owns electronic health records core schema extension lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `electronic_health_records_core_control_assertion`: owns electronic health records core control assertion lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
+- `electronic_health_records_core_governed_model`: owns electronic health records core governed model lifecycle state, evidence, tenant boundary, status, versioning, and audit timestamps.
 
 Runtime AppGen-X event tables are `electronic_health_records_core_appgen_outbox_event`, `electronic_health_records_core_appgen_inbox_event`, and `electronic_health_records_core_appgen_dead_letter_event`. The PBC does not mutate foreign tables. Dependencies are represented by consumed events ('PolicyChanged', 'CustomerUpdated', 'SupplierQualified') and API contracts ('POST /patient-charts', 'POST /clinical-encounters', 'POST /clinical-orders', 'POST /observations', 'POST /allergys', 'GET /electronic-health-records-core-workbench').
 
@@ -42,11 +42,11 @@ Runtime AppGen-X event tables are `electronic_health_records_core_appgen_outbox_
 - `simulate_allergy`: validates policy, writes owned `electronic_health_records_core_allergy` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_medication_list`: validates policy, writes owned `electronic_health_records_core_medication_list` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_care_note`: validates policy, writes owned `electronic_health_records_core_care_note` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `review_electronic_health_records_core_policy_rule`: validates policy, writes owned `electronic_health_records_core_electronic_health_records_core_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `approve_electronic_health_records_core_runtime_parameter`: validates policy, writes owned `electronic_health_records_core_electronic_health_records_core_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `simulate_electronic_health_records_core_schema_extension`: validates policy, writes owned `electronic_health_records_core_electronic_health_records_core_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `create_electronic_health_records_core_control_assertion`: validates policy, writes owned `electronic_health_records_core_electronic_health_records_core_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `record_electronic_health_records_core_governed_model`: validates policy, writes owned `electronic_health_records_core_electronic_health_records_core_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_electronic_health_records_core_policy_rule`: validates policy, writes owned `electronic_health_records_core_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_electronic_health_records_core_runtime_parameter`: validates policy, writes owned `electronic_health_records_core_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `simulate_electronic_health_records_core_schema_extension`: validates policy, writes owned `electronic_health_records_core_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `create_electronic_health_records_core_control_assertion`: validates policy, writes owned `electronic_health_records_core_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_electronic_health_records_core_governed_model`: validates policy, writes owned `electronic_health_records_core_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_electronic_health_records_core_13`: validates policy, writes owned `electronic_health_records_core_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_electronic_health_records_core_14`: validates policy, writes owned `electronic_health_records_core_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `operate_electronic_health_records_core_15`: validates policy, writes owned `electronic_health_records_core_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
