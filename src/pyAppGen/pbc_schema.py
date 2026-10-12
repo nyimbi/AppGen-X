@@ -12,9 +12,11 @@ dicts, most carry bare column names, and the SQL is the only surface that is
 both typed and uniform across all of them.
 
 The parse is deliberately narrow. These files are machine-written by the same
-generator, so the grammar is a fixed subset: `CREATE TABLE`, one column per
-line, and table-level `PRIMARY KEY` and `FOREIGN KEY` constraints. Anything
-outside that subset is skipped rather than guessed at.
+generator, so the grammar is a fixed subset: `CREATE TABLE`, comma-separated
+column definitions (the generator writes some tables one column per line and
+others on a single line, so the split is on commas at parenthesis depth zero,
+not on newlines), and table-level `PRIMARY KEY` and `FOREIGN KEY` constraints.
+Anything outside that subset is skipped rather than guessed at.
 """
 
 from __future__ import annotations
