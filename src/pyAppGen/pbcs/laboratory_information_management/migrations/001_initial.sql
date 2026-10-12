@@ -1,15 +1,323 @@
-CREATE TABLE laboratory_information_management_lab_sample (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE laboratory_information_management_test_order (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE laboratory_information_management_instrument_run (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE laboratory_information_management_result (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE laboratory_information_management_quality_control (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE laboratory_information_management_chain_custody (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE laboratory_information_management_lab_batch (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE laboratory_information_management_laboratory_information_management_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE laboratory_information_management_laboratory_information_management_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE laboratory_information_management_laboratory_information_management_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE laboratory_information_management_laboratory_information_management_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE laboratory_information_management_laboratory_information_management_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE laboratory_information_management_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE laboratory_information_management_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE laboratory_information_management_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS laboratory_information_management;
+
+CREATE TABLE laboratory_information_management_lab_sample (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  lab_sample_id VARCHAR(255) NOT NULL,
+  accession_number VARCHAR(255) NOT NULL,
+  sample_type VARCHAR(255) NOT NULL,
+  sample_domain VARCHAR(255) NOT NULL,
+  collection_site VARCHAR(255),
+  collection_time TIMESTAMP NOT NULL,
+  received_time TIMESTAMP,
+  collector VARCHAR(255),
+  container VARCHAR(255),
+  preservative VARCHAR(255),
+  patient_reference VARCHAR(255),
+  study_reference VARCHAR(255),
+  identity_confidence DECIMAL(18, 4),
+  condition_code VARCHAR(255),
+  condition_severity VARCHAR(255),
+  condition_decision VARCHAR(255),
+  recollection_required BOOLEAN NOT NULL,
+  recollection_reason VARCHAR(255),
+  storage_unit VARCHAR(255),
+  storage_position VARCHAR(255),
+  storage_temperature_profile VARCHAR(255),
+  stability_expiry TIMESTAMP,
+  freeze_thaw_count INTEGER,
+  volume_remaining DECIMAL(18, 4),
+  retention_class VARCHAR(255),
+  disposal_eligibility VARCHAR(255),
+  disposal_approved_by VARCHAR(255),
+  legal_hold BOOLEAN NOT NULL,
+  destruction_evidence TEXT,
+  disposition_recommendation VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE laboratory_information_management_test_order (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  test_order_id VARCHAR(255) NOT NULL,
+  order_reference VARCHAR(255) NOT NULL,
+  ordered_tests TEXT NOT NULL,
+  order_priority VARCHAR(255) NOT NULL,
+  required_specimen VARCHAR(255) NOT NULL,
+  ordering_party VARCHAR(255),
+  clinical_context TEXT,
+  standing_order_flag BOOLEAN NOT NULL,
+  reflex_eligibility VARCHAR(255),
+  billing_context VARCHAR(255),
+  collection_instructions TEXT,
+  match_status VARCHAR(255),
+  match_confidence DECIMAL(18, 4),
+  split_sample_handling VARCHAR(255),
+  reference_range_version VARCHAR(255),
+  target_turnaround_hours INTEGER,
+  tat_start_at TIMESTAMP,
+  tat_stop_at TIMESTAMP,
+  hold_reason VARCHAR(255),
+  breach_risk DECIMAL(18, 4),
+  escalation_state VARCHAR(255),
+  lab_sample_id VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (lab_sample_id) REFERENCES laboratory_information_management_lab_sample(lab_sample_id)
+);
+
+CREATE TABLE laboratory_information_management_lab_batch (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  lab_batch_id VARCHAR(255) NOT NULL,
+  batch_reference VARCHAR(255) NOT NULL,
+  batch_type VARCHAR(255) NOT NULL,
+  batch_review_state VARCHAR(255) NOT NULL,
+  included_samples TEXT,
+  controls TEXT,
+  outliers TEXT,
+  rerun_list TEXT,
+  reviewer VARCHAR(255),
+  release_decision VARCHAR(255),
+  batch_started_at TIMESTAMP,
+  batch_completed_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE laboratory_information_management_instrument_run (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  instrument_run_id VARCHAR(255) NOT NULL,
+  run_reference VARCHAR(255) NOT NULL,
+  instrument_identity VARCHAR(255) NOT NULL,
+  instrument_location VARCHAR(255),
+  method_version VARCHAR(255) NOT NULL,
+  reagent_lot VARCHAR(255),
+  operator VARCHAR(255) NOT NULL,
+  run_state VARCHAR(255) NOT NULL,
+  run_started_at TIMESTAMP,
+  run_completed_at TIMESTAMP,
+  sample_list TEXT,
+  control_summary TEXT,
+  calibration_state VARCHAR(255),
+  failure_reason VARCHAR(255),
+  rerun_of VARCHAR(255),
+  acceptance_state VARCHAR(255),
+  batch_review_state VARCHAR(255),
+  outliers TEXT,
+  lab_batch_id VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (lab_batch_id) REFERENCES laboratory_information_management_lab_batch(lab_batch_id)
+);
+
+CREATE TABLE laboratory_information_management_result (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  result_id VARCHAR(255) NOT NULL,
+  result_reference VARCHAR(255) NOT NULL,
+  test_order_id VARCHAR(255) NOT NULL,
+  result_status VARCHAR(255) NOT NULL,
+  result_value VARCHAR(255),
+  result_unit VARCHAR(255),
+  reference_range VARCHAR(255),
+  abnormal_flag BOOLEAN NOT NULL,
+  critical_flag BOOLEAN NOT NULL,
+  critical_threshold VARCHAR(255),
+  notification_recipient VARCHAR(255),
+  notification_time TIMESTAMP,
+  read_back_evidence TEXT,
+  reviewer VARCHAR(255),
+  validation_rule VARCHAR(255),
+  release_authorized_by VARCHAR(255),
+  released_at TIMESTAMP,
+  correction_reason VARCHAR(255),
+  original_value VARCHAR(255),
+  corrected_value VARCHAR(255),
+  correction_approved_by VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (test_order_id) REFERENCES laboratory_information_management_test_order(test_order_id)
+);
+
+CREATE TABLE laboratory_information_management_quality_control (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  quality_control_id VARCHAR(255) NOT NULL,
+  qc_reference VARCHAR(255) NOT NULL,
+  qc_material VARCHAR(255) NOT NULL,
+  qc_lot VARCHAR(255) NOT NULL,
+  expected_range VARCHAR(255) NOT NULL,
+  observed_value DECIMAL(18, 4) NOT NULL,
+  qc_rule VARCHAR(255) NOT NULL,
+  pass_fail VARCHAR(255) NOT NULL,
+  trend_state VARCHAR(255),
+  reviewer VARCHAR(255),
+  corrective_action TEXT,
+  calibration_schedule VARCHAR(255),
+  calibration_result VARCHAR(255),
+  calibration_expiry TIMESTAMP,
+  drift_warning BOOLEAN NOT NULL,
+  instrument_run_id VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (instrument_run_id) REFERENCES laboratory_information_management_instrument_run(instrument_run_id)
+);
+
+CREATE TABLE laboratory_information_management_chain_custody (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  chain_custody_id VARCHAR(255) NOT NULL,
+  custody_reference VARCHAR(255) NOT NULL,
+  lab_sample_id VARCHAR(255) NOT NULL,
+  handoff_actor VARCHAR(255) NOT NULL,
+  handoff_location VARCHAR(255) NOT NULL,
+  handoff_at TIMESTAMP NOT NULL,
+  condition_state VARCHAR(255),
+  seal_status VARCHAR(255) NOT NULL,
+  custody_accepted BOOLEAN NOT NULL,
+  exception_state VARCHAR(255),
+  exception_reason VARCHAR(255),
+  transfer_site VARCHAR(255),
+  external_lab_state VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (lab_sample_id) REFERENCES laboratory_information_management_lab_sample(lab_sample_id)
+);
+
+CREATE TABLE laboratory_information_management_laboratory_information_management_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  policy_rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  example_text TEXT,
+  approver_role VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE laboratory_information_management_laboratory_information_management_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE laboratory_information_management_laboratory_information_management_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE laboratory_information_management_laboratory_information_management_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  remediation_task VARCHAR(255),
+  evaluated_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE laboratory_information_management_laboratory_information_management_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  model_type VARCHAR(255) NOT NULL,
+  coverage_scope VARCHAR(255) NOT NULL,
+  backtest_exception_count INTEGER NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE laboratory_information_management_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE laboratory_information_management_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE laboratory_information_management_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

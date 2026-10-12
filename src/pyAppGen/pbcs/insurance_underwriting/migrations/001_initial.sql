@@ -1,15 +1,349 @@
-CREATE TABLE insurance_underwriting_underwriting_submission (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE insurance_underwriting_risk_profile (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE insurance_underwriting_rating_factor (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE insurance_underwriting_quote (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE insurance_underwriting_underwriting_decision (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE insurance_underwriting_bind_package (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE insurance_underwriting_exclusion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE insurance_underwriting_insurance_underwriting_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE insurance_underwriting_insurance_underwriting_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE insurance_underwriting_insurance_underwriting_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE insurance_underwriting_insurance_underwriting_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE insurance_underwriting_insurance_underwriting_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE insurance_underwriting_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE insurance_underwriting_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE insurance_underwriting_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS insurance_underwriting;
+
+CREATE TABLE insurance_underwriting_underwriting_submission (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  underwriting_submission_id VARCHAR(255) NOT NULL,
+  submission_reference VARCHAR(255) NOT NULL,
+  insured_name VARCHAR(255) NOT NULL,
+  broker_name VARCHAR(255) NOT NULL,
+  broker_reference VARCHAR(255),
+  product_line VARCHAR(255) NOT NULL,
+  class_of_business VARCHAR(255) NOT NULL,
+  jurisdiction VARCHAR(255) NOT NULL,
+  market_type VARCHAR(255) NOT NULL,
+  submission_source VARCHAR(255) NOT NULL,
+  effective_date TIMESTAMP NOT NULL,
+  expiration_date TIMESTAMP NOT NULL,
+  requested_limit DECIMAL(18, 4) NOT NULL,
+  limit_currency VARCHAR(255) NOT NULL,
+  requested_deductible DECIMAL(18, 4) NOT NULL,
+  estimated_premium DECIMAL(18, 4),
+  exposure_basis VARCHAR(255) NOT NULL,
+  completeness_score DECIMAL(18, 4) NOT NULL,
+  triage_priority VARCHAR(255) NOT NULL,
+  assigned_underwriter VARCHAR(255),
+  referral_required BOOLEAN NOT NULL,
+  referral_reason VARCHAR(255),
+  sla_due_at TIMESTAMP,
+  missing_evidence TEXT,
+  received_at TIMESTAMP NOT NULL,
+  decision_target_date TIMESTAMP,
+  lifecycle_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE insurance_underwriting_risk_profile (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  risk_profile_id VARCHAR(255) NOT NULL,
+  underwriting_submission_id VARCHAR(255) NOT NULL,
+  risk_class VARCHAR(255) NOT NULL,
+  exposure_unit VARCHAR(255) NOT NULL,
+  occupancy_type VARCHAR(255) NOT NULL,
+  construction_type VARCHAR(255),
+  protection_class VARCHAR(255),
+  hazard_factor VARCHAR(255),
+  hazard_score DECIMAL(18, 4) NOT NULL,
+  controls_in_place TEXT,
+  prior_loss_count INTEGER NOT NULL,
+  prior_loss_amount DECIMAL(18, 4) NOT NULL,
+  loss_history_source VARCHAR(255),
+  loss_frequency DECIMAL(18, 4),
+  loss_severity DECIMAL(18, 4),
+  financial_strength_score DECIMAL(18, 4),
+  climate_hazard_score DECIMAL(18, 4),
+  accumulation_bucket VARCHAR(255),
+  accumulation_limit DECIMAL(18, 4),
+  catastrophe_exposure DECIMAL(18, 4),
+  risk_notes TEXT,
+  profiled_by VARCHAR(255) NOT NULL,
+  profiled_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (underwriting_submission_id) REFERENCES insurance_underwriting_underwriting_submission(underwriting_submission_id)
+);
+
+CREATE TABLE insurance_underwriting_rating_factor (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rating_factor_id VARCHAR(255) NOT NULL,
+  underwriting_submission_id VARCHAR(255) NOT NULL,
+  risk_profile_id VARCHAR(255),
+  factor_type VARCHAR(255) NOT NULL,
+  factor_name VARCHAR(255) NOT NULL,
+  factor_source VARCHAR(255) NOT NULL,
+  source_version VARCHAR(255),
+  selected_value DECIMAL(18, 4) NOT NULL,
+  factor_weight DECIMAL(18, 4),
+  transformation VARCHAR(255),
+  model_version VARCHAR(255),
+  override_applied BOOLEAN NOT NULL,
+  override_value DECIMAL(18, 4),
+  override_reason VARCHAR(255),
+  override_authority VARCHAR(255),
+  rationale TEXT,
+  evidence_reference VARCHAR(255),
+  reviewed_by VARCHAR(255),
+  reviewed_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (underwriting_submission_id) REFERENCES insurance_underwriting_underwriting_submission(underwriting_submission_id),
+  FOREIGN KEY (risk_profile_id) REFERENCES insurance_underwriting_risk_profile(risk_profile_id)
+);
+
+CREATE TABLE insurance_underwriting_quote (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  quote_id VARCHAR(255) NOT NULL,
+  underwriting_submission_id VARCHAR(255) NOT NULL,
+  risk_profile_id VARCHAR(255),
+  rating_factor_id VARCHAR(255),
+  quote_reference VARCHAR(255) NOT NULL,
+  quote_version INTEGER NOT NULL,
+  premium_amount DECIMAL(18, 4) NOT NULL,
+  premium_currency VARCHAR(255) NOT NULL,
+  limit_amount DECIMAL(18, 4) NOT NULL,
+  deductible_amount DECIMAL(18, 4) NOT NULL,
+  commission_rate DECIMAL(18, 4),
+  taxes_and_fees DECIMAL(18, 4) NOT NULL,
+  coverage_terms TEXT,
+  conditions TEXT,
+  subjectivities TEXT,
+  subjectivities_open BOOLEAN NOT NULL,
+  bind_eligible BOOLEAN NOT NULL,
+  valid_from TIMESTAMP NOT NULL,
+  valid_until TIMESTAMP NOT NULL,
+  issued_by VARCHAR(255),
+  issued_at TIMESTAMP,
+  revision_reason VARCHAR(255),
+  prior_quote_id VARCHAR(255),
+  scenario_reference VARCHAR(255),
+  lifecycle_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (underwriting_submission_id) REFERENCES insurance_underwriting_underwriting_submission(underwriting_submission_id),
+  FOREIGN KEY (risk_profile_id) REFERENCES insurance_underwriting_risk_profile(risk_profile_id),
+  FOREIGN KEY (rating_factor_id) REFERENCES insurance_underwriting_rating_factor(rating_factor_id)
+);
+
+CREATE TABLE insurance_underwriting_underwriting_decision (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  underwriting_decision_id VARCHAR(255) NOT NULL,
+  underwriting_submission_id VARCHAR(255) NOT NULL,
+  quote_id VARCHAR(255),
+  decision_type VARCHAR(255) NOT NULL,
+  decision_reason VARCHAR(255) NOT NULL,
+  decision_factors TEXT,
+  rules_evaluated TEXT,
+  referrals_considered TEXT,
+  authority_level VARCHAR(255) NOT NULL,
+  authority_limit DECIMAL(18, 4),
+  premium_recommendation DECIMAL(18, 4),
+  effective_quote_version INTEGER,
+  conditions_applied TEXT,
+  exclusion_references TEXT,
+  compliance_hold BOOLEAN NOT NULL,
+  appeal_path VARCHAR(255),
+  reconsideration_of VARCHAR(255),
+  decision_narrative TEXT,
+  decided_by VARCHAR(255) NOT NULL,
+  decided_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (underwriting_submission_id) REFERENCES insurance_underwriting_underwriting_submission(underwriting_submission_id),
+  FOREIGN KEY (quote_id) REFERENCES insurance_underwriting_quote(quote_id)
+);
+
+CREATE TABLE insurance_underwriting_bind_package (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  bind_package_id VARCHAR(255) NOT NULL,
+  underwriting_submission_id VARCHAR(255) NOT NULL,
+  quote_id VARCHAR(255) NOT NULL,
+  package_reference VARCHAR(255) NOT NULL,
+  bind_effective_date TIMESTAMP NOT NULL,
+  bind_expiration_date TIMESTAMP,
+  premium_due DECIMAL(18, 4) NOT NULL,
+  payment_terms VARCHAR(255) NOT NULL,
+  coverage_terms TEXT,
+  conditions TEXT,
+  subjectivities_cleared BOOLEAN NOT NULL,
+  checklist_complete BOOLEAN NOT NULL,
+  documents_reference VARCHAR(255),
+  endorsement_reference VARCHAR(255),
+  approval_authority VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  handoff_event_type VARCHAR(255) NOT NULL,
+  handoff_idempotency_key VARCHAR(255),
+  lifecycle_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (underwriting_submission_id) REFERENCES insurance_underwriting_underwriting_submission(underwriting_submission_id),
+  FOREIGN KEY (quote_id) REFERENCES insurance_underwriting_quote(quote_id)
+);
+
+CREATE TABLE insurance_underwriting_exclusion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  exclusion_id VARCHAR(255) NOT NULL,
+  underwriting_submission_id VARCHAR(255),
+  quote_id VARCHAR(255),
+  bind_package_id VARCHAR(255),
+  coverage_scope VARCHAR(255) NOT NULL,
+  exclusion_clause VARCHAR(255) NOT NULL,
+  exclusion_reason VARCHAR(255) NOT NULL,
+  risk_trigger VARCHAR(255) NOT NULL,
+  wording_reference VARCHAR(255) NOT NULL,
+  wording_version VARCHAR(255) NOT NULL,
+  jurisdiction VARCHAR(255) NOT NULL,
+  approval_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  customer_explanation TEXT,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (underwriting_submission_id) REFERENCES insurance_underwriting_underwriting_submission(underwriting_submission_id),
+  FOREIGN KEY (quote_id) REFERENCES insurance_underwriting_quote(quote_id),
+  FOREIGN KEY (bind_package_id) REFERENCES insurance_underwriting_bind_package(bind_package_id)
+);
+
+CREATE TABLE insurance_underwriting_insurance_underwriting_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  example_text TEXT,
+  approver_role VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE insurance_underwriting_insurance_underwriting_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  effective_from TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE insurance_underwriting_insurance_underwriting_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE insurance_underwriting_insurance_underwriting_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  remediation_task VARCHAR(255),
+  evaluated_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE insurance_underwriting_insurance_underwriting_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  model_type VARCHAR(255) NOT NULL,
+  coverage_scope VARCHAR(255) NOT NULL,
+  backtest_exception_count INTEGER NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE insurance_underwriting_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE insurance_underwriting_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE insurance_underwriting_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

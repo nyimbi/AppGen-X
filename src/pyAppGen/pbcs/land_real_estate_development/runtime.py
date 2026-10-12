@@ -130,25 +130,43 @@ def land_real_estate_development_run_advanced_assessment(state, payload=None):
 def land_real_estate_development_parse_document_instruction(document, instruction):
     return {'ok': True, 'candidate_tables': LAND_REAL_ESTATE_DEVELOPMENT_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+LAND_REAL_ESTATE_DEVELOPMENT_TABLE_FIELDS = {
+    'land_real_estate_development_land_parcel': ('id', 'tenant', 'land_parcel_id', 'parcel_number', 'assessor_parcel_number', 'parcel_alias', 'recorder_reference', 'legal_description', 'survey_revision', 'gross_acreage', 'constrained_acreage', 'dedication_acreage', 'net_buildable_acreage', 'source_of_truth_rank', 'title_status', 'environmental_stage', 'jurisdiction', 'status', 'version', 'created_at', 'updated_at'),
+    'land_real_estate_development_zoning_case': ('id', 'tenant', 'zoning_case_id', 'land_parcel_id', 'zoning_district', 'overlay_district', 'permitted_use_category', 'density_limit', 'height_envelope', 'setback_standard', 'parking_ratio', 'open_space_requirement', 'ordinance_citation', 'hearing_cadence', 'notice_lead_days', 'opposition_risk_score', 'case_disposition', 'status', 'version', 'created_at', 'updated_at'),
+    'land_real_estate_development_entitlement': ('id', 'tenant', 'entitlement_id', 'zoning_case_id', 'entitlement_type', 'approval_path', 'prerequisite_entitlement_id', 'agency_name', 'map_type', 'recording_status', 'appeal_deadline', 'effective_from', 'expiry_date', 'condition_summary', 'status', 'version', 'created_at', 'updated_at'),
+    'land_real_estate_development_feasibility_model': ('id', 'tenant', 'feasibility_model_id', 'land_parcel_id', 'scenario_name', 'program_mix', 'density_assumption', 'residual_land_value', 'seller_asking_price', 'hard_cost_total', 'soft_cost_total', 'infrastructure_cost', 'developer_margin_pct', 'absorption_rate', 'hurdle_rate', 'is_baseline', 'assumption_confidence', 'status', 'version', 'created_at', 'updated_at'),
+    'land_real_estate_development_permit_application': ('id', 'tenant', 'permit_application_id', 'entitlement_id', 'permit_type', 'issuing_agency', 'drawing_set_version', 'completeness_score', 'open_comment_count', 'highest_comment_severity', 'submittal_stage', 'agency_comment_due', 'issued_at', 'expires_at', 'status', 'version', 'created_at', 'updated_at'),
+    'land_real_estate_development_development_milestone': ('id', 'tenant', 'development_milestone_id', 'permit_application_id', 'milestone_name', 'milestone_type', 'predecessor_milestone_id', 'long_lead_flag', 'critical_path_flag', 'float_days', 'planned_date', 'forecast_date', 'completed_at', 'handoff_state', 'status', 'version', 'created_at', 'updated_at'),
+    'land_real_estate_development_land_option': ('id', 'tenant', 'land_option_id', 'land_parcel_id', 'option_tier', 'option_premium', 'deposit_amount', 'exercise_deadline', 'extension_rights', 'extension_payment', 'cure_window_days', 'notice_address', 'is_refundable', 'status', 'version', 'created_at', 'updated_at'),
+    'land_real_estate_development_land_real_estate_development_policy_rule': ('id', 'tenant', 'rule_id', 'rule_name', 'predicate_text', 'rule_scope', 'ambiguity_flag', 'approver_role', 'effective_from', 'effective_to', 'compiled_hash', 'status', 'version', 'created_at', 'updated_at'),
+    'land_real_estate_development_land_real_estate_development_runtime_parameter': ('id', 'tenant', 'parameter_name', 'parameter_value', 'parameter_scope', 'bounded', 'jurisdiction', 'effective_from', 'effective_to', 'status', 'version', 'created_at', 'updated_at'),
+    'land_real_estate_development_land_real_estate_development_schema_extension': ('id', 'tenant', 'extension_id', 'target_table', 'field_name', 'field_type', 'compatibility_rule', 'migration_note', 'registered_at', 'status', 'version', 'created_at', 'updated_at'),
+    'land_real_estate_development_land_real_estate_development_control_assertion': ('id', 'tenant', 'assertion_id', 'control_name', 'population_count', 'failing_record_count', 'assertion_result', 'severity', 'rule_reference', 'remediation_task', 'closure_evidence', 'evaluated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'land_real_estate_development_land_real_estate_development_governed_model': ('id', 'tenant', 'model_id', 'model_name', 'model_version', 'model_purpose', 'feature_inputs', 'governance_state', 'approved_by', 'approved_at', 'retirement_policy', 'status', 'version', 'created_at', 'updated_at'),
+    'land_real_estate_development_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'land_real_estate_development_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'land_real_estate_development_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_LAND_REAL_ESTATE_DEVELOPMENT_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _land_real_estate_development_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return LAND_REAL_ESTATE_DEVELOPMENT_TABLE_FIELDS.get(table, _LAND_REAL_ESTATE_DEVELOPMENT_DEFAULT_FIELDS)
+
+
 def land_real_estate_development_build_schema_contract():
-    table_contracts = (
-        {'table': 'land_real_estate_development_land_parcel', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'land_real_estate_development_zoning_case', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'land_real_estate_development_entitlement', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'land_real_estate_development_feasibility_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'land_real_estate_development_permit_application', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'land_real_estate_development_development_milestone', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'land_real_estate_development_land_option', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'land_real_estate_development_land_real_estate_development_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'land_real_estate_development_land_real_estate_development_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'land_real_estate_development_land_real_estate_development_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'land_real_estate_development_land_real_estate_development_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'land_real_estate_development_land_real_estate_development_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'land_real_estate_development_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'land_real_estate_development_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'land_real_estate_development_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table,
+         'fields': _land_real_estate_development_table_fields(table),
+         'primary_key': ('id',),
+         'owned_by': PBC_KEY}
+        for table in LAND_REAL_ESTATE_DEVELOPMENT_OWNED_TABLES
     )
-    return {'format': 'appgen.land-real-estate-development-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/land_real_estate_development/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': LAND_REAL_ESTATE_DEVELOPMENT_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': LAND_REAL_ESTATE_DEVELOPMENT_ALLOWED_DATABASE_BACKENDS, 'database_backends': LAND_REAL_ESTATE_DEVELOPMENT_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': LAND_REAL_ESTATE_DEVELOPMENT_OWNED_TABLES}
+    return {'format': 'appgen.land-real-estate-development-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/land_real_estate_development/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': LAND_REAL_ESTATE_DEVELOPMENT_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(LAND_REAL_ESTATE_DEVELOPMENT_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _land_real_estate_development_table_fields(table)} for table in LAND_REAL_ESTATE_DEVELOPMENT_OWNED_TABLES), 'datastore_backends': LAND_REAL_ESTATE_DEVELOPMENT_ALLOWED_DATABASE_BACKENDS, 'database_backends': LAND_REAL_ESTATE_DEVELOPMENT_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': LAND_REAL_ESTATE_DEVELOPMENT_OWNED_TABLES}
 
 def land_real_estate_development_build_service_contract():
     return {'format': 'appgen.land-real-estate-development-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_land_parcel','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}

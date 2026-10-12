@@ -74,6 +74,34 @@ INSURANCE_UNDERWRITING_BUSINESS_TABLES = ('insurance_underwriting_underwriting_s
  'insurance_underwriting_insurance_underwriting_control_assertion',
  'insurance_underwriting_insurance_underwriting_governed_model')
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+INSURANCE_UNDERWRITING_TABLE_FIELDS = {
+    'insurance_underwriting_underwriting_submission': ('id', 'tenant', 'underwriting_submission_id', 'submission_reference', 'insured_name', 'broker_name', 'broker_reference', 'product_line', 'class_of_business', 'jurisdiction', 'market_type', 'submission_source', 'effective_date', 'expiration_date', 'requested_limit', 'limit_currency', 'requested_deductible', 'estimated_premium', 'exposure_basis', 'completeness_score', 'triage_priority', 'assigned_underwriter', 'referral_required', 'referral_reason', 'sla_due_at', 'missing_evidence', 'received_at', 'decision_target_date', 'lifecycle_state', 'status', 'version', 'created_at', 'updated_at'),
+    'insurance_underwriting_risk_profile': ('id', 'tenant', 'risk_profile_id', 'underwriting_submission_id', 'risk_class', 'exposure_unit', 'occupancy_type', 'construction_type', 'protection_class', 'hazard_factor', 'hazard_score', 'controls_in_place', 'prior_loss_count', 'prior_loss_amount', 'loss_history_source', 'loss_frequency', 'loss_severity', 'financial_strength_score', 'climate_hazard_score', 'accumulation_bucket', 'accumulation_limit', 'catastrophe_exposure', 'risk_notes', 'profiled_by', 'profiled_at', 'status', 'version', 'created_at', 'updated_at'),
+    'insurance_underwriting_rating_factor': ('id', 'tenant', 'rating_factor_id', 'underwriting_submission_id', 'risk_profile_id', 'factor_type', 'factor_name', 'factor_source', 'source_version', 'selected_value', 'factor_weight', 'transformation', 'model_version', 'override_applied', 'override_value', 'override_reason', 'override_authority', 'rationale', 'evidence_reference', 'reviewed_by', 'reviewed_at', 'status', 'version', 'created_at', 'updated_at'),
+    'insurance_underwriting_quote': ('id', 'tenant', 'quote_id', 'underwriting_submission_id', 'risk_profile_id', 'rating_factor_id', 'quote_reference', 'quote_version', 'premium_amount', 'premium_currency', 'limit_amount', 'deductible_amount', 'commission_rate', 'taxes_and_fees', 'coverage_terms', 'conditions', 'subjectivities', 'subjectivities_open', 'bind_eligible', 'valid_from', 'valid_until', 'issued_by', 'issued_at', 'revision_reason', 'prior_quote_id', 'scenario_reference', 'lifecycle_state', 'status', 'version', 'created_at', 'updated_at'),
+    'insurance_underwriting_underwriting_decision': ('id', 'tenant', 'underwriting_decision_id', 'underwriting_submission_id', 'quote_id', 'decision_type', 'decision_reason', 'decision_factors', 'rules_evaluated', 'referrals_considered', 'authority_level', 'authority_limit', 'premium_recommendation', 'effective_quote_version', 'conditions_applied', 'exclusion_references', 'compliance_hold', 'appeal_path', 'reconsideration_of', 'decision_narrative', 'decided_by', 'decided_at', 'status', 'version', 'created_at', 'updated_at'),
+    'insurance_underwriting_bind_package': ('id', 'tenant', 'bind_package_id', 'underwriting_submission_id', 'quote_id', 'package_reference', 'bind_effective_date', 'bind_expiration_date', 'premium_due', 'payment_terms', 'coverage_terms', 'conditions', 'subjectivities_cleared', 'checklist_complete', 'documents_reference', 'endorsement_reference', 'approval_authority', 'approved_by', 'approved_at', 'handoff_event_type', 'handoff_idempotency_key', 'lifecycle_state', 'status', 'version', 'created_at', 'updated_at'),
+    'insurance_underwriting_exclusion': ('id', 'tenant', 'exclusion_id', 'underwriting_submission_id', 'quote_id', 'bind_package_id', 'coverage_scope', 'exclusion_clause', 'exclusion_reason', 'risk_trigger', 'wording_reference', 'wording_version', 'jurisdiction', 'approval_state', 'approved_by', 'approved_at', 'customer_explanation', 'effective_from', 'effective_to', 'status', 'version', 'created_at', 'updated_at'),
+    'insurance_underwriting_insurance_underwriting_policy_rule': ('id', 'tenant', 'rule_id', 'rule_name', 'predicate_text', 'ambiguity_flag', 'example_text', 'approver_role', 'effective_from', 'effective_to', 'compiled_hash', 'status', 'version', 'created_at', 'updated_at'),
+    'insurance_underwriting_insurance_underwriting_runtime_parameter': ('id', 'tenant', 'parameter_name', 'parameter_value', 'scope', 'bounded', 'effective_from', 'status', 'version', 'created_at', 'updated_at'),
+    'insurance_underwriting_insurance_underwriting_schema_extension': ('id', 'tenant', 'extension_id', 'target_table', 'field_name', 'field_type', 'registered_at', 'status', 'version', 'created_at', 'updated_at'),
+    'insurance_underwriting_insurance_underwriting_control_assertion': ('id', 'tenant', 'assertion_id', 'control_name', 'assertion_result', 'severity', 'remediation_task', 'evaluated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'insurance_underwriting_insurance_underwriting_governed_model': ('id', 'tenant', 'model_id', 'model_name', 'model_version', 'model_type', 'coverage_scope', 'backtest_exception_count', 'governance_state', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'insurance_underwriting_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'insurance_underwriting_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'insurance_underwriting_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_INSURANCE_UNDERWRITING_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _insurance_underwriting_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return INSURANCE_UNDERWRITING_TABLE_FIELDS.get(table, _INSURANCE_UNDERWRITING_DEFAULT_FIELDS)
+
+
 def insurance_underwriting_empty_state():
     return {'records': {}, 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
 
@@ -131,24 +159,11 @@ def insurance_underwriting_parse_document_instruction(document, instruction):
     return {'ok': True, 'candidate_tables': INSURANCE_UNDERWRITING_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
 def insurance_underwriting_build_schema_contract():
-    table_contracts = (
-        {'table': 'insurance_underwriting_underwriting_submission', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'insurance_underwriting_risk_profile', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'insurance_underwriting_rating_factor', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'insurance_underwriting_quote', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'insurance_underwriting_underwriting_decision', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'insurance_underwriting_bind_package', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'insurance_underwriting_exclusion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'insurance_underwriting_insurance_underwriting_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'insurance_underwriting_insurance_underwriting_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'insurance_underwriting_insurance_underwriting_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'insurance_underwriting_insurance_underwriting_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'insurance_underwriting_insurance_underwriting_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'insurance_underwriting_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'insurance_underwriting_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'insurance_underwriting_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table, 'fields': _insurance_underwriting_table_fields(table), 'primary_key': ('id',), 'owned_by': PBC_KEY}
+        for table in INSURANCE_UNDERWRITING_OWNED_TABLES
     )
-    return {'format': 'appgen.insurance-underwriting-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/insurance_underwriting/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': INSURANCE_UNDERWRITING_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': INSURANCE_UNDERWRITING_ALLOWED_DATABASE_BACKENDS, 'database_backends': INSURANCE_UNDERWRITING_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': INSURANCE_UNDERWRITING_OWNED_TABLES}
+    return {'format': 'appgen.insurance-underwriting-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/insurance_underwriting/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': INSURANCE_UNDERWRITING_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(INSURANCE_UNDERWRITING_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _insurance_underwriting_table_fields(table)} for table in INSURANCE_UNDERWRITING_OWNED_TABLES), 'datastore_backends': INSURANCE_UNDERWRITING_ALLOWED_DATABASE_BACKENDS, 'database_backends': INSURANCE_UNDERWRITING_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': INSURANCE_UNDERWRITING_OWNED_TABLES}
 
 def insurance_underwriting_build_service_contract():
     return {'format': 'appgen.insurance-underwriting-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_underwriting_submission','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}

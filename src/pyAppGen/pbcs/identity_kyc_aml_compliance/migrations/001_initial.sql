@@ -1,15 +1,373 @@
-CREATE TABLE identity_kyc_aml_compliance_kyc_profile (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE identity_kyc_aml_compliance_identity_document (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE identity_kyc_aml_compliance_beneficial_owner (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE identity_kyc_aml_compliance_screening_hit (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE identity_kyc_aml_compliance_monitoring_alert (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE identity_kyc_aml_compliance_suspicious_activity_case (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE identity_kyc_aml_compliance_compliance_review (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE identity_kyc_aml_compliance_identity_kyc_aml_compliance_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE identity_kyc_aml_compliance_identity_kyc_aml_compliance_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE identity_kyc_aml_compliance_identity_kyc_aml_compliance_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE identity_kyc_aml_compliance_identity_kyc_aml_compliance_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE identity_kyc_aml_compliance_identity_kyc_aml_compliance_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE identity_kyc_aml_compliance_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE identity_kyc_aml_compliance_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE identity_kyc_aml_compliance_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS identity_kyc_aml_compliance;
+
+CREATE TABLE identity_kyc_aml_compliance_kyc_profile (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  kyc_profile_id VARCHAR(255) NOT NULL,
+  customer_type VARCHAR(255) NOT NULL,
+  customer_name VARCHAR(255) NOT NULL,
+  normalized_name VARCHAR(255) NOT NULL,
+  date_of_birth TIMESTAMP,
+  national_identifier VARCHAR(255) NOT NULL,
+  registration_number VARCHAR(255) NOT NULL,
+  jurisdiction VARCHAR(255) NOT NULL,
+  residency_country VARCHAR(255) NOT NULL,
+  product_exposure VARCHAR(255) NOT NULL,
+  onboarding_channel VARCHAR(255) NOT NULL,
+  expected_activity TEXT NOT NULL,
+  lifecycle_state VARCHAR(255) NOT NULL,
+  risk_rating VARCHAR(255) NOT NULL,
+  risk_score DECIMAL(18, 4) NOT NULL,
+  risk_score_factors TEXT NOT NULL,
+  edd_required BOOLEAN NOT NULL,
+  pep_flag BOOLEAN NOT NULL,
+  next_screening_due_at TIMESTAMP,
+  rescreening_interval_days INTEGER NOT NULL,
+  purpose_of_relationship TEXT NOT NULL,
+  lawful_basis VARCHAR(255) NOT NULL,
+  consent_status VARCHAR(255) NOT NULL,
+  disclosure_restriction VARCHAR(255) NOT NULL,
+  retention_until TIMESTAMP,
+  legal_hold BOOLEAN NOT NULL,
+  duplicate_of_profile_id VARCHAR(255) NOT NULL,
+  merge_state VARCHAR(255) NOT NULL,
+  verified_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE identity_kyc_aml_compliance_identity_document (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  identity_document_id VARCHAR(255) NOT NULL,
+  kyc_profile_id VARCHAR(255) NOT NULL,
+  document_class VARCHAR(255) NOT NULL,
+  document_type VARCHAR(255) NOT NULL,
+  jurisdiction VARCHAR(255) NOT NULL,
+  issuing_authority VARCHAR(255) NOT NULL,
+  document_identifier VARCHAR(255) NOT NULL,
+  issue_date TIMESTAMP,
+  expiry_date TIMESTAMP,
+  capture_method VARCHAR(255) NOT NULL,
+  authenticity_state VARCHAR(255) NOT NULL,
+  tamper_state VARCHAR(255) NOT NULL,
+  expiry_state VARCHAR(255) NOT NULL,
+  liveness_outcome VARCHAR(255) NOT NULL,
+  face_match_confidence DECIMAL(18, 4) NOT NULL,
+  capture_timestamp TIMESTAMP,
+  retry_count INTEGER NOT NULL,
+  fallback_manual_review BOOLEAN NOT NULL,
+  file_hash VARCHAR(255) NOT NULL,
+  mime_type VARCHAR(255) NOT NULL,
+  page_count INTEGER NOT NULL,
+  quarantine_state VARCHAR(255) NOT NULL,
+  duplicate_upload BOOLEAN NOT NULL,
+  purpose VARCHAR(255) NOT NULL,
+  lawful_basis VARCHAR(255) NOT NULL,
+  consent_status VARCHAR(255) NOT NULL,
+  disclosure_restriction VARCHAR(255) NOT NULL,
+  retention_until TIMESTAMP,
+  legal_hold BOOLEAN NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (kyc_profile_id) REFERENCES identity_kyc_aml_compliance_kyc_profile(kyc_profile_id)
+);
+
+CREATE TABLE identity_kyc_aml_compliance_beneficial_owner (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  beneficial_owner_id VARCHAR(255) NOT NULL,
+  kyc_profile_id VARCHAR(255) NOT NULL,
+  owner_type VARCHAR(255) NOT NULL,
+  owner_name VARCHAR(255) NOT NULL,
+  ownership_pct DECIMAL(18, 4) NOT NULL,
+  voting_pct DECIMAL(18, 4) NOT NULL,
+  control_basis VARCHAR(255) NOT NULL,
+  parent_owner_id VARCHAR(255) NOT NULL,
+  ownership_depth INTEGER NOT NULL,
+  ultimate_beneficial_owner BOOLEAN NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  jurisdiction VARCHAR(255) NOT NULL,
+  screening_required BOOLEAN NOT NULL,
+  screening_state VARCHAR(255) NOT NULL,
+  next_screening_due_at TIMESTAMP,
+  verification_state VARCHAR(255) NOT NULL,
+  source_of_control TEXT NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (kyc_profile_id) REFERENCES identity_kyc_aml_compliance_kyc_profile(kyc_profile_id),
+  FOREIGN KEY (parent_owner_id) REFERENCES identity_kyc_aml_compliance_beneficial_owner(beneficial_owner_id)
+);
+
+CREATE TABLE identity_kyc_aml_compliance_screening_hit (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  screening_hit_id VARCHAR(255) NOT NULL,
+  kyc_profile_id VARCHAR(255) NOT NULL,
+  beneficial_owner_id VARCHAR(255) NOT NULL,
+  watchlist_source VARCHAR(255) NOT NULL,
+  screening_category VARCHAR(255) NOT NULL,
+  match_basis VARCHAR(255) NOT NULL,
+  alias_or_transliteration VARCHAR(255) NOT NULL,
+  country_context VARCHAR(255) NOT NULL,
+  program_context VARCHAR(255) NOT NULL,
+  match_confidence DECIMAL(18, 4) NOT NULL,
+  blocking_severity VARCHAR(255) NOT NULL,
+  disposition VARCHAR(255) NOT NULL,
+  disposition_rationale TEXT NOT NULL,
+  reviewer_id VARCHAR(255) NOT NULL,
+  reviewed_at TIMESTAMP,
+  screened_at TIMESTAMP,
+  resolution_path VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (kyc_profile_id) REFERENCES identity_kyc_aml_compliance_kyc_profile(kyc_profile_id)
+);
+
+CREATE TABLE identity_kyc_aml_compliance_monitoring_alert (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  monitoring_alert_id VARCHAR(255) NOT NULL,
+  kyc_profile_id VARCHAR(255) NOT NULL,
+  beneficial_owner_id VARCHAR(255) NOT NULL,
+  source_type VARCHAR(255) NOT NULL,
+  typology VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  review_sla_hours INTEGER NOT NULL,
+  analyst_id VARCHAR(255) NOT NULL,
+  preliminary_disposition VARCHAR(255) NOT NULL,
+  materiality DECIMAL(18, 4) NOT NULL,
+  promoted_case_id VARCHAR(255) NOT NULL,
+  promotion_confirmed_by VARCHAR(255) NOT NULL,
+  alert_age_days INTEGER NOT NULL,
+  aging_state VARCHAR(255) NOT NULL,
+  detection_model_id VARCHAR(255) NOT NULL,
+  detected_at TIMESTAMP,
+  closed_at TIMESTAMP,
+  backlog_risk VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (kyc_profile_id) REFERENCES identity_kyc_aml_compliance_kyc_profile(kyc_profile_id)
+);
+
+CREATE TABLE identity_kyc_aml_compliance_suspicious_activity_case (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  suspicious_activity_case_id VARCHAR(255) NOT NULL,
+  monitoring_alert_id VARCHAR(255) NOT NULL,
+  kyc_profile_id VARCHAR(255) NOT NULL,
+  typology VARCHAR(255) NOT NULL,
+  materiality DECIMAL(18, 4) NOT NULL,
+  case_state VARCHAR(255) NOT NULL,
+  narrative TEXT NOT NULL,
+  narrative_access_restricted BOOLEAN NOT NULL,
+  filing_decision VARCHAR(255) NOT NULL,
+  filing_reference VARCHAR(255) NOT NULL,
+  filed_at TIMESTAMP,
+  supervisory_approver_id VARCHAR(255) NOT NULL,
+  supporting_evidence TEXT NOT NULL,
+  investigator_id VARCHAR(255) NOT NULL,
+  legal_hold BOOLEAN NOT NULL,
+  retention_until TIMESTAMP,
+  case_age_days INTEGER NOT NULL,
+  closed_at TIMESTAMP,
+  no_file_rationale TEXT NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (monitoring_alert_id) REFERENCES identity_kyc_aml_compliance_monitoring_alert(monitoring_alert_id)
+);
+
+CREATE TABLE identity_kyc_aml_compliance_compliance_review (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  compliance_review_id VARCHAR(255) NOT NULL,
+  kyc_profile_id VARCHAR(255) NOT NULL,
+  review_type VARCHAR(255) NOT NULL,
+  edd_required BOOLEAN NOT NULL,
+  approval_level VARCHAR(255) NOT NULL,
+  preparer_id VARCHAR(255) NOT NULL,
+  reviewer_id VARCHAR(255) NOT NULL,
+  approver_id VARCHAR(255) NOT NULL,
+  delegated_authority VARCHAR(255) NOT NULL,
+  segregation_of_duties_ok BOOLEAN NOT NULL,
+  source_of_funds TEXT NOT NULL,
+  source_of_wealth TEXT NOT NULL,
+  expected_activity TEXT NOT NULL,
+  declared_occupation VARCHAR(255) NOT NULL,
+  supporting_document_id VARCHAR(255) NOT NULL,
+  factor_contributions TEXT NOT NULL,
+  analyst_challenge TEXT NOT NULL,
+  supervisor_decision VARCHAR(255) NOT NULL,
+  final_score DECIMAL(18, 4) NOT NULL,
+  override_lineage TEXT NOT NULL,
+  review_due_at TIMESTAMP,
+  completed_at TIMESTAMP,
+  review_outcome VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (kyc_profile_id) REFERENCES identity_kyc_aml_compliance_kyc_profile(kyc_profile_id)
+);
+
+CREATE TABLE identity_kyc_aml_compliance_identity_kyc_aml_compliance_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  policy_rule_id VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  rule_type VARCHAR(255) NOT NULL,
+  jurisdiction VARCHAR(255) NOT NULL,
+  customer_type VARCHAR(255) NOT NULL,
+  ownership_threshold_pct DECIMAL(18, 4) NOT NULL,
+  voting_threshold_pct DECIMAL(18, 4) NOT NULL,
+  edd_trigger TEXT NOT NULL,
+  screening_strictness VARCHAR(255) NOT NULL,
+  monitoring_cadence_days INTEGER NOT NULL,
+  required_evidence TEXT NOT NULL,
+  approval_level VARCHAR(255) NOT NULL,
+  simulation_before_activation BOOLEAN NOT NULL,
+  rollback_metadata TEXT NOT NULL,
+  compiled_hash VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE identity_kyc_aml_compliance_identity_kyc_aml_compliance_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  runtime_parameter_id VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_scope VARCHAR(255) NOT NULL,
+  parameter_value DECIMAL(18, 4) NOT NULL,
+  value_min DECIMAL(18, 4) NOT NULL,
+  value_max DECIMAL(18, 4) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  approval_required BOOLEAN NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  simulation_required BOOLEAN NOT NULL,
+  rollback_value DECIMAL(18, 4) NOT NULL,
+  activated_at TIMESTAMP,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE identity_kyc_aml_compliance_identity_kyc_aml_compliance_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  schema_extension_id VARCHAR(255) NOT NULL,
+  table_name VARCHAR(255) NOT NULL,
+  extension_scope VARCHAR(255) NOT NULL,
+  field_definition TEXT NOT NULL,
+  field_count INTEGER NOT NULL,
+  applied BOOLEAN NOT NULL,
+  applied_at TIMESTAMP,
+  compatibility_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE identity_kyc_aml_compliance_identity_kyc_aml_compliance_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  control_assertion_id VARCHAR(255) NOT NULL,
+  control_code VARCHAR(255) NOT NULL,
+  control_family VARCHAR(255) NOT NULL,
+  assertion_scope VARCHAR(255) NOT NULL,
+  evaluation_state VARCHAR(255) NOT NULL,
+  evidence_hash VARCHAR(255) NOT NULL,
+  last_evaluated_at TIMESTAMP,
+  failure_count INTEGER NOT NULL,
+  remediation_owner VARCHAR(255) NOT NULL,
+  remediation_due_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE identity_kyc_aml_compliance_identity_kyc_aml_compliance_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  governed_model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  model_purpose VARCHAR(255) NOT NULL,
+  drift_indicator DECIMAL(18, 4) NOT NULL,
+  false_positive_rate DECIMAL(18, 4) NOT NULL,
+  analyst_feedback TEXT NOT NULL,
+  retraining_decision VARCHAR(255) NOT NULL,
+  rollback_decision VARCHAR(255) NOT NULL,
+  deployed_at TIMESTAMP,
+  evaluated_at TIMESTAMP,
+  approval_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE identity_kyc_aml_compliance_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE identity_kyc_aml_compliance_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE identity_kyc_aml_compliance_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
