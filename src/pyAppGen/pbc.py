@@ -4557,22 +4557,15 @@ PBC_INDUSTRY_STANDARD_FEATURE_EXTENSIONS = (
     'continuous_release_assurance',
 )
 
-for _industry_pbc_key in PBC_INDUSTRY_EXPANSION_CANDIDATES:
-    _industry_pbc = PBC_CATALOG.get(_industry_pbc_key)
-    if not _industry_pbc:
-        continue
-    _industry_pbc['standard_features'] = tuple(
-        dict.fromkeys(
-            tuple(_industry_pbc.get('standard_features', ()))
-            + PBC_INDUSTRY_STANDARD_FEATURE_EXTENSIONS
-        )
-    )
-    _industry_pbc['capabilities'] = tuple(
-        dict.fromkeys(
-            tuple(_industry_pbc.get('capabilities', ()))
-            + PBC_INDUSTRY_STANDARD_FEATURE_EXTENSIONS
-        )
-    )
+# The loop that used to write those three extensions back into each candidate's
+# catalog row is gone. It wrote `standard_features` and `capabilities` onto the
+# row, and since the descriptor migration the descriptor reads every declared
+# surface from the package (`_package_declared_surface`: runtime constant, else
+# manifest), so no reader ever saw the write. Canaried before deleting: poisoning
+# this constant left `pbc_catalog()` byte-identical, which is only possible if
+# the loop's output is unread. The extensions now live where the descriptor
+# finds them, in each package's `*_STANDARD_FEATURE_KEYS`; all 80 candidates
+# carry all three, verified across the full set.
 
 IMPLEMENTED_PBC_KEYS = (
     *IMPLEMENTED_PBC_KEYS,
