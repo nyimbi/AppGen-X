@@ -46,6 +46,7 @@ from .headers import VIEW_MASTER_DETAIL
 from .headers import VIEW_SCHEMA_CODE
 from .schema import AppSchema
 from .schema import ColumnSchema
+from .schema import TableSchema
 from .schema import ViewSectionSchema
 from .schema import load_schema
 from .schema import normalize_platform_targets
