@@ -152,25 +152,43 @@ def agriculture_farm_operations_run_advanced_assessment(state, payload=None):
 def agriculture_farm_operations_parse_document_instruction(document, instruction):
     return {'ok': True, 'candidate_tables': AGRICULTURE_FARM_OPERATIONS_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+AGRICULTURE_FARM_OPERATIONS_TABLE_FIELDS = {
+    'agriculture_farm_operations_field': ('id', 'tenant', 'field_id', 'field_name', 'parent_field_id', 'management_zone', 'geometry_state', 'acreage', 'soil_type', 'drainage_class', 'stewardship_practice', 'readiness_state', 'status', 'version', 'created_at', 'updated_at'),
+    'agriculture_farm_operations_crop_plan': ('id', 'tenant', 'crop_plan_id', 'field_id', 'management_zone', 'season', 'market_year', 'crop', 'fallback_crop', 'previous_crop', 'replant_of', 'variety', 'acreage', 'planting_date', 'planned_start', 'planned_end', 'window_status', 'readiness_state', 'yield_risk_percent', 'status', 'version', 'created_at', 'updated_at'),
+    'agriculture_farm_operations_input_application': ('id', 'tenant', 'input_application_id', 'field_id', 'crop_plan_id', 'product_name', 'product_category', 'application_method', 'application_rate', 'rate_unit', 'carrier_water_volume', 'applied_at', 'restricted_entry_interval_hours', 'pre_harvest_interval_days', 'operator_id', 'calibration_id', 'treatment_justification', 'status', 'version', 'created_at', 'updated_at'),
+    'agriculture_farm_operations_irrigation_event': ('id', 'tenant', 'irrigation_event_id', 'field_id', 'crop_stage', 'water_source', 'applied_volume_mm', 'rainfall_mm', 'net_water_balance_mm', 'pump_hours', 'stress_sensitivity', 'scheduled_at', 'completed_at', 'status', 'version', 'created_at', 'updated_at'),
+    'agriculture_farm_operations_equipment_use': ('id', 'tenant', 'equipment_use_id', 'field_id', 'equipment_id', 'operation_type', 'operator_id', 'calibrated_at', 'calibration_expires_at', 'target_rate', 'measured_rate', 'swath_width', 'pass_count', 'fuel_used_liters', 'started_at', 'ended_at', 'status', 'version', 'created_at', 'updated_at'),
+    'agriculture_farm_operations_harvest_lot': ('id', 'tenant', 'harvest_lot_id', 'field_id', 'crop_plan_id', 'variety', 'harvest_date', 'machine_pass', 'gross_weight_kg', 'net_weight_kg', 'moisture_percent', 'quality_grade', 'segregation_rule', 'storage_destination', 'drying_target_percent', 'status', 'version', 'created_at', 'updated_at'),
+    'agriculture_farm_operations_yield_observation': ('id', 'tenant', 'yield_observation_id', 'field_id', 'harvest_lot_id', 'observation_source', 'observed_at', 'yield_amount', 'yield_unit', 'moisture_normalized', 'expected_amount', 'variance_percent', 'variance_reason', 'is_source_of_truth', 'status', 'version', 'created_at', 'updated_at'),
+    'agriculture_farm_operations_agriculture_farm_operations_policy_rule': ('id', 'tenant', 'rule_id', 'rule_name', 'scope', 'predicate_text', 'ambiguity_flag', 'example_text', 'approver_role', 'effective_from', 'effective_to', 'compiled_hash', 'status', 'version', 'created_at', 'updated_at'),
+    'agriculture_farm_operations_agriculture_farm_operations_runtime_parameter': ('id', 'tenant', 'parameter_name', 'parameter_value', 'scope', 'bounded', 'effective_from', 'status', 'version', 'created_at', 'updated_at'),
+    'agriculture_farm_operations_agriculture_farm_operations_schema_extension': ('id', 'tenant', 'extension_id', 'target_table', 'field_name', 'field_type', 'registered_at', 'status', 'version', 'created_at', 'updated_at'),
+    'agriculture_farm_operations_agriculture_farm_operations_control_assertion': ('id', 'tenant', 'assertion_id', 'control_name', 'assertion_result', 'severity', 'remediation_task', 'evaluated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'agriculture_farm_operations_agriculture_farm_operations_governed_model': ('id', 'tenant', 'model_id', 'model_name', 'model_version', 'governance_state', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'agriculture_farm_operations_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'agriculture_farm_operations_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'agriculture_farm_operations_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_AGRICULTURE_FARM_OPERATIONS_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _agriculture_farm_operations_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return AGRICULTURE_FARM_OPERATIONS_TABLE_FIELDS.get(table, _AGRICULTURE_FARM_OPERATIONS_DEFAULT_FIELDS)
+
+
 def agriculture_farm_operations_build_schema_contract():
-    table_contracts = (
-        {'table': 'agriculture_farm_operations_field', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'agriculture_farm_operations_crop_plan', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'agriculture_farm_operations_input_application', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'agriculture_farm_operations_irrigation_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'agriculture_farm_operations_equipment_use', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'agriculture_farm_operations_harvest_lot', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'agriculture_farm_operations_yield_observation', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'agriculture_farm_operations_agriculture_farm_operations_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'agriculture_farm_operations_agriculture_farm_operations_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'agriculture_farm_operations_agriculture_farm_operations_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'agriculture_farm_operations_agriculture_farm_operations_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'agriculture_farm_operations_agriculture_farm_operations_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'agriculture_farm_operations_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'agriculture_farm_operations_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'agriculture_farm_operations_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table,
+         'fields': _agriculture_farm_operations_table_fields(table),
+         'primary_key': ('id',),
+         'owned_by': PBC_KEY}
+        for table in AGRICULTURE_FARM_OPERATIONS_OWNED_TABLES
     )
-    return {'format': 'appgen.agriculture-farm-operations-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/agriculture_farm_operations/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': AGRICULTURE_FARM_OPERATIONS_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': AGRICULTURE_FARM_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'database_backends': AGRICULTURE_FARM_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': AGRICULTURE_FARM_OPERATIONS_OWNED_TABLES}
+    return {'format': 'appgen.agriculture-farm-operations-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/agriculture_farm_operations/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': AGRICULTURE_FARM_OPERATIONS_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(AGRICULTURE_FARM_OPERATIONS_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _agriculture_farm_operations_table_fields(table)} for table in AGRICULTURE_FARM_OPERATIONS_OWNED_TABLES), 'datastore_backends': AGRICULTURE_FARM_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'database_backends': AGRICULTURE_FARM_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': AGRICULTURE_FARM_OPERATIONS_OWNED_TABLES}
 
 def agriculture_farm_operations_build_service_contract():
     return {'format': 'appgen.agriculture-farm-operations-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_field','record_crop_plan','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}

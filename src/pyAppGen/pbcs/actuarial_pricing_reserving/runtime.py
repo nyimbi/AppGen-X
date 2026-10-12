@@ -130,25 +130,43 @@ def actuarial_pricing_reserving_run_advanced_assessment(state, payload=None):
 def actuarial_pricing_reserving_parse_document_instruction(document, instruction):
     return {'ok': True, 'candidate_tables': ACTUARIAL_PRICING_RESERVING_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+ACTUARIAL_PRICING_RESERVING_TABLE_FIELDS = {
+    'actuarial_pricing_reserving_rating_model': ('id', 'tenant', 'rating_model_id', 'model_name', 'model_version', 'product_scope', 'jurisdiction', 'segment', 'effective_from', 'effective_to', 'data_vintage', 'model_owner', 'approval_state', 'rollback_evidence', 'status', 'version', 'created_at', 'updated_at'),
+    'actuarial_pricing_reserving_actuarial_assumption': ('id', 'tenant', 'actuarial_assumption_id', 'assumption_type', 'source_study', 'selected_value', 'value_low', 'value_high', 'rationale', 'sensitivity', 'effective_from', 'effective_to', 'approval_state', 'retirement_state', 'status', 'version', 'created_at', 'updated_at'),
+    'actuarial_pricing_reserving_experience_study': ('id', 'tenant', 'experience_study_id', 'cohort_definition', 'exposure_measure', 'experience_period', 'claim_filter', 'exclusions', 'credibility_method', 'data_vintage', 'completeness_score', 'outlier_rate', 'reconciliation_variance', 'status', 'version', 'created_at', 'updated_at'),
+    'actuarial_pricing_reserving_reserve_estimate': ('id', 'tenant', 'reserve_estimate_id', 'loss_triangle_id', 'reserve_method', 'valuation_date', 'method_weight', 'ultimate_loss', 'unpaid_loss', 'ibnr_amount', 'range_low', 'range_high', 'confidence_level', 'discount_basis', 'inflation_curve', 'currency', 'selected_reserve', 'status', 'version', 'created_at', 'updated_at'),
+    'actuarial_pricing_reserving_loss_triangle': ('id', 'tenant', 'loss_triangle_id', 'triangle_type', 'valuation_date', 'origin_period', 'development_age', 'measure', 'incremental_flag', 'source', 'reconciliation_status', 'observed_factor', 'selected_factor', 'tail_factor', 'status', 'version', 'created_at', 'updated_at'),
+    'actuarial_pricing_reserving_capital_scenario': ('id', 'tenant', 'capital_scenario_id', 'scenario_type', 'shock_set', 'probability', 'correlation', 'time_horizon_days', 'balance_sheet_basis', 'affected_products', 'required_capital', 'available_capital', 'solvency_ratio', 'breach_threshold', 'management_action', 'status', 'version', 'created_at', 'updated_at'),
+    'actuarial_pricing_reserving_model_validation': ('id', 'tenant', 'model_validation_id', 'rating_model_id', 'validation_scope', 'challenger_model', 'backtest_period', 'sensitivity_result', 'limitation', 'reviewer_independence', 'finding', 'remediation', 'validation_state', 'expires_at', 'status', 'version', 'created_at', 'updated_at'),
+    'actuarial_pricing_reserving_actuarial_pricing_reserving_policy_rule': ('id', 'tenant', 'policy_rule_id', 'rule_name', 'predicate_text', 'ambiguity_flag', 'example_text', 'approver_role', 'effective_from', 'effective_to', 'compiled_hash', 'status', 'version', 'created_at', 'updated_at'),
+    'actuarial_pricing_reserving_actuarial_pricing_reserving_runtime_parameter': ('id', 'tenant', 'runtime_parameter_id', 'parameter_name', 'parameter_value', 'scope', 'bounded', 'effective_from', 'status', 'version', 'created_at', 'updated_at'),
+    'actuarial_pricing_reserving_actuarial_pricing_reserving_schema_extension': ('id', 'tenant', 'schema_extension_id', 'target_table', 'field_name', 'field_type', 'registered_at', 'status', 'version', 'created_at', 'updated_at'),
+    'actuarial_pricing_reserving_actuarial_pricing_reserving_control_assertion': ('id', 'tenant', 'control_assertion_id', 'control_name', 'population_size', 'threshold', 'owner_id', 'frequency', 'failing_record_count', 'assertion_result', 'remediation_task', 'closure_evidence', 'evaluated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'actuarial_pricing_reserving_actuarial_pricing_reserving_governed_model': ('id', 'tenant', 'governed_model_id', 'model_name', 'model_version', 'method_type', 'training_data_vintage', 'feature_list', 'validation_evidence', 'limitation', 'monitoring_threshold', 'owner_id', 'governance_state', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'actuarial_pricing_reserving_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'actuarial_pricing_reserving_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'actuarial_pricing_reserving_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_ACTUARIAL_PRICING_RESERVING_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _actuarial_pricing_reserving_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return ACTUARIAL_PRICING_RESERVING_TABLE_FIELDS.get(table, _ACTUARIAL_PRICING_RESERVING_DEFAULT_FIELDS)
+
+
 def actuarial_pricing_reserving_build_schema_contract():
-    table_contracts = (
-        {'table': 'actuarial_pricing_reserving_rating_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'actuarial_pricing_reserving_actuarial_assumption', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'actuarial_pricing_reserving_experience_study', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'actuarial_pricing_reserving_reserve_estimate', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'actuarial_pricing_reserving_loss_triangle', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'actuarial_pricing_reserving_capital_scenario', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'actuarial_pricing_reserving_model_validation', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'actuarial_pricing_reserving_actuarial_pricing_reserving_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'actuarial_pricing_reserving_actuarial_pricing_reserving_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'actuarial_pricing_reserving_actuarial_pricing_reserving_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'actuarial_pricing_reserving_actuarial_pricing_reserving_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'actuarial_pricing_reserving_actuarial_pricing_reserving_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'actuarial_pricing_reserving_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'actuarial_pricing_reserving_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'actuarial_pricing_reserving_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table,
+         'fields': _actuarial_pricing_reserving_table_fields(table),
+         'primary_key': ('id',),
+         'owned_by': PBC_KEY}
+        for table in ACTUARIAL_PRICING_RESERVING_OWNED_TABLES
     )
-    return {'format': 'appgen.actuarial-pricing-reserving-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/actuarial_pricing_reserving/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': ACTUARIAL_PRICING_RESERVING_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': ACTUARIAL_PRICING_RESERVING_ALLOWED_DATABASE_BACKENDS, 'database_backends': ACTUARIAL_PRICING_RESERVING_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': ACTUARIAL_PRICING_RESERVING_OWNED_TABLES}
+    return {'format': 'appgen.actuarial-pricing-reserving-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/actuarial_pricing_reserving/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': ACTUARIAL_PRICING_RESERVING_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(ACTUARIAL_PRICING_RESERVING_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _actuarial_pricing_reserving_table_fields(table)} for table in ACTUARIAL_PRICING_RESERVING_OWNED_TABLES), 'datastore_backends': ACTUARIAL_PRICING_RESERVING_ALLOWED_DATABASE_BACKENDS, 'database_backends': ACTUARIAL_PRICING_RESERVING_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': ACTUARIAL_PRICING_RESERVING_OWNED_TABLES}
 
 def actuarial_pricing_reserving_build_service_contract():
     return {'format': 'appgen.actuarial-pricing-reserving-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_rating_model','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}

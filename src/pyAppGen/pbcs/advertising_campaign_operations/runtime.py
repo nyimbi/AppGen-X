@@ -182,25 +182,43 @@ def advertising_campaign_operations_run_advanced_assessment(state, payload=None)
 def advertising_campaign_operations_parse_document_instruction(document, instruction):
     return {'ok': True, 'candidate_tables': ADVERTISING_CAMPAIGN_OPERATIONS_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+ADVERTISING_CAMPAIGN_OPERATIONS_TABLE_FIELDS = {
+    'advertising_campaign_operations_ad_campaign': ('id', 'tenant', 'ad_campaign_id', 'campaign_name', 'objective', 'offer', 'audience_promise', 'primary_kpi', 'channel_mix', 'flight_start', 'flight_end', 'budget_amount', 'currency', 'pacing_state', 'launch_gate_state', 'brief_fingerprint', 'status', 'version', 'created_at', 'updated_at'),
+    'advertising_campaign_operations_audience_segment': ('id', 'tenant', 'audience_segment_id', 'ad_campaign_id', 'segment_name', 'inclusion_criteria', 'suppression_list', 'recency_window_days', 'exclusion_precedence', 'estimated_reach', 'overlap_percent', 'consent_status', 'sensitive_category', 'freshness_at', 'risk_level', 'status', 'version', 'created_at', 'updated_at'),
+    'advertising_campaign_operations_media_placement': ('id', 'tenant', 'media_placement_id', 'ad_campaign_id', 'publisher_name', 'placement_environment', 'ad_size', 'package_rate', 'currency', 'hold_expires_at', 'geo_targets', 'daypart_window', 'device_preference', 'frequency_cap', 'trafficking_state', 'tracking_ready', 'status', 'version', 'created_at', 'updated_at'),
+    'advertising_campaign_operations_creative_asset': ('id', 'tenant', 'creative_asset_id', 'ad_campaign_id', 'asset_name', 'asset_format', 'message_angle', 'required_disclosures', 'revision_number', 'approval_stage', 'approved_by', 'approved_at', 'asset_hash', 'superseded', 'delivery_destination', 'status', 'version', 'created_at', 'updated_at'),
+    'advertising_campaign_operations_campaign_budget': ('id', 'tenant', 'campaign_budget_id', 'ad_campaign_id', 'working_budget', 'approved_budget', 'committed_budget', 'held_reserve', 'contingency_reserve', 'released_reserve', 'currency', 'budget_version', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'advertising_campaign_operations_performance_result': ('id', 'tenant', 'performance_result_id', 'ad_campaign_id', 'media_placement_id', 'metric_grain', 'metric_name', 'metric_value', 'impressions', 'clicks', 'conversions', 'spend', 'currency', 'attribution_model', 'attribution_window_days', 'reporting_delay_hours', 'source_name', 'confidence_score', 'deduplicated', 'reported_at', 'status', 'version', 'created_at', 'updated_at'),
+    'advertising_campaign_operations_billing_event': ('id', 'tenant', 'billing_event_id', 'ad_campaign_id', 'media_placement_id', 'invoice_reference', 'billed_amount', 'delivered_value', 'variance_amount', 'currency', 'reconciliation_state', 'period_start', 'period_end', 'status', 'version', 'created_at', 'updated_at'),
+    'advertising_campaign_operations_advertising_campaign_operations_policy_rule': ('id', 'tenant', 'policy_rule_id', 'ad_campaign_id', 'rule_name', 'predicate_text', 'policy_version', 'approver_role', 'severity', 'effective_from', 'effective_to', 'compiled_hash', 'status', 'version', 'created_at', 'updated_at'),
+    'advertising_campaign_operations_advertising_campaign_operations_runtime_parameter': ('id', 'tenant', 'runtime_parameter_id', 'parameter_name', 'parameter_value', 'scope', 'bounded', 'quality_score_floor', 'materiality_threshold', 'approval_sla_hours', 'risk_threshold', 'forecast_horizon_days', 'workbench_limit', 'effective_from', 'status', 'version', 'created_at', 'updated_at'),
+    'advertising_campaign_operations_advertising_campaign_operations_schema_extension': ('id', 'tenant', 'schema_extension_id', 'target_table', 'field_name', 'field_type', 'channel_name', 'owner_role', 'rollout_state', 'projection_impact', 'registered_at', 'status', 'version', 'created_at', 'updated_at'),
+    'advertising_campaign_operations_advertising_campaign_operations_control_assertion': ('id', 'tenant', 'control_assertion_id', 'ad_campaign_id', 'control_name', 'assertion_result', 'severity', 'remediation_task', 'evaluated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'advertising_campaign_operations_advertising_campaign_operations_governed_model': ('id', 'tenant', 'governed_model_id', 'model_name', 'model_version', 'governance_state', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'advertising_campaign_operations_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'advertising_campaign_operations_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'advertising_campaign_operations_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_ADVERTISING_CAMPAIGN_OPERATIONS_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _advertising_campaign_operations_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return ADVERTISING_CAMPAIGN_OPERATIONS_TABLE_FIELDS.get(table, _ADVERTISING_CAMPAIGN_OPERATIONS_DEFAULT_FIELDS)
+
+
 def advertising_campaign_operations_build_schema_contract():
-    table_contracts = (
-        {'table': 'advertising_campaign_operations_ad_campaign', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'advertising_campaign_operations_audience_segment', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'advertising_campaign_operations_media_placement', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'advertising_campaign_operations_creative_asset', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'advertising_campaign_operations_campaign_budget', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'advertising_campaign_operations_performance_result', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'advertising_campaign_operations_billing_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'advertising_campaign_operations_advertising_campaign_operations_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'advertising_campaign_operations_advertising_campaign_operations_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'advertising_campaign_operations_advertising_campaign_operations_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'advertising_campaign_operations_advertising_campaign_operations_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'advertising_campaign_operations_advertising_campaign_operations_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'advertising_campaign_operations_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'advertising_campaign_operations_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'advertising_campaign_operations_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table,
+         'fields': _advertising_campaign_operations_table_fields(table),
+         'primary_key': ('id',),
+         'owned_by': PBC_KEY}
+        for table in ADVERTISING_CAMPAIGN_OPERATIONS_OWNED_TABLES
     )
-    return {'format': 'appgen.advertising-campaign-operations-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/advertising_campaign_operations/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': ADVERTISING_CAMPAIGN_OPERATIONS_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': ADVERTISING_CAMPAIGN_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'database_backends': ADVERTISING_CAMPAIGN_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': ADVERTISING_CAMPAIGN_OPERATIONS_OWNED_TABLES}
+    return {'format': 'appgen.advertising-campaign-operations-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/advertising_campaign_operations/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': ADVERTISING_CAMPAIGN_OPERATIONS_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(ADVERTISING_CAMPAIGN_OPERATIONS_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _advertising_campaign_operations_table_fields(table)} for table in ADVERTISING_CAMPAIGN_OPERATIONS_OWNED_TABLES), 'datastore_backends': ADVERTISING_CAMPAIGN_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'database_backends': ADVERTISING_CAMPAIGN_OPERATIONS_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': ADVERTISING_CAMPAIGN_OPERATIONS_OWNED_TABLES}
 
 def advertising_campaign_operations_build_service_contract():
     return {'format': 'appgen.advertising-campaign-operations-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_ad_campaign','create_campaign_plan','attempt_launch_campaign','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view','review_launch_readiness'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}

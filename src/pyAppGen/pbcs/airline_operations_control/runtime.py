@@ -155,25 +155,42 @@ def airline_operations_control_run_advanced_assessment(state, payload=None):
 def airline_operations_control_parse_document_instruction(document, instruction):
     return {'ok': True, 'candidate_tables': AIRLINE_OPERATIONS_CONTROL_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+AIRLINE_OPERATIONS_CONTROL_TABLE_FIELDS = {
+    'airline_operations_control_flight_leg': ('id', 'tenant', 'flight_leg_id', 'flight_number', 'service_type', 'origin_station', 'destination_station', 'scheduled_departure', 'scheduled_arrival', 'actual_departure', 'actual_arrival', 'aircraft_tail', 'gate_position', 'minimum_turn_minutes', 'turn_risk_state', 'slot_window', 'curfew_exposure', 'payload_restriction', 'freeze_window_state', 'timeline_state', 'status', 'version', 'created_at', 'updated_at'),
+    'airline_operations_control_aircraft_rotation': ('id', 'tenant', 'aircraft_rotation_id', 'aircraft_tail', 'fleet_family', 'rotation_date', 'leg_sequence', 'previous_leg_id', 'next_leg_id', 'maintenance_stop_state', 'maintenance_due_margin', 'deferred_defect_state', 'spare_substitution_state', 'availability_state', 'swap_option_count', 'protected_departure_count', 'status', 'version', 'created_at', 'updated_at'),
+    'airline_operations_control_crew_pairing': ('id', 'tenant', 'crew_pairing_id', 'pairing_reference', 'crew_role', 'base_station', 'flight_leg_id', 'report_at', 'duty_start_at', 'duty_end_at', 'remaining_duty_margin', 'minimum_rest_hours', 'fdp_limit_hours', 'legality_state', 'standby_state', 'deadhead_state', 'hotel_assignment', 'transport_state', 'status', 'version', 'created_at', 'updated_at'),
+    'airline_operations_control_disruption_event': ('id', 'tenant', 'disruption_event_id', 'disruption_type', 'severity', 'source_system', 'station_code', 'flight_leg_id', 'detected_at', 'stabilized_at', 'closed_at', 'relevance_score', 'affected_leg_count', 'playbook_name', 'holdover_expiry_at', 'deduplication_key', 'disposition_state', 'status', 'version', 'created_at', 'updated_at'),
+    'airline_operations_control_reaccommodation_plan': ('id', 'tenant', 'reaccommodation_plan_id', 'disruption_event_id', 'passenger_cohort', 'passenger_count', 'proposed_option', 'accepted_option', 'protection_boundary', 'interline_scope', 'special_assistance_state', 'overnight_required', 'ticketing_confirmation', 'uplift_outcome', 'residual_exception_state', 'status', 'version', 'created_at', 'updated_at'),
+    'airline_operations_control_operations_decision': ('id', 'tenant', 'operations_decision_id', 'decision_type', 'disruption_event_id', 'flight_leg_id', 'selected_action', 'alternatives_considered', 'rationale', 'assumptions', 'fuel_strategy', 'dispatch_release_state', 'route_compliance_state', 'override_reason', 'override_expires_at', 'approver_identity', 'approved_at', 'expected_network_effect', 'actual_outcome_score', 'status', 'version', 'created_at', 'updated_at'),
+    'airline_operations_control_delay_code': ('id', 'tenant', 'delay_code_id', 'delay_code', 'code_family', 'primary_cause', 'contributing_causes', 'reactionary_flag', 'coding_owner', 'late_change_justification', 'delay_minutes', 'crew_overtime_cost', 'hotel_exposure_cost', 'passenger_care_cost', 'closure_evidence_state', 'status', 'version', 'created_at', 'updated_at'),
+    'airline_operations_control_airline_operations_control_policy_rule': ('id', 'tenant', 'rule_id', 'policy_id', 'rule_name', 'predicate_text', 'recovery_objective', 'ambiguity_flag', 'example_text', 'approver_role', 'effective_from', 'effective_to', 'compiled_hash', 'status', 'version', 'created_at', 'updated_at'),
+    'airline_operations_control_airline_operations_control_runtime_parameter': ('id', 'tenant', 'parameter_name', 'parameter_value', 'scope', 'bounded', 'effective_from', 'status', 'version', 'created_at', 'updated_at'),
+    'airline_operations_control_airline_operations_control_schema_extension': ('id', 'tenant', 'extension_id', 'target_table', 'field_name', 'field_type', 'registered_at', 'status', 'version', 'created_at', 'updated_at'),
+    'airline_operations_control_airline_operations_control_control_assertion': ('id', 'tenant', 'assertion_id', 'control_name', 'assertion_result', 'severity', 'remediation_task', 'evaluated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'airline_operations_control_airline_operations_control_governed_model': ('id', 'tenant', 'model_id', 'model_name', 'model_version', 'governance_state', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'airline_operations_control_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'airline_operations_control_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'airline_operations_control_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_AIRLINE_OPERATIONS_CONTROL_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _airline_operations_control_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return AIRLINE_OPERATIONS_CONTROL_TABLE_FIELDS.get(table, _AIRLINE_OPERATIONS_CONTROL_DEFAULT_FIELDS)
+
 def airline_operations_control_build_schema_contract():
-    table_contracts = (
-        {'table': 'airline_operations_control_flight_leg', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'airline_operations_control_aircraft_rotation', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'airline_operations_control_crew_pairing', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'airline_operations_control_disruption_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'airline_operations_control_reaccommodation_plan', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'airline_operations_control_operations_decision', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'airline_operations_control_delay_code', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'airline_operations_control_airline_operations_control_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'airline_operations_control_airline_operations_control_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'airline_operations_control_airline_operations_control_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'airline_operations_control_airline_operations_control_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'airline_operations_control_airline_operations_control_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'airline_operations_control_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'airline_operations_control_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'airline_operations_control_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table,
+         'fields': _airline_operations_control_table_fields(table),
+         'primary_key': ('id',),
+         'owned_by': PBC_KEY}
+        for table in AIRLINE_OPERATIONS_CONTROL_OWNED_TABLES
     )
-    return {'format': 'appgen.airline-operations-control-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/airline_operations_control/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': AIRLINE_OPERATIONS_CONTROL_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': AIRLINE_OPERATIONS_CONTROL_ALLOWED_DATABASE_BACKENDS, 'database_backends': AIRLINE_OPERATIONS_CONTROL_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': AIRLINE_OPERATIONS_CONTROL_OWNED_TABLES}
+    return {'format': 'appgen.airline-operations-control-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/airline_operations_control/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': AIRLINE_OPERATIONS_CONTROL_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(AIRLINE_OPERATIONS_CONTROL_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _airline_operations_control_table_fields(table)} for table in AIRLINE_OPERATIONS_CONTROL_OWNED_TABLES), 'datastore_backends': AIRLINE_OPERATIONS_CONTROL_ALLOWED_DATABASE_BACKENDS, 'database_backends': AIRLINE_OPERATIONS_CONTROL_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': AIRLINE_OPERATIONS_CONTROL_OWNED_TABLES}
 
 def airline_operations_control_build_service_contract():
     return {'format': 'appgen.airline-operations-control-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_flight_leg','record_aircraft_rotation','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
