@@ -1,22 +1,474 @@
-CREATE TABLE defense_readiness_logistics_unit_readiness (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE defense_readiness_logistics_mission_asset (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE defense_readiness_logistics_supply_request (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE defense_readiness_logistics_maintenance_status (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE defense_readiness_logistics_deployment_plan (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE defense_readiness_logistics_readiness_inspection (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE defense_readiness_logistics_logistics_movement (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE defense_readiness_logistics_defense_readiness_logistics_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE defense_readiness_logistics_defense_readiness_logistics_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE defense_readiness_logistics_defense_readiness_logistics_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE defense_readiness_logistics_defense_readiness_logistics_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE defense_readiness_logistics_defense_readiness_logistics_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE defense_readiness_logistics_personnel_qualification (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE defense_readiness_logistics_ammunition_lot (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE defense_readiness_logistics_fuel_allocation (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE defense_readiness_logistics_movement_load_plan (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE defense_readiness_logistics_theater_support_request (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE defense_readiness_logistics_controlled_item_custody (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE defense_readiness_logistics_readiness_exception (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE defense_readiness_logistics_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE defense_readiness_logistics_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE defense_readiness_logistics_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS defense_readiness_logistics;
+
+CREATE TABLE defense_readiness_logistics_unit_readiness (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  unit_readiness_id VARCHAR(255) NOT NULL,
+  unit_code VARCHAR(255) NOT NULL,
+  formation_code VARCHAR(255) NOT NULL,
+  mission_set VARCHAR(255) NOT NULL,
+  readiness_state VARCHAR(255) NOT NULL,
+  validated_state VARCHAR(255) NOT NULL,
+  commander_approved BOOLEAN NOT NULL,
+  deployment_authorized BOOLEAN NOT NULL,
+  personnel_shortfall INTEGER NOT NULL,
+  asset_outage_count INTEGER NOT NULL,
+  maintenance_hold_count INTEGER NOT NULL,
+  ammo_deficit INTEGER NOT NULL,
+  fuel_deficit DECIMAL(18, 4) NOT NULL,
+  movement_delay_hours INTEGER NOT NULL,
+  reason_code VARCHAR(255) NOT NULL,
+  capability_rating VARCHAR(255) NOT NULL,
+  commander_id VARCHAR(255) NOT NULL,
+  assessed_at TIMESTAMP,
+  evidence_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE defense_readiness_logistics_mission_asset (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  mission_asset_id VARCHAR(255) NOT NULL,
+  asset_serial VARCHAR(255) NOT NULL,
+  asset_type VARCHAR(255) NOT NULL,
+  asset_class VARCHAR(255) NOT NULL,
+  location_code VARCHAR(255) NOT NULL,
+  availability_state VARCHAR(255) NOT NULL,
+  serviceable BOOLEAN NOT NULL,
+  availability_window_start TIMESTAMP,
+  availability_window_end TIMESTAMP,
+  maintenance_forecast_at TIMESTAMP,
+  planned_usage_hours INTEGER NOT NULL,
+  cannibalization_donor BOOLEAN NOT NULL,
+  cannibalization_obligation VARCHAR(255) NOT NULL,
+  custody_state VARCHAR(255) NOT NULL,
+  last_inspection_at TIMESTAMP,
+  evidence_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (unit_readiness_id) REFERENCES defense_readiness_logistics_unit_readiness(unit_readiness_id)
+);
+
+CREATE TABLE defense_readiness_logistics_supply_request (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  supply_request_id VARCHAR(255) NOT NULL,
+  supply_class VARCHAR(255) NOT NULL,
+  item_code VARCHAR(255) NOT NULL,
+  requested_quantity INTEGER NOT NULL,
+  on_hand_quantity INTEGER NOT NULL,
+  in_transit_quantity INTEGER NOT NULL,
+  substitute_policy VARCHAR(255) NOT NULL,
+  substitution_state VARCHAR(255) NOT NULL,
+  priority VARCHAR(255) NOT NULL,
+  required_by TIMESTAMP,
+  supply_readiness_score DECIMAL(18, 4) NOT NULL,
+  shortage_flag BOOLEAN NOT NULL,
+  theater_support_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  evidence_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (unit_readiness_id) REFERENCES defense_readiness_logistics_unit_readiness(unit_readiness_id)
+);
+
+CREATE TABLE defense_readiness_logistics_maintenance_status (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  maintenance_status_id VARCHAR(255) NOT NULL,
+  fault_code VARCHAR(255) NOT NULL,
+  fault_category VARCHAR(255) NOT NULL,
+  return_to_service_at TIMESTAMP,
+  projection_confidence DECIMAL(18, 4) NOT NULL,
+  parts_dependency VARCHAR(255) NOT NULL,
+  technician_required VARCHAR(255) NOT NULL,
+  depot_capacity_constraint VARCHAR(255) NOT NULL,
+  deferred_maintenance BOOLEAN NOT NULL,
+  deferral_expiry_at TIMESTAMP,
+  operating_envelope VARCHAR(255) NOT NULL,
+  commander_acknowledged BOOLEAN NOT NULL,
+  readiness_impact VARCHAR(255) NOT NULL,
+  cannibalization_risk VARCHAR(255) NOT NULL,
+  serviceability_handoff_state VARCHAR(255) NOT NULL,
+  released_by VARCHAR(255) NOT NULL,
+  accepted_by VARCHAR(255) NOT NULL,
+  evidence_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (mission_asset_id) REFERENCES defense_readiness_logistics_mission_asset(mission_asset_id)
+);
+
+CREATE TABLE defense_readiness_logistics_deployment_plan (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  deployment_plan_id VARCHAR(255) NOT NULL,
+  mission_set VARCHAR(255) NOT NULL,
+  deployment_priority VARCHAR(255) NOT NULL,
+  movement_mode VARCHAR(255) NOT NULL,
+  classification_marking VARCHAR(255) NOT NULL,
+  need_to_know_scope VARCHAR(255) NOT NULL,
+  kit_completeness_pct DECIMAL(18, 4) NOT NULL,
+  kit_critical_missing INTEGER NOT NULL,
+  fuel_required DECIMAL(18, 4) NOT NULL,
+  fuel_on_hand DECIMAL(18, 4) NOT NULL,
+  ammo_required INTEGER NOT NULL,
+  ammo_authorized INTEGER NOT NULL,
+  customs_document_state VARCHAR(255) NOT NULL,
+  host_nation_approval_state VARCHAR(255) NOT NULL,
+  planned_start_at TIMESTAMP,
+  planned_end_at TIMESTAMP,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  simulation_only BOOLEAN NOT NULL,
+  evidence_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (unit_readiness_id) REFERENCES defense_readiness_logistics_unit_readiness(unit_readiness_id)
+);
+
+CREATE TABLE defense_readiness_logistics_readiness_inspection (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  readiness_inspection_id VARCHAR(255) NOT NULL,
+  inspection_type VARCHAR(255) NOT NULL,
+  inspector_id VARCHAR(255) NOT NULL,
+  checklist_answers TEXT NOT NULL,
+  signature_hash VARCHAR(255) NOT NULL,
+  photo_references TEXT NOT NULL,
+  document_references TEXT NOT NULL,
+  serial_checked_assets INTEGER NOT NULL,
+  corrective_actions TEXT NOT NULL,
+  inspection_result VARCHAR(255) NOT NULL,
+  evidence_pack_complete BOOLEAN NOT NULL,
+  performed_at TIMESTAMP,
+  evidence_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (unit_readiness_id) REFERENCES defense_readiness_logistics_unit_readiness(unit_readiness_id)
+);
+
+CREATE TABLE defense_readiness_logistics_logistics_movement (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  logistics_movement_id VARCHAR(255) NOT NULL,
+  movement_mode VARCHAR(255) NOT NULL,
+  movement_state VARCHAR(255) NOT NULL,
+  route_code VARCHAR(255) NOT NULL,
+  route_change_reason VARCHAR(255) NOT NULL,
+  escort_required BOOLEAN NOT NULL,
+  staging_at TIMESTAMP,
+  release_approved_by VARCHAR(255) NOT NULL,
+  release_approved_at TIMESTAMP,
+  lift_confirmed BOOLEAN NOT NULL,
+  force_protected BOOLEAN NOT NULL,
+  diverted BOOLEAN NOT NULL,
+  delayed BOOLEAN NOT NULL,
+  delay_reason VARCHAR(255) NOT NULL,
+  dangerous_goods_declared BOOLEAN NOT NULL,
+  hazardous_packaging VARCHAR(255) NOT NULL,
+  customs_document_state VARCHAR(255) NOT NULL,
+  arrived_at TIMESTAMP,
+  evidence_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (deployment_plan_id) REFERENCES defense_readiness_logistics_deployment_plan(deployment_plan_id)
+);
+
+CREATE TABLE defense_readiness_logistics_personnel_qualification (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  personnel_qualification_id VARCHAR(255) NOT NULL,
+  role_code VARCHAR(255) NOT NULL,
+  qualification_code VARCHAR(255) NOT NULL,
+  certification_expires_at TIMESTAMP,
+  duty_status VARCHAR(255) NOT NULL,
+  cleared_role BOOLEAN NOT NULL,
+  qualified_count INTEGER NOT NULL,
+  required_count INTEGER NOT NULL,
+  minimum_crew_met BOOLEAN NOT NULL,
+  shortfall_reason VARCHAR(255) NOT NULL,
+  verified_by VARCHAR(255) NOT NULL,
+  verified_at TIMESTAMP,
+  evidence_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (unit_readiness_id) REFERENCES defense_readiness_logistics_unit_readiness(unit_readiness_id)
+);
+
+CREATE TABLE defense_readiness_logistics_ammunition_lot (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  ammunition_lot_id VARCHAR(255) NOT NULL,
+  lot_number VARCHAR(255) NOT NULL,
+  nsn_code VARCHAR(255) NOT NULL,
+  ammunition_class VARCHAR(255) NOT NULL,
+  authorized_load INTEGER NOT NULL,
+  combat_load INTEGER NOT NULL,
+  training_allocation INTEGER NOT NULL,
+  on_hand_quantity INTEGER NOT NULL,
+  storage_compatibility VARCHAR(255) NOT NULL,
+  lot_restriction VARCHAR(255) NOT NULL,
+  replenishment_pending BOOLEAN NOT NULL,
+  quarantine_state VARCHAR(255) NOT NULL,
+  mission_shortfall BOOLEAN NOT NULL,
+  expiration_at TIMESTAMP,
+  evidence_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (unit_readiness_id) REFERENCES defense_readiness_logistics_unit_readiness(unit_readiness_id)
+);
+
+CREATE TABLE defense_readiness_logistics_fuel_allocation (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  fuel_allocation_id VARCHAR(255) NOT NULL,
+  fuel_type VARCHAR(255) NOT NULL,
+  on_hand_quantity DECIMAL(18, 4) NOT NULL,
+  uplift_planned DECIMAL(18, 4) NOT NULL,
+  contingency_reserve DECIMAL(18, 4) NOT NULL,
+  consumption_forecast DECIMAL(18, 4) NOT NULL,
+  refuel_point_code VARCHAR(255) NOT NULL,
+  refuel_timing_at TIMESTAMP,
+  mission_length_hours INTEGER NOT NULL,
+  sufficiency_state VARCHAR(255) NOT NULL,
+  shortfall_quantity DECIMAL(18, 4) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  evidence_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (deployment_plan_id) REFERENCES defense_readiness_logistics_deployment_plan(deployment_plan_id)
+);
+
+CREATE TABLE defense_readiness_logistics_movement_load_plan (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  movement_load_plan_id VARCHAR(255) NOT NULL,
+  segment_code VARCHAR(255) NOT NULL,
+  total_weight DECIMAL(18, 4) NOT NULL,
+  total_cube DECIMAL(18, 4) NOT NULL,
+  dimensional_limit_ok BOOLEAN NOT NULL,
+  pallet_count INTEGER NOT NULL,
+  tie_down_required INTEGER NOT NULL,
+  tie_down_available INTEGER NOT NULL,
+  special_handling VARCHAR(255) NOT NULL,
+  validation_result VARCHAR(255) NOT NULL,
+  validation_detail TEXT NOT NULL,
+  substitute_configuration VARCHAR(255) NOT NULL,
+  validated_by VARCHAR(255) NOT NULL,
+  validated_at TIMESTAMP,
+  evidence_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (logistics_movement_id) REFERENCES defense_readiness_logistics_logistics_movement(logistics_movement_id)
+);
+
+CREATE TABLE defense_readiness_logistics_theater_support_request (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  theater_support_request_id VARCHAR(255) NOT NULL,
+  support_site_code VARCHAR(255) NOT NULL,
+  support_type VARCHAR(255) NOT NULL,
+  firm_commitment BOOLEAN NOT NULL,
+  pre_positioned_quantity DECIMAL(18, 4) NOT NULL,
+  in_transit_quantity DECIMAL(18, 4) NOT NULL,
+  host_site_support VARCHAR(255) NOT NULL,
+  assumption_note TEXT NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  commitment_state VARCHAR(255) NOT NULL,
+  evidence_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (deployment_plan_id) REFERENCES defense_readiness_logistics_deployment_plan(deployment_plan_id)
+);
+
+CREATE TABLE defense_readiness_logistics_controlled_item_custody (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  controlled_item_custody_id VARCHAR(255) NOT NULL,
+  item_serial VARCHAR(255) NOT NULL,
+  custody_type VARCHAR(255) NOT NULL,
+  custody_state VARCHAR(255) NOT NULL,
+  assigned_to VARCHAR(255) NOT NULL,
+  transferred_at TIMESTAMP,
+  acknowledged_at TIMESTAMP,
+  acknowledgement_required BOOLEAN NOT NULL,
+  mission_critical BOOLEAN NOT NULL,
+  release_blocker BOOLEAN NOT NULL,
+  evidence_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (mission_asset_id) REFERENCES defense_readiness_logistics_mission_asset(mission_asset_id)
+);
+
+CREATE TABLE defense_readiness_logistics_readiness_exception (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  readiness_exception_id VARCHAR(255) NOT NULL,
+  exception_category VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  owner_role VARCHAR(255) NOT NULL,
+  opened_at TIMESTAMP,
+  aging_hours INTEGER NOT NULL,
+  escalation_state VARCHAR(255) NOT NULL,
+  resolution_note TEXT NOT NULL,
+  resolved_at TIMESTAMP,
+  resolved_by VARCHAR(255) NOT NULL,
+  evidence_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (unit_readiness_id) REFERENCES defense_readiness_logistics_unit_readiness(unit_readiness_id)
+);
+
+CREATE TABLE defense_readiness_logistics_defense_readiness_logistics_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  approver_role VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  evidence_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE defense_readiness_logistics_defense_readiness_logistics_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  effective_from TIMESTAMP,
+  evidence_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE defense_readiness_logistics_defense_readiness_logistics_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP,
+  evidence_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE defense_readiness_logistics_defense_readiness_logistics_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  remediation_task TEXT NOT NULL,
+  evaluated_at TIMESTAMP,
+  evidence_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE defense_readiness_logistics_defense_readiness_logistics_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  evidence_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE defense_readiness_logistics_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE defense_readiness_logistics_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE defense_readiness_logistics_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

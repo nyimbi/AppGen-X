@@ -1,22 +1,452 @@
-CREATE TABLE donor_grant_fundraising_donor (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE donor_grant_fundraising_campaign (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE donor_grant_fundraising_pledge (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE donor_grant_fundraising_gift (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE donor_grant_fundraising_restriction (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE donor_grant_fundraising_grant_application (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE donor_grant_fundraising_stewardship_touchpoint (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE donor_grant_fundraising_donor_grant_fundraising_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE donor_grant_fundraising_donor_grant_fundraising_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE donor_grant_fundraising_donor_grant_fundraising_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE donor_grant_fundraising_donor_grant_fundraising_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE donor_grant_fundraising_donor_grant_fundraising_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE donor_grant_fundraising_donor_relationship (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE donor_grant_fundraising_proposal_workspace (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE donor_grant_fundraising_acknowledgement (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE donor_grant_fundraising_briefing_packet (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE donor_grant_fundraising_opportunity_score (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE donor_grant_fundraising_review_chain (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE donor_grant_fundraising_budget_validation (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE donor_grant_fundraising_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE donor_grant_fundraising_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE donor_grant_fundraising_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS donor_grant_fundraising;
+
+CREATE TABLE donor_grant_fundraising_donor (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  donor_id VARCHAR(255) NOT NULL,
+  donor_type VARCHAR(255) NOT NULL,
+  display_name VARCHAR(255) NOT NULL,
+  household_name VARCHAR(255),
+  organization_name VARCHAR(255),
+  relationship_stage VARCHAR(255) NOT NULL,
+  pipeline_stage VARCHAR(255) NOT NULL,
+  owner_assigned VARCHAR(255),
+  next_action_at TIMESTAMP,
+  qualification_evidence TEXT,
+  preferred_channel VARCHAR(255) NOT NULL,
+  funding_interests TEXT,
+  recognition_preference VARCHAR(255) NOT NULL,
+  anonymous_giving BOOLEAN NOT NULL,
+  communication_consent BOOLEAN NOT NULL,
+  compliance_requirements TEXT,
+  duplicate_confidence DECIMAL(18, 4),
+  merged_into_donor_id VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE donor_grant_fundraising_campaign (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  campaign_id VARCHAR(255) NOT NULL,
+  parent_campaign_id VARCHAR(255),
+  campaign_name VARCHAR(255) NOT NULL,
+  objective_category VARCHAR(255) NOT NULL,
+  goal_amount DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  target_segment VARCHAR(255) NOT NULL,
+  starts_at TIMESTAMP,
+  ends_at TIMESTAMP,
+  gift_counting_rule VARCHAR(255) NOT NULL,
+  linked_grant_theme VARCHAR(255),
+  received_amount DECIMAL(18, 4) NOT NULL,
+  pledged_amount DECIMAL(18, 4) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE donor_grant_fundraising_pledge (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  pledge_id VARCHAR(255) NOT NULL,
+  donor_id VARCHAR(255) NOT NULL,
+  campaign_id VARCHAR(255),
+  pledge_amount DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  installment_count INTEGER NOT NULL,
+  installment_schedule TEXT,
+  paid_amount DECIMAL(18, 4) NOT NULL,
+  outstanding_amount DECIMAL(18, 4) NOT NULL,
+  reminder_at TIMESTAMP,
+  lifecycle_state VARCHAR(255) NOT NULL,
+  amendment_reason TEXT,
+  duplicate_confidence DECIMAL(18, 4),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (donor_id) REFERENCES donor_grant_fundraising_donor(donor_id),
+  FOREIGN KEY (campaign_id) REFERENCES donor_grant_fundraising_campaign(campaign_id)
+);
+
+CREATE TABLE donor_grant_fundraising_gift (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  gift_id VARCHAR(255) NOT NULL,
+  donor_id VARCHAR(255) NOT NULL,
+  campaign_id VARCHAR(255),
+  pledge_id VARCHAR(255),
+  restriction_id VARCHAR(255),
+  appeal_source VARCHAR(255) NOT NULL,
+  gift_amount DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  soft_credit_donor_id VARCHAR(255),
+  receipt_status VARCHAR(255) NOT NULL,
+  posting_date TIMESTAMP,
+  remaining_pledge_balance DECIMAL(18, 4),
+  acknowledgement_status VARCHAR(255) NOT NULL,
+  acknowledgement_due_at TIMESTAMP,
+  duplicate_flag BOOLEAN NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (donor_id) REFERENCES donor_grant_fundraising_donor(donor_id),
+  FOREIGN KEY (campaign_id) REFERENCES donor_grant_fundraising_campaign(campaign_id),
+  FOREIGN KEY (pledge_id) REFERENCES donor_grant_fundraising_pledge(pledge_id),
+  FOREIGN KEY (restriction_id) REFERENCES donor_grant_fundraising_restriction(restriction_id)
+);
+
+CREATE TABLE donor_grant_fundraising_restriction (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  restriction_id VARCHAR(255) NOT NULL,
+  restriction_type VARCHAR(255) NOT NULL,
+  purpose_code VARCHAR(255) NOT NULL,
+  geography VARCHAR(255),
+  beneficiary_class VARCHAR(255),
+  time_window_start TIMESTAMP,
+  time_window_end TIMESTAMP,
+  required_approvals VARCHAR(255) NOT NULL,
+  release_conditions TEXT,
+  sunset_at TIMESTAMP,
+  released_at TIMESTAMP,
+  amendment_reason TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE donor_grant_fundraising_grant_application (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  grant_application_id VARCHAR(255) NOT NULL,
+  donor_id VARCHAR(255),
+  restriction_id VARCHAR(255),
+  funder_name VARCHAR(255) NOT NULL,
+  requested_amount DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  pipeline_stage VARCHAR(255) NOT NULL,
+  funder_fit_score DECIMAL(18, 4),
+  strategic_priority VARCHAR(255),
+  deadline_confidence DECIMAL(18, 4),
+  deadline_at TIMESTAMP,
+  proposal_readiness DECIMAL(18, 4),
+  narrative_status VARCHAR(255) NOT NULL,
+  budget_completeness VARCHAR(255) NOT NULL,
+  attachment_checklist TEXT,
+  submission_version VARCHAR(255),
+  awarded_amount DECIMAL(18, 4),
+  award_letter_reviewed BOOLEAN NOT NULL,
+  reporting_cadence VARCHAR(255),
+  post_award_readiness VARCHAR(255),
+  amendment_reason TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (donor_id) REFERENCES donor_grant_fundraising_donor(donor_id),
+  FOREIGN KEY (restriction_id) REFERENCES donor_grant_fundraising_restriction(restriction_id)
+);
+
+CREATE TABLE donor_grant_fundraising_stewardship_touchpoint (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  stewardship_touchpoint_id VARCHAR(255) NOT NULL,
+  donor_id VARCHAR(255) NOT NULL,
+  playbook_type VARCHAR(255) NOT NULL,
+  donor_segment VARCHAR(255) NOT NULL,
+  expected_cadence VARCHAR(255) NOT NULL,
+  touchpoint_outcome VARCHAR(255) NOT NULL,
+  next_ask_readiness VARCHAR(255) NOT NULL,
+  occurred_at TIMESTAMP,
+  next_touchpoint_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (donor_id) REFERENCES donor_grant_fundraising_donor(donor_id)
+);
+
+CREATE TABLE donor_grant_fundraising_donor_relationship (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  donor_relationship_id VARCHAR(255) NOT NULL,
+  donor_id VARCHAR(255) NOT NULL,
+  related_donor_id VARCHAR(255) NOT NULL,
+  relationship_type VARCHAR(255) NOT NULL,
+  advisor_role VARCHAR(255),
+  influence_level VARCHAR(255),
+  decision_maker BOOLEAN NOT NULL,
+  visibility_scope VARCHAR(255) NOT NULL,
+  valid_from TIMESTAMP,
+  valid_to TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (donor_id) REFERENCES donor_grant_fundraising_donor(donor_id),
+  FOREIGN KEY (related_donor_id) REFERENCES donor_grant_fundraising_donor(donor_id)
+);
+
+CREATE TABLE donor_grant_fundraising_proposal_workspace (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  proposal_workspace_id VARCHAR(255) NOT NULL,
+  grant_application_id VARCHAR(255) NOT NULL,
+  narrative_status VARCHAR(255) NOT NULL,
+  budget_completeness VARCHAR(255) NOT NULL,
+  attachment_checklist TEXT,
+  reviewer_comments TEXT,
+  submission_version VARCHAR(255),
+  sign_off_state VARCHAR(255) NOT NULL,
+  signed_off_by VARCHAR(255),
+  signed_off_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (grant_application_id) REFERENCES donor_grant_fundraising_grant_application(grant_application_id)
+);
+
+CREATE TABLE donor_grant_fundraising_acknowledgement (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  acknowledgement_id VARCHAR(255) NOT NULL,
+  gift_id VARCHAR(255) NOT NULL,
+  pledge_id VARCHAR(255),
+  donor_id VARCHAR(255) NOT NULL,
+  template_key VARCHAR(255) NOT NULL,
+  delivery_channel VARCHAR(255) NOT NULL,
+  tax_receipt_needed BOOLEAN NOT NULL,
+  due_at TIMESTAMP,
+  sent_at TIMESTAMP,
+  exception_reason TEXT,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (gift_id) REFERENCES donor_grant_fundraising_gift(gift_id),
+  FOREIGN KEY (pledge_id) REFERENCES donor_grant_fundraising_pledge(pledge_id),
+  FOREIGN KEY (donor_id) REFERENCES donor_grant_fundraising_donor(donor_id)
+);
+
+CREATE TABLE donor_grant_fundraising_briefing_packet (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  briefing_packet_id VARCHAR(255) NOT NULL,
+  packet_type VARCHAR(255) NOT NULL,
+  campaign_id VARCHAR(255),
+  donor_id VARCHAR(255),
+  grant_application_id VARCHAR(255),
+  period_start TIMESTAMP,
+  period_end TIMESTAMP,
+  restricted_fund_exposure DECIMAL(18, 4),
+  overdue_obligations INTEGER NOT NULL,
+  source_record_refs TEXT,
+  generated_at TIMESTAMP,
+  snapshot_hash VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (campaign_id) REFERENCES donor_grant_fundraising_campaign(campaign_id),
+  FOREIGN KEY (donor_id) REFERENCES donor_grant_fundraising_donor(donor_id),
+  FOREIGN KEY (grant_application_id) REFERENCES donor_grant_fundraising_grant_application(grant_application_id)
+);
+
+CREATE TABLE donor_grant_fundraising_opportunity_score (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  opportunity_score_id VARCHAR(255) NOT NULL,
+  donor_id VARCHAR(255),
+  grant_application_id VARCHAR(255),
+  campaign_id VARCHAR(255),
+  potential_value DECIMAL(18, 4) NOT NULL,
+  likelihood_score DECIMAL(18, 4) NOT NULL,
+  urgency_score DECIMAL(18, 4) NOT NULL,
+  delivery_risk_score DECIMAL(18, 4) NOT NULL,
+  composite_score DECIMAL(18, 4) NOT NULL,
+  ranking INTEGER NOT NULL,
+  explanation TEXT,
+  scored_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (donor_id) REFERENCES donor_grant_fundraising_donor(donor_id),
+  FOREIGN KEY (grant_application_id) REFERENCES donor_grant_fundraising_grant_application(grant_application_id),
+  FOREIGN KEY (campaign_id) REFERENCES donor_grant_fundraising_campaign(campaign_id)
+);
+
+CREATE TABLE donor_grant_fundraising_review_chain (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  review_chain_id VARCHAR(255) NOT NULL,
+  grant_application_id VARCHAR(255),
+  pledge_id VARCHAR(255),
+  review_stage VARCHAR(255) NOT NULL,
+  reviewer_role VARCHAR(255) NOT NULL,
+  reviewer_id VARCHAR(255),
+  due_at TIMESTAMP,
+  comments TEXT,
+  approval_evidence TEXT,
+  separation_of_duties BOOLEAN NOT NULL,
+  signed_off_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (grant_application_id) REFERENCES donor_grant_fundraising_grant_application(grant_application_id),
+  FOREIGN KEY (pledge_id) REFERENCES donor_grant_fundraising_pledge(pledge_id)
+);
+
+CREATE TABLE donor_grant_fundraising_budget_validation (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  budget_validation_id VARCHAR(255) NOT NULL,
+  grant_application_id VARCHAR(255) NOT NULL,
+  restriction_id VARCHAR(255) NOT NULL,
+  proposed_amount DECIMAL(18, 4) NOT NULL,
+  currency VARCHAR(255) NOT NULL,
+  purpose_code VARCHAR(255) NOT NULL,
+  cost_category VARCHAR(255),
+  window_start TIMESTAMP,
+  window_end TIMESTAMP,
+  validation_result VARCHAR(255) NOT NULL,
+  violated_condition TEXT,
+  evaluated_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (grant_application_id) REFERENCES donor_grant_fundraising_grant_application(grant_application_id),
+  FOREIGN KEY (restriction_id) REFERENCES donor_grant_fundraising_restriction(restriction_id)
+);
+
+CREATE TABLE donor_grant_fundraising_donor_grant_fundraising_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  policy_rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  approver_role VARCHAR(255) NOT NULL,
+  approval_threshold DECIMAL(18, 4),
+  reviewer_independence BOOLEAN NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE donor_grant_fundraising_donor_grant_fundraising_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  runtime_parameter_id VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  effective_from TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE donor_grant_fundraising_donor_grant_fundraising_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  schema_extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  compatibility_checked BOOLEAN NOT NULL,
+  migration_preview TEXT,
+  registered_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE donor_grant_fundraising_donor_grant_fundraising_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  control_assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  remediation_task TEXT,
+  evaluated_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE donor_grant_fundraising_donor_grant_fundraising_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  governed_model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255),
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE donor_grant_fundraising_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE donor_grant_fundraising_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE donor_grant_fundraising_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

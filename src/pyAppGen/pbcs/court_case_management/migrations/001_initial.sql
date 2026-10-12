@@ -1,15 +1,309 @@
-CREATE TABLE court_case_management_court_case (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE court_case_management_filing (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE court_case_management_hearing (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE court_case_management_docket_entry (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE court_case_management_party (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE court_case_management_judgment (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE court_case_management_court_order (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE court_case_management_court_case_management_policy_rule (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE court_case_management_court_case_management_runtime_parameter (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE court_case_management_court_case_management_schema_extension (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE court_case_management_court_case_management_control_assertion (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE court_case_management_court_case_management_governed_model (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE court_case_management_appgen_outbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE court_case_management_appgen_inbox_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
-CREATE TABLE court_case_management_appgen_dead_letter_event (id TEXT PRIMARY KEY, tenant TEXT NOT NULL, code TEXT, status TEXT, version INTEGER, payload JSON, created_at TEXT, updated_at TEXT);
+CREATE SCHEMA IF NOT EXISTS court_case_management;
+
+CREATE TABLE court_case_management_court_case (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  court_case_id VARCHAR(255) NOT NULL,
+  case_number VARCHAR(255) NOT NULL,
+  caption VARCHAR(255) NOT NULL,
+  court_id VARCHAR(255) NOT NULL,
+  division VARCHAR(255) NOT NULL,
+  filing_year INTEGER NOT NULL,
+  sequence_number INTEGER NOT NULL,
+  case_type VARCHAR(255) NOT NULL,
+  original_venue VARCHAR(255) NOT NULL,
+  current_venue VARCHAR(255) NOT NULL,
+  transfer_reason VARCHAR(255),
+  transferred_at TIMESTAMP,
+  assigned_judge_id VARCHAR(255),
+  reassignment_reason VARCHAR(255),
+  recusal_flag BOOLEAN NOT NULL,
+  filing_date TIMESTAMP NOT NULL,
+  disposition_date TIMESTAMP,
+  related_case_number VARCHAR(255),
+  relation_type VARCHAR(255),
+  consolidation_reference VARCHAR(255),
+  retention_schedule VARCHAR(255) NOT NULL,
+  destruction_hold BOOLEAN NOT NULL,
+  archived_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE court_case_management_filing (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  filing_id VARCHAR(255) NOT NULL,
+  court_case_id VARCHAR(255) NOT NULL,
+  filing_type VARCHAR(255) NOT NULL,
+  filed_at TIMESTAMP NOT NULL,
+  intake_state VARCHAR(255) NOT NULL,
+  deficiency_code VARCHAR(255),
+  cure_deadline TIMESTAMP,
+  document_hash VARCHAR(255),
+  idempotency_key VARCHAR(255),
+  parent_filing_id VARCHAR(255),
+  amendment_type VARCHAR(255),
+  supersedes BOOLEAN NOT NULL,
+  stricken BOOLEAN NOT NULL,
+  access_class VARCHAR(255) NOT NULL,
+  redacted BOOLEAN NOT NULL,
+  submitted_by VARCHAR(255) NOT NULL,
+  submission_channel VARCHAR(255) NOT NULL,
+  accepted_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (court_case_id) REFERENCES court_case_management_court_case(court_case_id)
+);
+
+CREATE TABLE court_case_management_hearing (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  hearing_id VARCHAR(255) NOT NULL,
+  court_case_id VARCHAR(255) NOT NULL,
+  hearing_type VARCHAR(255) NOT NULL,
+  courtroom VARCHAR(255) NOT NULL,
+  session_block VARCHAR(255) NOT NULL,
+  assigned_judge_id VARCHAR(255),
+  scheduled_start TIMESTAMP NOT NULL,
+  scheduled_end TIMESTAMP,
+  calendar_status VARCHAR(255) NOT NULL,
+  readiness_state VARCHAR(255) NOT NULL,
+  interpreter_required BOOLEAN NOT NULL,
+  interpreter_language VARCHAR(255),
+  remote_mode VARCHAR(255),
+  continuance_requested BOOLEAN NOT NULL,
+  continuance_reason VARCHAR(255),
+  previous_scheduled_start TIMESTAMP,
+  minutes_completed BOOLEAN NOT NULL,
+  transcript_ordered BOOLEAN NOT NULL,
+  transcript_due_at TIMESTAMP,
+  transcript_filed_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (court_case_id) REFERENCES court_case_management_court_case(court_case_id)
+);
+
+CREATE TABLE court_case_management_docket_entry (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  docket_entry_id VARCHAR(255) NOT NULL,
+  court_case_id VARCHAR(255) NOT NULL,
+  sequence_number INTEGER NOT NULL,
+  entered_at TIMESTAMP NOT NULL,
+  entry_source VARCHAR(255) NOT NULL,
+  entry_text TEXT,
+  source_filing_id VARCHAR(255),
+  source_order_id VARCHAR(255),
+  chronology_gap_flag BOOLEAN NOT NULL,
+  backfill_correction BOOLEAN NOT NULL,
+  correction_of_sequence INTEGER,
+  public_visibility VARCHAR(255) NOT NULL,
+  internal_note TEXT,
+  sealed_reference VARCHAR(255),
+  minutes_recorded BOOLEAN NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (court_case_id) REFERENCES court_case_management_court_case(court_case_id)
+);
+
+CREATE TABLE court_case_management_party (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  party_id VARCHAR(255) NOT NULL,
+  court_case_id VARCHAR(255) NOT NULL,
+  party_name VARCHAR(255) NOT NULL,
+  party_role VARCHAR(255) NOT NULL,
+  representation_status VARCHAR(255) NOT NULL,
+  lead_counsel VARCHAR(255),
+  self_represented BOOLEAN NOT NULL,
+  appearance_date TIMESTAMP,
+  withdrawal_date TIMESTAMP,
+  service_address VARCHAR(255),
+  service_status VARCHAR(255) NOT NULL,
+  alias_names VARCHAR(255),
+  alias_confidence DECIMAL(18, 4),
+  service_attempted_at TIMESTAMP,
+  service_completed_at TIMESTAMP,
+  proof_of_service_document VARCHAR(255),
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (court_case_id) REFERENCES court_case_management_court_case(court_case_id)
+);
+
+CREATE TABLE court_case_management_judgment (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  judgment_id VARCHAR(255) NOT NULL,
+  court_case_id VARCHAR(255) NOT NULL,
+  disposition_category VARCHAR(255) NOT NULL,
+  relief_terms TEXT,
+  effective_date TIMESTAMP,
+  monetary_amount DECIMAL(18, 4),
+  currency VARCHAR(255),
+  non_monetary_terms TEXT,
+  costs_amount DECIMAL(18, 4),
+  compliance_due_at TIMESTAMP,
+  appealable BOOLEAN NOT NULL,
+  notice_of_appeal_at TIMESTAMP,
+  stay_status VARCHAR(255) NOT NULL,
+  mandate_date TIMESTAMP,
+  satisfaction_filed_at TIMESTAMP,
+  obligation_state VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (court_case_id) REFERENCES court_case_management_court_case(court_case_id)
+);
+
+CREATE TABLE court_case_management_court_order (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  court_order_id VARCHAR(255) NOT NULL,
+  court_case_id VARCHAR(255) NOT NULL,
+  order_type VARCHAR(255) NOT NULL,
+  order_state VARCHAR(255) NOT NULL,
+  signed_by VARCHAR(255),
+  signed_at TIMESTAMP,
+  entered_at TIMESTAMP,
+  effective_date TIMESTAMP,
+  corrected_from_order_id VARCHAR(255),
+  vacated_reason VARCHAR(255),
+  service_linkage VARCHAR(255),
+  compliance_due_at TIMESTAMP,
+  access_class VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (court_case_id) REFERENCES court_case_management_court_case(court_case_id)
+);
+
+CREATE TABLE court_case_management_court_case_management_policy_rule (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  rule_id VARCHAR(255) NOT NULL,
+  rule_name VARCHAR(255) NOT NULL,
+  predicate_text TEXT NOT NULL,
+  rule_scope VARCHAR(255) NOT NULL,
+  ambiguity_flag BOOLEAN NOT NULL,
+  approver_role VARCHAR(255) NOT NULL,
+  effective_from TIMESTAMP,
+  effective_to TIMESTAMP,
+  compiled_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE court_case_management_court_case_management_runtime_parameter (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  parameter_name VARCHAR(255) NOT NULL,
+  parameter_value VARCHAR(255) NOT NULL,
+  parameter_scope VARCHAR(255) NOT NULL,
+  bounded BOOLEAN NOT NULL,
+  effective_from TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE court_case_management_court_case_management_schema_extension (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  extension_id VARCHAR(255) NOT NULL,
+  target_table VARCHAR(255) NOT NULL,
+  field_name VARCHAR(255) NOT NULL,
+  field_type VARCHAR(255) NOT NULL,
+  registered_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE court_case_management_court_case_management_control_assertion (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  assertion_id VARCHAR(255) NOT NULL,
+  control_name VARCHAR(255) NOT NULL,
+  assertion_result VARCHAR(255) NOT NULL,
+  severity VARCHAR(255) NOT NULL,
+  remediation_task VARCHAR(255) NOT NULL,
+  evaluated_at TIMESTAMP NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE court_case_management_court_case_management_governed_model (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  model_id VARCHAR(255) NOT NULL,
+  model_name VARCHAR(255) NOT NULL,
+  model_version VARCHAR(255) NOT NULL,
+  governance_state VARCHAR(255) NOT NULL,
+  approved_by VARCHAR(255) NOT NULL,
+  approved_at TIMESTAMP,
+  status VARCHAR(255) NOT NULL,
+  version INTEGER NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE court_case_management_appgen_outbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE court_case_management_appgen_inbox_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  idempotency_key VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);
+
+CREATE TABLE court_case_management_appgen_dead_letter_event (
+  id INTEGER PRIMARY KEY NOT NULL,
+  tenant VARCHAR(255) NOT NULL,
+  event_id VARCHAR(255) NOT NULL,
+  event_type VARCHAR(255) NOT NULL,
+  topic VARCHAR(255) NOT NULL,
+  payload TEXT NOT NULL,
+  reason VARCHAR(255) NOT NULL,
+  attempts INTEGER NOT NULL,
+  status VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL
+);

@@ -73,6 +73,32 @@ EDUCATION_STUDENT_LIFECYCLE_BUSINESS_TABLES = ('education_student_lifecycle_stud
  'education_student_lifecycle_education_student_lifecycle_schema_extension',
  'education_student_lifecycle_education_student_lifecycle_control_assertion',
  'education_student_lifecycle_education_student_lifecycle_governed_model')
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+EDUCATION_STUDENT_LIFECYCLE_TABLE_FIELDS = {
+    'education_student_lifecycle_student_applicant': ('id', 'tenant', 'student_applicant_id', 'applicant_number', 'application_round', 'program_choice', 'intake_term', 'applicant_type', 'residency_status', 'prior_credential', 'required_documents', 'document_review_status', 'decision_status', 'offer_conditions', 'acceptance_deadline', 'withdrawal_reason', 'status', 'version', 'created_at', 'updated_at'),
+    'education_student_lifecycle_enrollment': ('id', 'tenant', 'enrollment_id', 'student_applicant_id', 'program_code', 'campus_code', 'modality', 'credit_load', 'cohort_code', 'catalog_year', 'status_reason', 'effective_date', 'readmission_link', 'status', 'version', 'created_at', 'updated_at'),
+    'education_student_lifecycle_curriculum_plan': ('id', 'tenant', 'curriculum_plan_id', 'student_applicant_id', 'program_code', 'concentration', 'catalog_year', 'plan_version', 'requirement_groups', 'elective_rule', 'prerequisites', 'substitution_rule', 'waiver_rule', 'approval_state', 'effective_from', 'effective_to', 'status', 'version', 'created_at', 'updated_at'),
+    'education_student_lifecycle_advising_case': ('id', 'tenant', 'advising_case_id', 'student_applicant_id', 'case_type', 'urgency', 'case_owner', 'student_goal', 'barrier', 'action_plan', 'risk_score', 'next_contact_at', 'closure_evidence', 'status', 'version', 'created_at', 'updated_at'),
+    'education_student_lifecycle_course_attempt': ('id', 'tenant', 'course_attempt_id', 'enrollment_id', 'section_code', 'grade_mode', 'attempt_number', 'repeat_rule', 'grade_points', 'attempted_credits', 'earned_credits', 'transcript_visible', 'withdrawal_date', 'status', 'version', 'created_at', 'updated_at'),
+    'education_student_lifecycle_assessment_result': ('id', 'tenant', 'assessment_result_id', 'course_attempt_id', 'assessment_type', 'rubric_code', 'scorer', 'score', 'competency_code', 'moderation_status', 'appeal_state', 'finalized', 'finalized_at', 'status', 'version', 'created_at', 'updated_at'),
+    'education_student_lifecycle_credential': ('id', 'tenant', 'credential_id', 'student_applicant_id', 'credential_type', 'audit_status', 'approver', 'conferral_date', 'honors', 'certificate_number', 'correction_reason', 'revocation_reason', 'status', 'version', 'created_at', 'updated_at'),
+    'education_student_lifecycle_education_student_lifecycle_policy_rule': ('id', 'tenant', 'rule_id', 'rule_name', 'predicate_text', 'ambiguity_flag', 'approver_role', 'effective_from', 'effective_to', 'compiled_hash', 'status', 'version', 'created_at', 'updated_at'),
+    'education_student_lifecycle_education_student_lifecycle_runtime_parameter': ('id', 'tenant', 'parameter_name', 'parameter_value', 'scope', 'bounded', 'effective_from', 'status', 'version', 'created_at', 'updated_at'),
+    'education_student_lifecycle_education_student_lifecycle_schema_extension': ('id', 'tenant', 'extension_id', 'target_table', 'field_name', 'field_type', 'registered_at', 'status', 'version', 'created_at', 'updated_at'),
+    'education_student_lifecycle_education_student_lifecycle_control_assertion': ('id', 'tenant', 'assertion_id', 'control_name', 'assertion_result', 'severity', 'remediation_task', 'evaluated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'education_student_lifecycle_education_student_lifecycle_governed_model': ('id', 'tenant', 'model_id', 'model_name', 'model_version', 'governance_state', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'education_student_lifecycle_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'education_student_lifecycle_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'education_student_lifecycle_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_EDUCATION_STUDENT_LIFECYCLE_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _education_student_lifecycle_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return EDUCATION_STUDENT_LIFECYCLE_TABLE_FIELDS.get(table, _EDUCATION_STUDENT_LIFECYCLE_DEFAULT_FIELDS)
 
 def education_student_lifecycle_empty_state():
     return {'records': {}, 'parameters': {}, 'rules': {}, 'schema_extensions': {}, 'configuration': {}, 'inbox': [], 'outbox': [], 'dead_letter': [], 'idempotency_keys': set()}
@@ -131,24 +157,11 @@ def education_student_lifecycle_parse_document_instruction(document, instruction
     return {'ok': True, 'candidate_tables': EDUCATION_STUDENT_LIFECYCLE_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
 def education_student_lifecycle_build_schema_contract():
-    table_contracts = (
-        {'table': 'education_student_lifecycle_student_applicant', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'education_student_lifecycle_enrollment', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'education_student_lifecycle_curriculum_plan', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'education_student_lifecycle_advising_case', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'education_student_lifecycle_course_attempt', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'education_student_lifecycle_assessment_result', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'education_student_lifecycle_credential', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'education_student_lifecycle_education_student_lifecycle_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'education_student_lifecycle_education_student_lifecycle_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'education_student_lifecycle_education_student_lifecycle_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'education_student_lifecycle_education_student_lifecycle_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'education_student_lifecycle_education_student_lifecycle_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'education_student_lifecycle_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'education_student_lifecycle_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'education_student_lifecycle_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table, 'fields': _education_student_lifecycle_table_fields(table), 'primary_key': ('id',), 'owned_by': PBC_KEY}
+        for table in EDUCATION_STUDENT_LIFECYCLE_OWNED_TABLES
     )
-    return {'format': 'appgen.education-student-lifecycle-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/education_student_lifecycle/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': EDUCATION_STUDENT_LIFECYCLE_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': EDUCATION_STUDENT_LIFECYCLE_ALLOWED_DATABASE_BACKENDS, 'database_backends': EDUCATION_STUDENT_LIFECYCLE_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': EDUCATION_STUDENT_LIFECYCLE_OWNED_TABLES}
+    return {'format': 'appgen.education-student-lifecycle-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/education_student_lifecycle/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': EDUCATION_STUDENT_LIFECYCLE_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(EDUCATION_STUDENT_LIFECYCLE_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _education_student_lifecycle_table_fields(table)} for table in EDUCATION_STUDENT_LIFECYCLE_OWNED_TABLES), 'datastore_backends': EDUCATION_STUDENT_LIFECYCLE_ALLOWED_DATABASE_BACKENDS, 'database_backends': EDUCATION_STUDENT_LIFECYCLE_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': EDUCATION_STUDENT_LIFECYCLE_OWNED_TABLES}
 
 def education_student_lifecycle_build_service_contract():
     return {'format': 'appgen.education-student-lifecycle-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_student_applicant','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}

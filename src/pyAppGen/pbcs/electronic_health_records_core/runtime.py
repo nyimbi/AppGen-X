@@ -130,25 +130,40 @@ def electronic_health_records_core_run_advanced_assessment(state, payload=None):
 def electronic_health_records_core_parse_document_instruction(document, instruction):
     return {'ok': True, 'candidate_tables': ELECTRONIC_HEALTH_RECORDS_CORE_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+ELECTRONIC_HEALTH_RECORDS_CORE_TABLE_FIELDS = {
+    'electronic_health_records_core_patient_chart': ('id', 'tenant', 'patient_chart_id', 'patient_reference', 'chart_name', 'identity_confidence', 'duplicate_candidate_flag', 'provisional_state', 'merge_recommendation', 'merge_rejection_reason', 'source_system_lineage', 'problem_summary', 'risk_flags', 'chart_completeness_score', 'retention_category', 'legal_hold_flag', 'amendment_chain', 'status', 'version', 'created_at', 'updated_at'),
+    'electronic_health_records_core_clinical_encounter': ('id', 'tenant', 'clinical_encounter_id', 'patient_chart_id', 'encounter_class', 'care_setting', 'visit_modality', 'attending_role', 'service_line', 'arrival_at', 'discharge_at', 'external_source', 'documentation_checklist', 'encounter_note', 'status', 'version', 'created_at', 'updated_at'),
+    'electronic_health_records_core_clinical_order': ('id', 'tenant', 'clinical_order_id', 'clinical_encounter_id', 'order_type', 'priority', 'ordering_clinician', 'indication', 'specimen_detail', 'scheduling_dependency', 'result_expectation', 'order_set_template', 'order_set_version', 'cancellation_reason', 'discontinuation_authority', 'status', 'version', 'created_at', 'updated_at'),
+    'electronic_health_records_core_observation': ('id', 'tenant', 'observation_id', 'patient_chart_id', 'clinical_encounter_id', 'observation_code', 'observation_value', 'unit', 'method', 'specimen_type', 'collection_at', 'result_at', 'reference_range', 'abnormal_flag', 'critical_flag', 'performer', 'corrected_result_lineage', 'acknowledgement_owner', 'acknowledgement_deadline', 'status', 'version', 'created_at', 'updated_at'),
+    'electronic_health_records_core_allergy': ('id', 'tenant', 'allergy_id', 'patient_chart_id', 'substance_class', 'specific_substance', 'reaction', 'severity', 'onset_at', 'verification_status', 'source', 'inactive_reason', 'override_guidance', 'status', 'version', 'created_at', 'updated_at'),
+    'electronic_health_records_core_medication_list': ('id', 'tenant', 'medication_list_id', 'patient_chart_id', 'medication_name', 'source_list', 'patient_reported', 'reconciliation_action', 'discrepancy_reason', 'reviewer', 'unresolved_discrepancy', 'dose_amount', 'dose_unit', 'route', 'started_at', 'stopped_at', 'status', 'version', 'created_at', 'updated_at'),
+    'electronic_health_records_core_care_note': ('id', 'tenant', 'care_note_id', 'patient_chart_id', 'clinical_encounter_id', 'note_author', 'contributor', 'supervising_signer', 'attestation_status', 'co_signature_required', 'addendum_chain', 'correction_reason', 'late_entry_flag', 'note_text', 'source_evidence', 'status', 'version', 'created_at', 'updated_at'),
+    'electronic_health_records_core_electronic_health_records_core_policy_rule': ('id', 'tenant', 'rule_id', 'rule_name', 'predicate_text', 'ambiguity_flag', 'approver_role', 'effective_from', 'effective_to', 'compiled_hash', 'status', 'version', 'created_at', 'updated_at'),
+    'electronic_health_records_core_electronic_health_records_core_runtime_parameter': ('id', 'tenant', 'parameter_name', 'parameter_value', 'scope', 'bounded', 'effective_from', 'status', 'version', 'created_at', 'updated_at'),
+    'electronic_health_records_core_electronic_health_records_core_schema_extension': ('id', 'tenant', 'extension_id', 'target_table', 'field_name', 'field_type', 'validation_rule', 'ui_placement', 'migration_evidence', 'registered_at', 'status', 'version', 'created_at', 'updated_at'),
+    'electronic_health_records_core_electronic_health_records_core_control_assertion': ('id', 'tenant', 'assertion_id', 'control_name', 'assertion_result', 'severity', 'remediation_task', 'evaluated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'electronic_health_records_core_electronic_health_records_core_governed_model': ('id', 'tenant', 'model_id', 'model_name', 'model_version', 'intended_use', 'evaluation_cohort', 'confidence_threshold', 'governance_state', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'electronic_health_records_core_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'electronic_health_records_core_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'electronic_health_records_core_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_ELECTRONIC_HEALTH_RECORDS_CORE_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _electronic_health_records_core_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return ELECTRONIC_HEALTH_RECORDS_CORE_TABLE_FIELDS.get(table, _ELECTRONIC_HEALTH_RECORDS_CORE_DEFAULT_FIELDS)
+
+
 def electronic_health_records_core_build_schema_contract():
-    table_contracts = (
-        {'table': 'electronic_health_records_core_patient_chart', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'electronic_health_records_core_clinical_encounter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'electronic_health_records_core_clinical_order', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'electronic_health_records_core_observation', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'electronic_health_records_core_allergy', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'electronic_health_records_core_medication_list', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'electronic_health_records_core_care_note', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'electronic_health_records_core_electronic_health_records_core_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'electronic_health_records_core_electronic_health_records_core_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'electronic_health_records_core_electronic_health_records_core_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'electronic_health_records_core_electronic_health_records_core_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'electronic_health_records_core_electronic_health_records_core_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'electronic_health_records_core_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'electronic_health_records_core_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'electronic_health_records_core_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table, 'fields': _electronic_health_records_core_table_fields(table), 'primary_key': ('id',), 'owned_by': PBC_KEY}
+        for table in ELECTRONIC_HEALTH_RECORDS_CORE_OWNED_TABLES
     )
-    return {'format': 'appgen.electronic-health-records-core-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/electronic_health_records_core/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': ELECTRONIC_HEALTH_RECORDS_CORE_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': ELECTRONIC_HEALTH_RECORDS_CORE_ALLOWED_DATABASE_BACKENDS, 'database_backends': ELECTRONIC_HEALTH_RECORDS_CORE_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': ELECTRONIC_HEALTH_RECORDS_CORE_OWNED_TABLES}
+    return {'format': 'appgen.electronic-health-records-core-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/electronic_health_records_core/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': ELECTRONIC_HEALTH_RECORDS_CORE_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(ELECTRONIC_HEALTH_RECORDS_CORE_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _electronic_health_records_core_table_fields(table)} for table in ELECTRONIC_HEALTH_RECORDS_CORE_OWNED_TABLES), 'datastore_backends': ELECTRONIC_HEALTH_RECORDS_CORE_ALLOWED_DATABASE_BACKENDS, 'database_backends': ELECTRONIC_HEALTH_RECORDS_CORE_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': ELECTRONIC_HEALTH_RECORDS_CORE_OWNED_TABLES}
 
 def electronic_health_records_core_build_service_contract():
     return {'format': 'appgen.electronic-health-records-core-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_patient_chart','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}

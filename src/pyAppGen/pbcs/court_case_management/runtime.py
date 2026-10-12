@@ -133,25 +133,40 @@ def court_case_management_run_advanced_assessment(state, payload=None):
 def court_case_management_parse_document_instruction(document, instruction):
     return {'ok': True, 'candidate_tables': COURT_CASE_MANAGEMENT_BUSINESS_TABLES[:3], 'instruction': instruction, 'document_digest': _digest(document), 'requires_human_confirmation': True, 'side_effects': ()}
 
+# Every owned table's columns, in DDL order. The migration carries the types and
+# is the authoritative source the descriptor reads first; this map keeps the
+# schema contract, the model evidence, and the DDL naming the same columns.
+COURT_CASE_MANAGEMENT_TABLE_FIELDS = {
+    'court_case_management_court_case': ('id', 'tenant', 'court_case_id', 'case_number', 'caption', 'court_id', 'division', 'filing_year', 'sequence_number', 'case_type', 'original_venue', 'current_venue', 'transfer_reason', 'transferred_at', 'assigned_judge_id', 'reassignment_reason', 'recusal_flag', 'filing_date', 'disposition_date', 'related_case_number', 'relation_type', 'consolidation_reference', 'retention_schedule', 'destruction_hold', 'archived_at', 'status', 'version', 'created_at', 'updated_at'),
+    'court_case_management_filing': ('id', 'tenant', 'filing_id', 'court_case_id', 'filing_type', 'filed_at', 'intake_state', 'deficiency_code', 'cure_deadline', 'document_hash', 'idempotency_key', 'parent_filing_id', 'amendment_type', 'supersedes', 'stricken', 'access_class', 'redacted', 'submitted_by', 'submission_channel', 'accepted_at', 'status', 'version', 'created_at', 'updated_at'),
+    'court_case_management_hearing': ('id', 'tenant', 'hearing_id', 'court_case_id', 'hearing_type', 'courtroom', 'session_block', 'assigned_judge_id', 'scheduled_start', 'scheduled_end', 'calendar_status', 'readiness_state', 'interpreter_required', 'interpreter_language', 'remote_mode', 'continuance_requested', 'continuance_reason', 'previous_scheduled_start', 'minutes_completed', 'transcript_ordered', 'transcript_due_at', 'transcript_filed_at', 'status', 'version', 'created_at', 'updated_at'),
+    'court_case_management_docket_entry': ('id', 'tenant', 'docket_entry_id', 'court_case_id', 'sequence_number', 'entered_at', 'entry_source', 'entry_text', 'source_filing_id', 'source_order_id', 'chronology_gap_flag', 'backfill_correction', 'correction_of_sequence', 'public_visibility', 'internal_note', 'sealed_reference', 'minutes_recorded', 'status', 'version', 'created_at', 'updated_at'),
+    'court_case_management_party': ('id', 'tenant', 'party_id', 'court_case_id', 'party_name', 'party_role', 'representation_status', 'lead_counsel', 'self_represented', 'appearance_date', 'withdrawal_date', 'service_address', 'service_status', 'alias_names', 'alias_confidence', 'service_attempted_at', 'service_completed_at', 'proof_of_service_document', 'status', 'version', 'created_at', 'updated_at'),
+    'court_case_management_judgment': ('id', 'tenant', 'judgment_id', 'court_case_id', 'disposition_category', 'relief_terms', 'effective_date', 'monetary_amount', 'currency', 'non_monetary_terms', 'costs_amount', 'compliance_due_at', 'appealable', 'notice_of_appeal_at', 'stay_status', 'mandate_date', 'satisfaction_filed_at', 'obligation_state', 'status', 'version', 'created_at', 'updated_at'),
+    'court_case_management_court_order': ('id', 'tenant', 'court_order_id', 'court_case_id', 'order_type', 'order_state', 'signed_by', 'signed_at', 'entered_at', 'effective_date', 'corrected_from_order_id', 'vacated_reason', 'service_linkage', 'compliance_due_at', 'access_class', 'status', 'version', 'created_at', 'updated_at'),
+    'court_case_management_court_case_management_policy_rule': ('id', 'tenant', 'rule_id', 'rule_name', 'predicate_text', 'rule_scope', 'ambiguity_flag', 'approver_role', 'effective_from', 'effective_to', 'compiled_hash', 'status', 'version', 'created_at', 'updated_at'),
+    'court_case_management_court_case_management_runtime_parameter': ('id', 'tenant', 'parameter_name', 'parameter_value', 'parameter_scope', 'bounded', 'effective_from', 'status', 'version', 'created_at', 'updated_at'),
+    'court_case_management_court_case_management_schema_extension': ('id', 'tenant', 'extension_id', 'target_table', 'field_name', 'field_type', 'registered_at', 'status', 'version', 'created_at', 'updated_at'),
+    'court_case_management_court_case_management_control_assertion': ('id', 'tenant', 'assertion_id', 'control_name', 'assertion_result', 'severity', 'remediation_task', 'evaluated_at', 'status', 'version', 'created_at', 'updated_at'),
+    'court_case_management_court_case_management_governed_model': ('id', 'tenant', 'model_id', 'model_name', 'model_version', 'governance_state', 'approved_by', 'approved_at', 'status', 'version', 'created_at', 'updated_at'),
+    'court_case_management_appgen_outbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'court_case_management_appgen_inbox_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'idempotency_key', 'attempts', 'status', 'created_at', 'updated_at'),
+    'court_case_management_appgen_dead_letter_event': ('id', 'tenant', 'event_id', 'event_type', 'topic', 'payload', 'reason', 'attempts', 'status', 'created_at', 'updated_at'),
+}
+_COURT_CASE_MANAGEMENT_DEFAULT_FIELDS = ('id', 'tenant', 'code', 'status', 'version', 'payload', 'created_at', 'updated_at')
+
+
+def _court_case_management_table_fields(table: str) -> tuple:
+    """Return a table's columns, falling back to the generic envelope."""
+    return COURT_CASE_MANAGEMENT_TABLE_FIELDS.get(table, _COURT_CASE_MANAGEMENT_DEFAULT_FIELDS)
+
+
 def court_case_management_build_schema_contract():
-    table_contracts = (
-        {'table': 'court_case_management_court_case', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'court_case_management_filing', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'court_case_management_hearing', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'court_case_management_docket_entry', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'court_case_management_party', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'court_case_management_judgment', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'court_case_management_court_order', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'court_case_management_court_case_management_policy_rule', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'court_case_management_court_case_management_runtime_parameter', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'court_case_management_court_case_management_schema_extension', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'court_case_management_court_case_management_control_assertion', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'court_case_management_court_case_management_governed_model', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'court_case_management_appgen_outbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'court_case_management_appgen_inbox_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
-        {'table': 'court_case_management_appgen_dead_letter_event', 'fields': ('id','tenant','code','status','version','payload','created_at','updated_at'), 'primary_key': ('id',), 'owned_by': PBC_KEY},
+    table_contracts = tuple(
+        {'table': table, 'fields': _court_case_management_table_fields(table), 'primary_key': ('id',), 'owned_by': PBC_KEY}
+        for table in COURT_CASE_MANAGEMENT_OWNED_TABLES
     )
-    return {'format': 'appgen.court-case-management-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/court_case_management/migrations/{i+1:03d}_{table["table"]}.sql', 'operation': 'create_owned_table', 'table': table['table'], 'backend_allowlist': COURT_CASE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(table_contracts)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table['table'].split('_')), 'table': table['table'], 'fields': table['fields']} for table in table_contracts), 'datastore_backends': COURT_CASE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'database_backends': COURT_CASE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': COURT_CASE_MANAGEMENT_OWNED_TABLES}
+    return {'format': 'appgen.court-case-management-owned-schema-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'tables': table_contracts, 'migrations': tuple({'path': f'pbcs/court_case_management/migrations/{i+1:03d}_{table}.sql', 'operation': 'create_owned_table', 'table': table, 'backend_allowlist': COURT_CASE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS} for i, table in enumerate(COURT_CASE_MANAGEMENT_OWNED_TABLES)), 'models': tuple({'class_name': ''.join(part.capitalize() for part in table.split('_')), 'table': table, 'fields': _court_case_management_table_fields(table)} for table in COURT_CASE_MANAGEMENT_OWNED_TABLES), 'datastore_backends': COURT_CASE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'database_backends': COURT_CASE_MANAGEMENT_ALLOWED_DATABASE_BACKENDS, 'shared_table_access': False, 'owned_tables': COURT_CASE_MANAGEMENT_OWNED_TABLES}
 
 def court_case_management_build_service_contract():
     return {'format': 'appgen.court-case-management-service-contract.v1', 'ok': True, 'pbc': PBC_KEY, 'command_methods': ('configure_runtime','set_parameter','register_rule','register_schema_extension','receive_event','command_court_case','run_advanced_assessment','parse_document_instruction') + DOMAIN_OPERATIONS, 'query_methods': ('query_workbench','build_workbench_view'), 'shared_table_access': False, 'transaction_boundary': 'owned_datastore_plus_outbox', 'event_contract': 'AppGen-X'}
