@@ -376,10 +376,36 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### Owned Tables
 
+- `price_configuration`
+- `price_parameter`
+- `price_policy_rule`
+- `price_schema_extension`
+- `price_list`
+- `price_book`
+- `price_book_entry`
 - `price_rule`
+- `price_agreement`
+- `customer_price`
+- `channel_price`
+- `currency_price`
+- `trade_promotion_plan`
 - `promotion`
+- `promotion_rule`
+- `coupon`
+- `promotion_eligibility`
+- `promotion_stacking_policy`
+- `promotion_exclusion`
+- `campaign_budget`
+- `promotion_approval`
+- `promotion_accrual`
+- `promotion_settlement`
 - `loyalty_tier`
+- `price_exception_case`
+- `price_simulation`
+- `price_margin_guardrail`
 - `price_decision`
+- `price_audit_trace`
+- `price_performance_telemetry`
 
 ### API Routes
 
@@ -391,6 +417,9 @@ This appendix is generated from the package manifest and is release-gated so the
 
 - `PriceOptimized`
 - `PromotionApplied`
+- `TradePromotionPlanned`
+- `PriceExceptionOpened`
+- `PromotionSettlementPosted`
 
 ### Consumed Events
 

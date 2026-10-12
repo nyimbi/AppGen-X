@@ -13017,10 +13017,23 @@ def _normalized_specification_token(value: object) -> str:
 
 def _pbc_specification_manifest_traceability(text: str, key: str) -> dict:
     manifest = PBC_CATALOG[key]
+    # Four of the nine traceability fields live on the descriptor, which reads
+    # them from the package, and five (`ui_fragments`, `permissions`,
+    # `configuration`, `standard_features`, `advanced_capabilities`) live only on
+    # the catalog literal. Reading the literal for all nine made the check
+    # vacuous exactly where it mattered: the three reference PBCs had their
+    # `tables`, `emits`, and `consumes` literals deleted, so the loop ran over an
+    # empty set, `missing` stayed empty, and the check certified a specification
+    # against nothing. `gl_core` passed while its appendix and its package were
+    # never compared. A check that loops over a deleted literal is the "gate that
+    # never ran" again, so the descriptor is consulted first and the literal is
+    # the fallback for the five fields the descriptor does not carry.
+    descriptor = _pbc_descriptor(key, manifest)
     normalized_text = _normalized_specification_token(text)
     field_results = []
     for field in PBC_SPECIFICATION_TRACEABILITY_FIELDS:
-        values = tuple(manifest.get(field, ()))
+        source = descriptor.get(field) if field in descriptor else manifest.get(field, ())
+        values = tuple(source or ())
         missing = []
         for value in values:
             normalized = _normalized_specification_token(value)

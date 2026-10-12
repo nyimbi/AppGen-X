@@ -274,12 +274,21 @@ This appendix is generated from the package manifest and is release-gated so the
 - `POST /payment-intents`
 - `POST /gateway-routes`
 - `POST /tokens`
+- `GET /payment-orchestration-workbench`
 
 ### Emitted Events
 
-- `PaymentCaptured`
-- `PaymentFailed`
+- `PaymentIntentCreated`
+- `PaymentAuthorized`
 - `FraudCheckRequested`
+- `PaymentCaptured`
+- `PaymentSettled`
+- `PaymentRefunded`
+- `PaymentVoided`
+- `PaymentDisputeOpened`
+- `PaymentDisputeResolved`
+- `PaymentPayoutScheduled`
+- `PaymentFailed`
 
 ### Consumed Events
 

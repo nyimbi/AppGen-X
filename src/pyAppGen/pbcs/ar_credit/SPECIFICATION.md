@@ -366,6 +366,9 @@ This appendix is generated from the package manifest and is release-gated so the
 
 - `CustomerOnboarded`
 - `InvoiceIssued`
+- `InvoiceCancelled`
+- `InvoiceReplaced`
+- `CreditDecisionRecorded`
 - `DeliveryConfirmed`
 - `PaymentReceived`
 - `UnappliedCashRecorded`

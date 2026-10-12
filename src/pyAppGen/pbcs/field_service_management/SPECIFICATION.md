@@ -163,7 +163,7 @@ Release readiness requires the package to prove schema, migrations, models, serv
 
 - tables: work_order, service_request, service_appointment, technician_profile, technician_skill, dispatch_plan, dispatch_assignment, service_part_requirement, part_reservation, mobile_work_log, service_checklist, warranty_entitlement, sla_commitment, sla_observation, customer_confirmation, repeat_visit_signal, field_exception_case, field_policy_rule, field_runtime_parameter, field_schema_extension, field_control_assertion, field_governed_model
 - operations: create_work_order, classify_service_request, schedule_appointment, register_technician, capture_technician_skill, build_dispatch_plan, assign_dispatch, reserve_service_part, record_mobile_work_log, complete_checklist, validate_warranty, measure_sla, capture_customer_confirmation, detect_repeat_visit, resolve_field_exception, compile_field_rule, simulate_dispatch_disruption
-- emits: WorkOrderCreated, AppointmentScheduled, TechnicianDispatched, PartReserved, WorkOrderCompleted, SlaRiskChanged
+- emits: FieldWorkOrderCreated, TechnicianDispatched, FieldTaskCompleted, ServiceSlaBreached, TechnicianLocationUpdated, TechnicianAvailabilityChanged, ServiceRouteOptimized, RouteReoptimizationRequested, MobileTaskDependenciesPlanned, JobToolRequirementsValidated, JobToolsReserved, SkillBasedAssignmentRecommended
 - consumes: CustomerUpdated, InventoryReserved, PaymentCaptured, PolicyChanged
 - rules: dispatch_policy, skill_match_policy, parts_reservation_policy, warranty_policy, sla_escalation_policy, safety_checklist_policy
 - parameters: sla_warning_minutes, travel_buffer_minutes, minimum_skill_score, part_shortage_threshold, repeat_visit_window_days, workbench_limit

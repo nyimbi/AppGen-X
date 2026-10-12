@@ -145,7 +145,7 @@ Release readiness requires the package to prove schema, migrations, models, serv
 
 - tables: support_case, case_contact, case_classification, case_queue, case_assignment, case_sla, sla_timer_event, case_interaction, case_escalation, case_resolution, knowledge_article, article_version, article_feedback, article_quality_score, root_cause, case_duplicate_link, case_exception_case, case_policy_rule, case_runtime_parameter, case_schema_extension, case_control_assertion, case_governed_model
 - operations: create_support_case, classify_case, route_case_queue, assign_case, start_sla_timer, record_case_interaction, open_case_escalation, resolve_case, publish_knowledge_article, version_article, capture_article_feedback, score_article_quality, identify_root_cause, link_duplicate_case, resolve_case_exception, compile_case_rule, recommend_next_best_resolution
-- emits: CaseCreated, CaseAssigned, SlaRiskChanged, CaseEscalated, CaseResolved, KnowledgeArticlePublished
+- emits: CaseCreated, CaseClassified, CaseAssigned, SlaRiskChanged, CaseEscalated, CaseResolved, KnowledgeArticlePublished, KnowledgeArticleApproved, KnowledgeArticleVersioned, ArticleFeedbackCaptured, CaseDeflected, AgentAssistRecommended, ContentFreshnessFlagged
 - consumes: CustomerUpdated, ProductPublished, PolicyChanged, WorkflowTaskCompleted
 - rules: case_routing_policy, sla_policy, escalation_policy, knowledge_publish_policy, duplicate_detection_policy, article_retirement_policy
 - parameters: sla_warning_minutes, duplicate_similarity_threshold, article_quality_floor, escalation_age_hours, queue_capacity_limit, workbench_limit

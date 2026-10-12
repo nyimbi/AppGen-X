@@ -309,9 +309,54 @@ This appendix is generated from the package manifest and is release-gated so the
 ### Owned Tables
 
 - `asset`
+- `asset_version`
+- `asset_binary`
+- `asset_fingerprint`
+- `asset_collection`
+- `asset_collection_member`
 - `asset_rendition`
-- `rights_policy`
+- `transcoding_job`
+- `transcode_route`
+- `rendition_profile`
 - `metadata_tag`
+- `metadata_taxonomy`
+- `metadata_enrichment`
+- `semantic_annotation`
+- `rights_policy`
+- `rights_decision`
+- `license_agreement`
+- `usage_entitlement`
+- `product_projection`
+- `campaign_projection`
+- `channel_asset_projection`
+- `asset_workflow_case`
+- `asset_review_task`
+- `asset_exception`
+- `asset_quality_score`
+- `asset_usage_snapshot`
+- `asset_usage_forecast`
+- `asset_duplicate_candidate`
+- `asset_lineage`
+- `asset_audit_entry`
+- `asset_policy_screening`
+- `asset_control_assertion`
+- `asset_federation_view`
+- `asset_resilience_drill`
+- `asset_crypto_epoch`
+- `carbon_transcode_window`
+- `rendition_cost_simulation`
+- `asset_route_allocation`
+- `asset_anomaly_signal`
+- `asset_exposure_forecast`
+- `asset_identity_attestation`
+- `asset_governed_model`
+- `asset_seed_data`
+- `dam_rule`
+- `dam_parameter`
+- `dam_configuration`
+- `dam_core_appgen_outbox_event`
+- `dam_core_appgen_inbox_event`
+- `dam_core_dead_letter_event`
 
 ### API Routes
 
@@ -321,8 +366,27 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### Emitted Events
 
-- `AssetPublished`
-- `RightsPolicyChanged`
+- `AssetRegistered`
+- `AssetRenditionRequested`
+- `AssetRenditionReady`
+- `AssetRightsPolicyAttached`
+- `AssetRightsBlocked`
+- `AssetMetadataTagged`
+- `AssetCollectionCreated`
+- `AssetAddedToCollection`
+- `LicenseAgreementRegistered`
+- `UsageEntitlementGranted`
+- `MetadataTaxonomyRegistered`
+- `MetadataEnriched`
+- `SemanticAnnotationAdded`
+- `AssetWorkflowStarted`
+- `AssetReviewTaskCompleted`
+- `AssetExceptionOpened`
+- `AssetExceptionResolved`
+- `AssetUsageSnapshotRecorded`
+- `AssetDuplicateCandidateDetected`
+- `AssetLineageRecorded`
+- `AssetLifecycleTransitioned`
 
 ### Consumed Events
 

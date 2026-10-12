@@ -97,7 +97,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 
 ## Manifest Traceability Appendix
 
-- tables: donor, campaign, pledge, gift, restriction, grant_application, stewardship_touchpoint, donor_grant_fundraising_policy_rule, donor_grant_fundraising_runtime_parameter, donor_grant_fundraising_schema_extension, donor_grant_fundraising_control_assertion, donor_grant_fundraising_governed_model
+- tables: donor, campaign, pledge, gift, restriction, grant_application, stewardship_touchpoint, donor_relationship, proposal_workspace, acknowledgement, briefing_packet, opportunity_score, review_chain, budget_validation, donor_grant_fundraising_policy_rule, donor_grant_fundraising_runtime_parameter, donor_grant_fundraising_schema_extension, donor_grant_fundraising_control_assertion, donor_grant_fundraising_governed_model
 - operations: create_donor, record_campaign, review_pledge, approve_gift, simulate_restriction, create_grant_application, record_stewardship_touchpoint, review_donor_grant_fundraising_policy_rule, approve_donor_grant_fundraising_runtime_parameter, simulate_donor_grant_fundraising_schema_extension, create_donor_grant_fundraising_control_assertion, record_donor_grant_fundraising_governed_model, operate_donor_grant_fundraising_13, operate_donor_grant_fundraising_14, operate_donor_grant_fundraising_15, operate_donor_grant_fundraising_16, operate_donor_grant_fundraising_17, operate_donor_grant_fundraising_18
 - emits: DonorGrantFundraisingCreated, DonorGrantFundraisingUpdated, DonorGrantFundraisingApproved, DonorGrantFundraisingExceptionOpened
 - consumes: PolicyChanged, CustomerUpdated, SupplierQualified
