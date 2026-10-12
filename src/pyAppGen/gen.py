@@ -69,6 +69,21 @@ REF_TYPE_MIXIN_FIELDS = ["name", "code", "description", "notes"]
 # time, so the attribute is suffixed and the column keeps its database name.
 _DECLARATIVE_RESERVED = frozenset({"metadata"})
 
+
+def _declarative_attribute_name(name: str) -> str:
+    """Return the class-attribute spelling of a column name.
+
+    One mapping, two consumers that must agree: the model emitter writes the
+    attribute, and `_model_attribute_name` names it back for `views.py`,
+    `api.py`, `gql.py` and the dashboards. FAB's `SQLAInterface.list_columns` is
+    keyed by the *mapper property* name, so a view listing the database column
+    instead renders nothing and still answers HTTP 200 — the failure is silent
+    data loss, not an error. `hasattr` cannot guard it either: `metadata` on a
+    Declarative class resolves to SQLAlchemy's own `MetaData` object, so the
+    attribute exists and is the wrong thing.
+    """
+    return f"{name}_" if name in _DECLARATIVE_RESERVED else name
+
 REF_TYPE_MIXIN_FIELDSET = [
     {
         "label": "Identification",
@@ -487,9 +502,7 @@ def generate_model_code(schema: AppSchema | None = None):
             output.append("    id = Column(Integer, primary_key=True, nullable=False)")
 
         for column in table.columns:
-            column_name = underscore(column.name)
-            if column_name in _DECLARATIVE_RESERVED:
-                column_name = f"{column_name}_"
+            column_name = _declarative_attribute_name(underscore(column.name))
             column_def, col_type = render_column(column, column_name)
             if col_type is not None:
                 column_name = col_type
@@ -32697,7 +32710,7 @@ def generate_app_from_schema(schema: AppSchema, output_dir, *, config_database_u
 def _model_attribute_name(column: ColumnSchema) -> str:
     if column.references is not None:
         return underscore(column.references[0])
-    return underscore(column.name)
+    return _declarative_attribute_name(underscore(column.name))
 
 
 def _graphene_field(type_name: str) -> str:

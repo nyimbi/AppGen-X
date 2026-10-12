@@ -69,12 +69,19 @@ _HEADER = (
 
 _MIXIN_STAND_IN = """
 from datetime import datetime, date, time, timedelta
-from sqlalchemy import text
+from sqlalchemy import Column, String, Text, text
 from sqlalchemy.dialects.postgresql import *
 
 
 class RefTypeMixin:
-    pass
+    # Faithful to `pyAppGen/model_mixins.py:146`, which declares these four as
+    # real columns. A stand-in of `pass` would under-report the mapper's
+    # properties, so a view naming `name` would read as a defect when it is the
+    # mixin supplying it.
+    name = Column(String(100), unique=True, nullable=False, index=True)
+    code = Column(String(20), default="0000", index=True)
+    description = Column(String(100))
+    notes = Column(Text, default="")
 
 
 class TransientMixin:
