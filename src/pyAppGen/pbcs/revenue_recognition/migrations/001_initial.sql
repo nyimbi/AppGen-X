@@ -1,66 +1,71 @@
 CREATE SCHEMA IF NOT EXISTS revenue_recognition;
 
 CREATE TABLE revenue_recognition_revenue_contract (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
+  id TEXT PRIMARY KEY NOT NULL,
+  tenant TEXT NOT NULL,
+  code TEXT NOT NULL,
+  status TEXT NOT NULL,
   version INTEGER NOT NULL,
   payload TEXT,
+  effective_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL
 );
 
 CREATE TABLE revenue_recognition_performance_obligation (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  revenue_contract_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
+  id TEXT PRIMARY KEY NOT NULL,
+  tenant TEXT NOT NULL,
+  code TEXT NOT NULL,
+  revenue_id TEXT NOT NULL,
+  status TEXT NOT NULL,
   version INTEGER NOT NULL,
   payload TEXT,
+  effective_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (revenue_contract_id) REFERENCES revenue_recognition_revenue_contract(id)
+  FOREIGN KEY (revenue_id) REFERENCES revenue_recognition_revenue_contract(id)
 );
 
 CREATE TABLE revenue_recognition_transaction_price_allocation (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  revenue_contract_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
+  id TEXT PRIMARY KEY NOT NULL,
+  tenant TEXT NOT NULL,
+  code TEXT NOT NULL,
+  revenue_id TEXT NOT NULL,
+  status TEXT NOT NULL,
   version INTEGER NOT NULL,
   payload TEXT,
+  effective_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (revenue_contract_id) REFERENCES revenue_recognition_revenue_contract(id)
+  FOREIGN KEY (revenue_id) REFERENCES revenue_recognition_revenue_contract(id)
 );
 
 CREATE TABLE revenue_recognition_contract_modification (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  revenue_contract_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
+  id TEXT PRIMARY KEY NOT NULL,
+  tenant TEXT NOT NULL,
+  code TEXT NOT NULL,
+  revenue_id TEXT NOT NULL,
+  status TEXT NOT NULL,
   version INTEGER NOT NULL,
   payload TEXT,
+  effective_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (revenue_contract_id) REFERENCES revenue_recognition_revenue_contract(id)
+  FOREIGN KEY (revenue_id) REFERENCES revenue_recognition_revenue_contract(id)
 );
 
 CREATE TABLE revenue_recognition_revenue_schedule (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  revenue_contract_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
+  id TEXT PRIMARY KEY NOT NULL,
+  tenant TEXT NOT NULL,
+  code TEXT NOT NULL,
+  revenue_id TEXT NOT NULL,
+  status TEXT NOT NULL,
   version INTEGER NOT NULL,
   payload TEXT,
+  effective_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL,
   updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (revenue_contract_id) REFERENCES revenue_recognition_revenue_contract(id)
+  FOREIGN KEY (revenue_id) REFERENCES revenue_recognition_revenue_contract(id)
 );
 
 CREATE TABLE revenue_recognition_revenue_event (
@@ -103,57 +108,6 @@ CREATE TABLE revenue_recognition_recognition_policy (
 );
 
 CREATE TABLE revenue_recognition_appgen_outbox_event (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  revenue_contract_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  payload TEXT,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
-);
-
-CREATE TABLE revenue_recognition_appgen_inbox_event (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  revenue_contract_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  payload TEXT,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
-);
-
-CREATE TABLE revenue_recognition_appgen_dead_letter_event (
-  id INTEGER PRIMARY KEY NOT NULL,
-  tenant VARCHAR(255) NOT NULL,
-  revenue_contract_id INTEGER NOT NULL,
-  code VARCHAR(255) NOT NULL,
-  status VARCHAR(255) NOT NULL,
-  version INTEGER NOT NULL,
-  payload TEXT,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
-);
-
--- World-class domain depth supplemental tables
-CREATE SCHEMA IF NOT EXISTS revenue_recognition;
-
-CREATE TABLE revenue_recognition_revenue_contract (
-  id TEXT PRIMARY KEY NOT NULL,
-  tenant TEXT NOT NULL,
-  code TEXT NOT NULL,
-  status TEXT NOT NULL,
-  version INTEGER NOT NULL,
-  payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
-);
-
-CREATE TABLE revenue_recognition_contract_line (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
@@ -167,7 +121,35 @@ CREATE TABLE revenue_recognition_contract_line (
   FOREIGN KEY (revenue_id) REFERENCES revenue_recognition_revenue_contract(id)
 );
 
-CREATE TABLE revenue_recognition_performance_obligation (
+CREATE TABLE revenue_recognition_appgen_inbox_event (
+  id TEXT PRIMARY KEY NOT NULL,
+  tenant TEXT NOT NULL,
+  code TEXT NOT NULL,
+  revenue_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  payload TEXT,
+  effective_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (revenue_id) REFERENCES revenue_recognition_revenue_contract(id)
+);
+
+CREATE TABLE revenue_recognition_appgen_dead_letter_event (
+  id TEXT PRIMARY KEY NOT NULL,
+  tenant TEXT NOT NULL,
+  code TEXT NOT NULL,
+  revenue_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  payload TEXT,
+  effective_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL,
+  updated_at TIMESTAMP NOT NULL,
+  FOREIGN KEY (revenue_id) REFERENCES revenue_recognition_revenue_contract(id)
+);
+
+CREATE TABLE revenue_recognition_contract_line (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
@@ -195,35 +177,7 @@ CREATE TABLE revenue_recognition_obligation_satisfaction_event (
   FOREIGN KEY (revenue_id) REFERENCES revenue_recognition_revenue_contract(id)
 );
 
-CREATE TABLE revenue_recognition_transaction_price_allocation (
-  id TEXT PRIMARY KEY NOT NULL,
-  tenant TEXT NOT NULL,
-  code TEXT NOT NULL,
-  revenue_id TEXT NOT NULL,
-  status TEXT NOT NULL,
-  version INTEGER NOT NULL,
-  payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (revenue_id) REFERENCES revenue_recognition_revenue_contract(id)
-);
-
 CREATE TABLE revenue_recognition_variable_consideration_estimate (
-  id TEXT PRIMARY KEY NOT NULL,
-  tenant TEXT NOT NULL,
-  code TEXT NOT NULL,
-  revenue_id TEXT NOT NULL,
-  status TEXT NOT NULL,
-  version INTEGER NOT NULL,
-  payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (revenue_id) REFERENCES revenue_recognition_revenue_contract(id)
-);
-
-CREATE TABLE revenue_recognition_revenue_schedule (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
@@ -266,20 +220,6 @@ CREATE TABLE revenue_recognition_revenue_deferral (
 );
 
 CREATE TABLE revenue_recognition_entry (
-  id TEXT PRIMARY KEY NOT NULL,
-  tenant TEXT NOT NULL,
-  code TEXT NOT NULL,
-  revenue_id TEXT NOT NULL,
-  status TEXT NOT NULL,
-  version INTEGER NOT NULL,
-  payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (revenue_id) REFERENCES revenue_recognition_revenue_contract(id)
-);
-
-CREATE TABLE revenue_recognition_contract_modification (
   id TEXT PRIMARY KEY NOT NULL,
   tenant TEXT NOT NULL,
   code TEXT NOT NULL,
@@ -437,44 +377,3 @@ CREATE TABLE revenue_recognition_revenue_governed_model (
   updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE revenue_recognition_appgen_outbox_event (
-  id TEXT PRIMARY KEY NOT NULL,
-  tenant TEXT NOT NULL,
-  code TEXT NOT NULL,
-  revenue_id TEXT NOT NULL,
-  status TEXT NOT NULL,
-  version INTEGER NOT NULL,
-  payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (revenue_id) REFERENCES revenue_recognition_revenue_contract(id)
-);
-
-CREATE TABLE revenue_recognition_appgen_inbox_event (
-  id TEXT PRIMARY KEY NOT NULL,
-  tenant TEXT NOT NULL,
-  code TEXT NOT NULL,
-  revenue_id TEXT NOT NULL,
-  status TEXT NOT NULL,
-  version INTEGER NOT NULL,
-  payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (revenue_id) REFERENCES revenue_recognition_revenue_contract(id)
-);
-
-CREATE TABLE revenue_recognition_appgen_dead_letter_event (
-  id TEXT PRIMARY KEY NOT NULL,
-  tenant TEXT NOT NULL,
-  code TEXT NOT NULL,
-  revenue_id TEXT NOT NULL,
-  status TEXT NOT NULL,
-  version INTEGER NOT NULL,
-  payload TEXT,
-  effective_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL,
-  FOREIGN KEY (revenue_id) REFERENCES revenue_recognition_revenue_contract(id)
-);
