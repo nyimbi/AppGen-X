@@ -6486,6 +6486,45 @@ def _nested_capability_surface(package_ui: dict, key: str) -> tuple[str, ...]:
     return tuple(declared or ())
 
 
+def _package_surface_names(package_ui: dict, key: str) -> tuple[str, ...]:
+    """Return the named entries of a package UI surface, whatever shape it takes.
+
+    `forms`, `wizards` and `controls` are declared by 23 packages and read by
+    nothing outside the package's own audit, so a generated app showed no
+    intake forms, no wizards and no controls for the blocks that declare them.
+    The three keys each arrive in one of three shapes, and all three carry a
+    name: a dict keyed by name (`dom`'s `order_capture_form`), a tuple of
+    strings (`customer_360`'s `CustomerProfileIntakeForm`), or a tuple of dicts
+    keyed by `form_id`/`wizard_id`/`control_id` (or `key`/`id`/`name`, and
+    `form`/`wizard`/`control` in the one package that spells it that way).
+    325 entries across the three surfaces, every one of them named, so this is
+    per-block content the emitted workbench dropped.
+
+    The caller renders the names; the bodies (fields, steps, permissions) stay
+    on the package, which is where the workbench reads them from.
+    """
+    declared = package_ui.get(key)
+    if not declared:
+        nested = _nested_capability_surface(package_ui, key)
+        declared = nested or declared
+    if not declared:
+        return ()
+    if isinstance(declared, dict):
+        return tuple(str(name) for name in declared)
+    names = []
+    for entry in declared:
+        if isinstance(entry, str):
+            names.append(entry)
+            continue
+        if isinstance(entry, dict):
+            for candidate in ("form_id", "wizard_id", "control_id", "key", "id", "name", "form", "wizard", "control"):
+                value = entry.get(candidate)
+                if isinstance(value, str):
+                    names.append(value)
+                    break
+    return tuple(names)
+
+
 def _package_rule_types(package_ui: dict) -> tuple[str, ...]:
     """Return the rule types a package compiles, from any of the three spellings.
 
@@ -6823,6 +6862,15 @@ def pbc_implementation_contract(key: str) -> dict:
             # per-block content the emitted contract dropped entirely. See
             # `_package_parameters`.
             "parameter_editor": {"numeric_parameters": _package_parameters(package_ui)},
+            # The intake forms, wizards and controls the block declares, read
+            # from whichever of their three shapes it uses. Twenty-three
+            # packages name 123 forms, 81 wizards and 121 controls; the emitted
+            # workbench carried none of them, so a generated order-management
+            # app showed no `order_capture_form` and no `order_intake_wizard`.
+            # See `_package_surface_names`.
+            "forms": _package_surface_names(package_ui, "forms"),
+            "wizards": _package_surface_names(package_ui, "wizards"),
+            "controls": _package_surface_names(package_ui, "controls"),
         },
         "permissions": permissions,
         "configuration": tuple(

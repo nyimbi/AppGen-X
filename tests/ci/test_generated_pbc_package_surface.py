@@ -700,3 +700,81 @@ def test_the_parameter_gate_fails_when_the_surface_is_dropped(monkeypatch):
     monkeypatch.setattr(pbc_module, "_package_parameters", lambda _ui: ())
     lost = _packages_losing_their_parameters()
     assert lost, "the gate passed with the parameter surface dropped, so it measures nothing"
+
+
+_INTERACTION_NAME_KEYS = (
+    "form_id",
+    "wizard_id",
+    "control_id",
+    "key",
+    "id",
+    "name",
+    "form",
+    "wizard",
+    "control",
+)
+
+
+def _declared_interaction_names(source: dict, key: str) -> tuple[str, ...]:
+    """Read one interaction surface the way the package declares it, not the way
+    the resolver reads it, so a canary that breaks the resolver still sees the
+    declaration. Mirrors the three shapes: a dict keyed by name, a tuple of
+    strings, or a tuple of dicts carrying the name under one of several keys."""
+    declared = source.get(key)
+    if not declared:
+        block = source.get("full_capability_surface")
+        if isinstance(block, dict):
+            declared = block.get(key)
+    if not declared:
+        return ()
+    if isinstance(declared, dict):
+        return tuple(str(name) for name in declared)
+    names = []
+    for entry in declared:
+        if isinstance(entry, str):
+            names.append(entry)
+        elif isinstance(entry, dict):
+            for candidate in _INTERACTION_NAME_KEYS:
+                if isinstance(entry.get(candidate), str):
+                    names.append(entry[candidate])
+                    break
+    return tuple(names)
+
+
+def _packages_losing_their_interactions() -> list[tuple[str, str, tuple, tuple]]:
+    """Packages that declare forms/wizards/controls whose names never reach the
+    emitted contract. Twenty-three packages name 123 forms, 81 wizards and 121
+    controls, all distinct; the emitted workbench carried none of them."""
+    lost = []
+    for key in IMPLEMENTED_PBC_KEYS:
+        contract = pbc_implementation_contract(key)
+        source = contract["source_package"].get("ui_contract") or {}
+        for surface in ("forms", "wizards", "controls"):
+            declared = _declared_interaction_names(source, surface)
+            if not declared:
+                continue
+            emitted = tuple(contract["ui"].get(surface) or ())
+            if emitted != declared:
+                lost.append((key, surface, emitted, declared))
+    return lost
+
+
+def test_every_declared_form_wizard_and_control_reaches_the_emitted_contract():
+    """A block's intake forms, wizards and controls are its own, not absent.
+
+    The three surfaces are declared by 23 packages and read by nothing outside
+    the package's own audit, so a generated order-management app showed no
+    `order_capture_form` and no `order_intake_wizard`. Each arrives in one of
+    three shapes and every entry is named.
+    """
+    lost = _packages_losing_their_interactions()
+    assert not lost, lost[:5]
+
+
+def test_the_interaction_gate_fails_when_the_surface_is_dropped(monkeypatch):
+    """Canary: drop the resolution and the gate must fail."""
+    import pyAppGen.pbc as pbc_module
+
+    monkeypatch.setattr(pbc_module, "_package_surface_names", lambda _ui, _key: ())
+    lost = _packages_losing_their_interactions()
+    assert lost, "the gate passed with the interaction surface dropped, so it measures nothing"

@@ -145,6 +145,51 @@ export function Workbench({ workbench }: { workbench: WorkbenchRender }) {
         </Card>
       )}
 
+      {(workbench.interactions?.forms?.length ?? 0) > 0 && (
+        <Card
+          title="Intake forms"
+          subtitle={`${workbench.interactions?.forms?.length ?? 0} forms`}
+        >
+          <ul>
+            {workbench.interactions?.forms?.map((form) => (
+              <li key={form}>
+                <code>{form}</code>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      {(workbench.interactions?.wizards?.length ?? 0) > 0 && (
+        <Card
+          title="Wizards"
+          subtitle={`${workbench.interactions?.wizards?.length ?? 0} wizards`}
+        >
+          <ul>
+            {workbench.interactions?.wizards?.map((wizard) => (
+              <li key={wizard}>
+                <code>{wizard}</code>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
+      {(workbench.interactions?.controls?.length ?? 0) > 0 && (
+        <Card
+          title="Controls"
+          subtitle={`${workbench.interactions?.controls?.length ?? 0} controls`}
+        >
+          <ul>
+            {workbench.interactions?.controls?.map((control) => (
+              <li key={control}>
+                <code>{control}</code>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
       {(workbench.events.emits?.length ?? 0) > 0 && (
         <Card
           title="Events"
