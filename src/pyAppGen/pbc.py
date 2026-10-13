@@ -6458,19 +6458,48 @@ def pbc_agent_capability_release_audit(selected_pbcs: tuple[str, ...] | list[str
     }
 
 
-def _package_rule_types(package_ui: dict) -> tuple[str, ...]:
-    """Return the rule types a package compiles, from either spelling it uses.
+def _nested_capability_surface(package_ui: dict, key: str) -> tuple[str, ...]:
+    """Read one surface out of the package's `full_capability_surface` block.
 
-    A PBC declares this surface one of two ways. The rich dict (`gl_core` lists
+    The domain-depth packages declare a second, nested spelling: a
+    `full_capability_surface` dict whose members are the same surfaces under
+    their flat names (`rule_editors`, `parameter_editors`, `operation_actions`,
+    `table_browsers`, ...). 97 packages carry this block, and for 77 of them it
+    is the *only* place the rule editors appear, so a reader that stops at the
+    top level loses them. `rule_editors` there is 97 of 97 distinct
+    (`clinical_care_coordination`: `patient_care_plan_policy`, `care_team_policy`;
+    `pharmacy_benefits_management`: `formulary_policy`, `prior_authorization_policy`),
+    so it is per-block content.
+
+    Not every member qualifies. The nested `parameter_editors` is the identical
+    six-tuple (`quality_score_floor`, `materiality_threshold`, ...) across 72 of
+    its 97 holders — the domain-depth generator copy-pastes it — so surfacing it
+    would be padding. The caller decides: this reads whatever is asked for, and
+    only the rule editors are read from here today.
+    """
+    block = package_ui.get("full_capability_surface")
+    if not isinstance(block, dict):
+        return ()
+    declared = block.get(key)
+    if isinstance(declared, dict):
+        return tuple(declared.get("rule_types") or declared.get("numeric_parameters") or ())
+    return tuple(declared or ())
+
+
+def _package_rule_types(package_ui: dict) -> tuple[str, ...]:
+    """Return the rule types a package compiles, from any of the three spellings.
+
+    A PBC declares this surface one of three ways. The rich dict (`gl_core` lists
     `journal_posting`, `close`, `reconciliation`) is the older form, carried by
-    47 packages. The 20 domain-depth packages instead declare a flat
-    `rule_editors` tuple naming the policies they actually compile
-    (`contract_lifecycle`: `clause_fallback_policy`, `approval_threshold_policy`,
-    `renewal_notice_policy`, ...). Reading only the dict replaced every one of
-    those with the same generic `configuration`/`parameter`/`release_gate`
+    47 packages. The domain-depth packages instead declare a flat `rule_editors`
+    tuple naming the policies they actually compile (`contract_lifecycle`:
+    `clause_fallback_policy`, `approval_threshold_policy`,
+    `renewal_notice_policy`, ...): 20 at the top level and 77 only inside their
+    `full_capability_surface` block. Reading only the dict replaced every one of
+    those 97 with the same generic `configuration`/`parameter`/`release_gate`
     triple, so a legal-matter block and an insurance block published identical
-    rule types. The dict wins when present; the flat tuple is read next; the
-    placeholder is the last resort for the 80 packages that declare neither.
+    rule types. Precedence: dict, then top-level flat tuple, then nested. The
+    placeholder is the last resort for the 3 packages that declare none.
 
     This is a named seam rather than an inline expression so the fidelity gate
     can be canaried: monkeypatching it to the placeholder must make the gate
@@ -6484,6 +6513,9 @@ def _package_rule_types(package_ui: dict) -> tuple[str, ...]:
     flat = tuple(package_ui.get("rule_editors") or ())
     if flat:
         return flat
+    nested = _nested_capability_surface(package_ui, "rule_editors")
+    if nested:
+        return nested
     return ("configuration", "parameter", "release_gate")
 
 

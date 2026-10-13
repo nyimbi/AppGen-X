@@ -576,14 +576,17 @@ GENERIC_RULE_TYPES = ("configuration", "parameter", "release_gate")
 def _packages_losing_their_rule_types() -> list[tuple[str, tuple, tuple]]:
     """Packages that declare rule types but whose emitted contract replaces them.
 
-    A PBC names the rules it compiles in one of two spellings: the rich
-    `rule_editor` dict (`gl_core`: `journal_posting`, `close`) or the flat
+    A PBC names the rules it compiles in one of three spellings: the rich
+    `rule_editor` dict (`gl_core`: `journal_posting`, `close`), the flat
     `rule_editors` tuple the 20 domain-depth packages use
-    (`contract_lifecycle`: `clause_fallback_policy`, `approval_threshold_policy`).
-    Reading only the dict substituted the same generic triple for every one of
-    the 20, so a legal-matter block and an insurance block published identical
-    rule types. This returns the packages where a declared surface did not
-    survive into the emitted contract.
+    (`contract_lifecycle`: `clause_fallback_policy`, `approval_threshold_policy`),
+    or the same flat tuple nested inside a `full_capability_surface` block, which
+    is the *only* spelling 77 packages use. Reading only the dict substituted the
+    same generic triple for every one of the 77 plus 20, so a legal-matter block
+    and an insurance block published identical rule types. This reads all three
+    spellings independently of the resolver, so a canary that breaks the resolver
+    still sees the real declaration. Returns the packages where a declared
+    surface did not survive into the emitted contract.
     """
     lost = []
     for key in IMPLEMENTED_PBC_KEYS:
@@ -593,6 +596,10 @@ def _packages_losing_their_rule_types() -> list[tuple[str, tuple, tuple]]:
             source.get("rule_editor"), dict
         ) else ()
         declared = declared or tuple(source.get("rule_editors") or ())
+        if not declared:
+            nested = source.get("full_capability_surface")
+            if isinstance(nested, dict):
+                declared = tuple(nested.get("rule_editors") or ())
         if not declared:
             continue
         emitted = tuple(contract["ui"]["rule_editor"]["rule_types"])
@@ -604,10 +611,11 @@ def _packages_losing_their_rule_types() -> list[tuple[str, tuple, tuple]]:
 def test_every_declared_rule_type_reaches_the_emitted_contract():
     """A package's rule types are the block's, not a generic placeholder.
 
-    Twenty domain-depth packages declare six real policies each and published the
-    same `configuration`/`parameter`/`release_gate` triple. The workbench's rule
-    card is what an operator reads to learn what the block compiles, so a shared
-    placeholder makes every one of them look alike.
+    Ninety-seven domain-depth packages declare six real policies each and
+    published the same `configuration`/`parameter`/`release_gate` triple: twenty
+    at the top level and seventy-seven nested inside `full_capability_surface`.
+    The workbench's rule card is what an operator reads to learn what the block
+    compiles, so a shared placeholder makes every one of them look alike.
     """
     lost = _packages_losing_their_rule_types()
     assert not lost, lost[:5]
@@ -624,6 +632,20 @@ def test_the_rule_type_gate_fails_on_the_placeholder(monkeypatch):
     monkeypatch.setattr(pbc_module, "_package_rule_types", lambda _ui: GENERIC_RULE_TYPES)
     lost = _packages_losing_their_rule_types()
     assert lost, "the gate passed with the placeholder restored, so it measures nothing"
+
+
+def test_the_rule_type_gate_fails_when_the_nested_spelling_is_unread(monkeypatch):
+    """Canary: disable the nested read and the gate must fail on the 77.
+
+    Seventy-seven packages declare their rule editors only inside
+    `full_capability_surface`. If the gate still passes with that reader
+    returning nothing, the nested half of the surface is not being measured.
+    """
+    import pyAppGen.pbc as pbc_module
+
+    monkeypatch.setattr(pbc_module, "_nested_capability_surface", lambda _ui, _key: ())
+    lost = _packages_losing_their_rule_types()
+    assert len(lost) >= 70, f"expected the 77 nested-only packages to fail, got {len(lost)}"
 
 
 def _packages_losing_their_parameters() -> list[tuple[str, tuple, tuple]]:
