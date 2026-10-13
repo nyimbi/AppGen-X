@@ -25311,6 +25311,14 @@ def _pbc_package_file_contents(contract: dict) -> dict[str, str]:
             "        'compiled_evidence_required': bool(editor.get('compiled_evidence_required')),\n"
             "        'side_effects': (),\n"
             "    }\n\n\n"
+            "def parameter_surface():\n"
+            "    \"\"\"Return the numeric parameters this PBC exposes to an operator.\"\"\"\n"
+            "    editor = UI.get('parameter_editor') or {}\n"
+            "    return {\n"
+            "        'ok': bool(editor.get('numeric_parameters')),\n"
+            "        'numeric_parameters': tuple(editor.get('numeric_parameters', ())),\n"
+            "        'side_effects': (),\n"
+            "    }\n\n\n"
             "def event_surface():\n"
             "    \"\"\"Return the events this PBC emits and consumes, and its outbox visibility.\"\"\"\n"
             "    surfaces = UI.get('event_surfaces') or {}\n"
@@ -25335,6 +25343,7 @@ def _pbc_package_file_contents(contract: dict) -> dict[str, str]:
             "    supplied = dict(state or {})\n"
             "    configuration = configuration_surface()\n"
             "    rules = rule_surface()\n"
+            "    parameters = parameter_surface()\n"
             "    events = event_surface()\n"
             "    panels = tuple(UI.get('panels', ()))\n"
             "    workflow_actions = tuple(UI.get('workflow_actions', ()))\n"
@@ -25344,6 +25353,7 @@ def _pbc_package_file_contents(contract: dict) -> dict[str, str]:
             "        {'key': 'panels', 'label': 'Workbench panels', 'value': len(panels), 'fragment': manifest['workbench_view']},\n"
             "        {'key': 'configuration_keys', 'label': 'Configuration fields', 'value': len(configuration['required_fields']), 'fragment': manifest['workbench_view']},\n"
             "        {'key': 'rule_types', 'label': 'Rule types', 'value': len(rules['rule_types']), 'fragment': manifest['workbench_view']},\n"
+            "        {'key': 'parameters', 'label': 'Tunable parameters', 'value': len(parameters['numeric_parameters']), 'fragment': manifest['workbench_view']},\n"
             "        {'key': 'emitted_events', 'label': 'Emitted events', 'value': len(events['emits']), 'fragment': manifest['workbench_view']},\n"
             "        {'key': 'workflow_actions', 'label': 'Workflow actions', 'value': len(workflow_actions), 'fragment': manifest['workbench_view']},\n"
             "        {'key': 'permission_count', 'label': 'Permissions bound', 'value': len(granted), 'fragment': manifest['workbench_view']},\n"
@@ -25358,6 +25368,7 @@ def _pbc_package_file_contents(contract: dict) -> dict[str, str]:
             "        'routes': tuple(UI.get('routes', ())),\n"
             "        'configuration': configuration,\n"
             "        'rules': rules,\n"
+            "        'parameters': parameters,\n"
             "        'events': events,\n"
             "        'workflow_actions': workflow_actions,\n"
             "        'action_permissions': action_permissions,\n"
@@ -25375,6 +25386,7 @@ def _pbc_package_file_contents(contract: dict) -> dict[str, str]:
             "    rendered = render_workbench_fragment({'smoke': True}, tenant='smoke')\n"
             "    configuration = configuration_surface()\n"
             "    rules = rule_surface()\n"
+            "    parameters = parameter_surface()\n"
             "    events = event_surface()\n"
             "    return {\n"
             "        'ok': manifest['ok']\n"
@@ -25387,6 +25399,7 @@ def _pbc_package_file_contents(contract: dict) -> dict[str, str]:
             "        'rendered': rendered,\n"
             "        'configuration': configuration,\n"
             "        'rules': rules,\n"
+            "        'parameters': parameters,\n"
             "        'events': events,\n"
             "        'side_effects': (),\n"
             "    }\n"
@@ -26074,6 +26087,7 @@ def _pbc_workbench_payload(schema: AppSchema) -> dict:
                 # the block emits rather than a count of the contract's keys.
                 "configuration": dict(ui.get("configuration_editor") or {}),
                 "rules": dict(ui.get("rule_editor") or {}),
+                "parameters": dict(ui.get("parameter_editor") or {}),
                 "events": dict(ui.get("event_surfaces") or {}),
                 "workflow_actions": tuple(ui.get("workflow_actions", ())),
                 "action_permissions": dict(ui.get("action_permissions") or {}),
@@ -26152,6 +26166,7 @@ def render_workbench(pbc, *, tenant="default", principal_permissions=()):
         {{"key": "panels", "label": "Workbench panels", "value": len(entry["panels"])}},
         {{"key": "configuration", "label": "Configuration fields", "value": len(entry["configuration"].get("required_fields", ()))}},
         {{"key": "rules", "label": "Rule types", "value": len(entry["rules"].get("rule_types", ()))}},
+        {{"key": "parameters", "label": "Tunable parameters", "value": len(entry["parameters"].get("numeric_parameters", ()))}},
         {{"key": "emitted_events", "label": "Emitted events", "value": len(entry["events"].get("emits", ()))}},
         {{"key": "permissions", "label": "Bound permissions", "value": len(entry["permissions"])}},
         {{"key": "outbox", "label": "Event outbox", "value": entry["outbox_table"]}},
@@ -26174,6 +26189,7 @@ def render_workbench(pbc, *, tenant="default", principal_permissions=()):
         "apis": entry["apis"],
         "configuration": entry["configuration"],
         "rules": entry["rules"],
+        "parameters": entry["parameters"],
         "events": entry["events"],
         "workflow_actions": entry["workflow_actions"],
         "action_permissions": entry["action_permissions"],
@@ -32317,6 +32333,8 @@ def _spa_contract_text(schema: AppSchema) -> str:
         "export type WorkbenchRules = {\n"
         "  rule_types?: readonly string[]\n  required_fields?: readonly string[]\n"
         "  compiled_evidence_required?: boolean\n}\n\n"
+        "export type WorkbenchParameters = {\n"
+        "  numeric_parameters?: readonly string[]\n}\n\n"
         "export type WorkbenchEvents = {\n"
         "  emits?: readonly string[]\n  consumes?: readonly string[]\n"
         "  outbox_status?: string\n  inbox_status?: string\n  dead_letter_status?: string\n}\n\n"
@@ -32324,7 +32342,8 @@ def _spa_contract_text(schema: AppSchema) -> str:
         "  ok: boolean\n  pbc: string\n  label: string\n  mesh: string\n  tenant: string\n  route: string\n"
         "  fragments: readonly string[]\n  owned_tables: readonly string[]\n"
         "  panels: readonly WorkbenchPanel[]\n  routes: readonly string[]\n"
-        "  configuration: WorkbenchConfiguration\n  rules: WorkbenchRules\n  events: WorkbenchEvents\n"
+        "  configuration: WorkbenchConfiguration\n  rules: WorkbenchRules\n"
+        "  parameters: WorkbenchParameters\n  events: WorkbenchEvents\n"
         "  workflow_actions: readonly string[]\n  action_permissions: Readonly<Record<string, string>>\n"
         "  unauthorized_actions: readonly string[]\n"
         "  apis: readonly Record<string, string>[]\n  cards: readonly WorkbenchCard[]\n}\n\n"

@@ -6487,6 +6487,30 @@ def _package_rule_types(package_ui: dict) -> tuple[str, ...]:
     return ("configuration", "parameter", "release_gate")
 
 
+def _package_parameters(package_ui: dict) -> tuple[str, ...]:
+    """Return the numeric parameters a package exposes, from either spelling.
+
+    The sibling of `_package_rule_types`, and the larger instance of the same
+    defect: a package declares this surface as the rich `parameter_editor` dict
+    (`gl_core`: `approval_threshold`, `materiality_threshold`, `close_tolerance`)
+    or as the flat `parameter_editors` tuple the 20 domain-depth packages use
+    (`contract_lifecycle`: `default_notice_days`, `approval_value_limit`). 67
+    packages declare one of the two and every tuple is distinct, so this is
+    per-block content, not a template. The emitted contract carried none of it:
+    it was neither read here nor folded into `configuration_editor`, whose
+    fields are environment keys (`*_DATABASE_URL`), not tunables.
+
+    Returns an empty tuple for the 80 packages that declare neither, so the
+    caller can render an absent surface rather than invent one.
+    """
+    editor = package_ui.get("parameter_editor")
+    if isinstance(editor, dict):
+        declared = tuple(editor.get("numeric_parameters") or editor.get("parameters") or ())
+        if declared:
+            return declared
+    return tuple(package_ui.get("parameter_editors") or ())
+
+
 def pbc_implementation_contract(key: str) -> dict:
     """Return the generated implementation contract for one built-in PBC."""
     if key not in PBC_CATALOG:
@@ -6757,6 +6781,16 @@ def pbc_implementation_contract(key: str) -> dict:
                 for permission in (package_ui.get("action_permissions") or permissions)
             },
             "workflow_actions": tuple(package_ui.get("workflow_actions") or ()),
+            # The numeric parameters the block exposes to an operator, in the
+            # same two spellings as the rule surface: the rich
+            # `parameter_editor` dict (`gl_core` names `approval_threshold`,
+            # `materiality_threshold`) carried by 47 packages, or the flat
+            # `parameter_editors` tuple the 20 domain-depth packages use. All 67
+            # tuples are distinct (`ap_automation` names
+            # `auto_match_threshold`, `discount_capture_floor`), so this is
+            # per-block content the emitted contract dropped entirely. See
+            # `_package_parameters`.
+            "parameter_editor": {"numeric_parameters": _package_parameters(package_ui)},
         },
         "permissions": permissions,
         "configuration": tuple(

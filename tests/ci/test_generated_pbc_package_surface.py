@@ -624,3 +624,57 @@ def test_the_rule_type_gate_fails_on_the_placeholder(monkeypatch):
     monkeypatch.setattr(pbc_module, "_package_rule_types", lambda _ui: GENERIC_RULE_TYPES)
     lost = _packages_losing_their_rule_types()
     assert lost, "the gate passed with the placeholder restored, so it measures nothing"
+
+
+def _packages_losing_their_parameters() -> list[tuple[str, tuple, tuple]]:
+    """Packages that declare numeric parameters but whose contract carries none.
+
+    A package names this surface as the rich `parameter_editor` dict (`gl_core`:
+    `approval_threshold`, `materiality_threshold`) or the flat
+    `parameter_editors` tuple the 20 domain-depth packages use
+    (`contract_lifecycle`: `default_notice_days`, `approval_value_limit`). 67
+    packages declare one of the two and all 67 tuples are distinct, so this is
+    per-block content; the emitted contract carried none of it, because the
+    resolver never read either spelling.
+    """
+    lost = []
+    for key in IMPLEMENTED_PBC_KEYS:
+        contract = pbc_implementation_contract(key)
+        source = contract["source_package"].get("ui_contract") or {}
+        editor = source.get("parameter_editor")
+        declared = (
+            tuple(editor.get("numeric_parameters") or editor.get("parameters") or ())
+            if isinstance(editor, dict)
+            else ()
+        ) or tuple(source.get("parameter_editors") or ())
+        if not declared:
+            continue
+        emitted = tuple(contract["ui"].get("parameter_editor", {}).get("numeric_parameters", ()))
+        if emitted != declared:
+            lost.append((key, emitted, declared))
+    return lost
+
+
+def test_every_declared_parameter_reaches_the_emitted_contract():
+    """A package's tunable parameters are the block's, not an absent surface.
+
+    Sixty-seven packages name the thresholds an operator tunes
+    (`approval_threshold`, `credit_limit_buffer`, `capitalization_threshold`),
+    and every set is distinct. The emitted contract carried none of them: they
+    are not environment keys, so they were not in `configuration_editor` either.
+    """
+    lost = _packages_losing_their_parameters()
+    assert not lost, lost[:5]
+
+
+def test_the_parameter_gate_fails_when_the_surface_is_dropped(monkeypatch):
+    """Canary: drop the resolution and the gate must fail.
+
+    The fix is `_package_parameters` reading both spellings; if the gate still
+    passes with it returning nothing, it measures nothing.
+    """
+    import pyAppGen.pbc as pbc_module
+
+    monkeypatch.setattr(pbc_module, "_package_parameters", lambda _ui: ())
+    lost = _packages_losing_their_parameters()
+    assert lost, "the gate passed with the parameter surface dropped, so it measures nothing"

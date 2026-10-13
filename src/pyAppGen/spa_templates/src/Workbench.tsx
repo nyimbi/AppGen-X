@@ -132,6 +132,19 @@ export function Workbench({ workbench }: { workbench: WorkbenchRender }) {
         </Card>
       )}
 
+      {(workbench.parameters?.numeric_parameters?.length ?? 0) > 0 && (
+        <Card
+          title="Parameters"
+          subtitle={`${workbench.parameters?.numeric_parameters?.length ?? 0} tunable`}
+        >
+          <ul>
+            {workbench.parameters?.numeric_parameters?.map((parameter) => (
+              <li key={parameter}>{parameter}</li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
       {(workbench.events.emits?.length ?? 0) > 0 && (
         <Card
           title="Events"
