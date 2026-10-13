@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `hotel_revenue_management_appgen_outbox_event`
 - `simulate_hotel_revenue_management_schema_extension`: validates policy, writes owned `hotel_revenue_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_hotel_revenue_management_control_assertion`: validates policy, writes owned `hotel_revenue_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_hotel_revenue_management_governed_model`: validates policy, writes owned `hotel_revenue_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_hotel_revenue_management_13`: validates policy, writes owned `hotel_revenue_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_hotel_revenue_management_14`: validates policy, writes owned `hotel_revenue_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_hotel_revenue_management_15`: validates policy, writes owned `hotel_revenue_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_hotel_revenue_management_16`: validates policy, writes owned `hotel_revenue_management_room_type` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_hotel_revenue_management_17`: validates policy, writes owned `hotel_revenue_management_rate_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_hotel_revenue_management_18`: validates policy, writes owned `hotel_revenue_management_channel_inventory` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `validate_bar_price_fence`: validates policy, writes owned `hotel_revenue_management_rate_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `define_restriction_calendar`: validates policy, writes owned `hotel_revenue_management_channel_inventory` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `calibrate_cancellation_curve`: validates policy, writes owned `hotel_revenue_management_demand_forecast` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `analyze_group_displacement`: validates policy, writes owned `hotel_revenue_management_overbooking_policy` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `optimize_gap_night`: validates policy, writes owned `hotel_revenue_management_yield_decision` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `trace_revenue_snapshot_lineage`: validates policy, writes owned `hotel_revenue_management_revenue_snapshot` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: room_type, rate_plan, channel_inventory, demand_forecast, overbooking_policy, yield_decision, revenue_snapshot, hotel_revenue_management_policy_rule, hotel_revenue_management_runtime_parameter, hotel_revenue_management_schema_extension, hotel_revenue_management_control_assertion, hotel_revenue_management_governed_model
-- operations: create_room_type, record_rate_plan, review_channel_inventory, approve_demand_forecast, simulate_overbooking_policy, create_yield_decision, record_revenue_snapshot, review_hotel_revenue_management_policy_rule, approve_hotel_revenue_management_runtime_parameter, simulate_hotel_revenue_management_schema_extension, create_hotel_revenue_management_control_assertion, record_hotel_revenue_management_governed_model, operate_hotel_revenue_management_13, operate_hotel_revenue_management_14, operate_hotel_revenue_management_15, operate_hotel_revenue_management_16, operate_hotel_revenue_management_17, operate_hotel_revenue_management_18
+- operations: create_room_type, record_rate_plan, review_channel_inventory, approve_demand_forecast, simulate_overbooking_policy, create_yield_decision, record_revenue_snapshot, review_hotel_revenue_management_policy_rule, approve_hotel_revenue_management_runtime_parameter, simulate_hotel_revenue_management_schema_extension, create_hotel_revenue_management_control_assertion, record_hotel_revenue_management_governed_model, validate_bar_price_fence, define_restriction_calendar, calibrate_cancellation_curve, analyze_group_displacement, optimize_gap_night, trace_revenue_snapshot_lineage
 - emits: HotelRevenueManagementCreated, HotelRevenueManagementUpdated, HotelRevenueManagementApproved, HotelRevenueManagementExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: room_type_policy, rate_plan_policy, channel_inventory_policy, demand_forecast_policy, overbooking_policy_policy, yield_decision_policy

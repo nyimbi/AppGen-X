@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `rail_operations_management_appgen_outbox_even
 - `simulate_rail_operations_management_schema_extension`: validates policy, writes owned `rail_operations_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_rail_operations_management_control_assertion`: validates policy, writes owned `rail_operations_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_rail_operations_management_governed_model`: validates policy, writes owned `rail_operations_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_rail_operations_management_13`: validates policy, writes owned `rail_operations_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_rail_operations_management_14`: validates policy, writes owned `rail_operations_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_rail_operations_management_15`: validates policy, writes owned `rail_operations_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_rail_operations_management_16`: validates policy, writes owned `rail_operations_management_train_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_rail_operations_management_17`: validates policy, writes owned `rail_operations_management_consist` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_rail_operations_management_18`: validates policy, writes owned `rail_operations_management_track_window` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `validate_junction_conflict`: validates policy, writes owned `rail_operations_management_train_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `match_rolling_stock_restriction`: validates policy, writes owned `rail_operations_management_consist` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `verify_hours_of_service`: validates policy, writes owned `rail_operations_management_crew_assignment` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `integrate_track_possession`: validates policy, writes owned `rail_operations_management_track_window` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `authorize_yard_movement`: validates policy, writes owned `rail_operations_management_yard_move` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `attribute_service_delay`: validates policy, writes owned `rail_operations_management_service_performance` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: train_plan, consist, track_window, yard_move, crew_assignment, rail_incident, service_performance, rail_operations_management_policy_rule, rail_operations_management_runtime_parameter, rail_operations_management_schema_extension, rail_operations_management_control_assertion, rail_operations_management_governed_model
-- operations: create_train_plan, record_consist, review_track_window, approve_yard_move, simulate_crew_assignment, create_rail_incident, record_service_performance, review_rail_operations_management_policy_rule, approve_rail_operations_management_runtime_parameter, simulate_rail_operations_management_schema_extension, create_rail_operations_management_control_assertion, record_rail_operations_management_governed_model, operate_rail_operations_management_13, operate_rail_operations_management_14, operate_rail_operations_management_15, operate_rail_operations_management_16, operate_rail_operations_management_17, operate_rail_operations_management_18
+- operations: create_train_plan, record_consist, review_track_window, approve_yard_move, simulate_crew_assignment, create_rail_incident, record_service_performance, review_rail_operations_management_policy_rule, approve_rail_operations_management_runtime_parameter, simulate_rail_operations_management_schema_extension, create_rail_operations_management_control_assertion, record_rail_operations_management_governed_model, validate_junction_conflict, match_rolling_stock_restriction, verify_hours_of_service, integrate_track_possession, authorize_yard_movement, attribute_service_delay
 - emits: RailOperationsManagementCreated, RailOperationsManagementUpdated, RailOperationsManagementApproved, RailOperationsManagementExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: train_plan_policy, consist_policy, track_window_policy, yard_move_policy, crew_assignment_policy, rail_incident_policy

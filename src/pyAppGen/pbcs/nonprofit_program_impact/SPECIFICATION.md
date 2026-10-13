@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `nonprofit_program_impact_appgen_outbox_event`
 - `simulate_nonprofit_program_impact_schema_extension`: validates policy, writes owned `nonprofit_program_impact_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_nonprofit_program_impact_control_assertion`: validates policy, writes owned `nonprofit_program_impact_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_nonprofit_program_impact_governed_model`: validates policy, writes owned `nonprofit_program_impact_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_nonprofit_program_impact_13`: validates policy, writes owned `nonprofit_program_impact_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_nonprofit_program_impact_14`: validates policy, writes owned `nonprofit_program_impact_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_nonprofit_program_impact_15`: validates policy, writes owned `nonprofit_program_impact_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_nonprofit_program_impact_16`: validates policy, writes owned `nonprofit_program_impact_program` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_nonprofit_program_impact_17`: validates policy, writes owned `nonprofit_program_impact_beneficiary` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_nonprofit_program_impact_18`: validates policy, writes owned `nonprofit_program_impact_service_episode` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `define_theory_of_change`: validates policy, writes owned `nonprofit_program_impact_program` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `enforce_beneficiary_eligibility`: validates policy, writes owned `nonprofit_program_impact_beneficiary` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `track_service_fidelity_dosage`: validates policy, writes owned `nonprofit_program_impact_service_episode` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `score_evidence_quality`: validates policy, writes owned `nonprofit_program_impact_impact_evidence` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `map_grant_restriction_boundary`: validates policy, writes owned `nonprofit_program_impact_grant_restriction` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `attribute_donor_report_result`: validates policy, writes owned `nonprofit_program_impact_donor_report` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: program, beneficiary, service_episode, outcome_measure, grant_restriction, impact_evidence, donor_report, nonprofit_program_impact_policy_rule, nonprofit_program_impact_runtime_parameter, nonprofit_program_impact_schema_extension, nonprofit_program_impact_control_assertion, nonprofit_program_impact_governed_model
-- operations: create_program, record_beneficiary, review_service_episode, approve_outcome_measure, simulate_grant_restriction, create_impact_evidence, record_donor_report, review_nonprofit_program_impact_policy_rule, approve_nonprofit_program_impact_runtime_parameter, simulate_nonprofit_program_impact_schema_extension, create_nonprofit_program_impact_control_assertion, record_nonprofit_program_impact_governed_model, operate_nonprofit_program_impact_13, operate_nonprofit_program_impact_14, operate_nonprofit_program_impact_15, operate_nonprofit_program_impact_16, operate_nonprofit_program_impact_17, operate_nonprofit_program_impact_18
+- operations: create_program, record_beneficiary, review_service_episode, approve_outcome_measure, simulate_grant_restriction, create_impact_evidence, record_donor_report, review_nonprofit_program_impact_policy_rule, approve_nonprofit_program_impact_runtime_parameter, simulate_nonprofit_program_impact_schema_extension, create_nonprofit_program_impact_control_assertion, record_nonprofit_program_impact_governed_model, define_theory_of_change, enforce_beneficiary_eligibility, track_service_fidelity_dosage, score_evidence_quality, map_grant_restriction_boundary, attribute_donor_report_result
 - emits: NonprofitProgramImpactCreated, NonprofitProgramImpactUpdated, NonprofitProgramImpactApproved, NonprofitProgramImpactExceptionOpened
 - consumes: PolicyChanged, CustomerUpdated, SupplierQualified
 - rules: program_policy, beneficiary_policy, service_episode_policy, outcome_measure_policy, grant_restriction_policy, impact_evidence_policy

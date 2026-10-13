@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `waste_recycling_operations_appgen_outbox_even
 - `simulate_waste_recycling_operations_schema_extension`: validates policy, writes owned `waste_recycling_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_waste_recycling_operations_control_assertion`: validates policy, writes owned `waste_recycling_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_waste_recycling_operations_governed_model`: validates policy, writes owned `waste_recycling_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_waste_recycling_operations_13`: validates policy, writes owned `waste_recycling_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_waste_recycling_operations_14`: validates policy, writes owned `waste_recycling_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_waste_recycling_operations_15`: validates policy, writes owned `waste_recycling_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_waste_recycling_operations_16`: validates policy, writes owned `waste_recycling_operations_waste_route` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_waste_recycling_operations_17`: validates policy, writes owned `waste_recycling_operations_bin_asset` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_waste_recycling_operations_18`: validates policy, writes owned `waste_recycling_operations_pickup_event` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `govern_route_territory_calendar`: validates policy, writes owned `waste_recycling_operations_waste_route` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `resolve_missed_pickup`: validates policy, writes owned `waste_recycling_operations_pickup_event` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `define_material_stream_taxonomy`: validates policy, writes owned `waste_recycling_operations_material_stream` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `quarantine_contaminated_load`: validates policy, writes owned `waste_recycling_operations_contamination_finding` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `reconcile_disposal_ticket`: validates policy, writes owned `waste_recycling_operations_disposal_ticket` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `compute_diversion_yield`: validates policy, writes owned `waste_recycling_operations_recycling_yield` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: waste_route, bin_asset, pickup_event, material_stream, contamination_finding, disposal_ticket, recycling_yield, waste_recycling_operations_policy_rule, waste_recycling_operations_runtime_parameter, waste_recycling_operations_schema_extension, waste_recycling_operations_control_assertion, waste_recycling_operations_governed_model
-- operations: create_waste_route, record_bin_asset, review_pickup_event, approve_material_stream, simulate_contamination_finding, create_disposal_ticket, record_recycling_yield, review_waste_recycling_operations_policy_rule, approve_waste_recycling_operations_runtime_parameter, simulate_waste_recycling_operations_schema_extension, create_waste_recycling_operations_control_assertion, record_waste_recycling_operations_governed_model, operate_waste_recycling_operations_13, operate_waste_recycling_operations_14, operate_waste_recycling_operations_15, operate_waste_recycling_operations_16, operate_waste_recycling_operations_17, operate_waste_recycling_operations_18
+- operations: create_waste_route, record_bin_asset, review_pickup_event, approve_material_stream, simulate_contamination_finding, create_disposal_ticket, record_recycling_yield, review_waste_recycling_operations_policy_rule, approve_waste_recycling_operations_runtime_parameter, simulate_waste_recycling_operations_schema_extension, create_waste_recycling_operations_control_assertion, record_waste_recycling_operations_governed_model, govern_route_territory_calendar, resolve_missed_pickup, define_material_stream_taxonomy, quarantine_contaminated_load, reconcile_disposal_ticket, compute_diversion_yield
 - emits: WasteRecyclingOperationsCreated, WasteRecyclingOperationsUpdated, WasteRecyclingOperationsApproved, WasteRecyclingOperationsExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: waste_route_policy, bin_asset_policy, pickup_event_policy, material_stream_policy, contamination_finding_policy, disposal_ticket_policy

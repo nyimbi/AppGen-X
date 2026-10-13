@@ -32,12 +32,33 @@ DOMAIN_OPERATIONS = ('create_manuscript',
  'simulate_publishing_editorial_operations_schema_extension',
  'create_publishing_editorial_operations_control_assertion',
  'record_publishing_editorial_operations_governed_model',
- 'operate_publishing_editorial_operations_13',
- 'operate_publishing_editorial_operations_14',
- 'operate_publishing_editorial_operations_15',
- 'operate_publishing_editorial_operations_16',
- 'operate_publishing_editorial_operations_17',
- 'operate_publishing_editorial_operations_18')
+ 'intake_manuscript_package',
+ 'freeze_manuscript_version',
+ 'assign_editorial_reviewer',
+ 'resolve_author_query',
+ 'detect_rights_territory_collision',
+ 'orchestrate_proof_round')
+
+_OPERATION_TARGETS = {
+ 'create_manuscript': 'publishing_editorial_operations_manuscript',
+ 'record_editorial_task': 'publishing_editorial_operations_editorial_task',
+ 'review_author_contract': 'publishing_editorial_operations_author_contract',
+ 'approve_edition': 'publishing_editorial_operations_edition',
+ 'simulate_production_schedule': 'publishing_editorial_operations_production_schedule',
+ 'create_rights_grant': 'publishing_editorial_operations_rights_grant',
+ 'record_distribution_plan': 'publishing_editorial_operations_distribution_plan',
+ 'review_publishing_editorial_operations_policy_rule': 'publishing_editorial_operations_policy_rule',
+ 'approve_publishing_editorial_operations_runtime_parameter': 'publishing_editorial_operations_runtime_parameter',
+ 'simulate_publishing_editorial_operations_schema_extension': 'publishing_editorial_operations_schema_extension',
+ 'create_publishing_editorial_operations_control_assertion': 'publishing_editorial_operations_control_assertion',
+ 'record_publishing_editorial_operations_governed_model': 'publishing_editorial_operations_governed_model',
+ 'intake_manuscript_package': 'publishing_editorial_operations_manuscript',
+ 'freeze_manuscript_version': 'publishing_editorial_operations_manuscript',
+ 'assign_editorial_reviewer': 'publishing_editorial_operations_editorial_task',
+ 'resolve_author_query': 'publishing_editorial_operations_editorial_task',
+ 'detect_rights_territory_collision': 'publishing_editorial_operations_rights_grant',
+ 'orchestrate_proof_round': 'publishing_editorial_operations_production_schedule',
+}
 DOMAIN_RULES = ('manuscript_policy',
  'editorial_task_policy',
  'author_contract_policy',
@@ -80,7 +101,7 @@ def execute_domain_operation(operation: str, payload: dict | None = None) -> dic
     if operation not in DOMAIN_OPERATIONS:
         return {'ok': False, 'reason': 'unknown_domain_operation', 'operation': operation, 'side_effects': ()}
     index = DOMAIN_OPERATIONS.index(operation)
-    target_table = DOMAIN_OWNED_TABLES[index % len(DOMAIN_OWNED_TABLES)]
+    target_table = _OPERATION_TARGETS.get(operation, DOMAIN_OWNED_TABLES[0])
     emitted_event = DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]
     return {'ok': True, 'pbc': PBC_KEY, 'operation': operation, 'operation_kind': 'command', 'target_table': target_table, 'owned_tables': (target_table,), 'read_tables': (), 'emitted_event': emitted_event, 'event_contract': 'AppGen-X', 'idempotency_key': _digest((PBC_KEY, operation, tuple(sorted(payload.items())))), 'rules_evaluated': DOMAIN_RULES[:3], 'parameters_read': DOMAIN_PARAMETERS[:3], 'permission': f'{PBC_KEY}.operate', 'evidence_hash': _digest((operation, payload, target_table, emitted_event)), 'shared_table_access': False, 'stream_engine_picker_visible': False, 'side_effects': ()}
 
@@ -93,4 +114,4 @@ DOMAIN_EDGE_CASES = tuple(f"{operation}_edge_case" for operation in DOMAIN_OPERA
 DOMAIN_SPECIALIST_CAPABILITIES = tuple(dict.fromkeys(tuple(DOMAIN_ADVANCED_CAPABILITIES) + tuple(f"specialist_{operation}" for operation in DOMAIN_OPERATIONS) + tuple(f"rule_driven_{rule}" for rule in DOMAIN_RULES)))
 
 def domain_capability_surface_contract() -> dict:
-    return {'format': f'appgen.{PBC_KEY}.complete-domain-capability-surface.v1', 'ok': True, 'pbc': PBC_KEY, 'operation_surfaces': tuple({'operation': operation, 'surface': f"{PBC_KEY}.ui.operation.{operation}", 'action': operation, 'target_table': DOMAIN_OWNED_TABLES[index % len(DOMAIN_OWNED_TABLES)], 'permission': f"{PBC_KEY}.operate", 'requires_confirmation': True, 'agent_tool': f"{PBC_KEY}_skills.{operation}", 'event': DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]} for index, operation in enumerate(DOMAIN_OPERATIONS)), 'rule_surfaces': tuple({'rule': rule, 'surface': f"{PBC_KEY}.ui.rule.{rule}", 'editor': True, 'explainable': True} for rule in DOMAIN_RULES), 'parameter_surfaces': tuple({'parameter': parameter, 'surface': f"{PBC_KEY}.ui.parameter.{parameter}", 'bounded': True, 'editable': True} for parameter in DOMAIN_PARAMETERS), 'advanced_surfaces': tuple({'capability': capability, 'surface': f"{PBC_KEY}.ui.advanced.{_digest(capability)[:12]}", 'explainable': True} for capability in DOMAIN_ADVANCED_CAPABILITIES), 'edge_case_surfaces': tuple({'edge_case': edge_case, 'surface': f"{PBC_KEY}.ui.edge_case.{edge_case}", 'triage_queue': True} for edge_case in DOMAIN_EDGE_CASES), 'table_surfaces': tuple({'owned_table': table, 'surface': f"{PBC_KEY}.ui.table.{table}", 'read_model': True, 'mutation_guard': True} for table in DOMAIN_OWNED_TABLES), 'specialist_capabilities': DOMAIN_SPECIALIST_CAPABILITIES, 'coverage': {'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False}, 'side_effects': ()}
+    return {'format': f'appgen.{PBC_KEY}.complete-domain-capability-surface.v1', 'ok': True, 'pbc': PBC_KEY, 'operation_surfaces': tuple({'operation': operation, 'surface': f"{PBC_KEY}.ui.operation.{operation}", 'action': operation, 'target_table': _OPERATION_TARGETS.get(operation, DOMAIN_OWNED_TABLES[0]), 'permission': f"{PBC_KEY}.operate", 'requires_confirmation': True, 'agent_tool': f"{PBC_KEY}_skills.{operation}", 'event': DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]} for index, operation in enumerate(DOMAIN_OPERATIONS)), 'rule_surfaces': tuple({'rule': rule, 'surface': f"{PBC_KEY}.ui.rule.{rule}", 'editor': True, 'explainable': True} for rule in DOMAIN_RULES), 'parameter_surfaces': tuple({'parameter': parameter, 'surface': f"{PBC_KEY}.ui.parameter.{parameter}", 'bounded': True, 'editable': True} for parameter in DOMAIN_PARAMETERS), 'advanced_surfaces': tuple({'capability': capability, 'surface': f"{PBC_KEY}.ui.advanced.{_digest(capability)[:12]}", 'explainable': True} for capability in DOMAIN_ADVANCED_CAPABILITIES), 'edge_case_surfaces': tuple({'edge_case': edge_case, 'surface': f"{PBC_KEY}.ui.edge_case.{edge_case}", 'triage_queue': True} for edge_case in DOMAIN_EDGE_CASES), 'table_surfaces': tuple({'owned_table': table, 'surface': f"{PBC_KEY}.ui.table.{table}", 'read_model': True, 'mutation_guard': True} for table in DOMAIN_OWNED_TABLES), 'specialist_capabilities': DOMAIN_SPECIALIST_CAPABILITIES, 'coverage': {'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False}, 'side_effects': ()}

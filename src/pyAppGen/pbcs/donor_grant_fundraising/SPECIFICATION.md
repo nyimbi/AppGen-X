@@ -42,17 +42,24 @@ Runtime AppGen-X event tables are `donor_grant_fundraising_appgen_outbox_event`,
 - `simulate_restriction`: validates policy, writes owned `donor_grant_fundraising_restriction` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_grant_application`: validates policy, writes owned `donor_grant_fundraising_grant_application` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_stewardship_touchpoint`: validates policy, writes owned `donor_grant_fundraising_stewardship_touchpoint` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `map_donor_relationship`: validates policy, writes owned `donor_grant_fundraising_donor_relationship` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `compose_proposal_workspace`: validates policy, writes owned `donor_grant_fundraising_proposal_workspace` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `orchestrate_acknowledgement`: validates policy, writes owned `donor_grant_fundraising_acknowledgement` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `generate_briefing_packet`: validates policy, writes owned `donor_grant_fundraising_briefing_packet` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `score_fundraising_opportunity`: validates policy, writes owned `donor_grant_fundraising_opportunity_score` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `approve_review_chain`: validates policy, writes owned `donor_grant_fundraising_review_chain` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `validate_grant_budget`: validates policy, writes owned `donor_grant_fundraising_budget_validation` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `review_donor_grant_fundraising_policy_rule`: validates policy, writes owned `donor_grant_fundraising_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `approve_donor_grant_fundraising_runtime_parameter`: validates policy, writes owned `donor_grant_fundraising_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `simulate_donor_grant_fundraising_schema_extension`: validates policy, writes owned `donor_grant_fundraising_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_donor_grant_fundraising_control_assertion`: validates policy, writes owned `donor_grant_fundraising_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_donor_grant_fundraising_governed_model`: validates policy, writes owned `donor_grant_fundraising_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_donor_grant_fundraising_13`: validates policy, writes owned `donor_grant_fundraising_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_donor_grant_fundraising_14`: validates policy, writes owned `donor_grant_fundraising_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_donor_grant_fundraising_15`: validates policy, writes owned `donor_grant_fundraising_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_donor_grant_fundraising_16`: validates policy, writes owned `donor_grant_fundraising_donor` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_donor_grant_fundraising_17`: validates policy, writes owned `donor_grant_fundraising_campaign` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_donor_grant_fundraising_18`: validates policy, writes owned `donor_grant_fundraising_pledge` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `qualify_donor_prospect`: validates policy, writes owned `donor_grant_fundraising_donor` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `plan_pledge_installment`: validates policy, writes owned `donor_grant_fundraising_pledge` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `apply_gift_to_pledge`: validates policy, writes owned `donor_grant_fundraising_gift` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `define_restriction_spending_rule`: validates policy, writes owned `donor_grant_fundraising_restriction` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `forecast_grant_renewal`: validates policy, writes owned `donor_grant_fundraising_grant_application` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `model_counterfactual_ask`: validates policy, writes owned `donor_grant_fundraising_campaign` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +105,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: donor, campaign, pledge, gift, restriction, grant_application, stewardship_touchpoint, donor_relationship, proposal_workspace, acknowledgement, briefing_packet, opportunity_score, review_chain, budget_validation, donor_grant_fundraising_policy_rule, donor_grant_fundraising_runtime_parameter, donor_grant_fundraising_schema_extension, donor_grant_fundraising_control_assertion, donor_grant_fundraising_governed_model
-- operations: create_donor, record_campaign, review_pledge, approve_gift, simulate_restriction, create_grant_application, record_stewardship_touchpoint, review_donor_grant_fundraising_policy_rule, approve_donor_grant_fundraising_runtime_parameter, simulate_donor_grant_fundraising_schema_extension, create_donor_grant_fundraising_control_assertion, record_donor_grant_fundraising_governed_model, operate_donor_grant_fundraising_13, operate_donor_grant_fundraising_14, operate_donor_grant_fundraising_15, operate_donor_grant_fundraising_16, operate_donor_grant_fundraising_17, operate_donor_grant_fundraising_18
+- operations: create_donor, record_campaign, review_pledge, approve_gift, simulate_restriction, create_grant_application, record_stewardship_touchpoint, map_donor_relationship, compose_proposal_workspace, orchestrate_acknowledgement, generate_briefing_packet, score_fundraising_opportunity, approve_review_chain, validate_grant_budget, review_donor_grant_fundraising_policy_rule, approve_donor_grant_fundraising_runtime_parameter, simulate_donor_grant_fundraising_schema_extension, create_donor_grant_fundraising_control_assertion, record_donor_grant_fundraising_governed_model, qualify_donor_prospect, plan_pledge_installment, apply_gift_to_pledge, define_restriction_spending_rule, forecast_grant_renewal, model_counterfactual_ask
 - emits: DonorGrantFundraisingCreated, DonorGrantFundraisingUpdated, DonorGrantFundraisingApproved, DonorGrantFundraisingExceptionOpened
 - consumes: PolicyChanged, CustomerUpdated, SupplierQualified
 - rules: donor_policy, campaign_policy, pledge_policy, gift_policy, restriction_policy, grant_application_policy

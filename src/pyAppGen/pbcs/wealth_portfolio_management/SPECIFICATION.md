@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `wealth_portfolio_management_appgen_outbox_eve
 - `simulate_wealth_portfolio_management_schema_extension`: validates policy, writes owned `wealth_portfolio_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_wealth_portfolio_management_control_assertion`: validates policy, writes owned `wealth_portfolio_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_wealth_portfolio_management_governed_model`: validates policy, writes owned `wealth_portfolio_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_wealth_portfolio_management_13`: validates policy, writes owned `wealth_portfolio_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_wealth_portfolio_management_14`: validates policy, writes owned `wealth_portfolio_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_wealth_portfolio_management_15`: validates policy, writes owned `wealth_portfolio_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_wealth_portfolio_management_16`: validates policy, writes owned `wealth_portfolio_management_client_portfolio` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_wealth_portfolio_management_17`: validates policy, writes owned `wealth_portfolio_management_investment_mandate` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_wealth_portfolio_management_18`: validates policy, writes owned `wealth_portfolio_management_suitability_profile` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `version_investment_mandate`: validates policy, writes owned `wealth_portfolio_management_investment_mandate` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `reconcile_risk_tolerance_capacity`: validates policy, writes owned `wealth_portfolio_management_suitability_profile` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `detect_portfolio_drift`: validates policy, writes owned `wealth_portfolio_management_client_portfolio` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `plan_tax_aware_rebalance`: validates policy, writes owned `wealth_portfolio_management_rebalance_order` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `assign_performance_benchmark`: validates policy, writes owned `wealth_portfolio_management_performance_snapshot` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `compute_fee_billing`: validates policy, writes owned `wealth_portfolio_management_fee_schedule` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: client_portfolio, investment_mandate, suitability_profile, rebalance_order, performance_snapshot, fee_schedule, advisory_review, wealth_portfolio_management_policy_rule, wealth_portfolio_management_runtime_parameter, wealth_portfolio_management_schema_extension, wealth_portfolio_management_control_assertion, wealth_portfolio_management_governed_model
-- operations: create_client_portfolio, record_investment_mandate, review_suitability_profile, approve_rebalance_order, simulate_performance_snapshot, create_fee_schedule, record_advisory_review, review_wealth_portfolio_management_policy_rule, approve_wealth_portfolio_management_runtime_parameter, simulate_wealth_portfolio_management_schema_extension, create_wealth_portfolio_management_control_assertion, record_wealth_portfolio_management_governed_model, operate_wealth_portfolio_management_13, operate_wealth_portfolio_management_14, operate_wealth_portfolio_management_15, operate_wealth_portfolio_management_16, operate_wealth_portfolio_management_17, operate_wealth_portfolio_management_18
+- operations: create_client_portfolio, record_investment_mandate, review_suitability_profile, approve_rebalance_order, simulate_performance_snapshot, create_fee_schedule, record_advisory_review, review_wealth_portfolio_management_policy_rule, approve_wealth_portfolio_management_runtime_parameter, simulate_wealth_portfolio_management_schema_extension, create_wealth_portfolio_management_control_assertion, record_wealth_portfolio_management_governed_model, version_investment_mandate, reconcile_risk_tolerance_capacity, detect_portfolio_drift, plan_tax_aware_rebalance, assign_performance_benchmark, compute_fee_billing
 - emits: WealthPortfolioManagementCreated, WealthPortfolioManagementUpdated, WealthPortfolioManagementApproved, WealthPortfolioManagementExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: client_portfolio_policy, investment_mandate_policy, suitability_profile_policy, rebalance_order_policy, performance_snapshot_policy, fee_schedule_policy

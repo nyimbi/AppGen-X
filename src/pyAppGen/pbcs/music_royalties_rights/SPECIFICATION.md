@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `music_royalties_rights_appgen_outbox_event`, 
 - `simulate_music_royalties_rights_schema_extension`: validates policy, writes owned `music_royalties_rights_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_music_royalties_rights_control_assertion`: validates policy, writes owned `music_royalties_rights_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_music_royalties_rights_governed_model`: validates policy, writes owned `music_royalties_rights_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_music_royalties_rights_13`: validates policy, writes owned `music_royalties_rights_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_music_royalties_rights_14`: validates policy, writes owned `music_royalties_rights_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_music_royalties_rights_15`: validates policy, writes owned `music_royalties_rights_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_music_royalties_rights_16`: validates policy, writes owned `music_royalties_rights_musical_work` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_music_royalties_rights_17`: validates policy, writes owned `music_royalties_rights_recording` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_music_royalties_rights_18`: validates policy, writes owned `music_royalties_rights_rights_split` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `validate_split_share_rule`: validates policy, writes owned `music_royalties_rights_rights_split` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `link_recording_to_work`: validates policy, writes owned `music_royalties_rights_recording` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `register_society_affiliation`: validates policy, writes owned `music_royalties_rights_musical_work` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `normalize_usage_line_dedup`: validates policy, writes owned `music_royalties_rights_usage_report` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `trace_statement_calculation`: validates policy, writes owned `music_royalties_rights_royalty_statement` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `detect_society_territory_conflict`: validates policy, writes owned `music_royalties_rights_rights_dispute` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: musical_work, recording, rights_split, license, usage_report, royalty_statement, rights_dispute, music_royalties_rights_policy_rule, music_royalties_rights_runtime_parameter, music_royalties_rights_schema_extension, music_royalties_rights_control_assertion, music_royalties_rights_governed_model
-- operations: create_musical_work, record_recording, review_rights_split, approve_license, simulate_usage_report, create_royalty_statement, record_rights_dispute, review_music_royalties_rights_policy_rule, approve_music_royalties_rights_runtime_parameter, simulate_music_royalties_rights_schema_extension, create_music_royalties_rights_control_assertion, record_music_royalties_rights_governed_model, operate_music_royalties_rights_13, operate_music_royalties_rights_14, operate_music_royalties_rights_15, operate_music_royalties_rights_16, operate_music_royalties_rights_17, operate_music_royalties_rights_18
+- operations: create_musical_work, record_recording, review_rights_split, approve_license, simulate_usage_report, create_royalty_statement, record_rights_dispute, review_music_royalties_rights_policy_rule, approve_music_royalties_rights_runtime_parameter, simulate_music_royalties_rights_schema_extension, create_music_royalties_rights_control_assertion, record_music_royalties_rights_governed_model, validate_split_share_rule, link_recording_to_work, register_society_affiliation, normalize_usage_line_dedup, trace_statement_calculation, detect_society_territory_conflict
 - emits: MusicRoyaltiesRightsCreated, MusicRoyaltiesRightsUpdated, MusicRoyaltiesRightsApproved, MusicRoyaltiesRightsExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: musical_work_policy, recording_policy, rights_split_policy, license_policy, usage_report_policy, royalty_statement_policy

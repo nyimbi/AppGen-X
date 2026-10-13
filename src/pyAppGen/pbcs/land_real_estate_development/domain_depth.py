@@ -32,12 +32,33 @@ DOMAIN_OPERATIONS = ('create_land_parcel',
  'simulate_land_real_estate_development_schema_extension',
  'create_land_real_estate_development_control_assertion',
  'record_land_real_estate_development_governed_model',
- 'operate_land_real_estate_development_13',
- 'operate_land_real_estate_development_14',
- 'operate_land_real_estate_development_15',
- 'operate_land_real_estate_development_16',
- 'operate_land_real_estate_development_17',
- 'operate_land_real_estate_development_18')
+ 'assemble_land_parcel',
+ 'triage_title_commitment_exception',
+ 'evaluate_permitted_use',
+ 'map_entitlement_dependency',
+ 'analyze_residual_land_value',
+ 'sequence_subdivision_plat')
+
+_OPERATION_TARGETS = {
+ 'create_land_parcel': 'land_real_estate_development_land_parcel',
+ 'record_zoning_case': 'land_real_estate_development_zoning_case',
+ 'review_entitlement': 'land_real_estate_development_entitlement',
+ 'approve_feasibility_model': 'land_real_estate_development_feasibility_model',
+ 'simulate_permit_application': 'land_real_estate_development_permit_application',
+ 'create_development_milestone': 'land_real_estate_development_development_milestone',
+ 'record_land_option': 'land_real_estate_development_land_option',
+ 'review_land_real_estate_development_policy_rule': 'land_real_estate_development_policy_rule',
+ 'approve_land_real_estate_development_runtime_parameter': 'land_real_estate_development_runtime_parameter',
+ 'simulate_land_real_estate_development_schema_extension': 'land_real_estate_development_schema_extension',
+ 'create_land_real_estate_development_control_assertion': 'land_real_estate_development_control_assertion',
+ 'record_land_real_estate_development_governed_model': 'land_real_estate_development_governed_model',
+ 'assemble_land_parcel': 'land_real_estate_development_land_parcel',
+ 'triage_title_commitment_exception': 'land_real_estate_development_land_parcel',
+ 'evaluate_permitted_use': 'land_real_estate_development_zoning_case',
+ 'map_entitlement_dependency': 'land_real_estate_development_entitlement',
+ 'analyze_residual_land_value': 'land_real_estate_development_feasibility_model',
+ 'sequence_subdivision_plat': 'land_real_estate_development_permit_application',
+}
 DOMAIN_RULES = ('land_parcel_policy',
  'zoning_case_policy',
  'entitlement_policy',
@@ -80,7 +101,7 @@ def execute_domain_operation(operation: str, payload: dict | None = None) -> dic
     if operation not in DOMAIN_OPERATIONS:
         return {'ok': False, 'reason': 'unknown_domain_operation', 'operation': operation, 'side_effects': ()}
     index = DOMAIN_OPERATIONS.index(operation)
-    target_table = DOMAIN_OWNED_TABLES[index % len(DOMAIN_OWNED_TABLES)]
+    target_table = _OPERATION_TARGETS.get(operation, DOMAIN_OWNED_TABLES[0])
     emitted_event = DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]
     return {'ok': True, 'pbc': PBC_KEY, 'operation': operation, 'operation_kind': 'command', 'target_table': target_table, 'owned_tables': (target_table,), 'read_tables': (), 'emitted_event': emitted_event, 'event_contract': 'AppGen-X', 'idempotency_key': _digest((PBC_KEY, operation, tuple(sorted(payload.items())))), 'rules_evaluated': DOMAIN_RULES[:3], 'parameters_read': DOMAIN_PARAMETERS[:3], 'permission': f'{PBC_KEY}.operate', 'evidence_hash': _digest((operation, payload, target_table, emitted_event)), 'shared_table_access': False, 'stream_engine_picker_visible': False, 'side_effects': ()}
 
@@ -93,4 +114,4 @@ DOMAIN_EDGE_CASES = tuple(f"{operation}_edge_case" for operation in DOMAIN_OPERA
 DOMAIN_SPECIALIST_CAPABILITIES = tuple(dict.fromkeys(tuple(DOMAIN_ADVANCED_CAPABILITIES) + tuple(f"specialist_{operation}" for operation in DOMAIN_OPERATIONS) + tuple(f"rule_driven_{rule}" for rule in DOMAIN_RULES)))
 
 def domain_capability_surface_contract() -> dict:
-    return {'format': f'appgen.{PBC_KEY}.complete-domain-capability-surface.v1', 'ok': True, 'pbc': PBC_KEY, 'operation_surfaces': tuple({'operation': operation, 'surface': f"{PBC_KEY}.ui.operation.{operation}", 'action': operation, 'target_table': DOMAIN_OWNED_TABLES[index % len(DOMAIN_OWNED_TABLES)], 'permission': f"{PBC_KEY}.operate", 'requires_confirmation': True, 'agent_tool': f"{PBC_KEY}_skills.{operation}", 'event': DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]} for index, operation in enumerate(DOMAIN_OPERATIONS)), 'rule_surfaces': tuple({'rule': rule, 'surface': f"{PBC_KEY}.ui.rule.{rule}", 'editor': True, 'explainable': True} for rule in DOMAIN_RULES), 'parameter_surfaces': tuple({'parameter': parameter, 'surface': f"{PBC_KEY}.ui.parameter.{parameter}", 'bounded': True, 'editable': True} for parameter in DOMAIN_PARAMETERS), 'advanced_surfaces': tuple({'capability': capability, 'surface': f"{PBC_KEY}.ui.advanced.{_digest(capability)[:12]}", 'explainable': True} for capability in DOMAIN_ADVANCED_CAPABILITIES), 'edge_case_surfaces': tuple({'edge_case': edge_case, 'surface': f"{PBC_KEY}.ui.edge_case.{edge_case}", 'triage_queue': True} for edge_case in DOMAIN_EDGE_CASES), 'table_surfaces': tuple({'owned_table': table, 'surface': f"{PBC_KEY}.ui.table.{table}", 'read_model': True, 'mutation_guard': True} for table in DOMAIN_OWNED_TABLES), 'specialist_capabilities': DOMAIN_SPECIALIST_CAPABILITIES, 'coverage': {'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False}, 'side_effects': ()}
+    return {'format': f'appgen.{PBC_KEY}.complete-domain-capability-surface.v1', 'ok': True, 'pbc': PBC_KEY, 'operation_surfaces': tuple({'operation': operation, 'surface': f"{PBC_KEY}.ui.operation.{operation}", 'action': operation, 'target_table': _OPERATION_TARGETS.get(operation, DOMAIN_OWNED_TABLES[0]), 'permission': f"{PBC_KEY}.operate", 'requires_confirmation': True, 'agent_tool': f"{PBC_KEY}_skills.{operation}", 'event': DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]} for index, operation in enumerate(DOMAIN_OPERATIONS)), 'rule_surfaces': tuple({'rule': rule, 'surface': f"{PBC_KEY}.ui.rule.{rule}", 'editor': True, 'explainable': True} for rule in DOMAIN_RULES), 'parameter_surfaces': tuple({'parameter': parameter, 'surface': f"{PBC_KEY}.ui.parameter.{parameter}", 'bounded': True, 'editable': True} for parameter in DOMAIN_PARAMETERS), 'advanced_surfaces': tuple({'capability': capability, 'surface': f"{PBC_KEY}.ui.advanced.{_digest(capability)[:12]}", 'explainable': True} for capability in DOMAIN_ADVANCED_CAPABILITIES), 'edge_case_surfaces': tuple({'edge_case': edge_case, 'surface': f"{PBC_KEY}.ui.edge_case.{edge_case}", 'triage_queue': True} for edge_case in DOMAIN_EDGE_CASES), 'table_surfaces': tuple({'owned_table': table, 'surface': f"{PBC_KEY}.ui.table.{table}", 'read_model': True, 'mutation_guard': True} for table in DOMAIN_OWNED_TABLES), 'specialist_capabilities': DOMAIN_SPECIALIST_CAPABILITIES, 'coverage': {'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False}, 'side_effects': ()}

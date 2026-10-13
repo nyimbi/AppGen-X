@@ -32,12 +32,33 @@ DOMAIN_OPERATIONS = ('create_subscriber_account',
  'simulate_telecom_subscription_lifecycle_schema_extension',
  'create_telecom_subscription_lifecycle_control_assertion',
  'record_telecom_subscription_lifecycle_governed_model',
- 'operate_telecom_subscription_lifecycle_13',
- 'operate_telecom_subscription_lifecycle_14',
- 'operate_telecom_subscription_lifecycle_15',
- 'operate_telecom_subscription_lifecycle_16',
- 'operate_telecom_subscription_lifecycle_17',
- 'operate_telecom_subscription_lifecycle_18')
+ 'advance_subscription_state',
+ 'version_service_plan',
+ 'issue_esim_profile',
+ 'decompose_activation_request',
+ 'apply_usage_throttle',
+ 'prevent_roaming_shock')
+
+_OPERATION_TARGETS = {
+ 'create_subscriber_account': 'telecom_subscription_lifecycle_subscriber_account',
+ 'record_service_plan': 'telecom_subscription_lifecycle_service_plan',
+ 'review_sim_profile': 'telecom_subscription_lifecycle_sim_profile',
+ 'approve_activation_request': 'telecom_subscription_lifecycle_activation_request',
+ 'simulate_usage_session': 'telecom_subscription_lifecycle_usage_session',
+ 'create_roaming_event': 'telecom_subscription_lifecycle_roaming_event',
+ 'record_churn_risk': 'telecom_subscription_lifecycle_churn_risk',
+ 'review_telecom_subscription_lifecycle_policy_rule': 'telecom_subscription_lifecycle_policy_rule',
+ 'approve_telecom_subscription_lifecycle_runtime_parameter': 'telecom_subscription_lifecycle_runtime_parameter',
+ 'simulate_telecom_subscription_lifecycle_schema_extension': 'telecom_subscription_lifecycle_schema_extension',
+ 'create_telecom_subscription_lifecycle_control_assertion': 'telecom_subscription_lifecycle_control_assertion',
+ 'record_telecom_subscription_lifecycle_governed_model': 'telecom_subscription_lifecycle_governed_model',
+ 'advance_subscription_state': 'telecom_subscription_lifecycle_subscriber_account',
+ 'version_service_plan': 'telecom_subscription_lifecycle_service_plan',
+ 'issue_esim_profile': 'telecom_subscription_lifecycle_sim_profile',
+ 'decompose_activation_request': 'telecom_subscription_lifecycle_activation_request',
+ 'apply_usage_throttle': 'telecom_subscription_lifecycle_usage_session',
+ 'prevent_roaming_shock': 'telecom_subscription_lifecycle_roaming_event',
+}
 DOMAIN_RULES = ('subscriber_account_policy',
  'service_plan_policy',
  'sim_profile_policy',
@@ -80,7 +101,7 @@ def execute_domain_operation(operation: str, payload: dict | None = None) -> dic
     if operation not in DOMAIN_OPERATIONS:
         return {'ok': False, 'reason': 'unknown_domain_operation', 'operation': operation, 'side_effects': ()}
     index = DOMAIN_OPERATIONS.index(operation)
-    target_table = DOMAIN_OWNED_TABLES[index % len(DOMAIN_OWNED_TABLES)]
+    target_table = _OPERATION_TARGETS.get(operation, DOMAIN_OWNED_TABLES[0])
     emitted_event = DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]
     return {'ok': True, 'pbc': PBC_KEY, 'operation': operation, 'operation_kind': 'command', 'target_table': target_table, 'owned_tables': (target_table,), 'read_tables': (), 'emitted_event': emitted_event, 'event_contract': 'AppGen-X', 'idempotency_key': _digest((PBC_KEY, operation, tuple(sorted(payload.items())))), 'rules_evaluated': DOMAIN_RULES[:3], 'parameters_read': DOMAIN_PARAMETERS[:3], 'permission': f'{PBC_KEY}.operate', 'evidence_hash': _digest((operation, payload, target_table, emitted_event)), 'shared_table_access': False, 'stream_engine_picker_visible': False, 'side_effects': ()}
 
@@ -93,4 +114,4 @@ DOMAIN_EDGE_CASES = tuple(f"{operation}_edge_case" for operation in DOMAIN_OPERA
 DOMAIN_SPECIALIST_CAPABILITIES = tuple(dict.fromkeys(tuple(DOMAIN_ADVANCED_CAPABILITIES) + tuple(f"specialist_{operation}" for operation in DOMAIN_OPERATIONS) + tuple(f"rule_driven_{rule}" for rule in DOMAIN_RULES)))
 
 def domain_capability_surface_contract() -> dict:
-    return {'format': f'appgen.{PBC_KEY}.complete-domain-capability-surface.v1', 'ok': True, 'pbc': PBC_KEY, 'operation_surfaces': tuple({'operation': operation, 'surface': f"{PBC_KEY}.ui.operation.{operation}", 'action': operation, 'target_table': DOMAIN_OWNED_TABLES[index % len(DOMAIN_OWNED_TABLES)], 'permission': f"{PBC_KEY}.operate", 'requires_confirmation': True, 'agent_tool': f"{PBC_KEY}_skills.{operation}", 'event': DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]} for index, operation in enumerate(DOMAIN_OPERATIONS)), 'rule_surfaces': tuple({'rule': rule, 'surface': f"{PBC_KEY}.ui.rule.{rule}", 'editor': True, 'explainable': True} for rule in DOMAIN_RULES), 'parameter_surfaces': tuple({'parameter': parameter, 'surface': f"{PBC_KEY}.ui.parameter.{parameter}", 'bounded': True, 'editable': True} for parameter in DOMAIN_PARAMETERS), 'advanced_surfaces': tuple({'capability': capability, 'surface': f"{PBC_KEY}.ui.advanced.{_digest(capability)[:12]}", 'explainable': True} for capability in DOMAIN_ADVANCED_CAPABILITIES), 'edge_case_surfaces': tuple({'edge_case': edge_case, 'surface': f"{PBC_KEY}.ui.edge_case.{edge_case}", 'triage_queue': True} for edge_case in DOMAIN_EDGE_CASES), 'table_surfaces': tuple({'owned_table': table, 'surface': f"{PBC_KEY}.ui.table.{table}", 'read_model': True, 'mutation_guard': True} for table in DOMAIN_OWNED_TABLES), 'specialist_capabilities': DOMAIN_SPECIALIST_CAPABILITIES, 'coverage': {'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False}, 'side_effects': ()}
+    return {'format': f'appgen.{PBC_KEY}.complete-domain-capability-surface.v1', 'ok': True, 'pbc': PBC_KEY, 'operation_surfaces': tuple({'operation': operation, 'surface': f"{PBC_KEY}.ui.operation.{operation}", 'action': operation, 'target_table': _OPERATION_TARGETS.get(operation, DOMAIN_OWNED_TABLES[0]), 'permission': f"{PBC_KEY}.operate", 'requires_confirmation': True, 'agent_tool': f"{PBC_KEY}_skills.{operation}", 'event': DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]} for index, operation in enumerate(DOMAIN_OPERATIONS)), 'rule_surfaces': tuple({'rule': rule, 'surface': f"{PBC_KEY}.ui.rule.{rule}", 'editor': True, 'explainable': True} for rule in DOMAIN_RULES), 'parameter_surfaces': tuple({'parameter': parameter, 'surface': f"{PBC_KEY}.ui.parameter.{parameter}", 'bounded': True, 'editable': True} for parameter in DOMAIN_PARAMETERS), 'advanced_surfaces': tuple({'capability': capability, 'surface': f"{PBC_KEY}.ui.advanced.{_digest(capability)[:12]}", 'explainable': True} for capability in DOMAIN_ADVANCED_CAPABILITIES), 'edge_case_surfaces': tuple({'edge_case': edge_case, 'surface': f"{PBC_KEY}.ui.edge_case.{edge_case}", 'triage_queue': True} for edge_case in DOMAIN_EDGE_CASES), 'table_surfaces': tuple({'owned_table': table, 'surface': f"{PBC_KEY}.ui.table.{table}", 'read_model': True, 'mutation_guard': True} for table in DOMAIN_OWNED_TABLES), 'specialist_capabilities': DOMAIN_SPECIALIST_CAPABILITIES, 'coverage': {'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False}, 'side_effects': ()}

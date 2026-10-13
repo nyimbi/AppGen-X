@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `oil_gas_field_operations_appgen_outbox_event`
 - `simulate_oil_gas_field_operations_schema_extension`: validates policy, writes owned `oil_gas_field_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_oil_gas_field_operations_control_assertion`: validates policy, writes owned `oil_gas_field_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_oil_gas_field_operations_governed_model`: validates policy, writes owned `oil_gas_field_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_oil_gas_field_operations_13`: validates policy, writes owned `oil_gas_field_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_oil_gas_field_operations_14`: validates policy, writes owned `oil_gas_field_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_oil_gas_field_operations_15`: validates policy, writes owned `oil_gas_field_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_oil_gas_field_operations_16`: validates policy, writes owned `oil_gas_field_operations_well` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_oil_gas_field_operations_17`: validates policy, writes owned `oil_gas_field_operations_production_reading` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_oil_gas_field_operations_18`: validates policy, writes owned `oil_gas_field_operations_field_ticket` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `allocate_commingled_pad_production`: validates policy, writes owned `oil_gas_field_operations_production_reading` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `rank_workover_candidate`: validates policy, writes owned `oil_gas_field_operations_workover_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `reconcile_tank_lact_ticket`: validates policy, writes owned `oil_gas_field_operations_field_ticket` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `surveil_well_integrity_barrier`: validates policy, writes owned `oil_gas_field_operations_well` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `trace_lifting_cost`: validates policy, writes owned `oil_gas_field_operations_lifting_cost` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `classify_hse_reportable_boundary`: validates policy, writes owned `oil_gas_field_operations_hse_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: well, production_reading, field_ticket, workover_plan, hse_event, reserve_estimate, lifting_cost, oil_gas_field_operations_policy_rule, oil_gas_field_operations_runtime_parameter, oil_gas_field_operations_schema_extension, oil_gas_field_operations_control_assertion, oil_gas_field_operations_governed_model
-- operations: create_well, record_production_reading, review_field_ticket, approve_workover_plan, simulate_hse_event, create_reserve_estimate, record_lifting_cost, review_oil_gas_field_operations_policy_rule, approve_oil_gas_field_operations_runtime_parameter, simulate_oil_gas_field_operations_schema_extension, create_oil_gas_field_operations_control_assertion, record_oil_gas_field_operations_governed_model, operate_oil_gas_field_operations_13, operate_oil_gas_field_operations_14, operate_oil_gas_field_operations_15, operate_oil_gas_field_operations_16, operate_oil_gas_field_operations_17, operate_oil_gas_field_operations_18
+- operations: create_well, record_production_reading, review_field_ticket, approve_workover_plan, simulate_hse_event, create_reserve_estimate, record_lifting_cost, review_oil_gas_field_operations_policy_rule, approve_oil_gas_field_operations_runtime_parameter, simulate_oil_gas_field_operations_schema_extension, create_oil_gas_field_operations_control_assertion, record_oil_gas_field_operations_governed_model, allocate_commingled_pad_production, rank_workover_candidate, reconcile_tank_lact_ticket, surveil_well_integrity_barrier, trace_lifting_cost, classify_hse_reportable_boundary
 - emits: OilGasFieldOperationsCreated, OilGasFieldOperationsUpdated, OilGasFieldOperationsApproved, OilGasFieldOperationsExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: well_policy, production_reading_policy, field_ticket_policy, workover_plan_policy, hse_event_policy, reserve_estimate_policy

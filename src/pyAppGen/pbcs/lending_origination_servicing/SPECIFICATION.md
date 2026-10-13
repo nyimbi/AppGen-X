@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `lending_origination_servicing_appgen_outbox_e
 - `simulate_lending_origination_servicing_schema_extension`: validates policy, writes owned `lending_origination_servicing_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_lending_origination_servicing_control_assertion`: validates policy, writes owned `lending_origination_servicing_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_lending_origination_servicing_governed_model`: validates policy, writes owned `lending_origination_servicing_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_lending_origination_servicing_13`: validates policy, writes owned `lending_origination_servicing_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_lending_origination_servicing_14`: validates policy, writes owned `lending_origination_servicing_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_lending_origination_servicing_15`: validates policy, writes owned `lending_origination_servicing_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_lending_origination_servicing_16`: validates policy, writes owned `lending_origination_servicing_loan_application` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_lending_origination_servicing_17`: validates policy, writes owned `lending_origination_servicing_borrower_profile` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_lending_origination_servicing_18`: validates policy, writes owned `lending_origination_servicing_underwriting_decision` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `verify_income_cash_flow`: validates policy, writes owned `lending_origination_servicing_loan_application` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `gate_identity_fraud_kyc`: validates policy, writes owned `lending_origination_servicing_borrower_profile` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `calculate_debt_service_coverage`: validates policy, writes owned `lending_origination_servicing_underwriting_decision` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `explain_adverse_action_decision`: validates policy, writes owned `lending_origination_servicing_underwriting_decision` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `board_loan_completeness`: validates policy, writes owned `lending_origination_servicing_servicing_case` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `allocate_payment_waterfall`: validates policy, writes owned `lending_origination_servicing_repayment_schedule` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: loan_application, borrower_profile, underwriting_decision, loan_offer, disbursement, repayment_schedule, servicing_case, lending_origination_servicing_policy_rule, lending_origination_servicing_runtime_parameter, lending_origination_servicing_schema_extension, lending_origination_servicing_control_assertion, lending_origination_servicing_governed_model
-- operations: create_loan_application, record_borrower_profile, review_underwriting_decision, approve_loan_offer, simulate_disbursement, create_repayment_schedule, record_servicing_case, review_lending_origination_servicing_policy_rule, approve_lending_origination_servicing_runtime_parameter, simulate_lending_origination_servicing_schema_extension, create_lending_origination_servicing_control_assertion, record_lending_origination_servicing_governed_model, operate_lending_origination_servicing_13, operate_lending_origination_servicing_14, operate_lending_origination_servicing_15, operate_lending_origination_servicing_16, operate_lending_origination_servicing_17, operate_lending_origination_servicing_18
+- operations: create_loan_application, record_borrower_profile, review_underwriting_decision, approve_loan_offer, simulate_disbursement, create_repayment_schedule, record_servicing_case, review_lending_origination_servicing_policy_rule, approve_lending_origination_servicing_runtime_parameter, simulate_lending_origination_servicing_schema_extension, create_lending_origination_servicing_control_assertion, record_lending_origination_servicing_governed_model, verify_income_cash_flow, gate_identity_fraud_kyc, calculate_debt_service_coverage, explain_adverse_action_decision, board_loan_completeness, allocate_payment_waterfall
 - emits: LendingOriginationServicingCreated, LendingOriginationServicingUpdated, LendingOriginationServicingApproved, LendingOriginationServicingExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: loan_application_policy, borrower_profile_policy, underwriting_decision_policy, loan_offer_policy, disbursement_policy, repayment_schedule_policy

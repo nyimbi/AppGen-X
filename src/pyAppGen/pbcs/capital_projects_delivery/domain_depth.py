@@ -41,9 +41,9 @@ DOMAIN_OPERATIONS = (
     "simulate_capital_projects_delivery_schema_extension",
     "create_capital_projects_delivery_control_assertion",
     "record_capital_projects_delivery_governed_model",
-    "operate_capital_projects_delivery_14",
-    "operate_capital_projects_delivery_15",
-    "operate_capital_projects_delivery_16",
+    "define_work_breakdown_structure",
+    "select_earned_progress_rule",
+    "review_handover_dossier",
 )
 DOMAIN_RULES = (
     "capital_project_policy",
@@ -105,9 +105,9 @@ _OPERATION_TARGETS = {
     "simulate_capital_projects_delivery_schema_extension": "capital_projects_delivery_schema_extension",
     "create_capital_projects_delivery_control_assertion": "capital_projects_delivery_control_assertion",
     "record_capital_projects_delivery_governed_model": "capital_projects_delivery_governed_model",
-    "operate_capital_projects_delivery_14": "capital_projects_delivery_appgen_inbox_event",
-    "operate_capital_projects_delivery_15": "capital_projects_delivery_appgen_dead_letter_event",
-    "operate_capital_projects_delivery_16": "capital_projects_delivery_capital_project",
+    "define_work_breakdown_structure": "capital_projects_delivery_capital_project",
+    "select_earned_progress_rule": "capital_projects_delivery_progress_measurement",
+    "review_handover_dossier": "capital_projects_delivery_turnover_package",
 }
 _OPERATION_EVENTS = {
     "create_capital_project": DOMAIN_EVENTS[0],

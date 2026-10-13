@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `telecom_subscription_lifecycle_appgen_outbox_
 - `simulate_telecom_subscription_lifecycle_schema_extension`: validates policy, writes owned `telecom_subscription_lifecycle_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_telecom_subscription_lifecycle_control_assertion`: validates policy, writes owned `telecom_subscription_lifecycle_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_telecom_subscription_lifecycle_governed_model`: validates policy, writes owned `telecom_subscription_lifecycle_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_telecom_subscription_lifecycle_13`: validates policy, writes owned `telecom_subscription_lifecycle_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_telecom_subscription_lifecycle_14`: validates policy, writes owned `telecom_subscription_lifecycle_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_telecom_subscription_lifecycle_15`: validates policy, writes owned `telecom_subscription_lifecycle_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_telecom_subscription_lifecycle_16`: validates policy, writes owned `telecom_subscription_lifecycle_subscriber_account` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_telecom_subscription_lifecycle_17`: validates policy, writes owned `telecom_subscription_lifecycle_service_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_telecom_subscription_lifecycle_18`: validates policy, writes owned `telecom_subscription_lifecycle_sim_profile` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `advance_subscription_state`: validates policy, writes owned `telecom_subscription_lifecycle_subscriber_account` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `version_service_plan`: validates policy, writes owned `telecom_subscription_lifecycle_service_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `issue_esim_profile`: validates policy, writes owned `telecom_subscription_lifecycle_sim_profile` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `decompose_activation_request`: validates policy, writes owned `telecom_subscription_lifecycle_activation_request` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `apply_usage_throttle`: validates policy, writes owned `telecom_subscription_lifecycle_usage_session` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `prevent_roaming_shock`: validates policy, writes owned `telecom_subscription_lifecycle_roaming_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: subscriber_account, service_plan, sim_profile, activation_request, usage_session, roaming_event, churn_risk, telecom_subscription_lifecycle_policy_rule, telecom_subscription_lifecycle_runtime_parameter, telecom_subscription_lifecycle_schema_extension, telecom_subscription_lifecycle_control_assertion, telecom_subscription_lifecycle_governed_model
-- operations: create_subscriber_account, record_service_plan, review_sim_profile, approve_activation_request, simulate_usage_session, create_roaming_event, record_churn_risk, review_telecom_subscription_lifecycle_policy_rule, approve_telecom_subscription_lifecycle_runtime_parameter, simulate_telecom_subscription_lifecycle_schema_extension, create_telecom_subscription_lifecycle_control_assertion, record_telecom_subscription_lifecycle_governed_model, operate_telecom_subscription_lifecycle_13, operate_telecom_subscription_lifecycle_14, operate_telecom_subscription_lifecycle_15, operate_telecom_subscription_lifecycle_16, operate_telecom_subscription_lifecycle_17, operate_telecom_subscription_lifecycle_18
+- operations: create_subscriber_account, record_service_plan, review_sim_profile, approve_activation_request, simulate_usage_session, create_roaming_event, record_churn_risk, review_telecom_subscription_lifecycle_policy_rule, approve_telecom_subscription_lifecycle_runtime_parameter, simulate_telecom_subscription_lifecycle_schema_extension, create_telecom_subscription_lifecycle_control_assertion, record_telecom_subscription_lifecycle_governed_model, advance_subscription_state, version_service_plan, issue_esim_profile, decompose_activation_request, apply_usage_throttle, prevent_roaming_shock
 - emits: TelecomSubscriptionLifecycleCreated, TelecomSubscriptionLifecycleUpdated, TelecomSubscriptionLifecycleApproved, TelecomSubscriptionLifecycleExceptionOpened
 - consumes: PolicyChanged, CustomerUpdated, SupplierQualified
 - rules: subscriber_account_policy, service_plan_policy, sim_profile_policy, activation_request_policy, usage_session_policy, roaming_event_policy

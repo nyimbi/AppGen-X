@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `airport_operations_management_appgen_outbox_e
 - `simulate_airport_operations_management_schema_extension`: validates policy, writes owned `airport_operations_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_airport_operations_management_control_assertion`: validates policy, writes owned `airport_operations_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_airport_operations_management_governed_model`: validates policy, writes owned `airport_operations_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_airport_operations_management_13`: validates policy, writes owned `airport_operations_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_airport_operations_management_14`: validates policy, writes owned `airport_operations_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_airport_operations_management_15`: validates policy, writes owned `airport_operations_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_airport_operations_management_16`: validates policy, writes owned `airport_operations_management_gate_assignment` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_airport_operations_management_17`: validates policy, writes owned `airport_operations_management_stand_allocation` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_airport_operations_management_18`: validates policy, writes owned `airport_operations_management_slot` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `validate_gate_stand_compatibility`: validates policy, writes owned `airport_operations_management_gate_assignment` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `sequence_turnaround_milestone`: validates policy, writes owned `airport_operations_management_turndown_task` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `reconcile_slot_adherence`: validates policy, writes owned `airport_operations_management_slot` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `route_baggage_contingency`: validates policy, writes owned `airport_operations_management_baggage_belt` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `plan_remote_stand_bussing`: validates policy, writes owned `airport_operations_management_stand_allocation` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `assess_gate_change_impact`: validates policy, writes owned `airport_operations_management_gate_assignment` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: gate_assignment, stand_allocation, slot, turndown_task, baggage_belt, passenger_flow, airport_disruption, airport_operations_management_policy_rule, airport_operations_management_runtime_parameter, airport_operations_management_schema_extension, airport_operations_management_control_assertion, airport_operations_management_governed_model
-- operations: create_gate_assignment, record_stand_allocation, review_slot, approve_turndown_task, simulate_baggage_belt, create_passenger_flow, record_airport_disruption, review_airport_operations_management_policy_rule, approve_airport_operations_management_runtime_parameter, simulate_airport_operations_management_schema_extension, create_airport_operations_management_control_assertion, record_airport_operations_management_governed_model, operate_airport_operations_management_13, operate_airport_operations_management_14, operate_airport_operations_management_15, operate_airport_operations_management_16, operate_airport_operations_management_17, operate_airport_operations_management_18
+- operations: create_gate_assignment, record_stand_allocation, review_slot, approve_turndown_task, simulate_baggage_belt, create_passenger_flow, record_airport_disruption, review_airport_operations_management_policy_rule, approve_airport_operations_management_runtime_parameter, simulate_airport_operations_management_schema_extension, create_airport_operations_management_control_assertion, record_airport_operations_management_governed_model, validate_gate_stand_compatibility, sequence_turnaround_milestone, reconcile_slot_adherence, route_baggage_contingency, plan_remote_stand_bussing, assess_gate_change_impact
 - emits: AirportOperationsManagementCreated, AirportOperationsManagementUpdated, AirportOperationsManagementApproved, AirportOperationsManagementExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: gate_assignment_policy, stand_allocation_policy, slot_policy, turndown_task_policy, baggage_belt_policy, passenger_flow_policy

@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `real_estate_property_management_appgen_outbox
 - `simulate_real_estate_property_management_schema_extension`: validates policy, writes owned `real_estate_property_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_real_estate_property_management_control_assertion`: validates policy, writes owned `real_estate_property_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_real_estate_property_management_governed_model`: validates policy, writes owned `real_estate_property_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_real_estate_property_management_13`: validates policy, writes owned `real_estate_property_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_real_estate_property_management_14`: validates policy, writes owned `real_estate_property_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_real_estate_property_management_15`: validates policy, writes owned `real_estate_property_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_real_estate_property_management_16`: validates policy, writes owned `real_estate_property_management_property` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_real_estate_property_management_17`: validates policy, writes owned `real_estate_property_management_tenant` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_real_estate_property_management_18`: validates policy, writes owned `real_estate_property_management_lease` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `capture_lease_abstract`: validates policy, writes owned `real_estate_property_management_lease` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `register_tenant_household`: validates policy, writes owned `real_estate_property_management_tenant` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `prorate_rent_charge`: validates policy, writes owned `real_estate_property_management_rent_charge` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `reconcile_move_out_deposit`: validates policy, writes owned `real_estate_property_management_security_deposit` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `triage_service_request`: validates policy, writes owned `real_estate_property_management_maintenance_request` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `complete_move_in_checklist`: validates policy, writes owned `real_estate_property_management_inspection` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: property, tenant, lease, rent_charge, maintenance_request, inspection, security_deposit, real_estate_property_management_policy_rule, real_estate_property_management_runtime_parameter, real_estate_property_management_schema_extension, real_estate_property_management_control_assertion, real_estate_property_management_governed_model
-- operations: create_property, record_tenant, review_lease, approve_rent_charge, simulate_maintenance_request, create_inspection, record_security_deposit, review_real_estate_property_management_policy_rule, approve_real_estate_property_management_runtime_parameter, simulate_real_estate_property_management_schema_extension, create_real_estate_property_management_control_assertion, record_real_estate_property_management_governed_model, operate_real_estate_property_management_13, operate_real_estate_property_management_14, operate_real_estate_property_management_15, operate_real_estate_property_management_16, operate_real_estate_property_management_17, operate_real_estate_property_management_18
+- operations: create_property, record_tenant, review_lease, approve_rent_charge, simulate_maintenance_request, create_inspection, record_security_deposit, review_real_estate_property_management_policy_rule, approve_real_estate_property_management_runtime_parameter, simulate_real_estate_property_management_schema_extension, create_real_estate_property_management_control_assertion, record_real_estate_property_management_governed_model, capture_lease_abstract, register_tenant_household, prorate_rent_charge, reconcile_move_out_deposit, triage_service_request, complete_move_in_checklist
 - emits: RealEstatePropertyManagementCreated, RealEstatePropertyManagementUpdated, RealEstatePropertyManagementApproved, RealEstatePropertyManagementExceptionOpened
 - consumes: PolicyChanged, CustomerUpdated, SupplierQualified
 - rules: property_policy, tenant_policy, lease_policy, rent_charge_policy, maintenance_request_policy, inspection_policy

@@ -32,12 +32,33 @@ DOMAIN_OPERATIONS = ('create_patient_care_plan',
  'simulate_clinical_care_coordination_schema_extension',
  'create_clinical_care_coordination_control_assertion',
  'record_clinical_care_coordination_governed_model',
- 'operate_clinical_care_coordination_13',
- 'operate_clinical_care_coordination_14',
- 'operate_clinical_care_coordination_15',
- 'operate_clinical_care_coordination_16',
- 'operate_clinical_care_coordination_17',
- 'operate_clinical_care_coordination_18')
+ 'stratify_care_coordination_risk',
+ 'detect_care_plan_conflict',
+ 'detect_care_team_coverage_gap',
+ 'verify_transition_packet_integrity',
+ 'define_care_gap_taxonomy',
+ 'score_referral_network_performance')
+
+_OPERATION_TARGETS = {
+ 'create_patient_care_plan': 'clinical_care_coordination_patient_care_plan',
+ 'record_care_team': 'clinical_care_coordination_care_team',
+ 'review_referral': 'clinical_care_coordination_referral',
+ 'approve_encounter': 'clinical_care_coordination_encounter',
+ 'simulate_care_gap': 'clinical_care_coordination_care_gap',
+ 'create_transition_plan': 'clinical_care_coordination_transition_plan',
+ 'record_outcome_measure': 'clinical_care_coordination_outcome_measure',
+ 'review_clinical_care_coordination_policy_rule': 'clinical_care_coordination_policy_rule',
+ 'approve_clinical_care_coordination_runtime_parameter': 'clinical_care_coordination_runtime_parameter',
+ 'simulate_clinical_care_coordination_schema_extension': 'clinical_care_coordination_schema_extension',
+ 'create_clinical_care_coordination_control_assertion': 'clinical_care_coordination_control_assertion',
+ 'record_clinical_care_coordination_governed_model': 'clinical_care_coordination_governed_model',
+ 'stratify_care_coordination_risk': 'clinical_care_coordination_patient_care_plan',
+ 'detect_care_plan_conflict': 'clinical_care_coordination_patient_care_plan',
+ 'detect_care_team_coverage_gap': 'clinical_care_coordination_care_team',
+ 'verify_transition_packet_integrity': 'clinical_care_coordination_transition_plan',
+ 'define_care_gap_taxonomy': 'clinical_care_coordination_care_gap',
+ 'score_referral_network_performance': 'clinical_care_coordination_referral',
+}
 DOMAIN_RULES = ('patient_care_plan_policy',
  'care_team_policy',
  'referral_policy',
@@ -80,7 +101,7 @@ def execute_domain_operation(operation: str, payload: dict | None = None) -> dic
     if operation not in DOMAIN_OPERATIONS:
         return {'ok': False, 'reason': 'unknown_domain_operation', 'operation': operation, 'side_effects': ()}
     index = DOMAIN_OPERATIONS.index(operation)
-    target_table = DOMAIN_OWNED_TABLES[index % len(DOMAIN_OWNED_TABLES)]
+    target_table = _OPERATION_TARGETS.get(operation, DOMAIN_OWNED_TABLES[0])
     emitted_event = DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]
     return {'ok': True, 'pbc': PBC_KEY, 'operation': operation, 'operation_kind': 'command', 'target_table': target_table, 'owned_tables': (target_table,), 'read_tables': (), 'emitted_event': emitted_event, 'event_contract': 'AppGen-X', 'idempotency_key': _digest((PBC_KEY, operation, tuple(sorted(payload.items())))), 'rules_evaluated': DOMAIN_RULES[:3], 'parameters_read': DOMAIN_PARAMETERS[:3], 'permission': f'{PBC_KEY}.operate', 'evidence_hash': _digest((operation, payload, target_table, emitted_event)), 'shared_table_access': False, 'stream_engine_picker_visible': False, 'side_effects': ()}
 
@@ -93,4 +114,4 @@ DOMAIN_EDGE_CASES = tuple(f"{operation}_edge_case" for operation in DOMAIN_OPERA
 DOMAIN_SPECIALIST_CAPABILITIES = tuple(dict.fromkeys(tuple(DOMAIN_ADVANCED_CAPABILITIES) + tuple(f"specialist_{operation}" for operation in DOMAIN_OPERATIONS) + tuple(f"rule_driven_{rule}" for rule in DOMAIN_RULES)))
 
 def domain_capability_surface_contract() -> dict:
-    return {'format': f'appgen.{PBC_KEY}.complete-domain-capability-surface.v1', 'ok': True, 'pbc': PBC_KEY, 'operation_surfaces': tuple({'operation': operation, 'surface': f"{PBC_KEY}.ui.operation.{operation}", 'action': operation, 'target_table': DOMAIN_OWNED_TABLES[index % len(DOMAIN_OWNED_TABLES)], 'permission': f"{PBC_KEY}.operate", 'requires_confirmation': True, 'agent_tool': f"{PBC_KEY}_skills.{operation}", 'event': DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]} for index, operation in enumerate(DOMAIN_OPERATIONS)), 'rule_surfaces': tuple({'rule': rule, 'surface': f"{PBC_KEY}.ui.rule.{rule}", 'editor': True, 'explainable': True} for rule in DOMAIN_RULES), 'parameter_surfaces': tuple({'parameter': parameter, 'surface': f"{PBC_KEY}.ui.parameter.{parameter}", 'bounded': True, 'editable': True} for parameter in DOMAIN_PARAMETERS), 'advanced_surfaces': tuple({'capability': capability, 'surface': f"{PBC_KEY}.ui.advanced.{_digest(capability)[:12]}", 'explainable': True} for capability in DOMAIN_ADVANCED_CAPABILITIES), 'edge_case_surfaces': tuple({'edge_case': edge_case, 'surface': f"{PBC_KEY}.ui.edge_case.{edge_case}", 'triage_queue': True} for edge_case in DOMAIN_EDGE_CASES), 'table_surfaces': tuple({'owned_table': table, 'surface': f"{PBC_KEY}.ui.table.{table}", 'read_model': True, 'mutation_guard': True} for table in DOMAIN_OWNED_TABLES), 'specialist_capabilities': DOMAIN_SPECIALIST_CAPABILITIES, 'coverage': {'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False}, 'side_effects': ()}
+    return {'format': f'appgen.{PBC_KEY}.complete-domain-capability-surface.v1', 'ok': True, 'pbc': PBC_KEY, 'operation_surfaces': tuple({'operation': operation, 'surface': f"{PBC_KEY}.ui.operation.{operation}", 'action': operation, 'target_table': _OPERATION_TARGETS.get(operation, DOMAIN_OWNED_TABLES[0]), 'permission': f"{PBC_KEY}.operate", 'requires_confirmation': True, 'agent_tool': f"{PBC_KEY}_skills.{operation}", 'event': DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]} for index, operation in enumerate(DOMAIN_OPERATIONS)), 'rule_surfaces': tuple({'rule': rule, 'surface': f"{PBC_KEY}.ui.rule.{rule}", 'editor': True, 'explainable': True} for rule in DOMAIN_RULES), 'parameter_surfaces': tuple({'parameter': parameter, 'surface': f"{PBC_KEY}.ui.parameter.{parameter}", 'bounded': True, 'editable': True} for parameter in DOMAIN_PARAMETERS), 'advanced_surfaces': tuple({'capability': capability, 'surface': f"{PBC_KEY}.ui.advanced.{_digest(capability)[:12]}", 'explainable': True} for capability in DOMAIN_ADVANCED_CAPABILITIES), 'edge_case_surfaces': tuple({'edge_case': edge_case, 'surface': f"{PBC_KEY}.ui.edge_case.{edge_case}", 'triage_queue': True} for edge_case in DOMAIN_EDGE_CASES), 'table_surfaces': tuple({'owned_table': table, 'surface': f"{PBC_KEY}.ui.table.{table}", 'read_model': True, 'mutation_guard': True} for table in DOMAIN_OWNED_TABLES), 'specialist_capabilities': DOMAIN_SPECIALIST_CAPABILITIES, 'coverage': {'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False}, 'side_effects': ()}

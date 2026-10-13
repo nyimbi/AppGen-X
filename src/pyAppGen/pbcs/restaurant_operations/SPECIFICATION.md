@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `restaurant_operations_appgen_outbox_event`, `
 - `simulate_restaurant_operations_schema_extension`: validates policy, writes owned `restaurant_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_restaurant_operations_control_assertion`: validates policy, writes owned `restaurant_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_restaurant_operations_governed_model`: validates policy, writes owned `restaurant_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_restaurant_operations_13`: validates policy, writes owned `restaurant_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_restaurant_operations_14`: validates policy, writes owned `restaurant_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_restaurant_operations_15`: validates policy, writes owned `restaurant_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_restaurant_operations_16`: validates policy, writes owned `restaurant_operations_menu_item` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_restaurant_operations_17`: validates policy, writes owned `restaurant_operations_recipe` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_restaurant_operations_18`: validates policy, writes owned `restaurant_operations_kitchen_ticket` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `publish_menu_daypart`: validates policy, writes owned `restaurant_operations_menu_item` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `rollback_menu_version`: validates policy, writes owned `restaurant_operations_menu_item` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `select_recipe_yield`: validates policy, writes owned `restaurant_operations_recipe` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `generate_prep_list`: validates policy, writes owned `restaurant_operations_inventory_prep` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `pace_course_fire`: validates policy, writes owned `restaurant_operations_kitchen_ticket` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `classify_waste_root_cause`: validates policy, writes owned `restaurant_operations_food_waste` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: menu_item, recipe, kitchen_ticket, reservation, inventory_prep, food_waste, labor_shift, restaurant_operations_policy_rule, restaurant_operations_runtime_parameter, restaurant_operations_schema_extension, restaurant_operations_control_assertion, restaurant_operations_governed_model
-- operations: create_menu_item, record_recipe, review_kitchen_ticket, approve_reservation, simulate_inventory_prep, create_food_waste, record_labor_shift, review_restaurant_operations_policy_rule, approve_restaurant_operations_runtime_parameter, simulate_restaurant_operations_schema_extension, create_restaurant_operations_control_assertion, record_restaurant_operations_governed_model, operate_restaurant_operations_13, operate_restaurant_operations_14, operate_restaurant_operations_15, operate_restaurant_operations_16, operate_restaurant_operations_17, operate_restaurant_operations_18
+- operations: create_menu_item, record_recipe, review_kitchen_ticket, approve_reservation, simulate_inventory_prep, create_food_waste, record_labor_shift, review_restaurant_operations_policy_rule, approve_restaurant_operations_runtime_parameter, simulate_restaurant_operations_schema_extension, create_restaurant_operations_control_assertion, record_restaurant_operations_governed_model, publish_menu_daypart, rollback_menu_version, select_recipe_yield, generate_prep_list, pace_course_fire, classify_waste_root_cause
 - emits: RestaurantOperationsCreated, RestaurantOperationsUpdated, RestaurantOperationsApproved, RestaurantOperationsExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: menu_item_policy, recipe_policy, kitchen_ticket_policy, reservation_policy, inventory_prep_policy, food_waste_policy

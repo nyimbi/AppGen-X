@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `aviation_maintenance_repair_appgen_outbox_eve
 - `simulate_aviation_maintenance_repair_schema_extension`: validates policy, writes owned `aviation_maintenance_repair_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_aviation_maintenance_repair_control_assertion`: validates policy, writes owned `aviation_maintenance_repair_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_aviation_maintenance_repair_governed_model`: validates policy, writes owned `aviation_maintenance_repair_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_aviation_maintenance_repair_13`: validates policy, writes owned `aviation_maintenance_repair_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_aviation_maintenance_repair_14`: validates policy, writes owned `aviation_maintenance_repair_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_aviation_maintenance_repair_15`: validates policy, writes owned `aviation_maintenance_repair_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_aviation_maintenance_repair_16`: validates policy, writes owned `aviation_maintenance_repair_aircraft` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_aviation_maintenance_repair_17`: validates policy, writes owned `aviation_maintenance_repair_component` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_aviation_maintenance_repair_18`: validates policy, writes owned `aviation_maintenance_repair_work_card` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `verify_airworthiness_directive_applicability`: validates policy, writes owned `aviation_maintenance_repair_airworthiness_directive` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `plan_maintenance_visit_package`: validates policy, writes owned `aviation_maintenance_repair_maintenance_visit` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `project_component_life_limit`: validates policy, writes owned `aviation_maintenance_repair_component` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `quarantine_suspect_component`: validates policy, writes owned `aviation_maintenance_repair_component` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `assess_deferred_defect_aging`: validates policy, writes owned `aviation_maintenance_repair_deferred_defect` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `compose_release_to_service_pack`: validates policy, writes owned `aviation_maintenance_repair_compliance_release` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: aircraft, component, work_card, maintenance_visit, airworthiness_directive, deferred_defect, compliance_release, aviation_maintenance_repair_policy_rule, aviation_maintenance_repair_runtime_parameter, aviation_maintenance_repair_schema_extension, aviation_maintenance_repair_control_assertion, aviation_maintenance_repair_governed_model
-- operations: create_aircraft, record_component, review_work_card, approve_maintenance_visit, simulate_airworthiness_directive, create_deferred_defect, record_compliance_release, review_aviation_maintenance_repair_policy_rule, approve_aviation_maintenance_repair_runtime_parameter, simulate_aviation_maintenance_repair_schema_extension, create_aviation_maintenance_repair_control_assertion, record_aviation_maintenance_repair_governed_model, operate_aviation_maintenance_repair_13, operate_aviation_maintenance_repair_14, operate_aviation_maintenance_repair_15, operate_aviation_maintenance_repair_16, operate_aviation_maintenance_repair_17, operate_aviation_maintenance_repair_18
+- operations: create_aircraft, record_component, review_work_card, approve_maintenance_visit, simulate_airworthiness_directive, create_deferred_defect, record_compliance_release, review_aviation_maintenance_repair_policy_rule, approve_aviation_maintenance_repair_runtime_parameter, simulate_aviation_maintenance_repair_schema_extension, create_aviation_maintenance_repair_control_assertion, record_aviation_maintenance_repair_governed_model, verify_airworthiness_directive_applicability, plan_maintenance_visit_package, project_component_life_limit, quarantine_suspect_component, assess_deferred_defect_aging, compose_release_to_service_pack
 - emits: AviationMaintenanceRepairCreated, AviationMaintenanceRepairUpdated, AviationMaintenanceRepairApproved, AviationMaintenanceRepairExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: aircraft_policy, component_policy, work_card_policy, maintenance_visit_policy, airworthiness_directive_policy, deferred_defect_policy

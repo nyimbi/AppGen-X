@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `public_sector_case_management_appgen_outbox_e
 - `simulate_public_sector_case_management_schema_extension`: validates policy, writes owned `public_sector_case_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_public_sector_case_management_control_assertion`: validates policy, writes owned `public_sector_case_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_public_sector_case_management_governed_model`: validates policy, writes owned `public_sector_case_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_public_sector_case_management_13`: validates policy, writes owned `public_sector_case_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_public_sector_case_management_14`: validates policy, writes owned `public_sector_case_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_public_sector_case_management_15`: validates policy, writes owned `public_sector_case_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_public_sector_case_management_16`: validates policy, writes owned `public_sector_case_management_citizen_case` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_public_sector_case_management_17`: validates policy, writes owned `public_sector_case_management_eligibility_determination` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_public_sector_case_management_18`: validates policy, writes owned `public_sector_case_management_benefit_decision` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `determine_residency_jurisdiction`: validates policy, writes owned `public_sector_case_management_eligibility_determination` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `screen_front_door_program`: validates policy, writes owned `public_sector_case_management_eligibility_determination` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `evaluate_evidence_sufficiency`: validates policy, writes owned `public_sector_case_management_citizen_case` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `assemble_hearing_packet`: validates policy, writes owned `public_sector_case_management_appeal` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `issue_change_reduction_notice`: validates policy, writes owned `public_sector_case_management_notice` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `capture_referral_outcome`: validates policy, writes owned `public_sector_case_management_service_outcome` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: citizen_case, eligibility_determination, benefit_decision, inspection, notice, appeal, service_outcome, public_sector_case_management_policy_rule, public_sector_case_management_runtime_parameter, public_sector_case_management_schema_extension, public_sector_case_management_control_assertion, public_sector_case_management_governed_model
-- operations: create_citizen_case, record_eligibility_determination, review_benefit_decision, approve_inspection, simulate_notice, create_appeal, record_service_outcome, review_public_sector_case_management_policy_rule, approve_public_sector_case_management_runtime_parameter, simulate_public_sector_case_management_schema_extension, create_public_sector_case_management_control_assertion, record_public_sector_case_management_governed_model, operate_public_sector_case_management_13, operate_public_sector_case_management_14, operate_public_sector_case_management_15, operate_public_sector_case_management_16, operate_public_sector_case_management_17, operate_public_sector_case_management_18
+- operations: create_citizen_case, record_eligibility_determination, review_benefit_decision, approve_inspection, simulate_notice, create_appeal, record_service_outcome, review_public_sector_case_management_policy_rule, approve_public_sector_case_management_runtime_parameter, simulate_public_sector_case_management_schema_extension, create_public_sector_case_management_control_assertion, record_public_sector_case_management_governed_model, determine_residency_jurisdiction, screen_front_door_program, evaluate_evidence_sufficiency, assemble_hearing_packet, issue_change_reduction_notice, capture_referral_outcome
 - emits: PublicSectorCaseManagementCreated, PublicSectorCaseManagementUpdated, PublicSectorCaseManagementApproved, PublicSectorCaseManagementExceptionOpened
 - consumes: PolicyChanged, CustomerUpdated, SupplierQualified
 - rules: citizen_case_policy, eligibility_determination_policy, benefit_decision_policy, inspection_policy, notice_policy, appeal_policy

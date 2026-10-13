@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `permitting_licensing_inspections_appgen_outbo
 - `simulate_permitting_licensing_inspections_schema_extension`: validates policy, writes owned `permitting_licensing_inspections_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_permitting_licensing_inspections_control_assertion`: validates policy, writes owned `permitting_licensing_inspections_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_permitting_licensing_inspections_governed_model`: validates policy, writes owned `permitting_licensing_inspections_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_permitting_licensing_inspections_13`: validates policy, writes owned `permitting_licensing_inspections_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_permitting_licensing_inspections_14`: validates policy, writes owned `permitting_licensing_inspections_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_permitting_licensing_inspections_15`: validates policy, writes owned `permitting_licensing_inspections_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_permitting_licensing_inspections_16`: validates policy, writes owned `permitting_licensing_inspections_application` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_permitting_licensing_inspections_17`: validates policy, writes owned `permitting_licensing_inspections_permit` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_permitting_licensing_inspections_18`: validates policy, writes owned `permitting_licensing_inspections_license` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `validate_application_package_completeness`: validates policy, writes owned `permitting_licensing_inspections_application` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `route_multi_discipline_plan_review`: validates policy, writes owned `permitting_licensing_inspections_review_task` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `gate_permit_issuance_readiness`: validates policy, writes owned `permitting_licensing_inspections_permit` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `assess_license_renewal_eligibility`: validates policy, writes owned `permitting_licensing_inspections_license` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `score_violation_severity`: validates policy, writes owned `permitting_licensing_inspections_violation` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `schedule_inspection_type_matrix`: validates policy, writes owned `permitting_licensing_inspections_inspection` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: application, permit, license, review_task, fee_assessment, inspection, violation, permitting_licensing_inspections_policy_rule, permitting_licensing_inspections_runtime_parameter, permitting_licensing_inspections_schema_extension, permitting_licensing_inspections_control_assertion, permitting_licensing_inspections_governed_model
-- operations: create_application, record_permit, review_license, approve_review_task, simulate_fee_assessment, create_inspection, record_violation, review_permitting_licensing_inspections_policy_rule, approve_permitting_licensing_inspections_runtime_parameter, simulate_permitting_licensing_inspections_schema_extension, create_permitting_licensing_inspections_control_assertion, record_permitting_licensing_inspections_governed_model, operate_permitting_licensing_inspections_13, operate_permitting_licensing_inspections_14, operate_permitting_licensing_inspections_15, operate_permitting_licensing_inspections_16, operate_permitting_licensing_inspections_17, operate_permitting_licensing_inspections_18
+- operations: create_application, record_permit, review_license, approve_review_task, simulate_fee_assessment, create_inspection, record_violation, review_permitting_licensing_inspections_policy_rule, approve_permitting_licensing_inspections_runtime_parameter, simulate_permitting_licensing_inspections_schema_extension, create_permitting_licensing_inspections_control_assertion, record_permitting_licensing_inspections_governed_model, validate_application_package_completeness, route_multi_discipline_plan_review, gate_permit_issuance_readiness, assess_license_renewal_eligibility, score_violation_severity, schedule_inspection_type_matrix
 - emits: PermittingLicensingInspectionsCreated, PermittingLicensingInspectionsUpdated, PermittingLicensingInspectionsApproved, PermittingLicensingInspectionsExceptionOpened
 - consumes: PolicyChanged, CustomerUpdated, SupplierQualified
 - rules: application_policy, permit_policy, license_policy, review_task_policy, fee_assessment_policy, inspection_policy

@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `port_terminal_operations_appgen_outbox_event`
 - `simulate_port_terminal_operations_schema_extension`: validates policy, writes owned `port_terminal_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_port_terminal_operations_control_assertion`: validates policy, writes owned `port_terminal_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_port_terminal_operations_governed_model`: validates policy, writes owned `port_terminal_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_port_terminal_operations_13`: validates policy, writes owned `port_terminal_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_port_terminal_operations_14`: validates policy, writes owned `port_terminal_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_port_terminal_operations_15`: validates policy, writes owned `port_terminal_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_port_terminal_operations_16`: validates policy, writes owned `port_terminal_operations_vessel_call` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_port_terminal_operations_17`: validates policy, writes owned `port_terminal_operations_berth_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_port_terminal_operations_18`: validates policy, writes owned `port_terminal_operations_container_move` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `nominate_berth_window`: validates policy, writes owned `port_terminal_operations_berth_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `verify_berth_readiness`: validates policy, writes owned `port_terminal_operations_berth_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `assign_quay_crane`: validates policy, writes owned `port_terminal_operations_berth_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `flag_preventable_restow`: validates policy, writes owned `port_terminal_operations_container_move` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `allocate_yard_block`: validates policy, writes owned `port_terminal_operations_yard_slot` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `classify_customs_hold`: validates policy, writes owned `port_terminal_operations_customs_handoff` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: vessel_call, berth_plan, container_move, yard_slot, gate_transaction, terminal_equipment, customs_handoff, port_terminal_operations_policy_rule, port_terminal_operations_runtime_parameter, port_terminal_operations_schema_extension, port_terminal_operations_control_assertion, port_terminal_operations_governed_model
-- operations: create_vessel_call, record_berth_plan, review_container_move, approve_yard_slot, simulate_gate_transaction, create_terminal_equipment, record_customs_handoff, review_port_terminal_operations_policy_rule, approve_port_terminal_operations_runtime_parameter, simulate_port_terminal_operations_schema_extension, create_port_terminal_operations_control_assertion, record_port_terminal_operations_governed_model, operate_port_terminal_operations_13, operate_port_terminal_operations_14, operate_port_terminal_operations_15, operate_port_terminal_operations_16, operate_port_terminal_operations_17, operate_port_terminal_operations_18
+- operations: create_vessel_call, record_berth_plan, review_container_move, approve_yard_slot, simulate_gate_transaction, create_terminal_equipment, record_customs_handoff, review_port_terminal_operations_policy_rule, approve_port_terminal_operations_runtime_parameter, simulate_port_terminal_operations_schema_extension, create_port_terminal_operations_control_assertion, record_port_terminal_operations_governed_model, nominate_berth_window, verify_berth_readiness, assign_quay_crane, flag_preventable_restow, allocate_yard_block, classify_customs_hold
 - emits: PortTerminalOperationsCreated, PortTerminalOperationsUpdated, PortTerminalOperationsApproved, PortTerminalOperationsExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: vessel_call_policy, berth_plan_policy, container_move_policy, yard_slot_policy, gate_transaction_policy, terminal_equipment_policy

@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `sports_venue_event_operations_appgen_outbox_e
 - `simulate_sports_venue_event_operations_schema_extension`: validates policy, writes owned `sports_venue_event_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_sports_venue_event_operations_control_assertion`: validates policy, writes owned `sports_venue_event_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_sports_venue_event_operations_governed_model`: validates policy, writes owned `sports_venue_event_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_sports_venue_event_operations_13`: validates policy, writes owned `sports_venue_event_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_sports_venue_event_operations_14`: validates policy, writes owned `sports_venue_event_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_sports_venue_event_operations_15`: validates policy, writes owned `sports_venue_event_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_sports_venue_event_operations_16`: validates policy, writes owned `sports_venue_event_operations_venue_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_sports_venue_event_operations_17`: validates policy, writes owned `sports_venue_event_operations_seating_manifest` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_sports_venue_event_operations_18`: validates policy, writes owned `sports_venue_event_operations_concession_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `define_changeover_window`: validates policy, writes owned `sports_venue_event_operations_venue_event` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `release_seat_hold`: validates policy, writes owned `sports_venue_event_operations_seating_manifest` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `enforce_alcohol_last_call`: validates policy, writes owned `sports_venue_event_operations_concession_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `monitor_crowd_density`: validates policy, writes owned `sports_venue_event_operations_security_post` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `roster_event_shift`: validates policy, writes owned `sports_venue_event_operations_event_staff` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `classify_fan_issue`: validates policy, writes owned `sports_venue_event_operations_fan_issue` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: venue_event, seating_manifest, concession_plan, security_post, event_staff, fan_issue, event_settlement, sports_venue_event_operations_policy_rule, sports_venue_event_operations_runtime_parameter, sports_venue_event_operations_schema_extension, sports_venue_event_operations_control_assertion, sports_venue_event_operations_governed_model
-- operations: create_venue_event, record_seating_manifest, review_concession_plan, approve_security_post, simulate_event_staff, create_fan_issue, record_event_settlement, review_sports_venue_event_operations_policy_rule, approve_sports_venue_event_operations_runtime_parameter, simulate_sports_venue_event_operations_schema_extension, create_sports_venue_event_operations_control_assertion, record_sports_venue_event_operations_governed_model, operate_sports_venue_event_operations_13, operate_sports_venue_event_operations_14, operate_sports_venue_event_operations_15, operate_sports_venue_event_operations_16, operate_sports_venue_event_operations_17, operate_sports_venue_event_operations_18
+- operations: create_venue_event, record_seating_manifest, review_concession_plan, approve_security_post, simulate_event_staff, create_fan_issue, record_event_settlement, review_sports_venue_event_operations_policy_rule, approve_sports_venue_event_operations_runtime_parameter, simulate_sports_venue_event_operations_schema_extension, create_sports_venue_event_operations_control_assertion, record_sports_venue_event_operations_governed_model, define_changeover_window, release_seat_hold, enforce_alcohol_last_call, monitor_crowd_density, roster_event_shift, classify_fan_issue
 - emits: SportsVenueEventOperationsCreated, SportsVenueEventOperationsUpdated, SportsVenueEventOperationsApproved, SportsVenueEventOperationsExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: venue_event_policy, seating_manifest_policy, concession_plan_policy, security_post_policy, event_staff_policy, fan_issue_policy

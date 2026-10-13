@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `humanitarian_relief_operations_appgen_outbox_
 - `simulate_humanitarian_relief_operations_schema_extension`: validates policy, writes owned `humanitarian_relief_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_humanitarian_relief_operations_control_assertion`: validates policy, writes owned `humanitarian_relief_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_humanitarian_relief_operations_governed_model`: validates policy, writes owned `humanitarian_relief_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_humanitarian_relief_operations_13`: validates policy, writes owned `humanitarian_relief_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_humanitarian_relief_operations_14`: validates policy, writes owned `humanitarian_relief_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_humanitarian_relief_operations_15`: validates policy, writes owned `humanitarian_relief_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_humanitarian_relief_operations_16`: validates policy, writes owned `humanitarian_relief_operations_needs_assessment` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_humanitarian_relief_operations_17`: validates policy, writes owned `humanitarian_relief_operations_aid_item` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_humanitarian_relief_operations_18`: validates policy, writes owned `humanitarian_relief_operations_distribution_event` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `triage_household_needs`: validates policy, writes owned `humanitarian_relief_operations_needs_assessment` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `compose_aid_ration_kit`: validates policy, writes owned `humanitarian_relief_operations_aid_item` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `reconcile_distribution_handover`: validates policy, writes owned `humanitarian_relief_operations_distribution_event` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `verify_partner_due_diligence`: validates policy, writes owned `humanitarian_relief_operations_field_partner` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `screen_protection_referral`: validates policy, writes owned `humanitarian_relief_operations_protection_case` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `enforce_donor_earmark`: validates policy, writes owned `humanitarian_relief_operations_donor_accountability` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: needs_assessment, aid_item, distribution_event, field_partner, protection_case, relief_shipment, donor_accountability, humanitarian_relief_operations_policy_rule, humanitarian_relief_operations_runtime_parameter, humanitarian_relief_operations_schema_extension, humanitarian_relief_operations_control_assertion, humanitarian_relief_operations_governed_model
-- operations: create_needs_assessment, record_aid_item, review_distribution_event, approve_field_partner, simulate_protection_case, create_relief_shipment, record_donor_accountability, review_humanitarian_relief_operations_policy_rule, approve_humanitarian_relief_operations_runtime_parameter, simulate_humanitarian_relief_operations_schema_extension, create_humanitarian_relief_operations_control_assertion, record_humanitarian_relief_operations_governed_model, operate_humanitarian_relief_operations_13, operate_humanitarian_relief_operations_14, operate_humanitarian_relief_operations_15, operate_humanitarian_relief_operations_16, operate_humanitarian_relief_operations_17, operate_humanitarian_relief_operations_18
+- operations: create_needs_assessment, record_aid_item, review_distribution_event, approve_field_partner, simulate_protection_case, create_relief_shipment, record_donor_accountability, review_humanitarian_relief_operations_policy_rule, approve_humanitarian_relief_operations_runtime_parameter, simulate_humanitarian_relief_operations_schema_extension, create_humanitarian_relief_operations_control_assertion, record_humanitarian_relief_operations_governed_model, triage_household_needs, compose_aid_ration_kit, reconcile_distribution_handover, verify_partner_due_diligence, screen_protection_referral, enforce_donor_earmark
 - emits: HumanitarianReliefOperationsCreated, HumanitarianReliefOperationsUpdated, HumanitarianReliefOperationsApproved, HumanitarianReliefOperationsExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: needs_assessment_policy, aid_item_policy, distribution_event_policy, field_partner_policy, protection_case_policy, relief_shipment_policy

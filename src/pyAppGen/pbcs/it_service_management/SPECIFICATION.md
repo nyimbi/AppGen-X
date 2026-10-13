@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `it_service_management_appgen_outbox_event`, `
 - `simulate_it_service_management_schema_extension`: validates policy, writes owned `it_service_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_it_service_management_control_assertion`: validates policy, writes owned `it_service_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_it_service_management_governed_model`: validates policy, writes owned `it_service_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_it_service_management_13`: validates policy, writes owned `it_service_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_it_service_management_14`: validates policy, writes owned `it_service_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_it_service_management_15`: validates policy, writes owned `it_service_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_it_service_management_16`: validates policy, writes owned `it_service_management_it_incident` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_it_service_management_17`: validates policy, writes owned `it_service_management_service_request` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_it_service_management_18`: validates policy, writes owned `it_service_management_change_request` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `declare_major_incident`: validates policy, writes owned `it_service_management_it_incident` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `validate_access_entitlement`: validates policy, writes owned `it_service_management_service_request` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `score_change_risk`: validates policy, writes owned `it_service_management_change_request` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `link_problem_to_incident`: validates policy, writes owned `it_service_management_problem_record` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `detect_configuration_drift`: validates policy, writes owned `it_service_management_configuration_item` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `pause_sla_clock`: validates policy, writes owned `it_service_management_sla_clock` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: it_incident, service_request, change_request, problem_record, configuration_item, sla_clock, knowledge_article, it_service_management_policy_rule, it_service_management_runtime_parameter, it_service_management_schema_extension, it_service_management_control_assertion, it_service_management_governed_model
-- operations: create_it_incident, record_service_request, review_change_request, approve_problem_record, simulate_configuration_item, create_sla_clock, record_knowledge_article, review_it_service_management_policy_rule, approve_it_service_management_runtime_parameter, simulate_it_service_management_schema_extension, create_it_service_management_control_assertion, record_it_service_management_governed_model, operate_it_service_management_13, operate_it_service_management_14, operate_it_service_management_15, operate_it_service_management_16, operate_it_service_management_17, operate_it_service_management_18
+- operations: create_it_incident, record_service_request, review_change_request, approve_problem_record, simulate_configuration_item, create_sla_clock, record_knowledge_article, review_it_service_management_policy_rule, approve_it_service_management_runtime_parameter, simulate_it_service_management_schema_extension, create_it_service_management_control_assertion, record_it_service_management_governed_model, declare_major_incident, validate_access_entitlement, score_change_risk, link_problem_to_incident, detect_configuration_drift, pause_sla_clock
 - emits: ItServiceManagementCreated, ItServiceManagementUpdated, ItServiceManagementApproved, ItServiceManagementExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: it_incident_policy, service_request_policy, change_request_policy, problem_record_policy, configuration_item_policy, sla_clock_policy

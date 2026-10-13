@@ -32,12 +32,33 @@ DOMAIN_OPERATIONS = ('create_treatment_plant',
  'simulate_water_wastewater_operations_schema_extension',
  'create_water_wastewater_operations_control_assertion',
  'record_water_wastewater_operations_governed_model',
- 'operate_water_wastewater_operations_13',
- 'operate_water_wastewater_operations_14',
- 'operate_water_wastewater_operations_15',
- 'operate_water_wastewater_operations_16',
- 'operate_water_wastewater_operations_17',
- 'operate_water_wastewater_operations_18')
+ 'configure_process_train',
+ 'schedule_sampling_plan',
+ 'track_sample_chain_of_custody',
+ 'issue_boil_water_advisory',
+ 'score_asset_criticality',
+ 'reconcile_laboratory_result')
+
+_OPERATION_TARGETS = {
+ 'create_treatment_plant': 'water_wastewater_operations_treatment_plant',
+ 'record_water_quality_sample': 'water_wastewater_operations_water_quality_sample',
+ 'review_permit_limit': 'water_wastewater_operations_permit_limit',
+ 'approve_pump_asset': 'water_wastewater_operations_pump_asset',
+ 'simulate_service_interruption': 'water_wastewater_operations_service_interruption',
+ 'create_field_work_order': 'water_wastewater_operations_field_work_order',
+ 'record_compliance_sample': 'water_wastewater_operations_compliance_sample',
+ 'review_water_wastewater_operations_policy_rule': 'water_wastewater_operations_policy_rule',
+ 'approve_water_wastewater_operations_runtime_parameter': 'water_wastewater_operations_runtime_parameter',
+ 'simulate_water_wastewater_operations_schema_extension': 'water_wastewater_operations_schema_extension',
+ 'create_water_wastewater_operations_control_assertion': 'water_wastewater_operations_control_assertion',
+ 'record_water_wastewater_operations_governed_model': 'water_wastewater_operations_governed_model',
+ 'configure_process_train': 'water_wastewater_operations_treatment_plant',
+ 'schedule_sampling_plan': 'water_wastewater_operations_water_quality_sample',
+ 'track_sample_chain_of_custody': 'water_wastewater_operations_water_quality_sample',
+ 'issue_boil_water_advisory': 'water_wastewater_operations_service_interruption',
+ 'score_asset_criticality': 'water_wastewater_operations_pump_asset',
+ 'reconcile_laboratory_result': 'water_wastewater_operations_compliance_sample',
+}
 DOMAIN_RULES = ('treatment_plant_policy',
  'water_quality_sample_policy',
  'permit_limit_policy',
@@ -80,7 +101,7 @@ def execute_domain_operation(operation: str, payload: dict | None = None) -> dic
     if operation not in DOMAIN_OPERATIONS:
         return {'ok': False, 'reason': 'unknown_domain_operation', 'operation': operation, 'side_effects': ()}
     index = DOMAIN_OPERATIONS.index(operation)
-    target_table = DOMAIN_OWNED_TABLES[index % len(DOMAIN_OWNED_TABLES)]
+    target_table = _OPERATION_TARGETS.get(operation, DOMAIN_OWNED_TABLES[0])
     emitted_event = DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]
     return {'ok': True, 'pbc': PBC_KEY, 'operation': operation, 'operation_kind': 'command', 'target_table': target_table, 'owned_tables': (target_table,), 'read_tables': (), 'emitted_event': emitted_event, 'event_contract': 'AppGen-X', 'idempotency_key': _digest((PBC_KEY, operation, tuple(sorted(payload.items())))), 'rules_evaluated': DOMAIN_RULES[:3], 'parameters_read': DOMAIN_PARAMETERS[:3], 'permission': f'{PBC_KEY}.operate', 'evidence_hash': _digest((operation, payload, target_table, emitted_event)), 'shared_table_access': False, 'stream_engine_picker_visible': False, 'side_effects': ()}
 
@@ -93,4 +114,4 @@ DOMAIN_EDGE_CASES = tuple(f"{operation}_edge_case" for operation in DOMAIN_OPERA
 DOMAIN_SPECIALIST_CAPABILITIES = tuple(dict.fromkeys(tuple(DOMAIN_ADVANCED_CAPABILITIES) + tuple(f"specialist_{operation}" for operation in DOMAIN_OPERATIONS) + tuple(f"rule_driven_{rule}" for rule in DOMAIN_RULES)))
 
 def domain_capability_surface_contract() -> dict:
-    return {'format': f'appgen.{PBC_KEY}.complete-domain-capability-surface.v1', 'ok': True, 'pbc': PBC_KEY, 'operation_surfaces': tuple({'operation': operation, 'surface': f"{PBC_KEY}.ui.operation.{operation}", 'action': operation, 'target_table': DOMAIN_OWNED_TABLES[index % len(DOMAIN_OWNED_TABLES)], 'permission': f"{PBC_KEY}.operate", 'requires_confirmation': True, 'agent_tool': f"{PBC_KEY}_skills.{operation}", 'event': DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]} for index, operation in enumerate(DOMAIN_OPERATIONS)), 'rule_surfaces': tuple({'rule': rule, 'surface': f"{PBC_KEY}.ui.rule.{rule}", 'editor': True, 'explainable': True} for rule in DOMAIN_RULES), 'parameter_surfaces': tuple({'parameter': parameter, 'surface': f"{PBC_KEY}.ui.parameter.{parameter}", 'bounded': True, 'editable': True} for parameter in DOMAIN_PARAMETERS), 'advanced_surfaces': tuple({'capability': capability, 'surface': f"{PBC_KEY}.ui.advanced.{_digest(capability)[:12]}", 'explainable': True} for capability in DOMAIN_ADVANCED_CAPABILITIES), 'edge_case_surfaces': tuple({'edge_case': edge_case, 'surface': f"{PBC_KEY}.ui.edge_case.{edge_case}", 'triage_queue': True} for edge_case in DOMAIN_EDGE_CASES), 'table_surfaces': tuple({'owned_table': table, 'surface': f"{PBC_KEY}.ui.table.{table}", 'read_model': True, 'mutation_guard': True} for table in DOMAIN_OWNED_TABLES), 'specialist_capabilities': DOMAIN_SPECIALIST_CAPABILITIES, 'coverage': {'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False}, 'side_effects': ()}
+    return {'format': f'appgen.{PBC_KEY}.complete-domain-capability-surface.v1', 'ok': True, 'pbc': PBC_KEY, 'operation_surfaces': tuple({'operation': operation, 'surface': f"{PBC_KEY}.ui.operation.{operation}", 'action': operation, 'target_table': _OPERATION_TARGETS.get(operation, DOMAIN_OWNED_TABLES[0]), 'permission': f"{PBC_KEY}.operate", 'requires_confirmation': True, 'agent_tool': f"{PBC_KEY}_skills.{operation}", 'event': DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]} for index, operation in enumerate(DOMAIN_OPERATIONS)), 'rule_surfaces': tuple({'rule': rule, 'surface': f"{PBC_KEY}.ui.rule.{rule}", 'editor': True, 'explainable': True} for rule in DOMAIN_RULES), 'parameter_surfaces': tuple({'parameter': parameter, 'surface': f"{PBC_KEY}.ui.parameter.{parameter}", 'bounded': True, 'editable': True} for parameter in DOMAIN_PARAMETERS), 'advanced_surfaces': tuple({'capability': capability, 'surface': f"{PBC_KEY}.ui.advanced.{_digest(capability)[:12]}", 'explainable': True} for capability in DOMAIN_ADVANCED_CAPABILITIES), 'edge_case_surfaces': tuple({'edge_case': edge_case, 'surface': f"{PBC_KEY}.ui.edge_case.{edge_case}", 'triage_queue': True} for edge_case in DOMAIN_EDGE_CASES), 'table_surfaces': tuple({'owned_table': table, 'surface': f"{PBC_KEY}.ui.table.{table}", 'read_model': True, 'mutation_guard': True} for table in DOMAIN_OWNED_TABLES), 'specialist_capabilities': DOMAIN_SPECIALIST_CAPABILITIES, 'coverage': {'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False}, 'side_effects': ()}

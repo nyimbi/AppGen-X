@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `laboratory_information_management_appgen_outb
 - `simulate_laboratory_information_management_schema_extension`: validates policy, writes owned `laboratory_information_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_laboratory_information_management_control_assertion`: validates policy, writes owned `laboratory_information_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_laboratory_information_management_governed_model`: validates policy, writes owned `laboratory_information_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_laboratory_information_management_13`: validates policy, writes owned `laboratory_information_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_laboratory_information_management_14`: validates policy, writes owned `laboratory_information_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_laboratory_information_management_15`: validates policy, writes owned `laboratory_information_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_laboratory_information_management_16`: validates policy, writes owned `laboratory_information_management_lab_sample` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_laboratory_information_management_17`: validates policy, writes owned `laboratory_information_management_test_order` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_laboratory_information_management_18`: validates policy, writes owned `laboratory_information_management_instrument_run` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `accession_lab_sample`: validates policy, writes owned `laboratory_information_management_lab_sample` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `assess_specimen_condition`: validates policy, writes owned `laboratory_information_management_lab_sample` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `validate_test_result`: validates policy, writes owned `laboratory_information_management_result` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `govern_reference_range`: validates policy, writes owned `laboratory_information_management_result` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `schedule_calibration`: validates policy, writes owned `laboratory_information_management_instrument_run` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `define_reflex_testing_rule`: validates policy, writes owned `laboratory_information_management_test_order` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: lab_sample, test_order, instrument_run, result, quality_control, chain_custody, lab_batch, laboratory_information_management_policy_rule, laboratory_information_management_runtime_parameter, laboratory_information_management_schema_extension, laboratory_information_management_control_assertion, laboratory_information_management_governed_model
-- operations: create_lab_sample, record_test_order, review_instrument_run, approve_result, simulate_quality_control, create_chain_custody, record_lab_batch, review_laboratory_information_management_policy_rule, approve_laboratory_information_management_runtime_parameter, simulate_laboratory_information_management_schema_extension, create_laboratory_information_management_control_assertion, record_laboratory_information_management_governed_model, operate_laboratory_information_management_13, operate_laboratory_information_management_14, operate_laboratory_information_management_15, operate_laboratory_information_management_16, operate_laboratory_information_management_17, operate_laboratory_information_management_18
+- operations: create_lab_sample, record_test_order, review_instrument_run, approve_result, simulate_quality_control, create_chain_custody, record_lab_batch, review_laboratory_information_management_policy_rule, approve_laboratory_information_management_runtime_parameter, simulate_laboratory_information_management_schema_extension, create_laboratory_information_management_control_assertion, record_laboratory_information_management_governed_model, accession_lab_sample, assess_specimen_condition, validate_test_result, govern_reference_range, schedule_calibration, define_reflex_testing_rule
 - emits: LaboratoryInformationManagementCreated, LaboratoryInformationManagementUpdated, LaboratoryInformationManagementApproved, LaboratoryInformationManagementExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: lab_sample_policy, test_order_policy, instrument_run_policy, result_policy, quality_control_policy, chain_custody_policy

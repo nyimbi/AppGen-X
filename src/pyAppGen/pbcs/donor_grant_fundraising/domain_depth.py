@@ -46,12 +46,40 @@ DOMAIN_OPERATIONS = ('create_donor',
  'simulate_donor_grant_fundraising_schema_extension',
  'create_donor_grant_fundraising_control_assertion',
  'record_donor_grant_fundraising_governed_model',
- 'operate_donor_grant_fundraising_13',
- 'operate_donor_grant_fundraising_14',
- 'operate_donor_grant_fundraising_15',
- 'operate_donor_grant_fundraising_16',
- 'operate_donor_grant_fundraising_17',
- 'operate_donor_grant_fundraising_18')
+ 'qualify_donor_prospect',
+ 'plan_pledge_installment',
+ 'apply_gift_to_pledge',
+ 'define_restriction_spending_rule',
+ 'forecast_grant_renewal',
+ 'model_counterfactual_ask')
+
+_OPERATION_TARGETS = {
+ 'create_donor': 'donor_grant_fundraising_donor',
+ 'record_campaign': 'donor_grant_fundraising_campaign',
+ 'review_pledge': 'donor_grant_fundraising_pledge',
+ 'approve_gift': 'donor_grant_fundraising_gift',
+ 'simulate_restriction': 'donor_grant_fundraising_restriction',
+ 'create_grant_application': 'donor_grant_fundraising_grant_application',
+ 'record_stewardship_touchpoint': 'donor_grant_fundraising_stewardship_touchpoint',
+ 'map_donor_relationship': 'donor_grant_fundraising_donor_relationship',
+ 'compose_proposal_workspace': 'donor_grant_fundraising_proposal_workspace',
+ 'orchestrate_acknowledgement': 'donor_grant_fundraising_acknowledgement',
+ 'generate_briefing_packet': 'donor_grant_fundraising_briefing_packet',
+ 'score_fundraising_opportunity': 'donor_grant_fundraising_opportunity_score',
+ 'approve_review_chain': 'donor_grant_fundraising_review_chain',
+ 'validate_grant_budget': 'donor_grant_fundraising_budget_validation',
+ 'review_donor_grant_fundraising_policy_rule': 'donor_grant_fundraising_policy_rule',
+ 'approve_donor_grant_fundraising_runtime_parameter': 'donor_grant_fundraising_runtime_parameter',
+ 'simulate_donor_grant_fundraising_schema_extension': 'donor_grant_fundraising_schema_extension',
+ 'create_donor_grant_fundraising_control_assertion': 'donor_grant_fundraising_control_assertion',
+ 'record_donor_grant_fundraising_governed_model': 'donor_grant_fundraising_governed_model',
+ 'qualify_donor_prospect': 'donor_grant_fundraising_donor',
+ 'plan_pledge_installment': 'donor_grant_fundraising_pledge',
+ 'apply_gift_to_pledge': 'donor_grant_fundraising_gift',
+ 'define_restriction_spending_rule': 'donor_grant_fundraising_restriction',
+ 'forecast_grant_renewal': 'donor_grant_fundraising_grant_application',
+ 'model_counterfactual_ask': 'donor_grant_fundraising_campaign',
+}
 DOMAIN_RULES = ('donor_policy',
  'campaign_policy',
  'pledge_policy',
@@ -94,7 +122,7 @@ def execute_domain_operation(operation: str, payload: dict | None = None) -> dic
     if operation not in DOMAIN_OPERATIONS:
         return {'ok': False, 'reason': 'unknown_domain_operation', 'operation': operation, 'side_effects': ()}
     index = DOMAIN_OPERATIONS.index(operation)
-    target_table = DOMAIN_OWNED_TABLES[index % len(DOMAIN_OWNED_TABLES)]
+    target_table = _OPERATION_TARGETS.get(operation, DOMAIN_OWNED_TABLES[0])
     emitted_event = DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]
     return {'ok': True, 'pbc': PBC_KEY, 'operation': operation, 'operation_kind': 'command', 'target_table': target_table, 'owned_tables': (target_table,), 'read_tables': (), 'emitted_event': emitted_event, 'event_contract': 'AppGen-X', 'idempotency_key': _digest((PBC_KEY, operation, tuple(sorted(payload.items())))), 'rules_evaluated': DOMAIN_RULES[:3], 'parameters_read': DOMAIN_PARAMETERS[:3], 'permission': f'{PBC_KEY}.operate', 'evidence_hash': _digest((operation, payload, target_table, emitted_event)), 'shared_table_access': False, 'stream_engine_picker_visible': False, 'side_effects': ()}
 
@@ -107,4 +135,4 @@ DOMAIN_EDGE_CASES = tuple(f"{operation}_edge_case" for operation in DOMAIN_OPERA
 DOMAIN_SPECIALIST_CAPABILITIES = tuple(dict.fromkeys(tuple(DOMAIN_ADVANCED_CAPABILITIES) + tuple(f"specialist_{operation}" for operation in DOMAIN_OPERATIONS) + tuple(f"rule_driven_{rule}" for rule in DOMAIN_RULES)))
 
 def domain_capability_surface_contract() -> dict:
-    return {'format': f'appgen.{PBC_KEY}.complete-domain-capability-surface.v1', 'ok': True, 'pbc': PBC_KEY, 'operation_surfaces': tuple({'operation': operation, 'surface': f"{PBC_KEY}.ui.operation.{operation}", 'action': operation, 'target_table': DOMAIN_OWNED_TABLES[index % len(DOMAIN_OWNED_TABLES)], 'permission': f"{PBC_KEY}.operate", 'requires_confirmation': True, 'agent_tool': f"{PBC_KEY}_skills.{operation}", 'event': DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]} for index, operation in enumerate(DOMAIN_OPERATIONS)), 'rule_surfaces': tuple({'rule': rule, 'surface': f"{PBC_KEY}.ui.rule.{rule}", 'editor': True, 'explainable': True} for rule in DOMAIN_RULES), 'parameter_surfaces': tuple({'parameter': parameter, 'surface': f"{PBC_KEY}.ui.parameter.{parameter}", 'bounded': True, 'editable': True} for parameter in DOMAIN_PARAMETERS), 'advanced_surfaces': tuple({'capability': capability, 'surface': f"{PBC_KEY}.ui.advanced.{_digest(capability)[:12]}", 'explainable': True} for capability in DOMAIN_ADVANCED_CAPABILITIES), 'edge_case_surfaces': tuple({'edge_case': edge_case, 'surface': f"{PBC_KEY}.ui.edge_case.{edge_case}", 'triage_queue': True} for edge_case in DOMAIN_EDGE_CASES), 'table_surfaces': tuple({'owned_table': table, 'surface': f"{PBC_KEY}.ui.table.{table}", 'read_model': True, 'mutation_guard': True} for table in DOMAIN_OWNED_TABLES), 'specialist_capabilities': DOMAIN_SPECIALIST_CAPABILITIES, 'coverage': {'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False}, 'side_effects': ()}
+    return {'format': f'appgen.{PBC_KEY}.complete-domain-capability-surface.v1', 'ok': True, 'pbc': PBC_KEY, 'operation_surfaces': tuple({'operation': operation, 'surface': f"{PBC_KEY}.ui.operation.{operation}", 'action': operation, 'target_table': _OPERATION_TARGETS.get(operation, DOMAIN_OWNED_TABLES[0]), 'permission': f"{PBC_KEY}.operate", 'requires_confirmation': True, 'agent_tool': f"{PBC_KEY}_skills.{operation}", 'event': DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]} for index, operation in enumerate(DOMAIN_OPERATIONS)), 'rule_surfaces': tuple({'rule': rule, 'surface': f"{PBC_KEY}.ui.rule.{rule}", 'editor': True, 'explainable': True} for rule in DOMAIN_RULES), 'parameter_surfaces': tuple({'parameter': parameter, 'surface': f"{PBC_KEY}.ui.parameter.{parameter}", 'bounded': True, 'editable': True} for parameter in DOMAIN_PARAMETERS), 'advanced_surfaces': tuple({'capability': capability, 'surface': f"{PBC_KEY}.ui.advanced.{_digest(capability)[:12]}", 'explainable': True} for capability in DOMAIN_ADVANCED_CAPABILITIES), 'edge_case_surfaces': tuple({'edge_case': edge_case, 'surface': f"{PBC_KEY}.ui.edge_case.{edge_case}", 'triage_queue': True} for edge_case in DOMAIN_EDGE_CASES), 'table_surfaces': tuple({'owned_table': table, 'surface': f"{PBC_KEY}.ui.table.{table}", 'read_model': True, 'mutation_guard': True} for table in DOMAIN_OWNED_TABLES), 'specialist_capabilities': DOMAIN_SPECIALIST_CAPABILITIES, 'coverage': {'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False}, 'side_effects': ()}

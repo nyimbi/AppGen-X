@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `energy_grid_operations_appgen_outbox_event`, 
 - `simulate_energy_grid_operations_schema_extension`: validates policy, writes owned `energy_grid_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_energy_grid_operations_control_assertion`: validates policy, writes owned `energy_grid_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_energy_grid_operations_governed_model`: validates policy, writes owned `energy_grid_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_energy_grid_operations_13`: validates policy, writes owned `energy_grid_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_energy_grid_operations_14`: validates policy, writes owned `energy_grid_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_energy_grid_operations_15`: validates policy, writes owned `energy_grid_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_energy_grid_operations_16`: validates policy, writes owned `energy_grid_operations_grid_asset` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_energy_grid_operations_17`: validates policy, writes owned `energy_grid_operations_load_forecast` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_energy_grid_operations_18`: validates policy, writes owned `energy_grid_operations_switching_order` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `model_feeder_asset_hierarchy`: validates policy, writes owned `energy_grid_operations_grid_asset` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `sequence_switching_order_step`: validates policy, writes owned `energy_grid_operations_switching_order` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `define_forecast_confidence_lineage`: validates policy, writes owned `energy_grid_operations_load_forecast` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `assess_outage_feeder_impact`: validates policy, writes owned `energy_grid_operations_outage_event` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `project_restoration_path`: validates policy, writes owned `energy_grid_operations_grid_topology` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `assess_constraint_aware_dispatch`: validates policy, writes owned `energy_grid_operations_dispatch_instruction` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: grid_asset, load_forecast, switching_order, dispatch_instruction, outage_event, reliability_constraint, grid_topology, energy_grid_operations_policy_rule, energy_grid_operations_runtime_parameter, energy_grid_operations_schema_extension, energy_grid_operations_control_assertion, energy_grid_operations_governed_model
-- operations: create_grid_asset, record_load_forecast, review_switching_order, approve_dispatch_instruction, simulate_outage_event, create_reliability_constraint, record_grid_topology, review_energy_grid_operations_policy_rule, approve_energy_grid_operations_runtime_parameter, simulate_energy_grid_operations_schema_extension, create_energy_grid_operations_control_assertion, record_energy_grid_operations_governed_model, operate_energy_grid_operations_13, operate_energy_grid_operations_14, operate_energy_grid_operations_15, operate_energy_grid_operations_16, operate_energy_grid_operations_17, operate_energy_grid_operations_18
+- operations: create_grid_asset, record_load_forecast, review_switching_order, approve_dispatch_instruction, simulate_outage_event, create_reliability_constraint, record_grid_topology, review_energy_grid_operations_policy_rule, approve_energy_grid_operations_runtime_parameter, simulate_energy_grid_operations_schema_extension, create_energy_grid_operations_control_assertion, record_energy_grid_operations_governed_model, model_feeder_asset_hierarchy, sequence_switching_order_step, define_forecast_confidence_lineage, assess_outage_feeder_impact, project_restoration_path, assess_constraint_aware_dispatch
 - emits: EnergyGridOperationsCreated, EnergyGridOperationsUpdated, EnergyGridOperationsApproved, EnergyGridOperationsExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: grid_asset_policy, load_forecast_policy, switching_order_policy, dispatch_instruction_policy, outage_event_policy, reliability_constraint_policy

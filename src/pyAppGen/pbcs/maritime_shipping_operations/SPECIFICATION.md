@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `maritime_shipping_operations_appgen_outbox_ev
 - `simulate_maritime_shipping_operations_schema_extension`: validates policy, writes owned `maritime_shipping_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_maritime_shipping_operations_control_assertion`: validates policy, writes owned `maritime_shipping_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_maritime_shipping_operations_governed_model`: validates policy, writes owned `maritime_shipping_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_maritime_shipping_operations_13`: validates policy, writes owned `maritime_shipping_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_maritime_shipping_operations_14`: validates policy, writes owned `maritime_shipping_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_maritime_shipping_operations_15`: validates policy, writes owned `maritime_shipping_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_maritime_shipping_operations_16`: validates policy, writes owned `maritime_shipping_operations_voyage` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_maritime_shipping_operations_17`: validates policy, writes owned `maritime_shipping_operations_vessel` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_maritime_shipping_operations_18`: validates policy, writes owned `maritime_shipping_operations_cargo_booking` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `plan_voyage_rotation`: validates policy, writes owned `maritime_shipping_operations_voyage` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `allocate_voyage_capacity`: validates policy, writes owned `maritime_shipping_operations_cargo_booking` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `capture_statement_of_facts`: validates policy, writes owned `maritime_shipping_operations_port_call` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `compute_laytime`: validates policy, writes owned `maritime_shipping_operations_demurrage_claim` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `plan_bunker_uplift`: validates policy, writes owned `maritime_shipping_operations_bunker_event` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `screen_restricted_party`: validates policy, writes owned `maritime_shipping_operations_charter_party` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: voyage, vessel, cargo_booking, charter_party, port_call, demurrage_claim, bunker_event, maritime_shipping_operations_policy_rule, maritime_shipping_operations_runtime_parameter, maritime_shipping_operations_schema_extension, maritime_shipping_operations_control_assertion, maritime_shipping_operations_governed_model
-- operations: create_voyage, record_vessel, review_cargo_booking, approve_charter_party, simulate_port_call, create_demurrage_claim, record_bunker_event, review_maritime_shipping_operations_policy_rule, approve_maritime_shipping_operations_runtime_parameter, simulate_maritime_shipping_operations_schema_extension, create_maritime_shipping_operations_control_assertion, record_maritime_shipping_operations_governed_model, operate_maritime_shipping_operations_13, operate_maritime_shipping_operations_14, operate_maritime_shipping_operations_15, operate_maritime_shipping_operations_16, operate_maritime_shipping_operations_17, operate_maritime_shipping_operations_18
+- operations: create_voyage, record_vessel, review_cargo_booking, approve_charter_party, simulate_port_call, create_demurrage_claim, record_bunker_event, review_maritime_shipping_operations_policy_rule, approve_maritime_shipping_operations_runtime_parameter, simulate_maritime_shipping_operations_schema_extension, create_maritime_shipping_operations_control_assertion, record_maritime_shipping_operations_governed_model, plan_voyage_rotation, allocate_voyage_capacity, capture_statement_of_facts, compute_laytime, plan_bunker_uplift, screen_restricted_party
 - emits: MaritimeShippingOperationsCreated, MaritimeShippingOperationsUpdated, MaritimeShippingOperationsApproved, MaritimeShippingOperationsExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: voyage_policy, vessel_policy, cargo_booking_policy, charter_party_policy, port_call_policy, demurrage_claim_policy

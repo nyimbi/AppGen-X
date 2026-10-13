@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `education_student_lifecycle_appgen_outbox_eve
 - `simulate_education_student_lifecycle_schema_extension`: validates policy, writes owned `education_student_lifecycle_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_education_student_lifecycle_control_assertion`: validates policy, writes owned `education_student_lifecycle_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_education_student_lifecycle_governed_model`: validates policy, writes owned `education_student_lifecycle_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_education_student_lifecycle_13`: validates policy, writes owned `education_student_lifecycle_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_education_student_lifecycle_14`: validates policy, writes owned `education_student_lifecycle_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_education_student_lifecycle_15`: validates policy, writes owned `education_student_lifecycle_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_education_student_lifecycle_16`: validates policy, writes owned `education_student_lifecycle_student_applicant` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_education_student_lifecycle_17`: validates policy, writes owned `education_student_lifecycle_enrollment` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_education_student_lifecycle_18`: validates policy, writes owned `education_student_lifecycle_curriculum_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `audit_degree_requirements`: validates policy, writes owned `education_student_lifecycle_curriculum_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `evaluate_transfer_credit`: validates policy, writes owned `education_student_lifecycle_course_attempt` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `compute_academic_standing`: validates policy, writes owned `education_student_lifecycle_enrollment` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `score_student_success_risk`: validates policy, writes owned `education_student_lifecycle_advising_case` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `map_competency_outcome`: validates policy, writes owned `education_student_lifecycle_assessment_result` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `verify_credential_award`: validates policy, writes owned `education_student_lifecycle_credential` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: student_applicant, enrollment, curriculum_plan, advising_case, course_attempt, assessment_result, credential, education_student_lifecycle_policy_rule, education_student_lifecycle_runtime_parameter, education_student_lifecycle_schema_extension, education_student_lifecycle_control_assertion, education_student_lifecycle_governed_model
-- operations: create_student_applicant, record_enrollment, review_curriculum_plan, approve_advising_case, simulate_course_attempt, create_assessment_result, record_credential, review_education_student_lifecycle_policy_rule, approve_education_student_lifecycle_runtime_parameter, simulate_education_student_lifecycle_schema_extension, create_education_student_lifecycle_control_assertion, record_education_student_lifecycle_governed_model, operate_education_student_lifecycle_13, operate_education_student_lifecycle_14, operate_education_student_lifecycle_15, operate_education_student_lifecycle_16, operate_education_student_lifecycle_17, operate_education_student_lifecycle_18
+- operations: create_student_applicant, record_enrollment, review_curriculum_plan, approve_advising_case, simulate_course_attempt, create_assessment_result, record_credential, review_education_student_lifecycle_policy_rule, approve_education_student_lifecycle_runtime_parameter, simulate_education_student_lifecycle_schema_extension, create_education_student_lifecycle_control_assertion, record_education_student_lifecycle_governed_model, audit_degree_requirements, evaluate_transfer_credit, compute_academic_standing, score_student_success_risk, map_competency_outcome, verify_credential_award
 - emits: EducationStudentLifecycleCreated, EducationStudentLifecycleUpdated, EducationStudentLifecycleApproved, EducationStudentLifecycleExceptionOpened
 - consumes: PolicyChanged, CustomerUpdated, SupplierQualified
 - rules: student_applicant_policy, enrollment_policy, curriculum_plan_policy, advising_case_policy, course_attempt_policy, assessment_result_policy

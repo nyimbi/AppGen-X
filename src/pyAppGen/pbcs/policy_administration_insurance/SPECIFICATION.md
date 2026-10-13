@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `policy_administration_insurance_appgen_outbox
 - `simulate_policy_administration_insurance_schema_extension`: validates policy, writes owned `policy_administration_insurance_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_policy_administration_insurance_control_assertion`: validates policy, writes owned `policy_administration_insurance_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_policy_administration_insurance_governed_model`: validates policy, writes owned `policy_administration_insurance_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_policy_administration_insurance_13`: validates policy, writes owned `policy_administration_insurance_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_policy_administration_insurance_14`: validates policy, writes owned `policy_administration_insurance_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_policy_administration_insurance_15`: validates policy, writes owned `policy_administration_insurance_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_policy_administration_insurance_16`: validates policy, writes owned `policy_administration_insurance_insurance_policy` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_policy_administration_insurance_17`: validates policy, writes owned `policy_administration_insurance_coverage_item` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_policy_administration_insurance_18`: validates policy, writes owned `policy_administration_insurance_endorsement` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `gate_policy_issuance_readiness`: validates policy, writes owned `policy_administration_insurance_insurance_policy` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `detect_coverage_gap`: validates policy, writes owned `policy_administration_insurance_coverage_item` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `evaluate_endorsement_eligibility`: validates policy, writes owned `policy_administration_insurance_endorsement` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `compare_renewal_offer`: validates policy, writes owned `policy_administration_insurance_renewal_notice` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `reinstate_cancelled_policy`: validates policy, writes owned `policy_administration_insurance_cancellation_event` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `issue_certificate_of_insurance`: validates policy, writes owned `policy_administration_insurance_policy_document` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: insurance_policy, coverage_item, endorsement, renewal_notice, cancellation_event, billing_status, policy_document, policy_administration_insurance_policy_rule, policy_administration_insurance_runtime_parameter, policy_administration_insurance_schema_extension, policy_administration_insurance_control_assertion, policy_administration_insurance_governed_model
-- operations: create_insurance_policy, record_coverage_item, review_endorsement, approve_renewal_notice, simulate_cancellation_event, create_billing_status, record_policy_document, review_policy_administration_insurance_policy_rule, approve_policy_administration_insurance_runtime_parameter, simulate_policy_administration_insurance_schema_extension, create_policy_administration_insurance_control_assertion, record_policy_administration_insurance_governed_model, operate_policy_administration_insurance_13, operate_policy_administration_insurance_14, operate_policy_administration_insurance_15, operate_policy_administration_insurance_16, operate_policy_administration_insurance_17, operate_policy_administration_insurance_18
+- operations: create_insurance_policy, record_coverage_item, review_endorsement, approve_renewal_notice, simulate_cancellation_event, create_billing_status, record_policy_document, review_policy_administration_insurance_policy_rule, approve_policy_administration_insurance_runtime_parameter, simulate_policy_administration_insurance_schema_extension, create_policy_administration_insurance_control_assertion, record_policy_administration_insurance_governed_model, gate_policy_issuance_readiness, detect_coverage_gap, evaluate_endorsement_eligibility, compare_renewal_offer, reinstate_cancelled_policy, issue_certificate_of_insurance
 - emits: PolicyAdministrationInsuranceCreated, PolicyAdministrationInsuranceUpdated, PolicyAdministrationInsuranceApproved, PolicyAdministrationInsuranceExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: insurance_policy_policy, coverage_item_policy, endorsement_policy, renewal_notice_policy, cancellation_event_policy, billing_status_policy

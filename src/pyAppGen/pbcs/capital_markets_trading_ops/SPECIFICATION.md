@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `capital_markets_trading_ops_appgen_outbox_eve
 - `simulate_capital_markets_trading_ops_schema_extension`: validates policy, writes owned `capital_markets_trading_ops_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_capital_markets_trading_ops_control_assertion`: validates policy, writes owned `capital_markets_trading_ops_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_capital_markets_trading_ops_governed_model`: validates policy, writes owned `capital_markets_trading_ops_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_capital_markets_trading_ops_13`: validates policy, writes owned `capital_markets_trading_ops_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_capital_markets_trading_ops_14`: validates policy, writes owned `capital_markets_trading_ops_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_capital_markets_trading_ops_15`: validates policy, writes owned `capital_markets_trading_ops_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_capital_markets_trading_ops_16`: validates policy, writes owned `capital_markets_trading_ops_trade_order` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_capital_markets_trading_ops_17`: validates policy, writes owned `capital_markets_trading_ops_execution` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_capital_markets_trading_ops_18`: validates policy, writes owned `capital_markets_trading_ops_allocation` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `validate_pretrade_reference_data`: validates policy, writes owned `capital_markets_trading_ops_trade_order` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `trace_order_cancel_replace`: validates policy, writes owned `capital_markets_trading_ops_trade_order` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `validate_allocation_eligibility`: validates policy, writes owned `capital_markets_trading_ops_allocation` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `reconcile_confirmation_affirmation`: validates policy, writes owned `capital_markets_trading_ops_confirmation` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `classify_trade_break`: validates policy, writes owned `capital_markets_trading_ops_trade_break` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `trace_position_snapshot_provenance`: validates policy, writes owned `capital_markets_trading_ops_position_snapshot` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: trade_order, execution, allocation, confirmation, settlement_instruction, trade_break, position_snapshot, capital_markets_trading_ops_policy_rule, capital_markets_trading_ops_runtime_parameter, capital_markets_trading_ops_schema_extension, capital_markets_trading_ops_control_assertion, capital_markets_trading_ops_governed_model
-- operations: create_trade_order, record_execution, review_allocation, approve_confirmation, simulate_settlement_instruction, create_trade_break, record_position_snapshot, review_capital_markets_trading_ops_policy_rule, approve_capital_markets_trading_ops_runtime_parameter, simulate_capital_markets_trading_ops_schema_extension, create_capital_markets_trading_ops_control_assertion, record_capital_markets_trading_ops_governed_model, operate_capital_markets_trading_ops_13, operate_capital_markets_trading_ops_14, operate_capital_markets_trading_ops_15, operate_capital_markets_trading_ops_16, operate_capital_markets_trading_ops_17, operate_capital_markets_trading_ops_18
+- operations: create_trade_order, record_execution, review_allocation, approve_confirmation, simulate_settlement_instruction, create_trade_break, record_position_snapshot, review_capital_markets_trading_ops_policy_rule, approve_capital_markets_trading_ops_runtime_parameter, simulate_capital_markets_trading_ops_schema_extension, create_capital_markets_trading_ops_control_assertion, record_capital_markets_trading_ops_governed_model, validate_pretrade_reference_data, trace_order_cancel_replace, validate_allocation_eligibility, reconcile_confirmation_affirmation, classify_trade_break, trace_position_snapshot_provenance
 - emits: CapitalMarketsTradingOpsCreated, CapitalMarketsTradingOpsUpdated, CapitalMarketsTradingOpsApproved, CapitalMarketsTradingOpsExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: trade_order_policy, execution_policy, allocation_policy, confirmation_policy, settlement_instruction_policy, trade_break_policy

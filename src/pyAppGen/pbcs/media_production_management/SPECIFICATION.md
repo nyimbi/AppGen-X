@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `media_production_management_appgen_outbox_eve
 - `simulate_media_production_management_schema_extension`: validates policy, writes owned `media_production_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_media_production_management_control_assertion`: validates policy, writes owned `media_production_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_media_production_management_governed_model`: validates policy, writes owned `media_production_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_media_production_management_13`: validates policy, writes owned `media_production_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_media_production_management_14`: validates policy, writes owned `media_production_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_media_production_management_15`: validates policy, writes owned `media_production_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_media_production_management_16`: validates policy, writes owned `media_production_management_production` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_media_production_management_17`: validates policy, writes owned `media_production_management_budget_line` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_media_production_management_18`: validates policy, writes owned `media_production_management_crew_booking` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `plan_shoot_schedule`: validates policy, writes owned `media_production_management_shoot_day` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `generate_call_sheet`: validates policy, writes owned `media_production_management_shoot_day` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `verify_union_turnaround_compliance`: validates policy, writes owned `media_production_management_crew_booking` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `track_vfx_shot_turnover`: validates policy, writes owned `media_production_management_post_production_task` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `inspect_technical_qc`: validates policy, writes owned `media_production_management_delivery_asset` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `analyze_cost_burn`: validates policy, writes owned `media_production_management_budget_line` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: production, budget_line, crew_booking, location_permit, shoot_day, post_production_task, delivery_asset, media_production_management_policy_rule, media_production_management_runtime_parameter, media_production_management_schema_extension, media_production_management_control_assertion, media_production_management_governed_model
-- operations: create_production, record_budget_line, review_crew_booking, approve_location_permit, simulate_shoot_day, create_post_production_task, record_delivery_asset, review_media_production_management_policy_rule, approve_media_production_management_runtime_parameter, simulate_media_production_management_schema_extension, create_media_production_management_control_assertion, record_media_production_management_governed_model, operate_media_production_management_13, operate_media_production_management_14, operate_media_production_management_15, operate_media_production_management_16, operate_media_production_management_17, operate_media_production_management_18
+- operations: create_production, record_budget_line, review_crew_booking, approve_location_permit, simulate_shoot_day, create_post_production_task, record_delivery_asset, review_media_production_management_policy_rule, approve_media_production_management_runtime_parameter, simulate_media_production_management_schema_extension, create_media_production_management_control_assertion, record_media_production_management_governed_model, plan_shoot_schedule, generate_call_sheet, verify_union_turnaround_compliance, track_vfx_shot_turnover, inspect_technical_qc, analyze_cost_burn
 - emits: MediaProductionManagementCreated, MediaProductionManagementUpdated, MediaProductionManagementApproved, MediaProductionManagementExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: production_policy, budget_line_policy, crew_booking_policy, location_permit_policy, shoot_day_policy, post_production_task_policy

@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `gaming_casino_operations_appgen_outbox_event`
 - `simulate_gaming_casino_operations_schema_extension`: validates policy, writes owned `gaming_casino_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_gaming_casino_operations_control_assertion`: validates policy, writes owned `gaming_casino_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_gaming_casino_operations_governed_model`: validates policy, writes owned `gaming_casino_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_gaming_casino_operations_13`: validates policy, writes owned `gaming_casino_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_gaming_casino_operations_14`: validates policy, writes owned `gaming_casino_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_gaming_casino_operations_15`: validates policy, writes owned `gaming_casino_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_gaming_casino_operations_16`: validates policy, writes owned `gaming_casino_operations_player_profile` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_gaming_casino_operations_17`: validates policy, writes owned `gaming_casino_operations_table_game` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_gaming_casino_operations_18`: validates policy, writes owned `gaming_casino_operations_slot_machine` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `verify_patron_identity_confidence`: validates policy, writes owned `gaming_casino_operations_player_profile` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `open_table_game_shift`: validates policy, writes owned `gaming_casino_operations_table_game` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `recover_slot_meter_snapshot`: validates policy, writes owned `gaming_casino_operations_slot_machine` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `reconcile_count_room_variance`: validates policy, writes owned `gaming_casino_operations_wager_session` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `register_self_exclusion`: validates policy, writes owned `gaming_casino_operations_responsible_gaming_case` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `resolve_payout_dispute`: validates policy, writes owned `gaming_casino_operations_payout` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: player_profile, table_game, slot_machine, wager_session, payout, responsible_gaming_case, gaming_compliance, gaming_casino_operations_policy_rule, gaming_casino_operations_runtime_parameter, gaming_casino_operations_schema_extension, gaming_casino_operations_control_assertion, gaming_casino_operations_governed_model
-- operations: create_player_profile, record_table_game, review_slot_machine, approve_wager_session, simulate_payout, create_responsible_gaming_case, record_gaming_compliance, review_gaming_casino_operations_policy_rule, approve_gaming_casino_operations_runtime_parameter, simulate_gaming_casino_operations_schema_extension, create_gaming_casino_operations_control_assertion, record_gaming_casino_operations_governed_model, operate_gaming_casino_operations_13, operate_gaming_casino_operations_14, operate_gaming_casino_operations_15, operate_gaming_casino_operations_16, operate_gaming_casino_operations_17, operate_gaming_casino_operations_18
+- operations: create_player_profile, record_table_game, review_slot_machine, approve_wager_session, simulate_payout, create_responsible_gaming_case, record_gaming_compliance, review_gaming_casino_operations_policy_rule, approve_gaming_casino_operations_runtime_parameter, simulate_gaming_casino_operations_schema_extension, create_gaming_casino_operations_control_assertion, record_gaming_casino_operations_governed_model, verify_patron_identity_confidence, open_table_game_shift, recover_slot_meter_snapshot, reconcile_count_room_variance, register_self_exclusion, resolve_payout_dispute
 - emits: GamingCasinoOperationsCreated, GamingCasinoOperationsUpdated, GamingCasinoOperationsApproved, GamingCasinoOperationsExceptionOpened
 - consumes: PolicyChanged, CustomerUpdated, SupplierQualified
 - rules: player_profile_policy, table_game_policy, slot_machine_policy, wager_session_policy, payout_policy, responsible_gaming_case_policy

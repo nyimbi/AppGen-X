@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `agri_supply_chain_traceability_appgen_outbox_
 - `simulate_agri_supply_chain_traceability_schema_extension`: validates policy, writes owned `agri_supply_chain_traceability_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_agri_supply_chain_traceability_control_assertion`: validates policy, writes owned `agri_supply_chain_traceability_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_agri_supply_chain_traceability_governed_model`: validates policy, writes owned `agri_supply_chain_traceability_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_agri_supply_chain_traceability_13`: validates policy, writes owned `agri_supply_chain_traceability_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_agri_supply_chain_traceability_14`: validates policy, writes owned `agri_supply_chain_traceability_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_agri_supply_chain_traceability_15`: validates policy, writes owned `agri_supply_chain_traceability_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_agri_supply_chain_traceability_16`: validates policy, writes owned `agri_supply_chain_traceability_farm_lot` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_agri_supply_chain_traceability_17`: validates policy, writes owned `agri_supply_chain_traceability_input_batch` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_agri_supply_chain_traceability_18`: validates policy, writes owned `agri_supply_chain_traceability_certification` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `split_farm_lot_lineage`: validates policy, writes owned `agri_supply_chain_traceability_farm_lot` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `validate_certification_scope`: validates policy, writes owned `agri_supply_chain_traceability_certification` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_cold_chain_breach`: validates policy, writes owned `agri_supply_chain_traceability_storage_event` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `verify_transport_seal_integrity`: validates policy, writes owned `agri_supply_chain_traceability_transport_leg` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `assess_recall_blast_radius`: validates policy, writes owned `agri_supply_chain_traceability_recall_link` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `compose_origin_proof_bundle`: validates policy, writes owned `agri_supply_chain_traceability_provenance_proof` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: farm_lot, input_batch, certification, storage_event, transport_leg, recall_link, provenance_proof, agri_supply_chain_traceability_policy_rule, agri_supply_chain_traceability_runtime_parameter, agri_supply_chain_traceability_schema_extension, agri_supply_chain_traceability_control_assertion, agri_supply_chain_traceability_governed_model
-- operations: create_farm_lot, record_input_batch, review_certification, approve_storage_event, simulate_transport_leg, create_recall_link, record_provenance_proof, review_agri_supply_chain_traceability_policy_rule, approve_agri_supply_chain_traceability_runtime_parameter, simulate_agri_supply_chain_traceability_schema_extension, create_agri_supply_chain_traceability_control_assertion, record_agri_supply_chain_traceability_governed_model, operate_agri_supply_chain_traceability_13, operate_agri_supply_chain_traceability_14, operate_agri_supply_chain_traceability_15, operate_agri_supply_chain_traceability_16, operate_agri_supply_chain_traceability_17, operate_agri_supply_chain_traceability_18
+- operations: create_farm_lot, record_input_batch, review_certification, approve_storage_event, simulate_transport_leg, create_recall_link, record_provenance_proof, review_agri_supply_chain_traceability_policy_rule, approve_agri_supply_chain_traceability_runtime_parameter, simulate_agri_supply_chain_traceability_schema_extension, create_agri_supply_chain_traceability_control_assertion, record_agri_supply_chain_traceability_governed_model, split_farm_lot_lineage, validate_certification_scope, record_cold_chain_breach, verify_transport_seal_integrity, assess_recall_blast_radius, compose_origin_proof_bundle
 - emits: AgriSupplyChainTraceabilityCreated, AgriSupplyChainTraceabilityUpdated, AgriSupplyChainTraceabilityApproved, AgriSupplyChainTraceabilityExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: farm_lot_policy, input_batch_policy, certification_policy, storage_event_policy, transport_leg_policy, recall_link_policy

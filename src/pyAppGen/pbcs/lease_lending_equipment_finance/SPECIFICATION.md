@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `lease_lending_equipment_finance_appgen_outbox
 - `simulate_lease_lending_equipment_finance_schema_extension`: validates policy, writes owned `lease_lending_equipment_finance_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_lease_lending_equipment_finance_control_assertion`: validates policy, writes owned `lease_lending_equipment_finance_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_lease_lending_equipment_finance_governed_model`: validates policy, writes owned `lease_lending_equipment_finance_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_lease_lending_equipment_finance_13`: validates policy, writes owned `lease_lending_equipment_finance_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_lease_lending_equipment_finance_14`: validates policy, writes owned `lease_lending_equipment_finance_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_lease_lending_equipment_finance_15`: validates policy, writes owned `lease_lending_equipment_finance_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_lease_lending_equipment_finance_16`: validates policy, writes owned `lease_lending_equipment_finance_equipment_lease` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_lease_lending_equipment_finance_17`: validates policy, writes owned `lease_lending_equipment_finance_leased_asset` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_lease_lending_equipment_finance_18`: validates policy, writes owned `lease_lending_equipment_finance_payment_schedule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `price_lease_structure`: validates policy, writes owned `lease_lending_equipment_finance_equipment_lease` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `classify_booking_treatment`: validates policy, writes owned `lease_lending_equipment_finance_equipment_lease` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `track_collateral_perfection`: validates policy, writes owned `lease_lending_equipment_finance_leased_asset` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `monitor_collateral_insurance`: validates policy, writes owned `lease_lending_equipment_finance_leased_asset` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `model_end_of_term_decision`: validates policy, writes owned `lease_lending_equipment_finance_buyout_quote` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `plan_asset_disposition`: validates policy, writes owned `lease_lending_equipment_finance_repo_case` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: equipment_lease, leased_asset, payment_schedule, residual_value, buyout_quote, repo_case, lease_servicing_event, lease_lending_equipment_finance_policy_rule, lease_lending_equipment_finance_runtime_parameter, lease_lending_equipment_finance_schema_extension, lease_lending_equipment_finance_control_assertion, lease_lending_equipment_finance_governed_model
-- operations: create_equipment_lease, record_leased_asset, review_payment_schedule, approve_residual_value, simulate_buyout_quote, create_repo_case, record_lease_servicing_event, review_lease_lending_equipment_finance_policy_rule, approve_lease_lending_equipment_finance_runtime_parameter, simulate_lease_lending_equipment_finance_schema_extension, create_lease_lending_equipment_finance_control_assertion, record_lease_lending_equipment_finance_governed_model, operate_lease_lending_equipment_finance_13, operate_lease_lending_equipment_finance_14, operate_lease_lending_equipment_finance_15, operate_lease_lending_equipment_finance_16, operate_lease_lending_equipment_finance_17, operate_lease_lending_equipment_finance_18
+- operations: create_equipment_lease, record_leased_asset, review_payment_schedule, approve_residual_value, simulate_buyout_quote, create_repo_case, record_lease_servicing_event, review_lease_lending_equipment_finance_policy_rule, approve_lease_lending_equipment_finance_runtime_parameter, simulate_lease_lending_equipment_finance_schema_extension, create_lease_lending_equipment_finance_control_assertion, record_lease_lending_equipment_finance_governed_model, price_lease_structure, classify_booking_treatment, track_collateral_perfection, monitor_collateral_insurance, model_end_of_term_decision, plan_asset_disposition
 - emits: LeaseLendingEquipmentFinanceCreated, LeaseLendingEquipmentFinanceUpdated, LeaseLendingEquipmentFinanceApproved, LeaseLendingEquipmentFinanceExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: equipment_lease_policy, leased_asset_policy, payment_schedule_policy, residual_value_policy, buyout_quote_policy, repo_case_policy

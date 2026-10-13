@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `mortgage_servicing_appgen_outbox_event`, `mor
 - `simulate_mortgage_servicing_schema_extension`: validates policy, writes owned `mortgage_servicing_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_mortgage_servicing_control_assertion`: validates policy, writes owned `mortgage_servicing_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_mortgage_servicing_governed_model`: validates policy, writes owned `mortgage_servicing_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_mortgage_servicing_13`: validates policy, writes owned `mortgage_servicing_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_mortgage_servicing_14`: validates policy, writes owned `mortgage_servicing_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_mortgage_servicing_15`: validates policy, writes owned `mortgage_servicing_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_mortgage_servicing_16`: validates policy, writes owned `mortgage_servicing_mortgage_loan` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_mortgage_servicing_17`: validates policy, writes owned `mortgage_servicing_escrow_account` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_mortgage_servicing_18`: validates policy, writes owned `mortgage_servicing_payment_event` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `apply_payment_waterfall`: validates policy, writes owned `mortgage_servicing_payment_event` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `analyze_escrow_account`: validates policy, writes owned `mortgage_servicing_escrow_account` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `generate_payoff_quote`: validates policy, writes owned `mortgage_servicing_mortgage_loan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `decision_workout_option`: validates policy, writes owned `mortgage_servicing_loss_mitigation_case` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `govern_foreclosure_hold_restart`: validates policy, writes owned `mortgage_servicing_foreclosure_milestone` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `reconcile_investor_remittance`: validates policy, writes owned `mortgage_servicing_investor_report` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: mortgage_loan, escrow_account, payment_event, servicing_statement, loss_mitigation_case, investor_report, foreclosure_milestone, mortgage_servicing_policy_rule, mortgage_servicing_runtime_parameter, mortgage_servicing_schema_extension, mortgage_servicing_control_assertion, mortgage_servicing_governed_model
-- operations: create_mortgage_loan, record_escrow_account, review_payment_event, approve_servicing_statement, simulate_loss_mitigation_case, create_investor_report, record_foreclosure_milestone, review_mortgage_servicing_policy_rule, approve_mortgage_servicing_runtime_parameter, simulate_mortgage_servicing_schema_extension, create_mortgage_servicing_control_assertion, record_mortgage_servicing_governed_model, operate_mortgage_servicing_13, operate_mortgage_servicing_14, operate_mortgage_servicing_15, operate_mortgage_servicing_16, operate_mortgage_servicing_17, operate_mortgage_servicing_18
+- operations: create_mortgage_loan, record_escrow_account, review_payment_event, approve_servicing_statement, simulate_loss_mitigation_case, create_investor_report, record_foreclosure_milestone, review_mortgage_servicing_policy_rule, approve_mortgage_servicing_runtime_parameter, simulate_mortgage_servicing_schema_extension, create_mortgage_servicing_control_assertion, record_mortgage_servicing_governed_model, apply_payment_waterfall, analyze_escrow_account, generate_payoff_quote, decision_workout_option, govern_foreclosure_hold_restart, reconcile_investor_remittance
 - emits: MortgageServicingCreated, MortgageServicingUpdated, MortgageServicingApproved, MortgageServicingExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: mortgage_loan_policy, escrow_account_policy, payment_event_policy, servicing_statement_policy, loss_mitigation_case_policy, investor_report_policy

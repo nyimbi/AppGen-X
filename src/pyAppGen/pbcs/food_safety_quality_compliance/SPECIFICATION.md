@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `food_safety_quality_compliance_appgen_outbox_
 - `simulate_food_safety_quality_compliance_schema_extension`: validates policy, writes owned `food_safety_quality_compliance_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_food_safety_quality_compliance_control_assertion`: validates policy, writes owned `food_safety_quality_compliance_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_food_safety_quality_compliance_governed_model`: validates policy, writes owned `food_safety_quality_compliance_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_food_safety_quality_compliance_13`: validates policy, writes owned `food_safety_quality_compliance_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_food_safety_quality_compliance_14`: validates policy, writes owned `food_safety_quality_compliance_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_food_safety_quality_compliance_15`: validates policy, writes owned `food_safety_quality_compliance_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_food_safety_quality_compliance_16`: validates policy, writes owned `food_safety_quality_compliance_haccp_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_food_safety_quality_compliance_17`: validates policy, writes owned `food_safety_quality_compliance_critical_control_point` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_food_safety_quality_compliance_18`: validates policy, writes owned `food_safety_quality_compliance_inspection` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `map_process_flow_hazard`: validates policy, writes owned `food_safety_quality_compliance_haccp_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `set_critical_control_point_limit`: validates policy, writes owned `food_safety_quality_compliance_critical_control_point` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `initiate_corrective_action`: validates policy, writes owned `food_safety_quality_compliance_nonconformance` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `trace_lot_genealogy`: validates policy, writes owned `food_safety_quality_compliance_quality_hold` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `classify_recall_event`: validates policy, writes owned `food_safety_quality_compliance_recall_event` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `verify_supplier_certificate`: validates policy, writes owned `food_safety_quality_compliance_supplier_audit` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: haccp_plan, critical_control_point, inspection, nonconformance, recall_event, supplier_audit, quality_hold, food_safety_quality_compliance_policy_rule, food_safety_quality_compliance_runtime_parameter, food_safety_quality_compliance_schema_extension, food_safety_quality_compliance_control_assertion, food_safety_quality_compliance_governed_model
-- operations: create_haccp_plan, record_critical_control_point, review_inspection, approve_nonconformance, simulate_recall_event, create_supplier_audit, record_quality_hold, review_food_safety_quality_compliance_policy_rule, approve_food_safety_quality_compliance_runtime_parameter, simulate_food_safety_quality_compliance_schema_extension, create_food_safety_quality_compliance_control_assertion, record_food_safety_quality_compliance_governed_model, operate_food_safety_quality_compliance_13, operate_food_safety_quality_compliance_14, operate_food_safety_quality_compliance_15, operate_food_safety_quality_compliance_16, operate_food_safety_quality_compliance_17, operate_food_safety_quality_compliance_18
+- operations: create_haccp_plan, record_critical_control_point, review_inspection, approve_nonconformance, simulate_recall_event, create_supplier_audit, record_quality_hold, review_food_safety_quality_compliance_policy_rule, approve_food_safety_quality_compliance_runtime_parameter, simulate_food_safety_quality_compliance_schema_extension, create_food_safety_quality_compliance_control_assertion, record_food_safety_quality_compliance_governed_model, map_process_flow_hazard, set_critical_control_point_limit, initiate_corrective_action, trace_lot_genealogy, classify_recall_event, verify_supplier_certificate
 - emits: FoodSafetyQualityComplianceCreated, FoodSafetyQualityComplianceUpdated, FoodSafetyQualityComplianceApproved, FoodSafetyQualityComplianceExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: haccp_plan_policy, critical_control_point_policy, inspection_policy, nonconformance_policy, recall_event_policy, supplier_audit_policy

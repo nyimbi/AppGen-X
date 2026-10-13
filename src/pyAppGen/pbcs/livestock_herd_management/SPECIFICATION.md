@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `livestock_herd_management_appgen_outbox_event
 - `simulate_livestock_herd_management_schema_extension`: validates policy, writes owned `livestock_herd_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_livestock_herd_management_control_assertion`: validates policy, writes owned `livestock_herd_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_livestock_herd_management_governed_model`: validates policy, writes owned `livestock_herd_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_livestock_herd_management_13`: validates policy, writes owned `livestock_herd_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_livestock_herd_management_14`: validates policy, writes owned `livestock_herd_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_livestock_herd_management_15`: validates policy, writes owned `livestock_herd_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_livestock_herd_management_16`: validates policy, writes owned `livestock_herd_management_animal` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_livestock_herd_management_17`: validates policy, writes owned `livestock_herd_management_herd_group` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_livestock_herd_management_18`: validates policy, writes owned `livestock_herd_management_health_event` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `register_animal_tag`: validates policy, writes owned `livestock_herd_management_animal` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `assess_welfare_score`: validates policy, writes owned `livestock_herd_management_animal` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `schedule_vaccination_protocol`: validates policy, writes owned `livestock_herd_management_health_event` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `quarantine_animal_intake`: validates policy, writes owned `livestock_herd_management_animal` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_pregnancy_diagnosis`: validates policy, writes owned `livestock_herd_management_breeding_record` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `verify_withdrawal_period`: validates policy, writes owned `livestock_herd_management_treatment` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: animal, herd_group, health_event, breeding_record, feed_ration, movement_permit, treatment, livestock_herd_management_policy_rule, livestock_herd_management_runtime_parameter, livestock_herd_management_schema_extension, livestock_herd_management_control_assertion, livestock_herd_management_governed_model
-- operations: create_animal, record_herd_group, review_health_event, approve_breeding_record, simulate_feed_ration, create_movement_permit, record_treatment, review_livestock_herd_management_policy_rule, approve_livestock_herd_management_runtime_parameter, simulate_livestock_herd_management_schema_extension, create_livestock_herd_management_control_assertion, record_livestock_herd_management_governed_model, operate_livestock_herd_management_13, operate_livestock_herd_management_14, operate_livestock_herd_management_15, operate_livestock_herd_management_16, operate_livestock_herd_management_17, operate_livestock_herd_management_18
+- operations: create_animal, record_herd_group, review_health_event, approve_breeding_record, simulate_feed_ration, create_movement_permit, record_treatment, review_livestock_herd_management_policy_rule, approve_livestock_herd_management_runtime_parameter, simulate_livestock_herd_management_schema_extension, create_livestock_herd_management_control_assertion, record_livestock_herd_management_governed_model, register_animal_tag, assess_welfare_score, schedule_vaccination_protocol, quarantine_animal_intake, record_pregnancy_diagnosis, verify_withdrawal_period
 - emits: LivestockHerdManagementCreated, LivestockHerdManagementUpdated, LivestockHerdManagementApproved, LivestockHerdManagementExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: animal_policy, herd_group_policy, health_event_policy, breeding_record_policy, feed_ration_policy, movement_permit_policy

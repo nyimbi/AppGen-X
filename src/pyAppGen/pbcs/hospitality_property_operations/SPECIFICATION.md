@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `hospitality_property_operations_appgen_outbox
 - `simulate_hospitality_property_operations_schema_extension`: validates policy, writes owned `hospitality_property_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_hospitality_property_operations_control_assertion`: validates policy, writes owned `hospitality_property_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_hospitality_property_operations_governed_model`: validates policy, writes owned `hospitality_property_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_hospitality_property_operations_13`: validates policy, writes owned `hospitality_property_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_hospitality_property_operations_14`: validates policy, writes owned `hospitality_property_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_hospitality_property_operations_15`: validates policy, writes owned `hospitality_property_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_hospitality_property_operations_16`: validates policy, writes owned `hospitality_property_operations_room_inventory` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_hospitality_property_operations_17`: validates policy, writes owned `hospitality_property_operations_reservation` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_hospitality_property_operations_18`: validates policy, writes owned `hospitality_property_operations_guest_stay` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `assign_sellable_room_state`: validates policy, writes owned `hospitality_property_operations_room_inventory` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `project_arrival_overbooking`: validates policy, writes owned `hospitality_property_operations_reservation` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `orchestrate_room_move`: validates policy, writes owned `hospitality_property_operations_guest_stay` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `inspect_room_cleanliness`: validates policy, writes owned `hospitality_property_operations_housekeeping_task` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `escalate_guest_request_sla`: validates policy, writes owned `hospitality_property_operations_guest_request` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `forecast_reservation_pace`: validates policy, writes owned `hospitality_property_operations_occupancy_snapshot` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: room_inventory, reservation, guest_stay, housekeeping_task, guest_request, occupancy_snapshot, rate_plan, hospitality_property_operations_policy_rule, hospitality_property_operations_runtime_parameter, hospitality_property_operations_schema_extension, hospitality_property_operations_control_assertion, hospitality_property_operations_governed_model
-- operations: create_room_inventory, record_reservation, review_guest_stay, approve_housekeeping_task, simulate_guest_request, create_occupancy_snapshot, record_rate_plan, review_hospitality_property_operations_policy_rule, approve_hospitality_property_operations_runtime_parameter, simulate_hospitality_property_operations_schema_extension, create_hospitality_property_operations_control_assertion, record_hospitality_property_operations_governed_model, operate_hospitality_property_operations_13, operate_hospitality_property_operations_14, operate_hospitality_property_operations_15, operate_hospitality_property_operations_16, operate_hospitality_property_operations_17, operate_hospitality_property_operations_18
+- operations: create_room_inventory, record_reservation, review_guest_stay, approve_housekeeping_task, simulate_guest_request, create_occupancy_snapshot, record_rate_plan, review_hospitality_property_operations_policy_rule, approve_hospitality_property_operations_runtime_parameter, simulate_hospitality_property_operations_schema_extension, create_hospitality_property_operations_control_assertion, record_hospitality_property_operations_governed_model, assign_sellable_room_state, project_arrival_overbooking, orchestrate_room_move, inspect_room_cleanliness, escalate_guest_request_sla, forecast_reservation_pace
 - emits: HospitalityPropertyOperationsCreated, HospitalityPropertyOperationsUpdated, HospitalityPropertyOperationsApproved, HospitalityPropertyOperationsExceptionOpened
 - consumes: PolicyChanged, CustomerUpdated, SupplierQualified
 - rules: room_inventory_policy, reservation_policy, guest_stay_policy, housekeeping_task_policy, guest_request_policy, occupancy_snapshot_policy

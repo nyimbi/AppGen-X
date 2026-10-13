@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `electronic_health_records_core_appgen_outbox_
 - `simulate_electronic_health_records_core_schema_extension`: validates policy, writes owned `electronic_health_records_core_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_electronic_health_records_core_control_assertion`: validates policy, writes owned `electronic_health_records_core_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_electronic_health_records_core_governed_model`: validates policy, writes owned `electronic_health_records_core_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_electronic_health_records_core_13`: validates policy, writes owned `electronic_health_records_core_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_electronic_health_records_core_14`: validates policy, writes owned `electronic_health_records_core_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_electronic_health_records_core_15`: validates policy, writes owned `electronic_health_records_core_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_electronic_health_records_core_16`: validates policy, writes owned `electronic_health_records_core_patient_chart` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_electronic_health_records_core_17`: validates policy, writes owned `electronic_health_records_core_clinical_encounter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_electronic_health_records_core_18`: validates policy, writes owned `electronic_health_records_core_clinical_order` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_chart_identity_merge`: validates policy, writes owned `electronic_health_records_core_patient_chart` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `reconstruct_encounter_timeline`: validates policy, writes owned `electronic_health_records_core_clinical_encounter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `acknowledge_critical_result`: validates policy, writes owned `electronic_health_records_core_observation` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `verify_allergy_specificity`: validates policy, writes owned `electronic_health_records_core_allergy` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `reconcile_medication_list`: validates policy, writes owned `electronic_health_records_core_medication_list` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `attest_clinical_note`: validates policy, writes owned `electronic_health_records_core_care_note` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: patient_chart, clinical_encounter, clinical_order, observation, allergy, medication_list, care_note, electronic_health_records_core_policy_rule, electronic_health_records_core_runtime_parameter, electronic_health_records_core_schema_extension, electronic_health_records_core_control_assertion, electronic_health_records_core_governed_model
-- operations: create_patient_chart, record_clinical_encounter, review_clinical_order, approve_observation, simulate_allergy, create_medication_list, record_care_note, review_electronic_health_records_core_policy_rule, approve_electronic_health_records_core_runtime_parameter, simulate_electronic_health_records_core_schema_extension, create_electronic_health_records_core_control_assertion, record_electronic_health_records_core_governed_model, operate_electronic_health_records_core_13, operate_electronic_health_records_core_14, operate_electronic_health_records_core_15, operate_electronic_health_records_core_16, operate_electronic_health_records_core_17, operate_electronic_health_records_core_18
+- operations: create_patient_chart, record_clinical_encounter, review_clinical_order, approve_observation, simulate_allergy, create_medication_list, record_care_note, review_electronic_health_records_core_policy_rule, approve_electronic_health_records_core_runtime_parameter, simulate_electronic_health_records_core_schema_extension, create_electronic_health_records_core_control_assertion, record_electronic_health_records_core_governed_model, review_chart_identity_merge, reconstruct_encounter_timeline, acknowledge_critical_result, verify_allergy_specificity, reconcile_medication_list, attest_clinical_note
 - emits: ElectronicHealthRecordsCoreCreated, ElectronicHealthRecordsCoreUpdated, ElectronicHealthRecordsCoreApproved, ElectronicHealthRecordsCoreExceptionOpened
 - consumes: PolicyChanged, CustomerUpdated, SupplierQualified
 - rules: patient_chart_policy, clinical_encounter_policy, clinical_order_policy, observation_policy, allergy_policy, medication_list_policy

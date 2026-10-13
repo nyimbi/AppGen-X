@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `provider_revenue_cycle_appgen_outbox_event`, 
 - `simulate_provider_revenue_cycle_schema_extension`: validates policy, writes owned `provider_revenue_cycle_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_provider_revenue_cycle_control_assertion`: validates policy, writes owned `provider_revenue_cycle_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_provider_revenue_cycle_governed_model`: validates policy, writes owned `provider_revenue_cycle_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_provider_revenue_cycle_13`: validates policy, writes owned `provider_revenue_cycle_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_provider_revenue_cycle_14`: validates policy, writes owned `provider_revenue_cycle_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_provider_revenue_cycle_15`: validates policy, writes owned `provider_revenue_cycle_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_provider_revenue_cycle_16`: validates policy, writes owned `provider_revenue_cycle_patient_account` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_provider_revenue_cycle_17`: validates policy, writes owned `provider_revenue_cycle_charge_capture` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_provider_revenue_cycle_18`: validates policy, writes owned `provider_revenue_cycle_coding_workqueue` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `verify_registration_quality`: validates policy, writes owned `provider_revenue_cycle_patient_account` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `query_clinical_documentation`: validates policy, writes owned `provider_revenue_cycle_coding_workqueue` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `scrub_claim_batch`: validates policy, writes owned `provider_revenue_cycle_claim_batch` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `appeal_denial_case`: validates policy, writes owned `provider_revenue_cycle_denial_case` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `match_remittance_posting`: validates policy, writes owned `provider_revenue_cycle_payment_posting` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `screen_financial_assistance`: validates policy, writes owned `provider_revenue_cycle_collection_account` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: patient_account, charge_capture, coding_workqueue, claim_batch, denial_case, payment_posting, collection_account, provider_revenue_cycle_policy_rule, provider_revenue_cycle_runtime_parameter, provider_revenue_cycle_schema_extension, provider_revenue_cycle_control_assertion, provider_revenue_cycle_governed_model
-- operations: create_patient_account, record_charge_capture, review_coding_workqueue, approve_claim_batch, simulate_denial_case, create_payment_posting, record_collection_account, review_provider_revenue_cycle_policy_rule, approve_provider_revenue_cycle_runtime_parameter, simulate_provider_revenue_cycle_schema_extension, create_provider_revenue_cycle_control_assertion, record_provider_revenue_cycle_governed_model, operate_provider_revenue_cycle_13, operate_provider_revenue_cycle_14, operate_provider_revenue_cycle_15, operate_provider_revenue_cycle_16, operate_provider_revenue_cycle_17, operate_provider_revenue_cycle_18
+- operations: create_patient_account, record_charge_capture, review_coding_workqueue, approve_claim_batch, simulate_denial_case, create_payment_posting, record_collection_account, review_provider_revenue_cycle_policy_rule, approve_provider_revenue_cycle_runtime_parameter, simulate_provider_revenue_cycle_schema_extension, create_provider_revenue_cycle_control_assertion, record_provider_revenue_cycle_governed_model, verify_registration_quality, query_clinical_documentation, scrub_claim_batch, appeal_denial_case, match_remittance_posting, screen_financial_assistance
 - emits: ProviderRevenueCycleCreated, ProviderRevenueCycleUpdated, ProviderRevenueCycleApproved, ProviderRevenueCycleExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: patient_account_policy, charge_capture_policy, coding_workqueue_policy, claim_batch_policy, denial_case_policy, payment_posting_policy

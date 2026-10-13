@@ -32,12 +32,33 @@ DOMAIN_OPERATIONS = ('create_medical_device',
  'simulate_medical_device_lifecycle_schema_extension',
  'create_medical_device_lifecycle_control_assertion',
  'record_medical_device_lifecycle_governed_model',
- 'operate_medical_device_lifecycle_13',
- 'operate_medical_device_lifecycle_14',
- 'operate_medical_device_lifecycle_15',
- 'operate_medical_device_lifecycle_16',
- 'operate_medical_device_lifecycle_17',
- 'operate_medical_device_lifecycle_18')
+ 'register_device_identity',
+ 'track_implant_device',
+ 'schedule_calibration_tolerance',
+ 'orchestrate_recall_execution',
+ 'track_cybersecurity_vulnerability',
+ 'plan_preventive_maintenance')
+
+_OPERATION_TARGETS = {
+ 'create_medical_device': 'medical_device_lifecycle_medical_device',
+ 'record_device_assignment': 'medical_device_lifecycle_device_assignment',
+ 'review_calibration': 'medical_device_lifecycle_calibration',
+ 'approve_maintenance_event': 'medical_device_lifecycle_maintenance_event',
+ 'simulate_recall_notice': 'medical_device_lifecycle_recall_notice',
+ 'create_usage_trace': 'medical_device_lifecycle_usage_trace',
+ 'record_regulatory_evidence': 'medical_device_lifecycle_regulatory_evidence',
+ 'review_medical_device_lifecycle_policy_rule': 'medical_device_lifecycle_policy_rule',
+ 'approve_medical_device_lifecycle_runtime_parameter': 'medical_device_lifecycle_runtime_parameter',
+ 'simulate_medical_device_lifecycle_schema_extension': 'medical_device_lifecycle_schema_extension',
+ 'create_medical_device_lifecycle_control_assertion': 'medical_device_lifecycle_control_assertion',
+ 'record_medical_device_lifecycle_governed_model': 'medical_device_lifecycle_governed_model',
+ 'register_device_identity': 'medical_device_lifecycle_medical_device',
+ 'track_implant_device': 'medical_device_lifecycle_usage_trace',
+ 'schedule_calibration_tolerance': 'medical_device_lifecycle_calibration',
+ 'orchestrate_recall_execution': 'medical_device_lifecycle_recall_notice',
+ 'track_cybersecurity_vulnerability': 'medical_device_lifecycle_medical_device',
+ 'plan_preventive_maintenance': 'medical_device_lifecycle_maintenance_event',
+}
 DOMAIN_RULES = ('medical_device_policy',
  'device_assignment_policy',
  'calibration_policy',
@@ -80,7 +101,7 @@ def execute_domain_operation(operation: str, payload: dict | None = None) -> dic
     if operation not in DOMAIN_OPERATIONS:
         return {'ok': False, 'reason': 'unknown_domain_operation', 'operation': operation, 'side_effects': ()}
     index = DOMAIN_OPERATIONS.index(operation)
-    target_table = DOMAIN_OWNED_TABLES[index % len(DOMAIN_OWNED_TABLES)]
+    target_table = _OPERATION_TARGETS.get(operation, DOMAIN_OWNED_TABLES[0])
     emitted_event = DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]
     return {'ok': True, 'pbc': PBC_KEY, 'operation': operation, 'operation_kind': 'command', 'target_table': target_table, 'owned_tables': (target_table,), 'read_tables': (), 'emitted_event': emitted_event, 'event_contract': 'AppGen-X', 'idempotency_key': _digest((PBC_KEY, operation, tuple(sorted(payload.items())))), 'rules_evaluated': DOMAIN_RULES[:3], 'parameters_read': DOMAIN_PARAMETERS[:3], 'permission': f'{PBC_KEY}.operate', 'evidence_hash': _digest((operation, payload, target_table, emitted_event)), 'shared_table_access': False, 'stream_engine_picker_visible': False, 'side_effects': ()}
 
@@ -93,4 +114,4 @@ DOMAIN_EDGE_CASES = tuple(f"{operation}_edge_case" for operation in DOMAIN_OPERA
 DOMAIN_SPECIALIST_CAPABILITIES = tuple(dict.fromkeys(tuple(DOMAIN_ADVANCED_CAPABILITIES) + tuple(f"specialist_{operation}" for operation in DOMAIN_OPERATIONS) + tuple(f"rule_driven_{rule}" for rule in DOMAIN_RULES)))
 
 def domain_capability_surface_contract() -> dict:
-    return {'format': f'appgen.{PBC_KEY}.complete-domain-capability-surface.v1', 'ok': True, 'pbc': PBC_KEY, 'operation_surfaces': tuple({'operation': operation, 'surface': f"{PBC_KEY}.ui.operation.{operation}", 'action': operation, 'target_table': DOMAIN_OWNED_TABLES[index % len(DOMAIN_OWNED_TABLES)], 'permission': f"{PBC_KEY}.operate", 'requires_confirmation': True, 'agent_tool': f"{PBC_KEY}_skills.{operation}", 'event': DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]} for index, operation in enumerate(DOMAIN_OPERATIONS)), 'rule_surfaces': tuple({'rule': rule, 'surface': f"{PBC_KEY}.ui.rule.{rule}", 'editor': True, 'explainable': True} for rule in DOMAIN_RULES), 'parameter_surfaces': tuple({'parameter': parameter, 'surface': f"{PBC_KEY}.ui.parameter.{parameter}", 'bounded': True, 'editable': True} for parameter in DOMAIN_PARAMETERS), 'advanced_surfaces': tuple({'capability': capability, 'surface': f"{PBC_KEY}.ui.advanced.{_digest(capability)[:12]}", 'explainable': True} for capability in DOMAIN_ADVANCED_CAPABILITIES), 'edge_case_surfaces': tuple({'edge_case': edge_case, 'surface': f"{PBC_KEY}.ui.edge_case.{edge_case}", 'triage_queue': True} for edge_case in DOMAIN_EDGE_CASES), 'table_surfaces': tuple({'owned_table': table, 'surface': f"{PBC_KEY}.ui.table.{table}", 'read_model': True, 'mutation_guard': True} for table in DOMAIN_OWNED_TABLES), 'specialist_capabilities': DOMAIN_SPECIALIST_CAPABILITIES, 'coverage': {'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False}, 'side_effects': ()}
+    return {'format': f'appgen.{PBC_KEY}.complete-domain-capability-surface.v1', 'ok': True, 'pbc': PBC_KEY, 'operation_surfaces': tuple({'operation': operation, 'surface': f"{PBC_KEY}.ui.operation.{operation}", 'action': operation, 'target_table': _OPERATION_TARGETS.get(operation, DOMAIN_OWNED_TABLES[0]), 'permission': f"{PBC_KEY}.operate", 'requires_confirmation': True, 'agent_tool': f"{PBC_KEY}_skills.{operation}", 'event': DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]} for index, operation in enumerate(DOMAIN_OPERATIONS)), 'rule_surfaces': tuple({'rule': rule, 'surface': f"{PBC_KEY}.ui.rule.{rule}", 'editor': True, 'explainable': True} for rule in DOMAIN_RULES), 'parameter_surfaces': tuple({'parameter': parameter, 'surface': f"{PBC_KEY}.ui.parameter.{parameter}", 'bounded': True, 'editable': True} for parameter in DOMAIN_PARAMETERS), 'advanced_surfaces': tuple({'capability': capability, 'surface': f"{PBC_KEY}.ui.advanced.{_digest(capability)[:12]}", 'explainable': True} for capability in DOMAIN_ADVANCED_CAPABILITIES), 'edge_case_surfaces': tuple({'edge_case': edge_case, 'surface': f"{PBC_KEY}.ui.edge_case.{edge_case}", 'triage_queue': True} for edge_case in DOMAIN_EDGE_CASES), 'table_surfaces': tuple({'owned_table': table, 'surface': f"{PBC_KEY}.ui.table.{table}", 'read_model': True, 'mutation_guard': True} for table in DOMAIN_OWNED_TABLES), 'specialist_capabilities': DOMAIN_SPECIALIST_CAPABILITIES, 'coverage': {'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False}, 'side_effects': ()}

@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `renewables_asset_operations_appgen_outbox_eve
 - `simulate_renewables_asset_operations_schema_extension`: validates policy, writes owned `renewables_asset_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_renewables_asset_operations_control_assertion`: validates policy, writes owned `renewables_asset_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_renewables_asset_operations_governed_model`: validates policy, writes owned `renewables_asset_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_renewables_asset_operations_13`: validates policy, writes owned `renewables_asset_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_renewables_asset_operations_14`: validates policy, writes owned `renewables_asset_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_renewables_asset_operations_15`: validates policy, writes owned `renewables_asset_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_renewables_asset_operations_16`: validates policy, writes owned `renewables_asset_operations_renewable_asset` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_renewables_asset_operations_17`: validates policy, writes owned `renewables_asset_operations_generation_reading` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_renewables_asset_operations_18`: validates policy, writes owned `renewables_asset_operations_curtailment_event` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `reconcile_revenue_meter`: validates policy, writes owned `renewables_asset_operations_generation_reading` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `normalize_weather_resource`: validates policy, writes owned `renewables_asset_operations_performance_ratio` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `classify_curtailment_cause`: validates policy, writes owned `renewables_asset_operations_curtailment_event` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `govern_availability_denominator`: validates policy, writes owned `renewables_asset_operations_availability_record` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `schedule_asset_criticality_work`: validates policy, writes owned `renewables_asset_operations_maintenance_work` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `trace_ppa_settlement_obligation`: validates policy, writes owned `renewables_asset_operations_ppa_obligation` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: renewable_asset, generation_reading, curtailment_event, availability_record, ppa_obligation, maintenance_work, performance_ratio, renewables_asset_operations_policy_rule, renewables_asset_operations_runtime_parameter, renewables_asset_operations_schema_extension, renewables_asset_operations_control_assertion, renewables_asset_operations_governed_model
-- operations: create_renewable_asset, record_generation_reading, review_curtailment_event, approve_availability_record, simulate_ppa_obligation, create_maintenance_work, record_performance_ratio, review_renewables_asset_operations_policy_rule, approve_renewables_asset_operations_runtime_parameter, simulate_renewables_asset_operations_schema_extension, create_renewables_asset_operations_control_assertion, record_renewables_asset_operations_governed_model, operate_renewables_asset_operations_13, operate_renewables_asset_operations_14, operate_renewables_asset_operations_15, operate_renewables_asset_operations_16, operate_renewables_asset_operations_17, operate_renewables_asset_operations_18
+- operations: create_renewable_asset, record_generation_reading, review_curtailment_event, approve_availability_record, simulate_ppa_obligation, create_maintenance_work, record_performance_ratio, review_renewables_asset_operations_policy_rule, approve_renewables_asset_operations_runtime_parameter, simulate_renewables_asset_operations_schema_extension, create_renewables_asset_operations_control_assertion, record_renewables_asset_operations_governed_model, reconcile_revenue_meter, normalize_weather_resource, classify_curtailment_cause, govern_availability_denominator, schedule_asset_criticality_work, trace_ppa_settlement_obligation
 - emits: RenewablesAssetOperationsCreated, RenewablesAssetOperationsUpdated, RenewablesAssetOperationsApproved, RenewablesAssetOperationsExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: renewable_asset_policy, generation_reading_policy, curtailment_event_policy, availability_record_policy, ppa_obligation_policy, maintenance_work_policy

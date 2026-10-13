@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `court_case_management_appgen_outbox_event`, `
 - `simulate_court_case_management_schema_extension`: validates policy, writes owned `court_case_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_court_case_management_control_assertion`: validates policy, writes owned `court_case_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_court_case_management_governed_model`: validates policy, writes owned `court_case_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_court_case_management_13`: validates policy, writes owned `court_case_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_court_case_management_14`: validates policy, writes owned `court_case_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_court_case_management_15`: validates policy, writes owned `court_case_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_court_case_management_16`: validates policy, writes owned `court_case_management_court_case` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_court_case_management_17`: validates policy, writes owned `court_case_management_filing` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_court_case_management_18`: validates policy, writes owned `court_case_management_hearing` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `assign_case_venue_number`: validates policy, writes owned `court_case_management_court_case` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `review_filing_deficiency`: validates policy, writes owned `court_case_management_filing` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `verify_service_of_process`: validates policy, writes owned `court_case_management_filing` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `detect_docket_chronology_gap`: validates policy, writes owned `court_case_management_docket_entry` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `authorize_court_order_issuance`: validates policy, writes owned `court_case_management_court_order` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `resolve_cross_case_party_match`: validates policy, writes owned `court_case_management_party` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: court_case, filing, hearing, docket_entry, party, judgment, court_order, court_case_management_policy_rule, court_case_management_runtime_parameter, court_case_management_schema_extension, court_case_management_control_assertion, court_case_management_governed_model
-- operations: create_court_case, record_filing, review_hearing, approve_docket_entry, simulate_party, create_judgment, record_court_order, review_court_case_management_policy_rule, approve_court_case_management_runtime_parameter, simulate_court_case_management_schema_extension, create_court_case_management_control_assertion, record_court_case_management_governed_model, operate_court_case_management_13, operate_court_case_management_14, operate_court_case_management_15, operate_court_case_management_16, operate_court_case_management_17, operate_court_case_management_18
+- operations: create_court_case, record_filing, review_hearing, approve_docket_entry, simulate_party, create_judgment, record_court_order, review_court_case_management_policy_rule, approve_court_case_management_runtime_parameter, simulate_court_case_management_schema_extension, create_court_case_management_control_assertion, record_court_case_management_governed_model, assign_case_venue_number, review_filing_deficiency, verify_service_of_process, detect_docket_chronology_gap, authorize_court_order_issuance, resolve_cross_case_party_match
 - emits: CourtCaseManagementCreated, CourtCaseManagementUpdated, CourtCaseManagementApproved, CourtCaseManagementExceptionOpened
 - consumes: PolicyChanged, CustomerUpdated, SupplierQualified
 - rules: court_case_policy, filing_policy, hearing_policy, docket_entry_policy, party_policy, judgment_policy

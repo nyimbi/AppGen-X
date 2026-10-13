@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `actuarial_pricing_reserving_appgen_outbox_eve
 - `simulate_actuarial_pricing_reserving_schema_extension`: validates policy, writes owned `actuarial_pricing_reserving_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_actuarial_pricing_reserving_control_assertion`: validates policy, writes owned `actuarial_pricing_reserving_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_actuarial_pricing_reserving_governed_model`: validates policy, writes owned `actuarial_pricing_reserving_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_actuarial_pricing_reserving_13`: validates policy, writes owned `actuarial_pricing_reserving_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_actuarial_pricing_reserving_14`: validates policy, writes owned `actuarial_pricing_reserving_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_actuarial_pricing_reserving_15`: validates policy, writes owned `actuarial_pricing_reserving_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_actuarial_pricing_reserving_16`: validates policy, writes owned `actuarial_pricing_reserving_rating_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_actuarial_pricing_reserving_17`: validates policy, writes owned `actuarial_pricing_reserving_actuarial_assumption` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_actuarial_pricing_reserving_18`: validates policy, writes owned `actuarial_pricing_reserving_experience_study` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `govern_rating_model_version`: validates policy, writes owned `actuarial_pricing_reserving_rating_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `trace_premium_calculation`: validates policy, writes owned `actuarial_pricing_reserving_rating_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `define_experience_study_cohort`: validates policy, writes owned `actuarial_pricing_reserving_experience_study` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `select_development_factors`: validates policy, writes owned `actuarial_pricing_reserving_loss_triangle` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `validate_reserve_estimate_method`: validates policy, writes owned `actuarial_pricing_reserving_reserve_estimate` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `analyze_assumption_change_impact`: validates policy, writes owned `actuarial_pricing_reserving_actuarial_assumption` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: rating_model, actuarial_assumption, experience_study, reserve_estimate, loss_triangle, capital_scenario, model_validation, actuarial_pricing_reserving_policy_rule, actuarial_pricing_reserving_runtime_parameter, actuarial_pricing_reserving_schema_extension, actuarial_pricing_reserving_control_assertion, actuarial_pricing_reserving_governed_model
-- operations: create_rating_model, record_actuarial_assumption, review_experience_study, approve_reserve_estimate, simulate_loss_triangle, create_capital_scenario, record_model_validation, review_actuarial_pricing_reserving_policy_rule, approve_actuarial_pricing_reserving_runtime_parameter, simulate_actuarial_pricing_reserving_schema_extension, create_actuarial_pricing_reserving_control_assertion, record_actuarial_pricing_reserving_governed_model, operate_actuarial_pricing_reserving_13, operate_actuarial_pricing_reserving_14, operate_actuarial_pricing_reserving_15, operate_actuarial_pricing_reserving_16, operate_actuarial_pricing_reserving_17, operate_actuarial_pricing_reserving_18
+- operations: create_rating_model, record_actuarial_assumption, review_experience_study, approve_reserve_estimate, simulate_loss_triangle, create_capital_scenario, record_model_validation, review_actuarial_pricing_reserving_policy_rule, approve_actuarial_pricing_reserving_runtime_parameter, simulate_actuarial_pricing_reserving_schema_extension, create_actuarial_pricing_reserving_control_assertion, record_actuarial_pricing_reserving_governed_model, govern_rating_model_version, trace_premium_calculation, define_experience_study_cohort, select_development_factors, validate_reserve_estimate_method, analyze_assumption_change_impact
 - emits: ActuarialPricingReservingCreated, ActuarialPricingReservingUpdated, ActuarialPricingReservingApproved, ActuarialPricingReservingExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: rating_model_policy, actuarial_assumption_policy, experience_study_policy, reserve_estimate_policy, loss_triangle_policy, capital_scenario_policy

@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `trade_finance_operations_appgen_outbox_event`
 - `simulate_trade_finance_operations_schema_extension`: validates policy, writes owned `trade_finance_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_trade_finance_operations_control_assertion`: validates policy, writes owned `trade_finance_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_trade_finance_operations_governed_model`: validates policy, writes owned `trade_finance_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_trade_finance_operations_13`: validates policy, writes owned `trade_finance_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_trade_finance_operations_14`: validates policy, writes owned `trade_finance_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_trade_finance_operations_15`: validates policy, writes owned `trade_finance_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_trade_finance_operations_16`: validates policy, writes owned `trade_finance_operations_letter_of_credit` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_trade_finance_operations_17`: validates policy, writes owned `trade_finance_operations_bank_guarantee` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_trade_finance_operations_18`: validates policy, writes owned `trade_finance_operations_documentary_collection` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `govern_lc_amendment`: validates policy, writes owned `trade_finance_operations_letter_of_credit` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `issue_bank_guarantee`: validates policy, writes owned `trade_finance_operations_bank_guarantee` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `define_collection_instruction`: validates policy, writes owned `trade_finance_operations_documentary_collection` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `examine_trade_document`: validates policy, writes owned `trade_finance_operations_trade_document` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `trigger_rescreening`: validates policy, writes owned `trade_finance_operations_sanctions_check` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `orchestrate_trade_settlement`: validates policy, writes owned `trade_finance_operations_trade_settlement` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: letter_of_credit, bank_guarantee, documentary_collection, trade_document, sanctions_check, shipment_evidence, trade_settlement, trade_finance_operations_policy_rule, trade_finance_operations_runtime_parameter, trade_finance_operations_schema_extension, trade_finance_operations_control_assertion, trade_finance_operations_governed_model
-- operations: create_letter_of_credit, record_bank_guarantee, review_documentary_collection, approve_trade_document, simulate_sanctions_check, create_shipment_evidence, record_trade_settlement, review_trade_finance_operations_policy_rule, approve_trade_finance_operations_runtime_parameter, simulate_trade_finance_operations_schema_extension, create_trade_finance_operations_control_assertion, record_trade_finance_operations_governed_model, operate_trade_finance_operations_13, operate_trade_finance_operations_14, operate_trade_finance_operations_15, operate_trade_finance_operations_16, operate_trade_finance_operations_17, operate_trade_finance_operations_18
+- operations: create_letter_of_credit, record_bank_guarantee, review_documentary_collection, approve_trade_document, simulate_sanctions_check, create_shipment_evidence, record_trade_settlement, review_trade_finance_operations_policy_rule, approve_trade_finance_operations_runtime_parameter, simulate_trade_finance_operations_schema_extension, create_trade_finance_operations_control_assertion, record_trade_finance_operations_governed_model, govern_lc_amendment, issue_bank_guarantee, define_collection_instruction, examine_trade_document, trigger_rescreening, orchestrate_trade_settlement
 - emits: TradeFinanceOperationsCreated, TradeFinanceOperationsUpdated, TradeFinanceOperationsApproved, TradeFinanceOperationsExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: letter_of_credit_policy, bank_guarantee_policy, documentary_collection_policy, trade_document_policy, sanctions_check_policy, shipment_evidence_policy

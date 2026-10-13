@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `land_real_estate_development_appgen_outbox_ev
 - `simulate_land_real_estate_development_schema_extension`: validates policy, writes owned `land_real_estate_development_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_land_real_estate_development_control_assertion`: validates policy, writes owned `land_real_estate_development_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_land_real_estate_development_governed_model`: validates policy, writes owned `land_real_estate_development_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_land_real_estate_development_13`: validates policy, writes owned `land_real_estate_development_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_land_real_estate_development_14`: validates policy, writes owned `land_real_estate_development_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_land_real_estate_development_15`: validates policy, writes owned `land_real_estate_development_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_land_real_estate_development_16`: validates policy, writes owned `land_real_estate_development_land_parcel` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_land_real_estate_development_17`: validates policy, writes owned `land_real_estate_development_zoning_case` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_land_real_estate_development_18`: validates policy, writes owned `land_real_estate_development_entitlement` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `assemble_land_parcel`: validates policy, writes owned `land_real_estate_development_land_parcel` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `triage_title_commitment_exception`: validates policy, writes owned `land_real_estate_development_land_parcel` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `evaluate_permitted_use`: validates policy, writes owned `land_real_estate_development_zoning_case` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `map_entitlement_dependency`: validates policy, writes owned `land_real_estate_development_entitlement` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `analyze_residual_land_value`: validates policy, writes owned `land_real_estate_development_feasibility_model` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `sequence_subdivision_plat`: validates policy, writes owned `land_real_estate_development_permit_application` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: land_parcel, zoning_case, entitlement, feasibility_model, permit_application, development_milestone, land_option, land_real_estate_development_policy_rule, land_real_estate_development_runtime_parameter, land_real_estate_development_schema_extension, land_real_estate_development_control_assertion, land_real_estate_development_governed_model
-- operations: create_land_parcel, record_zoning_case, review_entitlement, approve_feasibility_model, simulate_permit_application, create_development_milestone, record_land_option, review_land_real_estate_development_policy_rule, approve_land_real_estate_development_runtime_parameter, simulate_land_real_estate_development_schema_extension, create_land_real_estate_development_control_assertion, record_land_real_estate_development_governed_model, operate_land_real_estate_development_13, operate_land_real_estate_development_14, operate_land_real_estate_development_15, operate_land_real_estate_development_16, operate_land_real_estate_development_17, operate_land_real_estate_development_18
+- operations: create_land_parcel, record_zoning_case, review_entitlement, approve_feasibility_model, simulate_permit_application, create_development_milestone, record_land_option, review_land_real_estate_development_policy_rule, approve_land_real_estate_development_runtime_parameter, simulate_land_real_estate_development_schema_extension, create_land_real_estate_development_control_assertion, record_land_real_estate_development_governed_model, assemble_land_parcel, triage_title_commitment_exception, evaluate_permitted_use, map_entitlement_dependency, analyze_residual_land_value, sequence_subdivision_plat
 - emits: LandRealEstateDevelopmentCreated, LandRealEstateDevelopmentUpdated, LandRealEstateDevelopmentApproved, LandRealEstateDevelopmentExceptionOpened
 - consumes: PolicyChanged, CustomerUpdated, SupplierQualified
 - rules: land_parcel_policy, zoning_case_policy, entitlement_policy, feasibility_model_policy, permit_application_policy, development_milestone_policy

@@ -32,12 +32,33 @@ DOMAIN_OPERATIONS = ('create_farm_lot',
  'simulate_agri_supply_chain_traceability_schema_extension',
  'create_agri_supply_chain_traceability_control_assertion',
  'record_agri_supply_chain_traceability_governed_model',
- 'operate_agri_supply_chain_traceability_13',
- 'operate_agri_supply_chain_traceability_14',
- 'operate_agri_supply_chain_traceability_15',
- 'operate_agri_supply_chain_traceability_16',
- 'operate_agri_supply_chain_traceability_17',
- 'operate_agri_supply_chain_traceability_18')
+ 'split_farm_lot_lineage',
+ 'validate_certification_scope',
+ 'record_cold_chain_breach',
+ 'verify_transport_seal_integrity',
+ 'assess_recall_blast_radius',
+ 'compose_origin_proof_bundle')
+
+_OPERATION_TARGETS = {
+ 'create_farm_lot': 'agri_supply_chain_traceability_farm_lot',
+ 'record_input_batch': 'agri_supply_chain_traceability_input_batch',
+ 'review_certification': 'agri_supply_chain_traceability_certification',
+ 'approve_storage_event': 'agri_supply_chain_traceability_storage_event',
+ 'simulate_transport_leg': 'agri_supply_chain_traceability_transport_leg',
+ 'create_recall_link': 'agri_supply_chain_traceability_recall_link',
+ 'record_provenance_proof': 'agri_supply_chain_traceability_provenance_proof',
+ 'review_agri_supply_chain_traceability_policy_rule': 'agri_supply_chain_traceability_policy_rule',
+ 'approve_agri_supply_chain_traceability_runtime_parameter': 'agri_supply_chain_traceability_runtime_parameter',
+ 'simulate_agri_supply_chain_traceability_schema_extension': 'agri_supply_chain_traceability_schema_extension',
+ 'create_agri_supply_chain_traceability_control_assertion': 'agri_supply_chain_traceability_control_assertion',
+ 'record_agri_supply_chain_traceability_governed_model': 'agri_supply_chain_traceability_governed_model',
+ 'split_farm_lot_lineage': 'agri_supply_chain_traceability_farm_lot',
+ 'validate_certification_scope': 'agri_supply_chain_traceability_certification',
+ 'record_cold_chain_breach': 'agri_supply_chain_traceability_storage_event',
+ 'verify_transport_seal_integrity': 'agri_supply_chain_traceability_transport_leg',
+ 'assess_recall_blast_radius': 'agri_supply_chain_traceability_recall_link',
+ 'compose_origin_proof_bundle': 'agri_supply_chain_traceability_provenance_proof',
+}
 DOMAIN_RULES = ('farm_lot_policy',
  'input_batch_policy',
  'certification_policy',
@@ -80,7 +101,7 @@ def execute_domain_operation(operation: str, payload: dict | None = None) -> dic
     if operation not in DOMAIN_OPERATIONS:
         return {'ok': False, 'reason': 'unknown_domain_operation', 'operation': operation, 'side_effects': ()}
     index = DOMAIN_OPERATIONS.index(operation)
-    target_table = DOMAIN_OWNED_TABLES[index % len(DOMAIN_OWNED_TABLES)]
+    target_table = _OPERATION_TARGETS.get(operation, DOMAIN_OWNED_TABLES[0])
     emitted_event = DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]
     return {'ok': True, 'pbc': PBC_KEY, 'operation': operation, 'operation_kind': 'command', 'target_table': target_table, 'owned_tables': (target_table,), 'read_tables': (), 'emitted_event': emitted_event, 'event_contract': 'AppGen-X', 'idempotency_key': _digest((PBC_KEY, operation, tuple(sorted(payload.items())))), 'rules_evaluated': DOMAIN_RULES[:3], 'parameters_read': DOMAIN_PARAMETERS[:3], 'permission': f'{PBC_KEY}.operate', 'evidence_hash': _digest((operation, payload, target_table, emitted_event)), 'shared_table_access': False, 'stream_engine_picker_visible': False, 'side_effects': ()}
 
@@ -93,4 +114,4 @@ DOMAIN_EDGE_CASES = tuple(f"{operation}_edge_case" for operation in DOMAIN_OPERA
 DOMAIN_SPECIALIST_CAPABILITIES = tuple(dict.fromkeys(tuple(DOMAIN_ADVANCED_CAPABILITIES) + tuple(f"specialist_{operation}" for operation in DOMAIN_OPERATIONS) + tuple(f"rule_driven_{rule}" for rule in DOMAIN_RULES)))
 
 def domain_capability_surface_contract() -> dict:
-    return {'format': f'appgen.{PBC_KEY}.complete-domain-capability-surface.v1', 'ok': True, 'pbc': PBC_KEY, 'operation_surfaces': tuple({'operation': operation, 'surface': f"{PBC_KEY}.ui.operation.{operation}", 'action': operation, 'target_table': DOMAIN_OWNED_TABLES[index % len(DOMAIN_OWNED_TABLES)], 'permission': f"{PBC_KEY}.operate", 'requires_confirmation': True, 'agent_tool': f"{PBC_KEY}_skills.{operation}", 'event': DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]} for index, operation in enumerate(DOMAIN_OPERATIONS)), 'rule_surfaces': tuple({'rule': rule, 'surface': f"{PBC_KEY}.ui.rule.{rule}", 'editor': True, 'explainable': True} for rule in DOMAIN_RULES), 'parameter_surfaces': tuple({'parameter': parameter, 'surface': f"{PBC_KEY}.ui.parameter.{parameter}", 'bounded': True, 'editable': True} for parameter in DOMAIN_PARAMETERS), 'advanced_surfaces': tuple({'capability': capability, 'surface': f"{PBC_KEY}.ui.advanced.{_digest(capability)[:12]}", 'explainable': True} for capability in DOMAIN_ADVANCED_CAPABILITIES), 'edge_case_surfaces': tuple({'edge_case': edge_case, 'surface': f"{PBC_KEY}.ui.edge_case.{edge_case}", 'triage_queue': True} for edge_case in DOMAIN_EDGE_CASES), 'table_surfaces': tuple({'owned_table': table, 'surface': f"{PBC_KEY}.ui.table.{table}", 'read_model': True, 'mutation_guard': True} for table in DOMAIN_OWNED_TABLES), 'specialist_capabilities': DOMAIN_SPECIALIST_CAPABILITIES, 'coverage': {'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False}, 'side_effects': ()}
+    return {'format': f'appgen.{PBC_KEY}.complete-domain-capability-surface.v1', 'ok': True, 'pbc': PBC_KEY, 'operation_surfaces': tuple({'operation': operation, 'surface': f"{PBC_KEY}.ui.operation.{operation}", 'action': operation, 'target_table': _OPERATION_TARGETS.get(operation, DOMAIN_OWNED_TABLES[0]), 'permission': f"{PBC_KEY}.operate", 'requires_confirmation': True, 'agent_tool': f"{PBC_KEY}_skills.{operation}", 'event': DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]} for index, operation in enumerate(DOMAIN_OPERATIONS)), 'rule_surfaces': tuple({'rule': rule, 'surface': f"{PBC_KEY}.ui.rule.{rule}", 'editor': True, 'explainable': True} for rule in DOMAIN_RULES), 'parameter_surfaces': tuple({'parameter': parameter, 'surface': f"{PBC_KEY}.ui.parameter.{parameter}", 'bounded': True, 'editable': True} for parameter in DOMAIN_PARAMETERS), 'advanced_surfaces': tuple({'capability': capability, 'surface': f"{PBC_KEY}.ui.advanced.{_digest(capability)[:12]}", 'explainable': True} for capability in DOMAIN_ADVANCED_CAPABILITIES), 'edge_case_surfaces': tuple({'edge_case': edge_case, 'surface': f"{PBC_KEY}.ui.edge_case.{edge_case}", 'triage_queue': True} for edge_case in DOMAIN_EDGE_CASES), 'table_surfaces': tuple({'owned_table': table, 'surface': f"{PBC_KEY}.ui.table.{table}", 'read_model': True, 'mutation_guard': True} for table in DOMAIN_OWNED_TABLES), 'specialist_capabilities': DOMAIN_SPECIALIST_CAPABILITIES, 'coverage': {'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False}, 'side_effects': ()}

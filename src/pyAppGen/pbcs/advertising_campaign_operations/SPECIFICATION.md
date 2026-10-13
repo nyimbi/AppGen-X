@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `advertising_campaign_operations_appgen_outbox
 - `simulate_advertising_campaign_operations_schema_extension`: validates policy, writes owned `advertising_campaign_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_advertising_campaign_operations_control_assertion`: validates policy, writes owned `advertising_campaign_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_advertising_campaign_operations_governed_model`: validates policy, writes owned `advertising_campaign_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_advertising_campaign_operations_13`: validates policy, writes owned `advertising_campaign_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_advertising_campaign_operations_14`: validates policy, writes owned `advertising_campaign_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_advertising_campaign_operations_15`: validates policy, writes owned `advertising_campaign_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_advertising_campaign_operations_16`: validates policy, writes owned `advertising_campaign_operations_ad_campaign` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_advertising_campaign_operations_17`: validates policy, writes owned `advertising_campaign_operations_audience_segment` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_advertising_campaign_operations_18`: validates policy, writes owned `advertising_campaign_operations_media_placement` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `plan_flight_channel_mix`: validates policy, writes owned `advertising_campaign_operations_ad_campaign` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `govern_budget_commitment`: validates policy, writes owned `advertising_campaign_operations_campaign_budget` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `define_audience_eligibility_rule`: validates policy, writes owned `advertising_campaign_operations_audience_segment` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `trace_creative_brief_lineage`: validates policy, writes owned `advertising_campaign_operations_creative_asset` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `reconcile_budget_to_billing`: validates policy, writes owned `advertising_campaign_operations_billing_event` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `analyze_audience_overlap`: validates policy, writes owned `advertising_campaign_operations_audience_segment` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: ad_campaign, audience_segment, media_placement, creative_asset, campaign_budget, performance_result, billing_event, advertising_campaign_operations_policy_rule, advertising_campaign_operations_runtime_parameter, advertising_campaign_operations_schema_extension, advertising_campaign_operations_control_assertion, advertising_campaign_operations_governed_model
-- operations: create_ad_campaign, record_audience_segment, review_media_placement, approve_creative_asset, simulate_campaign_budget, create_performance_result, record_billing_event, review_advertising_campaign_operations_policy_rule, approve_advertising_campaign_operations_runtime_parameter, simulate_advertising_campaign_operations_schema_extension, create_advertising_campaign_operations_control_assertion, record_advertising_campaign_operations_governed_model, operate_advertising_campaign_operations_13, operate_advertising_campaign_operations_14, operate_advertising_campaign_operations_15, operate_advertising_campaign_operations_16, operate_advertising_campaign_operations_17, operate_advertising_campaign_operations_18
+- operations: create_ad_campaign, record_audience_segment, review_media_placement, approve_creative_asset, simulate_campaign_budget, create_performance_result, record_billing_event, review_advertising_campaign_operations_policy_rule, approve_advertising_campaign_operations_runtime_parameter, simulate_advertising_campaign_operations_schema_extension, create_advertising_campaign_operations_control_assertion, record_advertising_campaign_operations_governed_model, plan_flight_channel_mix, govern_budget_commitment, define_audience_eligibility_rule, trace_creative_brief_lineage, reconcile_budget_to_billing, analyze_audience_overlap
 - emits: AdvertisingCampaignOperationsCreated, AdvertisingCampaignOperationsUpdated, AdvertisingCampaignOperationsApproved, AdvertisingCampaignOperationsExceptionOpened
 - consumes: PolicyChanged, CustomerUpdated, SupplierQualified
 - rules: ad_campaign_policy, audience_segment_policy, media_placement_policy, creative_asset_policy, campaign_budget_policy, performance_result_policy

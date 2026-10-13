@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `medical_device_lifecycle_appgen_outbox_event`
 - `simulate_medical_device_lifecycle_schema_extension`: validates policy, writes owned `medical_device_lifecycle_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_medical_device_lifecycle_control_assertion`: validates policy, writes owned `medical_device_lifecycle_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_medical_device_lifecycle_governed_model`: validates policy, writes owned `medical_device_lifecycle_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_medical_device_lifecycle_13`: validates policy, writes owned `medical_device_lifecycle_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_medical_device_lifecycle_14`: validates policy, writes owned `medical_device_lifecycle_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_medical_device_lifecycle_15`: validates policy, writes owned `medical_device_lifecycle_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_medical_device_lifecycle_16`: validates policy, writes owned `medical_device_lifecycle_medical_device` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_medical_device_lifecycle_17`: validates policy, writes owned `medical_device_lifecycle_device_assignment` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_medical_device_lifecycle_18`: validates policy, writes owned `medical_device_lifecycle_calibration` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `register_device_identity`: validates policy, writes owned `medical_device_lifecycle_medical_device` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `track_implant_device`: validates policy, writes owned `medical_device_lifecycle_usage_trace` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `schedule_calibration_tolerance`: validates policy, writes owned `medical_device_lifecycle_calibration` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `orchestrate_recall_execution`: validates policy, writes owned `medical_device_lifecycle_recall_notice` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `track_cybersecurity_vulnerability`: validates policy, writes owned `medical_device_lifecycle_medical_device` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `plan_preventive_maintenance`: validates policy, writes owned `medical_device_lifecycle_maintenance_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: medical_device, device_assignment, calibration, maintenance_event, recall_notice, usage_trace, regulatory_evidence, medical_device_lifecycle_policy_rule, medical_device_lifecycle_runtime_parameter, medical_device_lifecycle_schema_extension, medical_device_lifecycle_control_assertion, medical_device_lifecycle_governed_model
-- operations: create_medical_device, record_device_assignment, review_calibration, approve_maintenance_event, simulate_recall_notice, create_usage_trace, record_regulatory_evidence, review_medical_device_lifecycle_policy_rule, approve_medical_device_lifecycle_runtime_parameter, simulate_medical_device_lifecycle_schema_extension, create_medical_device_lifecycle_control_assertion, record_medical_device_lifecycle_governed_model, operate_medical_device_lifecycle_13, operate_medical_device_lifecycle_14, operate_medical_device_lifecycle_15, operate_medical_device_lifecycle_16, operate_medical_device_lifecycle_17, operate_medical_device_lifecycle_18
+- operations: create_medical_device, record_device_assignment, review_calibration, approve_maintenance_event, simulate_recall_notice, create_usage_trace, record_regulatory_evidence, review_medical_device_lifecycle_policy_rule, approve_medical_device_lifecycle_runtime_parameter, simulate_medical_device_lifecycle_schema_extension, create_medical_device_lifecycle_control_assertion, record_medical_device_lifecycle_governed_model, register_device_identity, track_implant_device, schedule_calibration_tolerance, orchestrate_recall_execution, track_cybersecurity_vulnerability, plan_preventive_maintenance
 - emits: MedicalDeviceLifecycleCreated, MedicalDeviceLifecycleUpdated, MedicalDeviceLifecycleApproved, MedicalDeviceLifecycleExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: medical_device_policy, device_assignment_policy, calibration_policy, maintenance_event_policy, recall_notice_policy, usage_trace_policy

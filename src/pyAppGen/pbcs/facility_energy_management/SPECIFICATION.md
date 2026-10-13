@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `facility_energy_management_appgen_outbox_even
 - `simulate_facility_energy_management_schema_extension`: validates policy, writes owned `facility_energy_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_facility_energy_management_control_assertion`: validates policy, writes owned `facility_energy_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_facility_energy_management_governed_model`: validates policy, writes owned `facility_energy_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_facility_energy_management_13`: validates policy, writes owned `facility_energy_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_facility_energy_management_14`: validates policy, writes owned `facility_energy_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_facility_energy_management_15`: validates policy, writes owned `facility_energy_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_facility_energy_management_16`: validates policy, writes owned `facility_energy_management_energy_meter` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_facility_energy_management_17`: validates policy, writes owned `facility_energy_management_load_profile` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_facility_energy_management_18`: validates policy, writes owned `facility_energy_management_equipment_schedule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `map_meter_submeter_topology`: validates policy, writes owned `facility_energy_management_energy_meter` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `validate_interval_read_fidelity`: validates policy, writes owned `facility_energy_management_load_profile` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `define_tariff_calendar`: validates policy, writes owned `facility_energy_management_tariff_signal` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `detect_schedule_conflict`: validates policy, writes owned `facility_energy_management_equipment_schedule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `orchestrate_demand_response_dispatch`: validates policy, writes owned `facility_energy_management_demand_response_event` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `verify_baseline_weather_normalization`: validates policy, writes owned `facility_energy_management_energy_baseline` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: energy_meter, load_profile, equipment_schedule, demand_response_event, energy_optimization, tariff_signal, energy_baseline, facility_energy_management_policy_rule, facility_energy_management_runtime_parameter, facility_energy_management_schema_extension, facility_energy_management_control_assertion, facility_energy_management_governed_model
-- operations: create_energy_meter, record_load_profile, review_equipment_schedule, approve_demand_response_event, simulate_energy_optimization, create_tariff_signal, record_energy_baseline, review_facility_energy_management_policy_rule, approve_facility_energy_management_runtime_parameter, simulate_facility_energy_management_schema_extension, create_facility_energy_management_control_assertion, record_facility_energy_management_governed_model, operate_facility_energy_management_13, operate_facility_energy_management_14, operate_facility_energy_management_15, operate_facility_energy_management_16, operate_facility_energy_management_17, operate_facility_energy_management_18
+- operations: create_energy_meter, record_load_profile, review_equipment_schedule, approve_demand_response_event, simulate_energy_optimization, create_tariff_signal, record_energy_baseline, review_facility_energy_management_policy_rule, approve_facility_energy_management_runtime_parameter, simulate_facility_energy_management_schema_extension, create_facility_energy_management_control_assertion, record_facility_energy_management_governed_model, map_meter_submeter_topology, validate_interval_read_fidelity, define_tariff_calendar, detect_schedule_conflict, orchestrate_demand_response_dispatch, verify_baseline_weather_normalization
 - emits: FacilityEnergyManagementCreated, FacilityEnergyManagementUpdated, FacilityEnergyManagementApproved, FacilityEnergyManagementExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: energy_meter_policy, load_profile_policy, equipment_schedule_policy, demand_response_event_policy, energy_optimization_policy, tariff_signal_policy

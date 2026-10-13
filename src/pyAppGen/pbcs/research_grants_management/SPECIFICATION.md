@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `research_grants_management_appgen_outbox_even
 - `simulate_research_grants_management_schema_extension`: validates policy, writes owned `research_grants_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_research_grants_management_control_assertion`: validates policy, writes owned `research_grants_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_research_grants_management_governed_model`: validates policy, writes owned `research_grants_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_research_grants_management_13`: validates policy, writes owned `research_grants_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_research_grants_management_14`: validates policy, writes owned `research_grants_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_research_grants_management_15`: validates policy, writes owned `research_grants_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_research_grants_management_16`: validates policy, writes owned `research_grants_management_grant_proposal` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_research_grants_management_17`: validates policy, writes owned `research_grants_management_research_award` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_research_grants_management_18`: validates policy, writes owned `research_grants_management_sponsor_budget` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `validate_proposal_compliance`: validates policy, writes owned `research_grants_management_grant_proposal` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `verify_budget_allowability`: validates policy, writes owned `research_grants_management_sponsor_budget` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `screen_export_control`: validates policy, writes owned `research_grants_management_compliance_requirement` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `tier_subaward_risk`: validates policy, writes owned `research_grants_management_subaward` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `reconcile_payroll_effort`: validates policy, writes owned `research_grants_management_effort_certification` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `track_award_amendment_chain`: validates policy, writes owned `research_grants_management_research_award` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: grant_proposal, research_award, sponsor_budget, compliance_requirement, subaward, milestone_report, effort_certification, research_grants_management_policy_rule, research_grants_management_runtime_parameter, research_grants_management_schema_extension, research_grants_management_control_assertion, research_grants_management_governed_model
-- operations: create_grant_proposal, record_research_award, review_sponsor_budget, approve_compliance_requirement, simulate_subaward, create_milestone_report, record_effort_certification, review_research_grants_management_policy_rule, approve_research_grants_management_runtime_parameter, simulate_research_grants_management_schema_extension, create_research_grants_management_control_assertion, record_research_grants_management_governed_model, operate_research_grants_management_13, operate_research_grants_management_14, operate_research_grants_management_15, operate_research_grants_management_16, operate_research_grants_management_17, operate_research_grants_management_18
+- operations: create_grant_proposal, record_research_award, review_sponsor_budget, approve_compliance_requirement, simulate_subaward, create_milestone_report, record_effort_certification, review_research_grants_management_policy_rule, approve_research_grants_management_runtime_parameter, simulate_research_grants_management_schema_extension, create_research_grants_management_control_assertion, record_research_grants_management_governed_model, validate_proposal_compliance, verify_budget_allowability, screen_export_control, tier_subaward_risk, reconcile_payroll_effort, track_award_amendment_chain
 - emits: ResearchGrantsManagementCreated, ResearchGrantsManagementUpdated, ResearchGrantsManagementApproved, ResearchGrantsManagementExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: grant_proposal_policy, research_award_policy, sponsor_budget_policy, compliance_requirement_policy, subaward_policy, milestone_report_policy

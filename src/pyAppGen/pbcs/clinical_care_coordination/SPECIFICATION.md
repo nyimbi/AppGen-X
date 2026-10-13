@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `clinical_care_coordination_appgen_outbox_even
 - `simulate_clinical_care_coordination_schema_extension`: validates policy, writes owned `clinical_care_coordination_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_clinical_care_coordination_control_assertion`: validates policy, writes owned `clinical_care_coordination_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_clinical_care_coordination_governed_model`: validates policy, writes owned `clinical_care_coordination_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_clinical_care_coordination_13`: validates policy, writes owned `clinical_care_coordination_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_clinical_care_coordination_14`: validates policy, writes owned `clinical_care_coordination_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_clinical_care_coordination_15`: validates policy, writes owned `clinical_care_coordination_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_clinical_care_coordination_16`: validates policy, writes owned `clinical_care_coordination_patient_care_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_clinical_care_coordination_17`: validates policy, writes owned `clinical_care_coordination_care_team` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_clinical_care_coordination_18`: validates policy, writes owned `clinical_care_coordination_referral` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `stratify_care_coordination_risk`: validates policy, writes owned `clinical_care_coordination_patient_care_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `detect_care_plan_conflict`: validates policy, writes owned `clinical_care_coordination_patient_care_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `detect_care_team_coverage_gap`: validates policy, writes owned `clinical_care_coordination_care_team` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `verify_transition_packet_integrity`: validates policy, writes owned `clinical_care_coordination_transition_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `define_care_gap_taxonomy`: validates policy, writes owned `clinical_care_coordination_care_gap` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `score_referral_network_performance`: validates policy, writes owned `clinical_care_coordination_referral` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: patient_care_plan, care_team, referral, encounter, care_gap, transition_plan, outcome_measure, clinical_care_coordination_policy_rule, clinical_care_coordination_runtime_parameter, clinical_care_coordination_schema_extension, clinical_care_coordination_control_assertion, clinical_care_coordination_governed_model
-- operations: create_patient_care_plan, record_care_team, review_referral, approve_encounter, simulate_care_gap, create_transition_plan, record_outcome_measure, review_clinical_care_coordination_policy_rule, approve_clinical_care_coordination_runtime_parameter, simulate_clinical_care_coordination_schema_extension, create_clinical_care_coordination_control_assertion, record_clinical_care_coordination_governed_model, operate_clinical_care_coordination_13, operate_clinical_care_coordination_14, operate_clinical_care_coordination_15, operate_clinical_care_coordination_16, operate_clinical_care_coordination_17, operate_clinical_care_coordination_18
+- operations: create_patient_care_plan, record_care_team, review_referral, approve_encounter, simulate_care_gap, create_transition_plan, record_outcome_measure, review_clinical_care_coordination_policy_rule, approve_clinical_care_coordination_runtime_parameter, simulate_clinical_care_coordination_schema_extension, create_clinical_care_coordination_control_assertion, record_clinical_care_coordination_governed_model, stratify_care_coordination_risk, detect_care_plan_conflict, detect_care_team_coverage_gap, verify_transition_packet_integrity, define_care_gap_taxonomy, score_referral_network_performance
 - emits: ClinicalCareCoordinationCreated, ClinicalCareCoordinationUpdated, ClinicalCareCoordinationApproved, ClinicalCareCoordinationExceptionOpened
 - consumes: PolicyChanged, CustomerUpdated, SupplierQualified
 - rules: patient_care_plan_policy, care_team_policy, referral_policy, encounter_policy, care_gap_policy, transition_plan_policy

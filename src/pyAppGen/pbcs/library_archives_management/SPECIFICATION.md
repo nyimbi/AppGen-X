@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `library_archives_management_appgen_outbox_eve
 - `simulate_library_archives_management_schema_extension`: validates policy, writes owned `library_archives_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_library_archives_management_control_assertion`: validates policy, writes owned `library_archives_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_library_archives_management_governed_model`: validates policy, writes owned `library_archives_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_library_archives_management_13`: validates policy, writes owned `library_archives_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_library_archives_management_14`: validates policy, writes owned `library_archives_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_library_archives_management_15`: validates policy, writes owned `library_archives_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_library_archives_management_16`: validates policy, writes owned `library_archives_management_collection_item` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_library_archives_management_17`: validates policy, writes owned `library_archives_management_catalog_record` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_library_archives_management_18`: validates policy, writes owned `library_archives_management_circulation_loan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `control_authority_heading`: validates policy, writes owned `library_archives_management_catalog_record` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `capture_provenance_chain`: validates policy, writes owned `library_archives_management_collection_item` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `assign_call_number`: validates policy, writes owned `library_archives_management_collection_item` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `survey_item_condition`: validates policy, writes owned `library_archives_management_preservation_action` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `verify_digital_fixity`: validates policy, writes owned `library_archives_management_digitization_job` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `determine_rights_use_case`: validates policy, writes owned `library_archives_management_rights_statement` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: collection_item, catalog_record, circulation_loan, digitization_job, rights_statement, preservation_action, archive_request, library_archives_management_policy_rule, library_archives_management_runtime_parameter, library_archives_management_schema_extension, library_archives_management_control_assertion, library_archives_management_governed_model
-- operations: create_collection_item, record_catalog_record, review_circulation_loan, approve_digitization_job, simulate_rights_statement, create_preservation_action, record_archive_request, review_library_archives_management_policy_rule, approve_library_archives_management_runtime_parameter, simulate_library_archives_management_schema_extension, create_library_archives_management_control_assertion, record_library_archives_management_governed_model, operate_library_archives_management_13, operate_library_archives_management_14, operate_library_archives_management_15, operate_library_archives_management_16, operate_library_archives_management_17, operate_library_archives_management_18
+- operations: create_collection_item, record_catalog_record, review_circulation_loan, approve_digitization_job, simulate_rights_statement, create_preservation_action, record_archive_request, review_library_archives_management_policy_rule, approve_library_archives_management_runtime_parameter, simulate_library_archives_management_schema_extension, create_library_archives_management_control_assertion, record_library_archives_management_governed_model, control_authority_heading, capture_provenance_chain, assign_call_number, survey_item_condition, verify_digital_fixity, determine_rights_use_case
 - emits: LibraryArchivesManagementCreated, LibraryArchivesManagementUpdated, LibraryArchivesManagementApproved, LibraryArchivesManagementExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: collection_item_policy, catalog_record_policy, circulation_loan_policy, digitization_job_policy, rights_statement_policy, preservation_action_policy

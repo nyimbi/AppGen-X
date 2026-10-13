@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `telecom_network_operations_appgen_outbox_even
 - `simulate_telecom_network_operations_schema_extension`: validates policy, writes owned `telecom_network_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_telecom_network_operations_control_assertion`: validates policy, writes owned `telecom_network_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_telecom_network_operations_governed_model`: validates policy, writes owned `telecom_network_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_telecom_network_operations_13`: validates policy, writes owned `telecom_network_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_telecom_network_operations_14`: validates policy, writes owned `telecom_network_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_telecom_network_operations_15`: validates policy, writes owned `telecom_network_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_telecom_network_operations_16`: validates policy, writes owned `telecom_network_operations_network_element` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_telecom_network_operations_17`: validates policy, writes owned `telecom_network_operations_capacity_segment` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_telecom_network_operations_18`: validates policy, writes owned `telecom_network_operations_network_incident` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `define_site_hierarchy`: validates policy, writes owned `telecom_network_operations_network_element` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `model_capacity_edge`: validates policy, writes owned `telecom_network_operations_capacity_segment` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `control_major_incident`: validates policy, writes owned `telecom_network_operations_network_incident` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `correlate_root_cause_alarm`: validates policy, writes owned `telecom_network_operations_alarm_event` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `govern_maintenance_window`: validates policy, writes owned `telecom_network_operations_maintenance_window` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `compute_sla_clock`: validates policy, writes owned `telecom_network_operations_sla_impact` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: network_element, capacity_segment, network_incident, alarm_event, service_assurance_case, maintenance_window, sla_impact, telecom_network_operations_policy_rule, telecom_network_operations_runtime_parameter, telecom_network_operations_schema_extension, telecom_network_operations_control_assertion, telecom_network_operations_governed_model
-- operations: create_network_element, record_capacity_segment, review_network_incident, approve_alarm_event, simulate_service_assurance_case, create_maintenance_window, record_sla_impact, review_telecom_network_operations_policy_rule, approve_telecom_network_operations_runtime_parameter, simulate_telecom_network_operations_schema_extension, create_telecom_network_operations_control_assertion, record_telecom_network_operations_governed_model, operate_telecom_network_operations_13, operate_telecom_network_operations_14, operate_telecom_network_operations_15, operate_telecom_network_operations_16, operate_telecom_network_operations_17, operate_telecom_network_operations_18
+- operations: create_network_element, record_capacity_segment, review_network_incident, approve_alarm_event, simulate_service_assurance_case, create_maintenance_window, record_sla_impact, review_telecom_network_operations_policy_rule, approve_telecom_network_operations_runtime_parameter, simulate_telecom_network_operations_schema_extension, create_telecom_network_operations_control_assertion, record_telecom_network_operations_governed_model, define_site_hierarchy, model_capacity_edge, control_major_incident, correlate_root_cause_alarm, govern_maintenance_window, compute_sla_clock
 - emits: TelecomNetworkOperationsCreated, TelecomNetworkOperationsUpdated, TelecomNetworkOperationsApproved, TelecomNetworkOperationsExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: network_element_policy, capacity_segment_policy, network_incident_policy, alarm_event_policy, service_assurance_case_policy, maintenance_window_policy

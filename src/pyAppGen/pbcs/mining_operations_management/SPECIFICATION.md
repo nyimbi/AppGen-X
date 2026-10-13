@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `mining_operations_management_appgen_outbox_ev
 - `simulate_mining_operations_management_schema_extension`: validates policy, writes owned `mining_operations_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_mining_operations_management_control_assertion`: validates policy, writes owned `mining_operations_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_mining_operations_management_governed_model`: validates policy, writes owned `mining_operations_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_mining_operations_management_13`: validates policy, writes owned `mining_operations_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_mining_operations_management_14`: validates policy, writes owned `mining_operations_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_mining_operations_management_15`: validates policy, writes owned `mining_operations_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_mining_operations_management_16`: validates policy, writes owned `mining_operations_management_mine_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_mining_operations_management_17`: validates policy, writes owned `mining_operations_management_pit_block` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_mining_operations_management_18`: validates policy, writes owned `mining_operations_management_extraction_shift` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `plan_drill_pattern`: validates policy, writes owned `mining_operations_management_mine_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `define_dig_block_ore_parcel`: validates policy, writes owned `mining_operations_management_pit_block` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `assign_haulage_dispatch`: validates policy, writes owned `mining_operations_management_haulage_cycle` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `define_equipment_capability_boundary`: validates policy, writes owned `mining_operations_management_fleet_asset` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `account_dilution_ore_loss`: validates policy, writes owned `mining_operations_management_ore_quality` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `trace_stockpile_genealogy`: validates policy, writes owned `mining_operations_management_stockpile` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: mine_plan, pit_block, extraction_shift, haulage_cycle, fleet_asset, ore_quality, stockpile, mining_operations_management_policy_rule, mining_operations_management_runtime_parameter, mining_operations_management_schema_extension, mining_operations_management_control_assertion, mining_operations_management_governed_model
-- operations: create_mine_plan, record_pit_block, review_extraction_shift, approve_haulage_cycle, simulate_fleet_asset, create_ore_quality, record_stockpile, review_mining_operations_management_policy_rule, approve_mining_operations_management_runtime_parameter, simulate_mining_operations_management_schema_extension, create_mining_operations_management_control_assertion, record_mining_operations_management_governed_model, operate_mining_operations_management_13, operate_mining_operations_management_14, operate_mining_operations_management_15, operate_mining_operations_management_16, operate_mining_operations_management_17, operate_mining_operations_management_18
+- operations: create_mine_plan, record_pit_block, review_extraction_shift, approve_haulage_cycle, simulate_fleet_asset, create_ore_quality, record_stockpile, review_mining_operations_management_policy_rule, approve_mining_operations_management_runtime_parameter, simulate_mining_operations_management_schema_extension, create_mining_operations_management_control_assertion, record_mining_operations_management_governed_model, plan_drill_pattern, define_dig_block_ore_parcel, assign_haulage_dispatch, define_equipment_capability_boundary, account_dilution_ore_loss, trace_stockpile_genealogy
 - emits: MiningOperationsManagementCreated, MiningOperationsManagementUpdated, MiningOperationsManagementApproved, MiningOperationsManagementExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: mine_plan_policy, pit_block_policy, extraction_shift_policy, haulage_cycle_policy, fleet_asset_policy, ore_quality_policy

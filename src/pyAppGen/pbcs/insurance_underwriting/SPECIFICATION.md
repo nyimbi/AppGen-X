@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `insurance_underwriting_appgen_outbox_event`, 
 - `simulate_insurance_underwriting_schema_extension`: validates policy, writes owned `insurance_underwriting_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_insurance_underwriting_control_assertion`: validates policy, writes owned `insurance_underwriting_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_insurance_underwriting_governed_model`: validates policy, writes owned `insurance_underwriting_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_insurance_underwriting_13`: validates policy, writes owned `insurance_underwriting_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_insurance_underwriting_14`: validates policy, writes owned `insurance_underwriting_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_insurance_underwriting_15`: validates policy, writes owned `insurance_underwriting_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_insurance_underwriting_16`: validates policy, writes owned `insurance_underwriting_underwriting_submission` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_insurance_underwriting_17`: validates policy, writes owned `insurance_underwriting_risk_profile` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_insurance_underwriting_18`: validates policy, writes owned `insurance_underwriting_rating_factor` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `validate_submission_completeness`: validates policy, writes owned `insurance_underwriting_underwriting_submission` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `screen_risk_appetite`: validates policy, writes owned `insurance_underwriting_risk_profile` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `substantiate_rating_factor_evidence`: validates policy, writes owned `insurance_underwriting_rating_factor` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `compare_quote_scenarios`: validates policy, writes owned `insurance_underwriting_quote` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_declination_evidence`: validates policy, writes owned `insurance_underwriting_underwriting_decision` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `govern_exclusion_terms`: validates policy, writes owned `insurance_underwriting_exclusion` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: underwriting_submission, risk_profile, rating_factor, quote, underwriting_decision, bind_package, exclusion, insurance_underwriting_policy_rule, insurance_underwriting_runtime_parameter, insurance_underwriting_schema_extension, insurance_underwriting_control_assertion, insurance_underwriting_governed_model
-- operations: create_underwriting_submission, record_risk_profile, review_rating_factor, approve_quote, simulate_underwriting_decision, create_bind_package, record_exclusion, review_insurance_underwriting_policy_rule, approve_insurance_underwriting_runtime_parameter, simulate_insurance_underwriting_schema_extension, create_insurance_underwriting_control_assertion, record_insurance_underwriting_governed_model, operate_insurance_underwriting_13, operate_insurance_underwriting_14, operate_insurance_underwriting_15, operate_insurance_underwriting_16, operate_insurance_underwriting_17, operate_insurance_underwriting_18
+- operations: create_underwriting_submission, record_risk_profile, review_rating_factor, approve_quote, simulate_underwriting_decision, create_bind_package, record_exclusion, review_insurance_underwriting_policy_rule, approve_insurance_underwriting_runtime_parameter, simulate_insurance_underwriting_schema_extension, create_insurance_underwriting_control_assertion, record_insurance_underwriting_governed_model, validate_submission_completeness, screen_risk_appetite, substantiate_rating_factor_evidence, compare_quote_scenarios, record_declination_evidence, govern_exclusion_terms
 - emits: InsuranceUnderwritingCreated, InsuranceUnderwritingUpdated, InsuranceUnderwritingApproved, InsuranceUnderwritingExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: underwriting_submission_policy, risk_profile_policy, rating_factor_policy, quote_policy, underwriting_decision_policy, bind_package_policy

@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `pharma_manufacturing_quality_appgen_outbox_ev
 - `simulate_pharma_manufacturing_quality_schema_extension`: validates policy, writes owned `pharma_manufacturing_quality_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_pharma_manufacturing_quality_control_assertion`: validates policy, writes owned `pharma_manufacturing_quality_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_pharma_manufacturing_quality_governed_model`: validates policy, writes owned `pharma_manufacturing_quality_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_pharma_manufacturing_quality_13`: validates policy, writes owned `pharma_manufacturing_quality_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_pharma_manufacturing_quality_14`: validates policy, writes owned `pharma_manufacturing_quality_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_pharma_manufacturing_quality_15`: validates policy, writes owned `pharma_manufacturing_quality_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_pharma_manufacturing_quality_16`: validates policy, writes owned `pharma_manufacturing_quality_pharma_batch` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_pharma_manufacturing_quality_17`: validates policy, writes owned `pharma_manufacturing_quality_master_batch_record` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_pharma_manufacturing_quality_18`: validates policy, writes owned `pharma_manufacturing_quality_validation_protocol` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `govern_master_batch_record_version`: validates policy, writes owned `pharma_manufacturing_quality_master_batch_record` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `trace_material_lot_genealogy`: validates policy, writes owned `pharma_manufacturing_quality_pharma_batch` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `investigate_deviation_root_cause`: validates policy, writes owned `pharma_manufacturing_quality_deviation` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `govern_capa_lifecycle`: validates policy, writes owned `pharma_manufacturing_quality_capa` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `quarantine_batch_disposition`: validates policy, writes owned `pharma_manufacturing_quality_quality_release` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `reconcile_packaging_label`: validates policy, writes owned `pharma_manufacturing_quality_serialization_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: pharma_batch, master_batch_record, validation_protocol, deviation, capa, quality_release, serialization_event, pharma_manufacturing_quality_policy_rule, pharma_manufacturing_quality_runtime_parameter, pharma_manufacturing_quality_schema_extension, pharma_manufacturing_quality_control_assertion, pharma_manufacturing_quality_governed_model
-- operations: create_pharma_batch, record_master_batch_record, review_validation_protocol, approve_deviation, simulate_capa, create_quality_release, record_serialization_event, review_pharma_manufacturing_quality_policy_rule, approve_pharma_manufacturing_quality_runtime_parameter, simulate_pharma_manufacturing_quality_schema_extension, create_pharma_manufacturing_quality_control_assertion, record_pharma_manufacturing_quality_governed_model, operate_pharma_manufacturing_quality_13, operate_pharma_manufacturing_quality_14, operate_pharma_manufacturing_quality_15, operate_pharma_manufacturing_quality_16, operate_pharma_manufacturing_quality_17, operate_pharma_manufacturing_quality_18
+- operations: create_pharma_batch, record_master_batch_record, review_validation_protocol, approve_deviation, simulate_capa, create_quality_release, record_serialization_event, review_pharma_manufacturing_quality_policy_rule, approve_pharma_manufacturing_quality_runtime_parameter, simulate_pharma_manufacturing_quality_schema_extension, create_pharma_manufacturing_quality_control_assertion, record_pharma_manufacturing_quality_governed_model, govern_master_batch_record_version, trace_material_lot_genealogy, investigate_deviation_root_cause, govern_capa_lifecycle, quarantine_batch_disposition, reconcile_packaging_label
 - emits: PharmaManufacturingQualityCreated, PharmaManufacturingQualityUpdated, PharmaManufacturingQualityApproved, PharmaManufacturingQualityExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: pharma_batch_policy, master_batch_record_policy, validation_protocol_policy, deviation_policy, capa_policy, quality_release_policy

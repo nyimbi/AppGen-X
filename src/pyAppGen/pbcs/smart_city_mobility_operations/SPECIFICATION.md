@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `smart_city_mobility_operations_appgen_outbox_
 - `simulate_smart_city_mobility_operations_schema_extension`: validates policy, writes owned `smart_city_mobility_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_smart_city_mobility_operations_control_assertion`: validates policy, writes owned `smart_city_mobility_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_smart_city_mobility_operations_governed_model`: validates policy, writes owned `smart_city_mobility_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_smart_city_mobility_operations_13`: validates policy, writes owned `smart_city_mobility_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_smart_city_mobility_operations_14`: validates policy, writes owned `smart_city_mobility_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_smart_city_mobility_operations_15`: validates policy, writes owned `smart_city_mobility_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_smart_city_mobility_operations_16`: validates policy, writes owned `smart_city_mobility_operations_transit_service` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_smart_city_mobility_operations_17`: validates policy, writes owned `smart_city_mobility_operations_parking_asset` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_smart_city_mobility_operations_18`: validates policy, writes owned `smart_city_mobility_operations_signal_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `version_signal_phase_timing`: validates policy, writes owned `smart_city_mobility_operations_signal_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `classify_curb_use_type`: validates policy, writes owned `smart_city_mobility_operations_curb_allocation` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `verify_accessible_parking`: validates policy, writes owned `smart_city_mobility_operations_parking_asset` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `quarantine_mobility_feed`: validates policy, writes owned `smart_city_mobility_operations_mobility_sensor` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `recover_transit_headway`: validates policy, writes owned `smart_city_mobility_operations_transit_service` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `classify_incident_taxonomy`: validates policy, writes owned `smart_city_mobility_operations_traffic_incident` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: transit_service, parking_asset, signal_plan, traffic_incident, curb_allocation, mobility_sensor, service_disruption, smart_city_mobility_operations_policy_rule, smart_city_mobility_operations_runtime_parameter, smart_city_mobility_operations_schema_extension, smart_city_mobility_operations_control_assertion, smart_city_mobility_operations_governed_model
-- operations: create_transit_service, record_parking_asset, review_signal_plan, approve_traffic_incident, simulate_curb_allocation, create_mobility_sensor, record_service_disruption, review_smart_city_mobility_operations_policy_rule, approve_smart_city_mobility_operations_runtime_parameter, simulate_smart_city_mobility_operations_schema_extension, create_smart_city_mobility_operations_control_assertion, record_smart_city_mobility_operations_governed_model, operate_smart_city_mobility_operations_13, operate_smart_city_mobility_operations_14, operate_smart_city_mobility_operations_15, operate_smart_city_mobility_operations_16, operate_smart_city_mobility_operations_17, operate_smart_city_mobility_operations_18
+- operations: create_transit_service, record_parking_asset, review_signal_plan, approve_traffic_incident, simulate_curb_allocation, create_mobility_sensor, record_service_disruption, review_smart_city_mobility_operations_policy_rule, approve_smart_city_mobility_operations_runtime_parameter, simulate_smart_city_mobility_operations_schema_extension, create_smart_city_mobility_operations_control_assertion, record_smart_city_mobility_operations_governed_model, version_signal_phase_timing, classify_curb_use_type, verify_accessible_parking, quarantine_mobility_feed, recover_transit_headway, classify_incident_taxonomy
 - emits: SmartCityMobilityOperationsCreated, SmartCityMobilityOperationsUpdated, SmartCityMobilityOperationsApproved, SmartCityMobilityOperationsExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: transit_service_policy, parking_asset_policy, signal_plan_policy, traffic_incident_policy, curb_allocation_policy, mobility_sensor_policy

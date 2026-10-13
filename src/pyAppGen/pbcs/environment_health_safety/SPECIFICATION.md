@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `environment_health_safety_appgen_outbox_event
 - `simulate_environment_health_safety_schema_extension`: validates policy, writes owned `environment_health_safety_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_environment_health_safety_control_assertion`: validates policy, writes owned `environment_health_safety_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_environment_health_safety_governed_model`: validates policy, writes owned `environment_health_safety_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_environment_health_safety_13`: validates policy, writes owned `environment_health_safety_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_environment_health_safety_14`: validates policy, writes owned `environment_health_safety_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_environment_health_safety_15`: validates policy, writes owned `environment_health_safety_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_environment_health_safety_16`: validates policy, writes owned `environment_health_safety_ehs_incident` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_environment_health_safety_17`: validates policy, writes owned `environment_health_safety_hazard` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_environment_health_safety_18`: validates policy, writes owned `environment_health_safety_inspection` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `classify_incident_severity`: validates policy, writes owned `environment_health_safety_ehs_incident` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `investigate_incident_barrier_cause`: validates policy, writes owned `environment_health_safety_ehs_incident` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `promote_near_miss_hazard`: validates policy, writes owned `environment_health_safety_hazard` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `assess_permit_work_conflict`: validates policy, writes owned `environment_health_safety_permit` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `verify_corrective_action_effectiveness`: validates policy, writes owned `environment_health_safety_corrective_action` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `plan_training_matrix`: validates policy, writes owned `environment_health_safety_safety_training` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: ehs_incident, hazard, inspection, permit, corrective_action, safety_training, audit_finding, environment_health_safety_policy_rule, environment_health_safety_runtime_parameter, environment_health_safety_schema_extension, environment_health_safety_control_assertion, environment_health_safety_governed_model
-- operations: create_ehs_incident, record_hazard, review_inspection, approve_permit, simulate_corrective_action, create_safety_training, record_audit_finding, review_environment_health_safety_policy_rule, approve_environment_health_safety_runtime_parameter, simulate_environment_health_safety_schema_extension, create_environment_health_safety_control_assertion, record_environment_health_safety_governed_model, operate_environment_health_safety_13, operate_environment_health_safety_14, operate_environment_health_safety_15, operate_environment_health_safety_16, operate_environment_health_safety_17, operate_environment_health_safety_18
+- operations: create_ehs_incident, record_hazard, review_inspection, approve_permit, simulate_corrective_action, create_safety_training, record_audit_finding, review_environment_health_safety_policy_rule, approve_environment_health_safety_runtime_parameter, simulate_environment_health_safety_schema_extension, create_environment_health_safety_control_assertion, record_environment_health_safety_governed_model, classify_incident_severity, investigate_incident_barrier_cause, promote_near_miss_hazard, assess_permit_work_conflict, verify_corrective_action_effectiveness, plan_training_matrix
 - emits: EnvironmentHealthSafetyCreated, EnvironmentHealthSafetyUpdated, EnvironmentHealthSafetyApproved, EnvironmentHealthSafetyExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: ehs_incident_policy, hazard_policy, inspection_policy, permit_policy, corrective_action_policy, safety_training_policy

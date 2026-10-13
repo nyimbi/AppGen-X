@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `mining_safety_permits_appgen_outbox_event`, `
 - `simulate_mining_safety_permits_schema_extension`: validates policy, writes owned `mining_safety_permits_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_mining_safety_permits_control_assertion`: validates policy, writes owned `mining_safety_permits_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_mining_safety_permits_governed_model`: validates policy, writes owned `mining_safety_permits_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_mining_safety_permits_13`: validates policy, writes owned `mining_safety_permits_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_mining_safety_permits_14`: validates policy, writes owned `mining_safety_permits_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_mining_safety_permits_15`: validates policy, writes owned `mining_safety_permits_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_mining_safety_permits_16`: validates policy, writes owned `mining_safety_permits_mine_permit` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_mining_safety_permits_17`: validates policy, writes owned `mining_safety_permits_shift_roster` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_mining_safety_permits_18`: validates policy, writes owned `mining_safety_permits_blast_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `verify_isolation_lockout`: validates policy, writes owned `mining_safety_permits_mine_permit` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `perform_gas_test_sequence`: validates policy, writes owned `mining_safety_permits_safety_inspection` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `clear_blast_reentry`: validates policy, writes owned `mining_safety_permits_blast_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `flag_fatigue_fit_for_work`: validates policy, writes owned `mining_safety_permits_shift_roster` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `capture_near_miss_precursor`: validates policy, writes owned `mining_safety_permits_incident_report` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `assemble_regulatory_evidence_pack`: validates policy, writes owned `mining_safety_permits_regulatory_submission` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: mine_permit, shift_roster, blast_plan, safety_inspection, incident_report, regulatory_submission, control_action, mining_safety_permits_policy_rule, mining_safety_permits_runtime_parameter, mining_safety_permits_schema_extension, mining_safety_permits_control_assertion, mining_safety_permits_governed_model
-- operations: create_mine_permit, record_shift_roster, review_blast_plan, approve_safety_inspection, simulate_incident_report, create_regulatory_submission, record_control_action, review_mining_safety_permits_policy_rule, approve_mining_safety_permits_runtime_parameter, simulate_mining_safety_permits_schema_extension, create_mining_safety_permits_control_assertion, record_mining_safety_permits_governed_model, operate_mining_safety_permits_13, operate_mining_safety_permits_14, operate_mining_safety_permits_15, operate_mining_safety_permits_16, operate_mining_safety_permits_17, operate_mining_safety_permits_18
+- operations: create_mine_permit, record_shift_roster, review_blast_plan, approve_safety_inspection, simulate_incident_report, create_regulatory_submission, record_control_action, review_mining_safety_permits_policy_rule, approve_mining_safety_permits_runtime_parameter, simulate_mining_safety_permits_schema_extension, create_mining_safety_permits_control_assertion, record_mining_safety_permits_governed_model, verify_isolation_lockout, perform_gas_test_sequence, clear_blast_reentry, flag_fatigue_fit_for_work, capture_near_miss_precursor, assemble_regulatory_evidence_pack
 - emits: MiningSafetyPermitsCreated, MiningSafetyPermitsUpdated, MiningSafetyPermitsApproved, MiningSafetyPermitsExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: mine_permit_policy, shift_roster_policy, blast_plan_policy, safety_inspection_policy, incident_report_policy, regulatory_submission_policy

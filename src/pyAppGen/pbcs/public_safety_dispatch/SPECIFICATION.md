@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `public_safety_dispatch_appgen_outbox_event`, 
 - `simulate_public_safety_dispatch_schema_extension`: validates policy, writes owned `public_safety_dispatch_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_public_safety_dispatch_control_assertion`: validates policy, writes owned `public_safety_dispatch_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_public_safety_dispatch_governed_model`: validates policy, writes owned `public_safety_dispatch_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_public_safety_dispatch_13`: validates policy, writes owned `public_safety_dispatch_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_public_safety_dispatch_14`: validates policy, writes owned `public_safety_dispatch_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_public_safety_dispatch_15`: validates policy, writes owned `public_safety_dispatch_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_public_safety_dispatch_16`: validates policy, writes owned `public_safety_dispatch_emergency_call` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_public_safety_dispatch_17`: validates policy, writes owned `public_safety_dispatch_response_unit` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_public_safety_dispatch_18`: validates policy, writes owned `public_safety_dispatch_incident` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `triage_call_priority`: validates policy, writes owned `public_safety_dispatch_emergency_call` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `score_location_confidence`: validates policy, writes owned `public_safety_dispatch_emergency_call` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `recommend_response_unit`: validates policy, writes owned `public_safety_dispatch_response_unit` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `normalize_unit_status`: validates policy, writes owned `public_safety_dispatch_response_unit` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `link_officer_safety_bolo`: validates policy, writes owned `public_safety_dispatch_incident` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `detect_arrival_anomaly`: validates policy, writes owned `public_safety_dispatch_response_milestone` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: emergency_call, response_unit, incident, dispatch_assignment, mutual_aid, response_milestone, case_disposition, public_safety_dispatch_policy_rule, public_safety_dispatch_runtime_parameter, public_safety_dispatch_schema_extension, public_safety_dispatch_control_assertion, public_safety_dispatch_governed_model
-- operations: create_emergency_call, record_response_unit, review_incident, approve_dispatch_assignment, simulate_mutual_aid, create_response_milestone, record_case_disposition, review_public_safety_dispatch_policy_rule, approve_public_safety_dispatch_runtime_parameter, simulate_public_safety_dispatch_schema_extension, create_public_safety_dispatch_control_assertion, record_public_safety_dispatch_governed_model, operate_public_safety_dispatch_13, operate_public_safety_dispatch_14, operate_public_safety_dispatch_15, operate_public_safety_dispatch_16, operate_public_safety_dispatch_17, operate_public_safety_dispatch_18
+- operations: create_emergency_call, record_response_unit, review_incident, approve_dispatch_assignment, simulate_mutual_aid, create_response_milestone, record_case_disposition, review_public_safety_dispatch_policy_rule, approve_public_safety_dispatch_runtime_parameter, simulate_public_safety_dispatch_schema_extension, create_public_safety_dispatch_control_assertion, record_public_safety_dispatch_governed_model, triage_call_priority, score_location_confidence, recommend_response_unit, normalize_unit_status, link_officer_safety_bolo, detect_arrival_anomaly
 - emits: PublicSafetyDispatchCreated, PublicSafetyDispatchUpdated, PublicSafetyDispatchApproved, PublicSafetyDispatchExceptionOpened
 - consumes: PolicyChanged, CustomerUpdated, SupplierQualified
 - rules: emergency_call_policy, response_unit_policy, incident_policy, dispatch_assignment_policy, mutual_aid_policy, response_milestone_policy

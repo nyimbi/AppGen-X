@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `tax_administration_public_sector_appgen_outbo
 - `simulate_tax_administration_public_sector_schema_extension`: validates policy, writes owned `tax_administration_public_sector_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_tax_administration_public_sector_control_assertion`: validates policy, writes owned `tax_administration_public_sector_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_tax_administration_public_sector_governed_model`: validates policy, writes owned `tax_administration_public_sector_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_tax_administration_public_sector_13`: validates policy, writes owned `tax_administration_public_sector_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_tax_administration_public_sector_14`: validates policy, writes owned `tax_administration_public_sector_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_tax_administration_public_sector_15`: validates policy, writes owned `tax_administration_public_sector_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_tax_administration_public_sector_16`: validates policy, writes owned `tax_administration_public_sector_taxpayer_account` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_tax_administration_public_sector_17`: validates policy, writes owned `tax_administration_public_sector_tax_filing` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_tax_administration_public_sector_18`: validates policy, writes owned `tax_administration_public_sector_assessment` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `register_taxpayer_tin`: validates policy, writes owned `tax_administration_public_sector_taxpayer_account` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `validate_tax_return`: validates policy, writes owned `tax_administration_public_sector_tax_filing` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `issue_default_assessment`: validates policy, writes owned `tax_administration_public_sector_assessment` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `select_audit_case`: validates policy, writes owned `tax_administration_public_sector_audit_case` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `escalate_collection_ladder`: validates policy, writes owned `tax_administration_public_sector_collection_action` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `govern_notice_template`: validates policy, writes owned `tax_administration_public_sector_tax_notice` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: taxpayer_account, tax_filing, assessment, audit_case, collection_action, appeal, tax_notice, tax_administration_public_sector_policy_rule, tax_administration_public_sector_runtime_parameter, tax_administration_public_sector_schema_extension, tax_administration_public_sector_control_assertion, tax_administration_public_sector_governed_model
-- operations: create_taxpayer_account, record_tax_filing, review_assessment, approve_audit_case, simulate_collection_action, create_appeal, record_tax_notice, review_tax_administration_public_sector_policy_rule, approve_tax_administration_public_sector_runtime_parameter, simulate_tax_administration_public_sector_schema_extension, create_tax_administration_public_sector_control_assertion, record_tax_administration_public_sector_governed_model, operate_tax_administration_public_sector_13, operate_tax_administration_public_sector_14, operate_tax_administration_public_sector_15, operate_tax_administration_public_sector_16, operate_tax_administration_public_sector_17, operate_tax_administration_public_sector_18
+- operations: create_taxpayer_account, record_tax_filing, review_assessment, approve_audit_case, simulate_collection_action, create_appeal, record_tax_notice, review_tax_administration_public_sector_policy_rule, approve_tax_administration_public_sector_runtime_parameter, simulate_tax_administration_public_sector_schema_extension, create_tax_administration_public_sector_control_assertion, record_tax_administration_public_sector_governed_model, register_taxpayer_tin, validate_tax_return, issue_default_assessment, select_audit_case, escalate_collection_ladder, govern_notice_template
 - emits: TaxAdministrationPublicSectorCreated, TaxAdministrationPublicSectorUpdated, TaxAdministrationPublicSectorApproved, TaxAdministrationPublicSectorExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: taxpayer_account_policy, tax_filing_policy, assessment_policy, audit_case_policy, collection_action_policy, appeal_policy

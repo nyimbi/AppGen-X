@@ -42,17 +42,24 @@ Runtime AppGen-X event tables are `defense_readiness_logistics_appgen_outbox_eve
 - `simulate_deployment_plan`: validates policy, writes owned `defense_readiness_logistics_deployment_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_readiness_inspection`: validates policy, writes owned `defense_readiness_logistics_readiness_inspection` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_logistics_movement`: validates policy, writes owned `defense_readiness_logistics_logistics_movement` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `verify_personnel_qualification`: validates policy, writes owned `defense_readiness_logistics_personnel_qualification` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `quarantine_ammunition_lot`: validates policy, writes owned `defense_readiness_logistics_ammunition_lot` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `allocate_fuel_reserve`: validates policy, writes owned `defense_readiness_logistics_fuel_allocation` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `validate_movement_load_plan`: validates policy, writes owned `defense_readiness_logistics_movement_load_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `request_theater_support`: validates policy, writes owned `defense_readiness_logistics_theater_support_request` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `verify_controlled_item_custody`: validates policy, writes owned `defense_readiness_logistics_controlled_item_custody` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `triage_readiness_exception`: validates policy, writes owned `defense_readiness_logistics_readiness_exception` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `review_defense_readiness_logistics_policy_rule`: validates policy, writes owned `defense_readiness_logistics_policy_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `approve_defense_readiness_logistics_runtime_parameter`: validates policy, writes owned `defense_readiness_logistics_runtime_parameter` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `simulate_defense_readiness_logistics_schema_extension`: validates policy, writes owned `defense_readiness_logistics_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_defense_readiness_logistics_control_assertion`: validates policy, writes owned `defense_readiness_logistics_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_defense_readiness_logistics_governed_model`: validates policy, writes owned `defense_readiness_logistics_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_defense_readiness_logistics_13`: validates policy, writes owned `defense_readiness_logistics_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_defense_readiness_logistics_14`: validates policy, writes owned `defense_readiness_logistics_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_defense_readiness_logistics_15`: validates policy, writes owned `defense_readiness_logistics_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_defense_readiness_logistics_16`: validates policy, writes owned `defense_readiness_logistics_unit_readiness` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_defense_readiness_logistics_17`: validates policy, writes owned `defense_readiness_logistics_mission_asset` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_defense_readiness_logistics_18`: validates policy, writes owned `defense_readiness_logistics_supply_request` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `rollup_mission_capability`: validates policy, writes owned `defense_readiness_logistics_unit_readiness` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `score_supply_readiness`: validates policy, writes owned `defense_readiness_logistics_supply_request` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `forecast_parts_demand`: validates policy, writes owned `defense_readiness_logistics_maintenance_status` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `compose_deployment_kit`: validates policy, writes owned `defense_readiness_logistics_deployment_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `assess_cannibalization_control`: validates policy, writes owned `defense_readiness_logistics_mission_asset` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `trace_ammunition_lot_serial`: validates policy, writes owned `defense_readiness_logistics_ammunition_lot` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +105,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: unit_readiness, mission_asset, supply_request, maintenance_status, deployment_plan, readiness_inspection, logistics_movement, personnel_qualification, ammunition_lot, fuel_allocation, movement_load_plan, theater_support_request, controlled_item_custody, readiness_exception, defense_readiness_logistics_policy_rule, defense_readiness_logistics_runtime_parameter, defense_readiness_logistics_schema_extension, defense_readiness_logistics_control_assertion, defense_readiness_logistics_governed_model
-- operations: create_unit_readiness, record_mission_asset, review_supply_request, approve_maintenance_status, simulate_deployment_plan, create_readiness_inspection, record_logistics_movement, review_defense_readiness_logistics_policy_rule, approve_defense_readiness_logistics_runtime_parameter, simulate_defense_readiness_logistics_schema_extension, create_defense_readiness_logistics_control_assertion, record_defense_readiness_logistics_governed_model, operate_defense_readiness_logistics_13, operate_defense_readiness_logistics_14, operate_defense_readiness_logistics_15, operate_defense_readiness_logistics_16, operate_defense_readiness_logistics_17, operate_defense_readiness_logistics_18
+- operations: create_unit_readiness, record_mission_asset, review_supply_request, approve_maintenance_status, simulate_deployment_plan, create_readiness_inspection, record_logistics_movement, verify_personnel_qualification, quarantine_ammunition_lot, allocate_fuel_reserve, validate_movement_load_plan, request_theater_support, verify_controlled_item_custody, triage_readiness_exception, review_defense_readiness_logistics_policy_rule, approve_defense_readiness_logistics_runtime_parameter, simulate_defense_readiness_logistics_schema_extension, create_defense_readiness_logistics_control_assertion, record_defense_readiness_logistics_governed_model, rollup_mission_capability, score_supply_readiness, forecast_parts_demand, compose_deployment_kit, assess_cannibalization_control, trace_ammunition_lot_serial
 - emits: DefenseReadinessLogisticsCreated, DefenseReadinessLogisticsUpdated, DefenseReadinessLogisticsApproved, DefenseReadinessLogisticsExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: unit_readiness_policy, mission_asset_policy, supply_request_policy, maintenance_status_policy, deployment_plan_policy, readiness_inspection_policy

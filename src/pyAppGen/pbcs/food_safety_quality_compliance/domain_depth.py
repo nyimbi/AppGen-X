@@ -32,12 +32,33 @@ DOMAIN_OPERATIONS = ('create_haccp_plan',
  'simulate_food_safety_quality_compliance_schema_extension',
  'create_food_safety_quality_compliance_control_assertion',
  'record_food_safety_quality_compliance_governed_model',
- 'operate_food_safety_quality_compliance_13',
- 'operate_food_safety_quality_compliance_14',
- 'operate_food_safety_quality_compliance_15',
- 'operate_food_safety_quality_compliance_16',
- 'operate_food_safety_quality_compliance_17',
- 'operate_food_safety_quality_compliance_18')
+ 'map_process_flow_hazard',
+ 'set_critical_control_point_limit',
+ 'initiate_corrective_action',
+ 'trace_lot_genealogy',
+ 'classify_recall_event',
+ 'verify_supplier_certificate')
+
+_OPERATION_TARGETS = {
+ 'create_haccp_plan': 'food_safety_quality_compliance_haccp_plan',
+ 'record_critical_control_point': 'food_safety_quality_compliance_critical_control_point',
+ 'review_inspection': 'food_safety_quality_compliance_inspection',
+ 'approve_nonconformance': 'food_safety_quality_compliance_nonconformance',
+ 'simulate_recall_event': 'food_safety_quality_compliance_recall_event',
+ 'create_supplier_audit': 'food_safety_quality_compliance_supplier_audit',
+ 'record_quality_hold': 'food_safety_quality_compliance_quality_hold',
+ 'review_food_safety_quality_compliance_policy_rule': 'food_safety_quality_compliance_policy_rule',
+ 'approve_food_safety_quality_compliance_runtime_parameter': 'food_safety_quality_compliance_runtime_parameter',
+ 'simulate_food_safety_quality_compliance_schema_extension': 'food_safety_quality_compliance_schema_extension',
+ 'create_food_safety_quality_compliance_control_assertion': 'food_safety_quality_compliance_control_assertion',
+ 'record_food_safety_quality_compliance_governed_model': 'food_safety_quality_compliance_governed_model',
+ 'map_process_flow_hazard': 'food_safety_quality_compliance_haccp_plan',
+ 'set_critical_control_point_limit': 'food_safety_quality_compliance_critical_control_point',
+ 'initiate_corrective_action': 'food_safety_quality_compliance_nonconformance',
+ 'trace_lot_genealogy': 'food_safety_quality_compliance_quality_hold',
+ 'classify_recall_event': 'food_safety_quality_compliance_recall_event',
+ 'verify_supplier_certificate': 'food_safety_quality_compliance_supplier_audit',
+}
 DOMAIN_RULES = ('haccp_plan_policy',
  'critical_control_point_policy',
  'inspection_policy',
@@ -80,7 +101,7 @@ def execute_domain_operation(operation: str, payload: dict | None = None) -> dic
     if operation not in DOMAIN_OPERATIONS:
         return {'ok': False, 'reason': 'unknown_domain_operation', 'operation': operation, 'side_effects': ()}
     index = DOMAIN_OPERATIONS.index(operation)
-    target_table = DOMAIN_OWNED_TABLES[index % len(DOMAIN_OWNED_TABLES)]
+    target_table = _OPERATION_TARGETS.get(operation, DOMAIN_OWNED_TABLES[0])
     emitted_event = DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]
     return {'ok': True, 'pbc': PBC_KEY, 'operation': operation, 'operation_kind': 'command', 'target_table': target_table, 'owned_tables': (target_table,), 'read_tables': (), 'emitted_event': emitted_event, 'event_contract': 'AppGen-X', 'idempotency_key': _digest((PBC_KEY, operation, tuple(sorted(payload.items())))), 'rules_evaluated': DOMAIN_RULES[:3], 'parameters_read': DOMAIN_PARAMETERS[:3], 'permission': f'{PBC_KEY}.operate', 'evidence_hash': _digest((operation, payload, target_table, emitted_event)), 'shared_table_access': False, 'stream_engine_picker_visible': False, 'side_effects': ()}
 
@@ -93,4 +114,4 @@ DOMAIN_EDGE_CASES = tuple(f"{operation}_edge_case" for operation in DOMAIN_OPERA
 DOMAIN_SPECIALIST_CAPABILITIES = tuple(dict.fromkeys(tuple(DOMAIN_ADVANCED_CAPABILITIES) + tuple(f"specialist_{operation}" for operation in DOMAIN_OPERATIONS) + tuple(f"rule_driven_{rule}" for rule in DOMAIN_RULES)))
 
 def domain_capability_surface_contract() -> dict:
-    return {'format': f'appgen.{PBC_KEY}.complete-domain-capability-surface.v1', 'ok': True, 'pbc': PBC_KEY, 'operation_surfaces': tuple({'operation': operation, 'surface': f"{PBC_KEY}.ui.operation.{operation}", 'action': operation, 'target_table': DOMAIN_OWNED_TABLES[index % len(DOMAIN_OWNED_TABLES)], 'permission': f"{PBC_KEY}.operate", 'requires_confirmation': True, 'agent_tool': f"{PBC_KEY}_skills.{operation}", 'event': DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]} for index, operation in enumerate(DOMAIN_OPERATIONS)), 'rule_surfaces': tuple({'rule': rule, 'surface': f"{PBC_KEY}.ui.rule.{rule}", 'editor': True, 'explainable': True} for rule in DOMAIN_RULES), 'parameter_surfaces': tuple({'parameter': parameter, 'surface': f"{PBC_KEY}.ui.parameter.{parameter}", 'bounded': True, 'editable': True} for parameter in DOMAIN_PARAMETERS), 'advanced_surfaces': tuple({'capability': capability, 'surface': f"{PBC_KEY}.ui.advanced.{_digest(capability)[:12]}", 'explainable': True} for capability in DOMAIN_ADVANCED_CAPABILITIES), 'edge_case_surfaces': tuple({'edge_case': edge_case, 'surface': f"{PBC_KEY}.ui.edge_case.{edge_case}", 'triage_queue': True} for edge_case in DOMAIN_EDGE_CASES), 'table_surfaces': tuple({'owned_table': table, 'surface': f"{PBC_KEY}.ui.table.{table}", 'read_model': True, 'mutation_guard': True} for table in DOMAIN_OWNED_TABLES), 'specialist_capabilities': DOMAIN_SPECIALIST_CAPABILITIES, 'coverage': {'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False}, 'side_effects': ()}
+    return {'format': f'appgen.{PBC_KEY}.complete-domain-capability-surface.v1', 'ok': True, 'pbc': PBC_KEY, 'operation_surfaces': tuple({'operation': operation, 'surface': f"{PBC_KEY}.ui.operation.{operation}", 'action': operation, 'target_table': _OPERATION_TARGETS.get(operation, DOMAIN_OWNED_TABLES[0]), 'permission': f"{PBC_KEY}.operate", 'requires_confirmation': True, 'agent_tool': f"{PBC_KEY}_skills.{operation}", 'event': DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]} for index, operation in enumerate(DOMAIN_OPERATIONS)), 'rule_surfaces': tuple({'rule': rule, 'surface': f"{PBC_KEY}.ui.rule.{rule}", 'editor': True, 'explainable': True} for rule in DOMAIN_RULES), 'parameter_surfaces': tuple({'parameter': parameter, 'surface': f"{PBC_KEY}.ui.parameter.{parameter}", 'bounded': True, 'editable': True} for parameter in DOMAIN_PARAMETERS), 'advanced_surfaces': tuple({'capability': capability, 'surface': f"{PBC_KEY}.ui.advanced.{_digest(capability)[:12]}", 'explainable': True} for capability in DOMAIN_ADVANCED_CAPABILITIES), 'edge_case_surfaces': tuple({'edge_case': edge_case, 'surface': f"{PBC_KEY}.ui.edge_case.{edge_case}", 'triage_queue': True} for edge_case in DOMAIN_EDGE_CASES), 'table_surfaces': tuple({'owned_table': table, 'surface': f"{PBC_KEY}.ui.table.{table}", 'read_model': True, 'mutation_guard': True} for table in DOMAIN_OWNED_TABLES), 'specialist_capabilities': DOMAIN_SPECIALIST_CAPABILITIES, 'coverage': {'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False}, 'side_effects': ()}

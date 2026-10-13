@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `energy_trading_risk_appgen_outbox_event`, `en
 - `simulate_energy_trading_risk_schema_extension`: validates policy, writes owned `energy_trading_risk_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_energy_trading_risk_control_assertion`: validates policy, writes owned `energy_trading_risk_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_energy_trading_risk_governed_model`: validates policy, writes owned `energy_trading_risk_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_energy_trading_risk_13`: validates policy, writes owned `energy_trading_risk_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_energy_trading_risk_14`: validates policy, writes owned `energy_trading_risk_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_energy_trading_risk_15`: validates policy, writes owned `energy_trading_risk_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_energy_trading_risk_16`: validates policy, writes owned `energy_trading_risk_energy_contract` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_energy_trading_risk_17`: validates policy, writes owned `energy_trading_risk_trade_position` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_energy_trading_risk_18`: validates policy, writes owned `energy_trading_risk_nomination` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `net_trade_position_exposure`: validates policy, writes owned `energy_trading_risk_trade_position` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `reconcile_nomination_schedule`: validates policy, writes owned `energy_trading_risk_nomination` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `validate_schedule_feasibility`: validates policy, writes owned `energy_trading_risk_schedule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `govern_market_price_gap_fill`: validates policy, writes owned `energy_trading_risk_market_price_curve` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `analyze_limit_breach_case`: validates policy, writes owned `energy_trading_risk_exposure_limit` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `validate_settlement_statement`: validates policy, writes owned `energy_trading_risk_settlement` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: energy_contract, trade_position, nomination, schedule, settlement, exposure_limit, market_price_curve, energy_trading_risk_policy_rule, energy_trading_risk_runtime_parameter, energy_trading_risk_schema_extension, energy_trading_risk_control_assertion, energy_trading_risk_governed_model
-- operations: create_energy_contract, record_trade_position, review_nomination, approve_schedule, simulate_settlement, create_exposure_limit, record_market_price_curve, review_energy_trading_risk_policy_rule, approve_energy_trading_risk_runtime_parameter, simulate_energy_trading_risk_schema_extension, create_energy_trading_risk_control_assertion, record_energy_trading_risk_governed_model, operate_energy_trading_risk_13, operate_energy_trading_risk_14, operate_energy_trading_risk_15, operate_energy_trading_risk_16, operate_energy_trading_risk_17, operate_energy_trading_risk_18
+- operations: create_energy_contract, record_trade_position, review_nomination, approve_schedule, simulate_settlement, create_exposure_limit, record_market_price_curve, review_energy_trading_risk_policy_rule, approve_energy_trading_risk_runtime_parameter, simulate_energy_trading_risk_schema_extension, create_energy_trading_risk_control_assertion, record_energy_trading_risk_governed_model, net_trade_position_exposure, reconcile_nomination_schedule, validate_schedule_feasibility, govern_market_price_gap_fill, analyze_limit_breach_case, validate_settlement_statement
 - emits: EnergyTradingRiskCreated, EnergyTradingRiskUpdated, EnergyTradingRiskApproved, EnergyTradingRiskExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: energy_contract_policy, trade_position_policy, nomination_policy, schedule_policy, settlement_policy, exposure_limit_policy

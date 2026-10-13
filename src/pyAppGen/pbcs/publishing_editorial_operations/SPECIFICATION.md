@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `publishing_editorial_operations_appgen_outbox
 - `simulate_publishing_editorial_operations_schema_extension`: validates policy, writes owned `publishing_editorial_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_publishing_editorial_operations_control_assertion`: validates policy, writes owned `publishing_editorial_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_publishing_editorial_operations_governed_model`: validates policy, writes owned `publishing_editorial_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_publishing_editorial_operations_13`: validates policy, writes owned `publishing_editorial_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_publishing_editorial_operations_14`: validates policy, writes owned `publishing_editorial_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_publishing_editorial_operations_15`: validates policy, writes owned `publishing_editorial_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_publishing_editorial_operations_16`: validates policy, writes owned `publishing_editorial_operations_manuscript` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_publishing_editorial_operations_17`: validates policy, writes owned `publishing_editorial_operations_editorial_task` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_publishing_editorial_operations_18`: validates policy, writes owned `publishing_editorial_operations_author_contract` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `intake_manuscript_package`: validates policy, writes owned `publishing_editorial_operations_manuscript` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `freeze_manuscript_version`: validates policy, writes owned `publishing_editorial_operations_manuscript` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `assign_editorial_reviewer`: validates policy, writes owned `publishing_editorial_operations_editorial_task` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `resolve_author_query`: validates policy, writes owned `publishing_editorial_operations_editorial_task` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `detect_rights_territory_collision`: validates policy, writes owned `publishing_editorial_operations_rights_grant` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `orchestrate_proof_round`: validates policy, writes owned `publishing_editorial_operations_production_schedule` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: manuscript, editorial_task, author_contract, edition, production_schedule, rights_grant, distribution_plan, publishing_editorial_operations_policy_rule, publishing_editorial_operations_runtime_parameter, publishing_editorial_operations_schema_extension, publishing_editorial_operations_control_assertion, publishing_editorial_operations_governed_model
-- operations: create_manuscript, record_editorial_task, review_author_contract, approve_edition, simulate_production_schedule, create_rights_grant, record_distribution_plan, review_publishing_editorial_operations_policy_rule, approve_publishing_editorial_operations_runtime_parameter, simulate_publishing_editorial_operations_schema_extension, create_publishing_editorial_operations_control_assertion, record_publishing_editorial_operations_governed_model, operate_publishing_editorial_operations_13, operate_publishing_editorial_operations_14, operate_publishing_editorial_operations_15, operate_publishing_editorial_operations_16, operate_publishing_editorial_operations_17, operate_publishing_editorial_operations_18
+- operations: create_manuscript, record_editorial_task, review_author_contract, approve_edition, simulate_production_schedule, create_rights_grant, record_distribution_plan, review_publishing_editorial_operations_policy_rule, approve_publishing_editorial_operations_runtime_parameter, simulate_publishing_editorial_operations_schema_extension, create_publishing_editorial_operations_control_assertion, record_publishing_editorial_operations_governed_model, intake_manuscript_package, freeze_manuscript_version, assign_editorial_reviewer, resolve_author_query, detect_rights_territory_collision, orchestrate_proof_round
 - emits: PublishingEditorialOperationsCreated, PublishingEditorialOperationsUpdated, PublishingEditorialOperationsApproved, PublishingEditorialOperationsExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: manuscript_policy, editorial_task_policy, author_contract_policy, edition_policy, production_schedule_policy, rights_grant_policy

@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `fleet_mobility_operations_appgen_outbox_event
 - `simulate_fleet_mobility_operations_schema_extension`: validates policy, writes owned `fleet_mobility_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_fleet_mobility_operations_control_assertion`: validates policy, writes owned `fleet_mobility_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_fleet_mobility_operations_governed_model`: validates policy, writes owned `fleet_mobility_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_fleet_mobility_operations_13`: validates policy, writes owned `fleet_mobility_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_fleet_mobility_operations_14`: validates policy, writes owned `fleet_mobility_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_fleet_mobility_operations_15`: validates policy, writes owned `fleet_mobility_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_fleet_mobility_operations_16`: validates policy, writes owned `fleet_mobility_operations_vehicle` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_fleet_mobility_operations_17`: validates policy, writes owned `fleet_mobility_operations_driver_assignment` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_fleet_mobility_operations_18`: validates policy, writes owned `fleet_mobility_operations_telematics_event` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `validate_dispatch_readiness`: validates policy, writes owned `fleet_mobility_operations_vehicle` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `enforce_driver_rest_window`: validates policy, writes owned `fleet_mobility_operations_driver_assignment` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `quarantine_telematics_event`: validates policy, writes owned `fleet_mobility_operations_telematics_event` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `project_route_stop_eta`: validates policy, writes owned `fleet_mobility_operations_route_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `detect_fuel_burn_anomaly`: validates policy, writes owned `fleet_mobility_operations_fuel_transaction` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `score_driver_behavior`: validates policy, writes owned `fleet_mobility_operations_safety_event` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: vehicle, driver_assignment, telematics_event, route_plan, fuel_transaction, maintenance_schedule, safety_event, fleet_mobility_operations_policy_rule, fleet_mobility_operations_runtime_parameter, fleet_mobility_operations_schema_extension, fleet_mobility_operations_control_assertion, fleet_mobility_operations_governed_model
-- operations: create_vehicle, record_driver_assignment, review_telematics_event, approve_route_plan, simulate_fuel_transaction, create_maintenance_schedule, record_safety_event, review_fleet_mobility_operations_policy_rule, approve_fleet_mobility_operations_runtime_parameter, simulate_fleet_mobility_operations_schema_extension, create_fleet_mobility_operations_control_assertion, record_fleet_mobility_operations_governed_model, operate_fleet_mobility_operations_13, operate_fleet_mobility_operations_14, operate_fleet_mobility_operations_15, operate_fleet_mobility_operations_16, operate_fleet_mobility_operations_17, operate_fleet_mobility_operations_18
+- operations: create_vehicle, record_driver_assignment, review_telematics_event, approve_route_plan, simulate_fuel_transaction, create_maintenance_schedule, record_safety_event, review_fleet_mobility_operations_policy_rule, approve_fleet_mobility_operations_runtime_parameter, simulate_fleet_mobility_operations_schema_extension, create_fleet_mobility_operations_control_assertion, record_fleet_mobility_operations_governed_model, validate_dispatch_readiness, enforce_driver_rest_window, quarantine_telematics_event, project_route_stop_eta, detect_fuel_burn_anomaly, score_driver_behavior
 - emits: FleetMobilityOperationsCreated, FleetMobilityOperationsUpdated, FleetMobilityOperationsApproved, FleetMobilityOperationsExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: vehicle_policy, driver_assignment_policy, telematics_event_policy, route_plan_policy, fuel_transaction_policy, maintenance_schedule_policy

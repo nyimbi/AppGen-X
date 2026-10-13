@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `pharmacy_benefits_management_appgen_outbox_ev
 - `simulate_pharmacy_benefits_management_schema_extension`: validates policy, writes owned `pharmacy_benefits_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_pharmacy_benefits_management_control_assertion`: validates policy, writes owned `pharmacy_benefits_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_pharmacy_benefits_management_governed_model`: validates policy, writes owned `pharmacy_benefits_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_pharmacy_benefits_management_13`: validates policy, writes owned `pharmacy_benefits_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_pharmacy_benefits_management_14`: validates policy, writes owned `pharmacy_benefits_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_pharmacy_benefits_management_15`: validates policy, writes owned `pharmacy_benefits_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_pharmacy_benefits_management_16`: validates policy, writes owned `pharmacy_benefits_management_formulary` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_pharmacy_benefits_management_17`: validates policy, writes owned `pharmacy_benefits_management_drug_coverage_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_pharmacy_benefits_management_18`: validates policy, writes owned `pharmacy_benefits_management_prior_authorization` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `govern_formulary_version`: validates policy, writes owned `pharmacy_benefits_management_formulary` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `apply_step_therapy_pathway`: validates policy, writes owned `pharmacy_benefits_management_drug_coverage_rule` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `evaluate_prior_authorization_criteria`: validates policy, writes owned `pharmacy_benefits_management_prior_authorization` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `apply_claim_edit_engine`: validates policy, writes owned `pharmacy_benefits_management_pharmacy_claim` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `accrue_rebate_true_up`: validates policy, writes owned `pharmacy_benefits_management_rebate_contract` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `detect_fraud_waste_abuse`: validates policy, writes owned `pharmacy_benefits_management_utilization_review` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: formulary, drug_coverage_rule, prior_authorization, pharmacy_claim, rebate_contract, utilization_review, pharmacy_network, pharmacy_benefits_management_policy_rule, pharmacy_benefits_management_runtime_parameter, pharmacy_benefits_management_schema_extension, pharmacy_benefits_management_control_assertion, pharmacy_benefits_management_governed_model
-- operations: create_formulary, record_drug_coverage_rule, review_prior_authorization, approve_pharmacy_claim, simulate_rebate_contract, create_utilization_review, record_pharmacy_network, review_pharmacy_benefits_management_policy_rule, approve_pharmacy_benefits_management_runtime_parameter, simulate_pharmacy_benefits_management_schema_extension, create_pharmacy_benefits_management_control_assertion, record_pharmacy_benefits_management_governed_model, operate_pharmacy_benefits_management_13, operate_pharmacy_benefits_management_14, operate_pharmacy_benefits_management_15, operate_pharmacy_benefits_management_16, operate_pharmacy_benefits_management_17, operate_pharmacy_benefits_management_18
+- operations: create_formulary, record_drug_coverage_rule, review_prior_authorization, approve_pharmacy_claim, simulate_rebate_contract, create_utilization_review, record_pharmacy_network, review_pharmacy_benefits_management_policy_rule, approve_pharmacy_benefits_management_runtime_parameter, simulate_pharmacy_benefits_management_schema_extension, create_pharmacy_benefits_management_control_assertion, record_pharmacy_benefits_management_governed_model, govern_formulary_version, apply_step_therapy_pathway, evaluate_prior_authorization_criteria, apply_claim_edit_engine, accrue_rebate_true_up, detect_fraud_waste_abuse
 - emits: PharmacyBenefitsManagementCreated, PharmacyBenefitsManagementUpdated, PharmacyBenefitsManagementApproved, PharmacyBenefitsManagementExceptionOpened
 - consumes: PolicyChanged, CustomerUpdated, SupplierQualified
 - rules: formulary_policy, drug_coverage_rule_policy, prior_authorization_policy, pharmacy_claim_policy, rebate_contract_policy, utilization_review_policy

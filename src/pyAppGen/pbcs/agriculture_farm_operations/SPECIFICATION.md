@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `agriculture_farm_operations_appgen_outbox_eve
 - `simulate_agriculture_farm_operations_schema_extension`: validates policy, writes owned `agriculture_farm_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_agriculture_farm_operations_control_assertion`: validates policy, writes owned `agriculture_farm_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_agriculture_farm_operations_governed_model`: validates policy, writes owned `agriculture_farm_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_agriculture_farm_operations_13`: validates policy, writes owned `agriculture_farm_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_agriculture_farm_operations_14`: validates policy, writes owned `agriculture_farm_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_agriculture_farm_operations_15`: validates policy, writes owned `agriculture_farm_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_agriculture_farm_operations_16`: validates policy, writes owned `agriculture_farm_operations_field` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_agriculture_farm_operations_17`: validates policy, writes owned `agriculture_farm_operations_crop_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_agriculture_farm_operations_18`: validates policy, writes owned `agriculture_farm_operations_input_application` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `define_soil_sampling_zone`: validates policy, writes owned `agriculture_farm_operations_field` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `version_agronomy_prescription`: validates policy, writes owned `agriculture_farm_operations_crop_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `reconcile_rainfall_irrigation`: validates policy, writes owned `agriculture_farm_operations_irrigation_event` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `record_equipment_calibration`: validates policy, writes owned `agriculture_farm_operations_equipment_use` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `segment_harvest_lot_lineage`: validates policy, writes owned `agriculture_farm_operations_harvest_lot` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `reconcile_yield_sources`: validates policy, writes owned `agriculture_farm_operations_yield_observation` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: field, crop_plan, input_application, irrigation_event, equipment_use, harvest_lot, yield_observation, agriculture_farm_operations_policy_rule, agriculture_farm_operations_runtime_parameter, agriculture_farm_operations_schema_extension, agriculture_farm_operations_control_assertion, agriculture_farm_operations_governed_model
-- operations: create_field, record_crop_plan, review_input_application, approve_irrigation_event, simulate_equipment_use, create_harvest_lot, record_yield_observation, review_agriculture_farm_operations_policy_rule, approve_agriculture_farm_operations_runtime_parameter, simulate_agriculture_farm_operations_schema_extension, create_agriculture_farm_operations_control_assertion, record_agriculture_farm_operations_governed_model, operate_agriculture_farm_operations_13, operate_agriculture_farm_operations_14, operate_agriculture_farm_operations_15, operate_agriculture_farm_operations_16, operate_agriculture_farm_operations_17, operate_agriculture_farm_operations_18
+- operations: create_field, record_crop_plan, review_input_application, approve_irrigation_event, simulate_equipment_use, create_harvest_lot, record_yield_observation, review_agriculture_farm_operations_policy_rule, approve_agriculture_farm_operations_runtime_parameter, simulate_agriculture_farm_operations_schema_extension, create_agriculture_farm_operations_control_assertion, record_agriculture_farm_operations_governed_model, define_soil_sampling_zone, version_agronomy_prescription, reconcile_rainfall_irrigation, record_equipment_calibration, segment_harvest_lot_lineage, reconcile_yield_sources
 - emits: AgricultureFarmOperationsCreated, AgricultureFarmOperationsUpdated, AgricultureFarmOperationsApproved, AgricultureFarmOperationsExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: field_policy, crop_plan_policy, input_application_policy, irrigation_event_policy, equipment_use_policy, harvest_lot_policy

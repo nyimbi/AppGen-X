@@ -32,12 +32,33 @@ DOMAIN_OPERATIONS = ('create_program',
  'simulate_nonprofit_program_impact_schema_extension',
  'create_nonprofit_program_impact_control_assertion',
  'record_nonprofit_program_impact_governed_model',
- 'operate_nonprofit_program_impact_13',
- 'operate_nonprofit_program_impact_14',
- 'operate_nonprofit_program_impact_15',
- 'operate_nonprofit_program_impact_16',
- 'operate_nonprofit_program_impact_17',
- 'operate_nonprofit_program_impact_18')
+ 'define_theory_of_change',
+ 'enforce_beneficiary_eligibility',
+ 'track_service_fidelity_dosage',
+ 'score_evidence_quality',
+ 'map_grant_restriction_boundary',
+ 'attribute_donor_report_result')
+
+_OPERATION_TARGETS = {
+ 'create_program': 'nonprofit_program_impact_program',
+ 'record_beneficiary': 'nonprofit_program_impact_beneficiary',
+ 'review_service_episode': 'nonprofit_program_impact_service_episode',
+ 'approve_outcome_measure': 'nonprofit_program_impact_outcome_measure',
+ 'simulate_grant_restriction': 'nonprofit_program_impact_grant_restriction',
+ 'create_impact_evidence': 'nonprofit_program_impact_impact_evidence',
+ 'record_donor_report': 'nonprofit_program_impact_donor_report',
+ 'review_nonprofit_program_impact_policy_rule': 'nonprofit_program_impact_policy_rule',
+ 'approve_nonprofit_program_impact_runtime_parameter': 'nonprofit_program_impact_runtime_parameter',
+ 'simulate_nonprofit_program_impact_schema_extension': 'nonprofit_program_impact_schema_extension',
+ 'create_nonprofit_program_impact_control_assertion': 'nonprofit_program_impact_control_assertion',
+ 'record_nonprofit_program_impact_governed_model': 'nonprofit_program_impact_governed_model',
+ 'define_theory_of_change': 'nonprofit_program_impact_program',
+ 'enforce_beneficiary_eligibility': 'nonprofit_program_impact_beneficiary',
+ 'track_service_fidelity_dosage': 'nonprofit_program_impact_service_episode',
+ 'score_evidence_quality': 'nonprofit_program_impact_impact_evidence',
+ 'map_grant_restriction_boundary': 'nonprofit_program_impact_grant_restriction',
+ 'attribute_donor_report_result': 'nonprofit_program_impact_donor_report',
+}
 DOMAIN_RULES = ('program_policy',
  'beneficiary_policy',
  'service_episode_policy',
@@ -80,7 +101,7 @@ def execute_domain_operation(operation: str, payload: dict | None = None) -> dic
     if operation not in DOMAIN_OPERATIONS:
         return {'ok': False, 'reason': 'unknown_domain_operation', 'operation': operation, 'side_effects': ()}
     index = DOMAIN_OPERATIONS.index(operation)
-    target_table = DOMAIN_OWNED_TABLES[index % len(DOMAIN_OWNED_TABLES)]
+    target_table = _OPERATION_TARGETS.get(operation, DOMAIN_OWNED_TABLES[0])
     emitted_event = DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]
     return {'ok': True, 'pbc': PBC_KEY, 'operation': operation, 'operation_kind': 'command', 'target_table': target_table, 'owned_tables': (target_table,), 'read_tables': (), 'emitted_event': emitted_event, 'event_contract': 'AppGen-X', 'idempotency_key': _digest((PBC_KEY, operation, tuple(sorted(payload.items())))), 'rules_evaluated': DOMAIN_RULES[:3], 'parameters_read': DOMAIN_PARAMETERS[:3], 'permission': f'{PBC_KEY}.operate', 'evidence_hash': _digest((operation, payload, target_table, emitted_event)), 'shared_table_access': False, 'stream_engine_picker_visible': False, 'side_effects': ()}
 
@@ -93,4 +114,4 @@ DOMAIN_EDGE_CASES = tuple(f"{operation}_edge_case" for operation in DOMAIN_OPERA
 DOMAIN_SPECIALIST_CAPABILITIES = tuple(dict.fromkeys(tuple(DOMAIN_ADVANCED_CAPABILITIES) + tuple(f"specialist_{operation}" for operation in DOMAIN_OPERATIONS) + tuple(f"rule_driven_{rule}" for rule in DOMAIN_RULES)))
 
 def domain_capability_surface_contract() -> dict:
-    return {'format': f'appgen.{PBC_KEY}.complete-domain-capability-surface.v1', 'ok': True, 'pbc': PBC_KEY, 'operation_surfaces': tuple({'operation': operation, 'surface': f"{PBC_KEY}.ui.operation.{operation}", 'action': operation, 'target_table': DOMAIN_OWNED_TABLES[index % len(DOMAIN_OWNED_TABLES)], 'permission': f"{PBC_KEY}.operate", 'requires_confirmation': True, 'agent_tool': f"{PBC_KEY}_skills.{operation}", 'event': DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]} for index, operation in enumerate(DOMAIN_OPERATIONS)), 'rule_surfaces': tuple({'rule': rule, 'surface': f"{PBC_KEY}.ui.rule.{rule}", 'editor': True, 'explainable': True} for rule in DOMAIN_RULES), 'parameter_surfaces': tuple({'parameter': parameter, 'surface': f"{PBC_KEY}.ui.parameter.{parameter}", 'bounded': True, 'editable': True} for parameter in DOMAIN_PARAMETERS), 'advanced_surfaces': tuple({'capability': capability, 'surface': f"{PBC_KEY}.ui.advanced.{_digest(capability)[:12]}", 'explainable': True} for capability in DOMAIN_ADVANCED_CAPABILITIES), 'edge_case_surfaces': tuple({'edge_case': edge_case, 'surface': f"{PBC_KEY}.ui.edge_case.{edge_case}", 'triage_queue': True} for edge_case in DOMAIN_EDGE_CASES), 'table_surfaces': tuple({'owned_table': table, 'surface': f"{PBC_KEY}.ui.table.{table}", 'read_model': True, 'mutation_guard': True} for table in DOMAIN_OWNED_TABLES), 'specialist_capabilities': DOMAIN_SPECIALIST_CAPABILITIES, 'coverage': {'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False}, 'side_effects': ()}
+    return {'format': f'appgen.{PBC_KEY}.complete-domain-capability-surface.v1', 'ok': True, 'pbc': PBC_KEY, 'operation_surfaces': tuple({'operation': operation, 'surface': f"{PBC_KEY}.ui.operation.{operation}", 'action': operation, 'target_table': _OPERATION_TARGETS.get(operation, DOMAIN_OWNED_TABLES[0]), 'permission': f"{PBC_KEY}.operate", 'requires_confirmation': True, 'agent_tool': f"{PBC_KEY}_skills.{operation}", 'event': DOMAIN_EVENTS[index % len(DOMAIN_EVENTS)]} for index, operation in enumerate(DOMAIN_OPERATIONS)), 'rule_surfaces': tuple({'rule': rule, 'surface': f"{PBC_KEY}.ui.rule.{rule}", 'editor': True, 'explainable': True} for rule in DOMAIN_RULES), 'parameter_surfaces': tuple({'parameter': parameter, 'surface': f"{PBC_KEY}.ui.parameter.{parameter}", 'bounded': True, 'editable': True} for parameter in DOMAIN_PARAMETERS), 'advanced_surfaces': tuple({'capability': capability, 'surface': f"{PBC_KEY}.ui.advanced.{_digest(capability)[:12]}", 'explainable': True} for capability in DOMAIN_ADVANCED_CAPABILITIES), 'edge_case_surfaces': tuple({'edge_case': edge_case, 'surface': f"{PBC_KEY}.ui.edge_case.{edge_case}", 'triage_queue': True} for edge_case in DOMAIN_EDGE_CASES), 'table_surfaces': tuple({'owned_table': table, 'surface': f"{PBC_KEY}.ui.table.{table}", 'read_model': True, 'mutation_guard': True} for table in DOMAIN_OWNED_TABLES), 'specialist_capabilities': DOMAIN_SPECIALIST_CAPABILITIES, 'coverage': {'event_contract': 'AppGen-X', 'stream_engine_picker_visible': False, 'shared_table_access': False}, 'side_effects': ()}

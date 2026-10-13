@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `utilities_metering_billing_appgen_outbox_even
 - `simulate_utilities_metering_billing_schema_extension`: validates policy, writes owned `utilities_metering_billing_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_utilities_metering_billing_control_assertion`: validates policy, writes owned `utilities_metering_billing_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_utilities_metering_billing_governed_model`: validates policy, writes owned `utilities_metering_billing_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_utilities_metering_billing_13`: validates policy, writes owned `utilities_metering_billing_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_utilities_metering_billing_14`: validates policy, writes owned `utilities_metering_billing_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_utilities_metering_billing_15`: validates policy, writes owned `utilities_metering_billing_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_utilities_metering_billing_16`: validates policy, writes owned `utilities_metering_billing_meter_read` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_utilities_metering_billing_17`: validates policy, writes owned `utilities_metering_billing_usage_interval` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_utilities_metering_billing_18`: validates policy, writes owned `utilities_metering_billing_tariff` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `register_service_point`: validates policy, writes owned `utilities_metering_billing_customer_meter_account` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `validate_meter_read`: validates policy, writes owned `utilities_metering_billing_meter_read` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `stitch_interval_gap`: validates policy, writes owned `utilities_metering_billing_usage_interval` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `version_tariff`: validates policy, writes owned `utilities_metering_billing_tariff` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `rebill_customer_account`: validates policy, writes owned `utilities_metering_billing_billing_adjustment` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `trace_read_to_bill`: validates policy, writes owned `utilities_metering_billing_utility_bill` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: meter_read, usage_interval, tariff, service_order, utility_bill, billing_adjustment, customer_meter_account, utilities_metering_billing_policy_rule, utilities_metering_billing_runtime_parameter, utilities_metering_billing_schema_extension, utilities_metering_billing_control_assertion, utilities_metering_billing_governed_model
-- operations: create_meter_read, record_usage_interval, review_tariff, approve_service_order, simulate_utility_bill, create_billing_adjustment, record_customer_meter_account, review_utilities_metering_billing_policy_rule, approve_utilities_metering_billing_runtime_parameter, simulate_utilities_metering_billing_schema_extension, create_utilities_metering_billing_control_assertion, record_utilities_metering_billing_governed_model, operate_utilities_metering_billing_13, operate_utilities_metering_billing_14, operate_utilities_metering_billing_15, operate_utilities_metering_billing_16, operate_utilities_metering_billing_17, operate_utilities_metering_billing_18
+- operations: create_meter_read, record_usage_interval, review_tariff, approve_service_order, simulate_utility_bill, create_billing_adjustment, record_customer_meter_account, review_utilities_metering_billing_policy_rule, approve_utilities_metering_billing_runtime_parameter, simulate_utilities_metering_billing_schema_extension, create_utilities_metering_billing_control_assertion, record_utilities_metering_billing_governed_model, register_service_point, validate_meter_read, stitch_interval_gap, version_tariff, rebill_customer_account, trace_read_to_bill
 - emits: UtilitiesMeteringBillingCreated, UtilitiesMeteringBillingUpdated, UtilitiesMeteringBillingApproved, UtilitiesMeteringBillingExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: meter_read_policy, usage_interval_policy, tariff_policy, service_order_policy, utility_bill_policy, billing_adjustment_policy

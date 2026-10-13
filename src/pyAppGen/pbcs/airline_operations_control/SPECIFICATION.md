@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `airline_operations_control_appgen_outbox_even
 - `simulate_airline_operations_control_schema_extension`: validates policy, writes owned `airline_operations_control_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_airline_operations_control_control_assertion`: validates policy, writes owned `airline_operations_control_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_airline_operations_control_governed_model`: validates policy, writes owned `airline_operations_control_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_airline_operations_control_13`: validates policy, writes owned `airline_operations_control_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_airline_operations_control_14`: validates policy, writes owned `airline_operations_control_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_airline_operations_control_15`: validates policy, writes owned `airline_operations_control_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_airline_operations_control_16`: validates policy, writes owned `airline_operations_control_flight_leg` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_airline_operations_control_17`: validates policy, writes owned `airline_operations_control_aircraft_rotation` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_airline_operations_control_18`: validates policy, writes owned `airline_operations_control_crew_pairing` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `assess_crew_legality`: validates policy, writes owned `airline_operations_control_crew_pairing` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `evaluate_minimum_turn_feasibility`: validates policy, writes owned `airline_operations_control_flight_leg` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `analyze_tail_rotation_continuity`: validates policy, writes owned `airline_operations_control_aircraft_rotation` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `project_maintenance_due_clock`: validates policy, writes owned `airline_operations_control_aircraft_rotation` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `trace_inbound_dependency`: validates policy, writes owned `airline_operations_control_flight_leg` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `score_recovery_outcome`: validates policy, writes owned `airline_operations_control_reaccommodation_plan` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: flight_leg, aircraft_rotation, crew_pairing, disruption_event, reaccommodation_plan, operations_decision, delay_code, airline_operations_control_policy_rule, airline_operations_control_runtime_parameter, airline_operations_control_schema_extension, airline_operations_control_control_assertion, airline_operations_control_governed_model
-- operations: create_flight_leg, record_aircraft_rotation, review_crew_pairing, approve_disruption_event, simulate_reaccommodation_plan, create_operations_decision, record_delay_code, review_airline_operations_control_policy_rule, approve_airline_operations_control_runtime_parameter, simulate_airline_operations_control_schema_extension, create_airline_operations_control_control_assertion, record_airline_operations_control_governed_model, operate_airline_operations_control_13, operate_airline_operations_control_14, operate_airline_operations_control_15, operate_airline_operations_control_16, operate_airline_operations_control_17, operate_airline_operations_control_18
+- operations: create_flight_leg, record_aircraft_rotation, review_crew_pairing, approve_disruption_event, simulate_reaccommodation_plan, create_operations_decision, record_delay_code, review_airline_operations_control_policy_rule, approve_airline_operations_control_runtime_parameter, simulate_airline_operations_control_schema_extension, create_airline_operations_control_control_assertion, record_airline_operations_control_governed_model, assess_crew_legality, evaluate_minimum_turn_feasibility, analyze_tail_rotation_continuity, project_maintenance_due_clock, trace_inbound_dependency, score_recovery_outcome
 - emits: AirlineOperationsControlCreated, AirlineOperationsControlUpdated, AirlineOperationsControlApproved, AirlineOperationsControlExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: flight_leg_policy, aircraft_rotation_policy, crew_pairing_policy, disruption_event_policy, reaccommodation_plan_policy, operations_decision_policy

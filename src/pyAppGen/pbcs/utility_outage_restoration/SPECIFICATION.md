@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `utility_outage_restoration_appgen_outbox_even
 - `simulate_utility_outage_restoration_schema_extension`: validates policy, writes owned `utility_outage_restoration_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_utility_outage_restoration_control_assertion`: validates policy, writes owned `utility_outage_restoration_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_utility_outage_restoration_governed_model`: validates policy, writes owned `utility_outage_restoration_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_utility_outage_restoration_13`: validates policy, writes owned `utility_outage_restoration_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_utility_outage_restoration_14`: validates policy, writes owned `utility_outage_restoration_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_utility_outage_restoration_15`: validates policy, writes owned `utility_outage_restoration_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_utility_outage_restoration_16`: validates policy, writes owned `utility_outage_restoration_outage_incident` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_utility_outage_restoration_17`: validates policy, writes owned `utility_outage_restoration_device_interruption` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_utility_outage_restoration_18`: validates policy, writes owned `utility_outage_restoration_switching_step` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `score_incident_severity`: validates policy, writes owned `utility_outage_restoration_outage_incident` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `plan_switching_sequence`: validates policy, writes owned `utility_outage_restoration_switching_step` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `match_crew_capability`: validates policy, writes owned `utility_outage_restoration_crew_assignment` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `govern_etr_lifecycle`: validates policy, writes owned `utility_outage_restoration_restoration_estimate` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `prioritize_critical_customer`: validates policy, writes owned `utility_outage_restoration_customer_impact` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `classify_major_event`: validates policy, writes owned `utility_outage_restoration_reliability_metric` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: outage_incident, device_interruption, switching_step, crew_assignment, restoration_estimate, customer_impact, reliability_metric, utility_outage_restoration_policy_rule, utility_outage_restoration_runtime_parameter, utility_outage_restoration_schema_extension, utility_outage_restoration_control_assertion, utility_outage_restoration_governed_model
-- operations: create_outage_incident, record_device_interruption, review_switching_step, approve_crew_assignment, simulate_restoration_estimate, create_customer_impact, record_reliability_metric, review_utility_outage_restoration_policy_rule, approve_utility_outage_restoration_runtime_parameter, simulate_utility_outage_restoration_schema_extension, create_utility_outage_restoration_control_assertion, record_utility_outage_restoration_governed_model, operate_utility_outage_restoration_13, operate_utility_outage_restoration_14, operate_utility_outage_restoration_15, operate_utility_outage_restoration_16, operate_utility_outage_restoration_17, operate_utility_outage_restoration_18
+- operations: create_outage_incident, record_device_interruption, review_switching_step, approve_crew_assignment, simulate_restoration_estimate, create_customer_impact, record_reliability_metric, review_utility_outage_restoration_policy_rule, approve_utility_outage_restoration_runtime_parameter, simulate_utility_outage_restoration_schema_extension, create_utility_outage_restoration_control_assertion, record_utility_outage_restoration_governed_model, score_incident_severity, plan_switching_sequence, match_crew_capability, govern_etr_lifecycle, prioritize_critical_customer, classify_major_event
 - emits: UtilityOutageRestorationCreated, UtilityOutageRestorationUpdated, UtilityOutageRestorationApproved, UtilityOutageRestorationExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: outage_incident_policy, device_interruption_policy, switching_step_policy, crew_assignment_policy, restoration_estimate_policy, customer_impact_policy

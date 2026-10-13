@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `water_wastewater_operations_appgen_outbox_eve
 - `simulate_water_wastewater_operations_schema_extension`: validates policy, writes owned `water_wastewater_operations_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_water_wastewater_operations_control_assertion`: validates policy, writes owned `water_wastewater_operations_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_water_wastewater_operations_governed_model`: validates policy, writes owned `water_wastewater_operations_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_water_wastewater_operations_13`: validates policy, writes owned `water_wastewater_operations_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_water_wastewater_operations_14`: validates policy, writes owned `water_wastewater_operations_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_water_wastewater_operations_15`: validates policy, writes owned `water_wastewater_operations_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_water_wastewater_operations_16`: validates policy, writes owned `water_wastewater_operations_treatment_plant` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_water_wastewater_operations_17`: validates policy, writes owned `water_wastewater_operations_water_quality_sample` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_water_wastewater_operations_18`: validates policy, writes owned `water_wastewater_operations_permit_limit` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `configure_process_train`: validates policy, writes owned `water_wastewater_operations_treatment_plant` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `schedule_sampling_plan`: validates policy, writes owned `water_wastewater_operations_water_quality_sample` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `track_sample_chain_of_custody`: validates policy, writes owned `water_wastewater_operations_water_quality_sample` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `issue_boil_water_advisory`: validates policy, writes owned `water_wastewater_operations_service_interruption` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `score_asset_criticality`: validates policy, writes owned `water_wastewater_operations_pump_asset` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `reconcile_laboratory_result`: validates policy, writes owned `water_wastewater_operations_compliance_sample` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: treatment_plant, water_quality_sample, permit_limit, pump_asset, service_interruption, field_work_order, compliance_sample, water_wastewater_operations_policy_rule, water_wastewater_operations_runtime_parameter, water_wastewater_operations_schema_extension, water_wastewater_operations_control_assertion, water_wastewater_operations_governed_model
-- operations: create_treatment_plant, record_water_quality_sample, review_permit_limit, approve_pump_asset, simulate_service_interruption, create_field_work_order, record_compliance_sample, review_water_wastewater_operations_policy_rule, approve_water_wastewater_operations_runtime_parameter, simulate_water_wastewater_operations_schema_extension, create_water_wastewater_operations_control_assertion, record_water_wastewater_operations_governed_model, operate_water_wastewater_operations_13, operate_water_wastewater_operations_14, operate_water_wastewater_operations_15, operate_water_wastewater_operations_16, operate_water_wastewater_operations_17, operate_water_wastewater_operations_18
+- operations: create_treatment_plant, record_water_quality_sample, review_permit_limit, approve_pump_asset, simulate_service_interruption, create_field_work_order, record_compliance_sample, review_water_wastewater_operations_policy_rule, approve_water_wastewater_operations_runtime_parameter, simulate_water_wastewater_operations_schema_extension, create_water_wastewater_operations_control_assertion, record_water_wastewater_operations_governed_model, configure_process_train, schedule_sampling_plan, track_sample_chain_of_custody, issue_boil_water_advisory, score_asset_criticality, reconcile_laboratory_result
 - emits: WaterWastewaterOperationsCreated, WaterWastewaterOperationsUpdated, WaterWastewaterOperationsApproved, WaterWastewaterOperationsExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: treatment_plant_policy, water_quality_sample_policy, permit_limit_policy, pump_asset_policy, service_interruption_policy, field_work_order_policy

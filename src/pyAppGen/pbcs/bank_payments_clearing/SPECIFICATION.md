@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `bank_payments_clearing_appgen_outbox_event`, 
 - `simulate_bank_payments_clearing_schema_extension`: validates policy, writes owned `bank_payments_clearing_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_bank_payments_clearing_control_assertion`: validates policy, writes owned `bank_payments_clearing_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_bank_payments_clearing_governed_model`: validates policy, writes owned `bank_payments_clearing_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_bank_payments_clearing_13`: validates policy, writes owned `bank_payments_clearing_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_bank_payments_clearing_14`: validates policy, writes owned `bank_payments_clearing_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_bank_payments_clearing_15`: validates policy, writes owned `bank_payments_clearing_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_bank_payments_clearing_16`: validates policy, writes owned `bank_payments_clearing_payment_instruction` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_bank_payments_clearing_17`: validates policy, writes owned `bank_payments_clearing_clearing_batch` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_bank_payments_clearing_18`: validates policy, writes owned `bank_payments_clearing_settlement_file` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `classify_payment_rail`: validates policy, writes owned `bank_payments_clearing_payment_instruction` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `assemble_clearing_batch`: validates policy, writes owned `bank_payments_clearing_clearing_batch` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `acknowledge_settlement_file`: validates policy, writes owned `bank_payments_clearing_settlement_file` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `advance_return_item_lifecycle`: validates policy, writes owned `bank_payments_clearing_return_item` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `match_bank_reconciliation`: validates policy, writes owned `bank_payments_clearing_bank_reconciliation` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `monitor_participant_bank_health`: validates policy, writes owned `bank_payments_clearing_participant_bank` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: payment_instruction, clearing_batch, settlement_file, return_item, exception_case, bank_reconciliation, participant_bank, bank_payments_clearing_policy_rule, bank_payments_clearing_runtime_parameter, bank_payments_clearing_schema_extension, bank_payments_clearing_control_assertion, bank_payments_clearing_governed_model
-- operations: create_payment_instruction, record_clearing_batch, review_settlement_file, approve_return_item, simulate_exception_case, create_bank_reconciliation, record_participant_bank, review_bank_payments_clearing_policy_rule, approve_bank_payments_clearing_runtime_parameter, simulate_bank_payments_clearing_schema_extension, create_bank_payments_clearing_control_assertion, record_bank_payments_clearing_governed_model, operate_bank_payments_clearing_13, operate_bank_payments_clearing_14, operate_bank_payments_clearing_15, operate_bank_payments_clearing_16, operate_bank_payments_clearing_17, operate_bank_payments_clearing_18
+- operations: create_payment_instruction, record_clearing_batch, review_settlement_file, approve_return_item, simulate_exception_case, create_bank_reconciliation, record_participant_bank, review_bank_payments_clearing_policy_rule, approve_bank_payments_clearing_runtime_parameter, simulate_bank_payments_clearing_schema_extension, create_bank_payments_clearing_control_assertion, record_bank_payments_clearing_governed_model, classify_payment_rail, assemble_clearing_batch, acknowledge_settlement_file, advance_return_item_lifecycle, match_bank_reconciliation, monitor_participant_bank_health
 - emits: BankPaymentsClearingCreated, BankPaymentsClearingUpdated, BankPaymentsClearingApproved, BankPaymentsClearingExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: payment_instruction_policy, clearing_batch_policy, settlement_file_policy, return_item_policy, exception_case_policy, bank_reconciliation_policy

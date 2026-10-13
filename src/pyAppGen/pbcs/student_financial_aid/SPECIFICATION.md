@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `student_financial_aid_appgen_outbox_event`, `
 - `simulate_student_financial_aid_schema_extension`: validates policy, writes owned `student_financial_aid_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_student_financial_aid_control_assertion`: validates policy, writes owned `student_financial_aid_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_student_financial_aid_governed_model`: validates policy, writes owned `student_financial_aid_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_student_financial_aid_13`: validates policy, writes owned `student_financial_aid_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_student_financial_aid_14`: validates policy, writes owned `student_financial_aid_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_student_financial_aid_15`: validates policy, writes owned `student_financial_aid_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_student_financial_aid_16`: validates policy, writes owned `student_financial_aid_aid_application` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_student_financial_aid_17`: validates policy, writes owned `student_financial_aid_eligibility_review` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_student_financial_aid_18`: validates policy, writes owned `student_financial_aid_award_package` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `advance_aid_application`: validates policy, writes owned `student_financial_aid_aid_application` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `trace_need_calculation`: validates policy, writes owned `student_financial_aid_eligibility_review` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `define_award_packaging_rule`: validates policy, writes owned `student_financial_aid_award_package` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `select_verification_item`: validates policy, writes owned `student_financial_aid_verification_item` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `calculate_return_of_funds`: validates policy, writes owned `student_financial_aid_disbursement` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `evaluate_sap_progress`: validates policy, writes owned `student_financial_aid_sap_status` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: aid_application, eligibility_review, award_package, verification_item, disbursement, sap_status, aid_compliance, student_financial_aid_policy_rule, student_financial_aid_runtime_parameter, student_financial_aid_schema_extension, student_financial_aid_control_assertion, student_financial_aid_governed_model
-- operations: create_aid_application, record_eligibility_review, review_award_package, approve_verification_item, simulate_disbursement, create_sap_status, record_aid_compliance, review_student_financial_aid_policy_rule, approve_student_financial_aid_runtime_parameter, simulate_student_financial_aid_schema_extension, create_student_financial_aid_control_assertion, record_student_financial_aid_governed_model, operate_student_financial_aid_13, operate_student_financial_aid_14, operate_student_financial_aid_15, operate_student_financial_aid_16, operate_student_financial_aid_17, operate_student_financial_aid_18
+- operations: create_aid_application, record_eligibility_review, review_award_package, approve_verification_item, simulate_disbursement, create_sap_status, record_aid_compliance, review_student_financial_aid_policy_rule, approve_student_financial_aid_runtime_parameter, simulate_student_financial_aid_schema_extension, create_student_financial_aid_control_assertion, record_student_financial_aid_governed_model, advance_aid_application, trace_need_calculation, define_award_packaging_rule, select_verification_item, calculate_return_of_funds, evaluate_sap_progress
 - emits: StudentFinancialAidCreated, StudentFinancialAidUpdated, StudentFinancialAidApproved, StudentFinancialAidExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: aid_application_policy, eligibility_review_policy, award_package_policy, verification_item_policy, disbursement_policy, sap_status_policy

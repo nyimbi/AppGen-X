@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `identity_kyc_aml_compliance_appgen_outbox_eve
 - `simulate_identity_kyc_aml_compliance_schema_extension`: validates policy, writes owned `identity_kyc_aml_compliance_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_identity_kyc_aml_compliance_control_assertion`: validates policy, writes owned `identity_kyc_aml_compliance_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_identity_kyc_aml_compliance_governed_model`: validates policy, writes owned `identity_kyc_aml_compliance_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_identity_kyc_aml_compliance_13`: validates policy, writes owned `identity_kyc_aml_compliance_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_identity_kyc_aml_compliance_14`: validates policy, writes owned `identity_kyc_aml_compliance_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_identity_kyc_aml_compliance_15`: validates policy, writes owned `identity_kyc_aml_compliance_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_identity_kyc_aml_compliance_16`: validates policy, writes owned `identity_kyc_aml_compliance_kyc_profile` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_identity_kyc_aml_compliance_17`: validates policy, writes owned `identity_kyc_aml_compliance_identity_document` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_identity_kyc_aml_compliance_18`: validates policy, writes owned `identity_kyc_aml_compliance_beneficial_owner` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `classify_onboarding_risk`: validates policy, writes owned `identity_kyc_aml_compliance_kyc_profile` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `verify_document_authenticity`: validates policy, writes owned `identity_kyc_aml_compliance_identity_document` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `map_beneficial_ownership_graph`: validates policy, writes owned `identity_kyc_aml_compliance_beneficial_owner` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `dispose_screening_hit`: validates policy, writes owned `identity_kyc_aml_compliance_screening_hit` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `triage_monitoring_alert`: validates policy, writes owned `identity_kyc_aml_compliance_monitoring_alert` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `file_suspicious_activity_report`: validates policy, writes owned `identity_kyc_aml_compliance_suspicious_activity_case` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: kyc_profile, identity_document, beneficial_owner, screening_hit, monitoring_alert, suspicious_activity_case, compliance_review, identity_kyc_aml_compliance_policy_rule, identity_kyc_aml_compliance_runtime_parameter, identity_kyc_aml_compliance_schema_extension, identity_kyc_aml_compliance_control_assertion, identity_kyc_aml_compliance_governed_model
-- operations: create_kyc_profile, record_identity_document, review_beneficial_owner, approve_screening_hit, simulate_monitoring_alert, create_suspicious_activity_case, record_compliance_review, review_identity_kyc_aml_compliance_policy_rule, approve_identity_kyc_aml_compliance_runtime_parameter, simulate_identity_kyc_aml_compliance_schema_extension, create_identity_kyc_aml_compliance_control_assertion, record_identity_kyc_aml_compliance_governed_model, operate_identity_kyc_aml_compliance_13, operate_identity_kyc_aml_compliance_14, operate_identity_kyc_aml_compliance_15, operate_identity_kyc_aml_compliance_16, operate_identity_kyc_aml_compliance_17, operate_identity_kyc_aml_compliance_18
+- operations: create_kyc_profile, record_identity_document, review_beneficial_owner, approve_screening_hit, simulate_monitoring_alert, create_suspicious_activity_case, record_compliance_review, review_identity_kyc_aml_compliance_policy_rule, approve_identity_kyc_aml_compliance_runtime_parameter, simulate_identity_kyc_aml_compliance_schema_extension, create_identity_kyc_aml_compliance_control_assertion, record_identity_kyc_aml_compliance_governed_model, classify_onboarding_risk, verify_document_authenticity, map_beneficial_ownership_graph, dispose_screening_hit, triage_monitoring_alert, file_suspicious_activity_report
 - emits: IdentityKycAmlComplianceCreated, IdentityKycAmlComplianceUpdated, IdentityKycAmlComplianceApproved, IdentityKycAmlComplianceExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: kyc_profile_policy, identity_document_policy, beneficial_owner_policy, screening_hit_policy, monitoring_alert_policy, suspicious_activity_case_policy

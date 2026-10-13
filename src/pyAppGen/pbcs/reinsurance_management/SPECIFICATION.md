@@ -47,12 +47,12 @@ Runtime AppGen-X event tables are `reinsurance_management_appgen_outbox_event`, 
 - `simulate_reinsurance_management_schema_extension`: validates policy, writes owned `reinsurance_management_schema_extension` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `create_reinsurance_management_control_assertion`: validates policy, writes owned `reinsurance_management_control_assertion` records, emits AppGen-X events, and returns side-effect-free evidence.
 - `record_reinsurance_management_governed_model`: validates policy, writes owned `reinsurance_management_governed_model` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_reinsurance_management_13`: validates policy, writes owned `reinsurance_management_appgen_outbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_reinsurance_management_14`: validates policy, writes owned `reinsurance_management_appgen_inbox_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_reinsurance_management_15`: validates policy, writes owned `reinsurance_management_appgen_dead_letter_event` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_reinsurance_management_16`: validates policy, writes owned `reinsurance_management_reinsurance_treaty` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_reinsurance_management_17`: validates policy, writes owned `reinsurance_management_facultative_placement` records, emits AppGen-X events, and returns side-effect-free evidence.
-- `operate_reinsurance_management_18`: validates policy, writes owned `reinsurance_management_cession` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `validate_cession_eligibility`: validates policy, writes owned `reinsurance_management_cession` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `reconcile_premium_bordereau`: validates policy, writes owned `reinsurance_management_bordereau` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `calculate_reinstatement_premium`: validates policy, writes owned `reinsurance_management_recoverable` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `accumulate_exposure_layer`: validates policy, writes owned `reinsurance_management_exposure_layer` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `track_collateral_funds_withheld`: validates policy, writes owned `reinsurance_management_reinsurance_treaty` records, emits AppGen-X events, and returns side-effect-free evidence.
+- `settle_claim_recovery`: validates policy, writes owned `reinsurance_management_claim_recovery` records, emits AppGen-X events, and returns side-effect-free evidence.
 
 Every command is deterministic and side-effect-free in package tests. Each command returns target owned tables, emitted event evidence, idempotency keys, rule decisions, parameter reads, permissions, and audit hashes.
 
@@ -98,7 +98,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 ## Manifest Traceability Appendix
 
 - tables: reinsurance_treaty, facultative_placement, cession, bordereau, recoverable, claim_recovery, exposure_layer, reinsurance_management_policy_rule, reinsurance_management_runtime_parameter, reinsurance_management_schema_extension, reinsurance_management_control_assertion, reinsurance_management_governed_model
-- operations: create_reinsurance_treaty, record_facultative_placement, review_cession, approve_bordereau, simulate_recoverable, create_claim_recovery, record_exposure_layer, review_reinsurance_management_policy_rule, approve_reinsurance_management_runtime_parameter, simulate_reinsurance_management_schema_extension, create_reinsurance_management_control_assertion, record_reinsurance_management_governed_model, operate_reinsurance_management_13, operate_reinsurance_management_14, operate_reinsurance_management_15, operate_reinsurance_management_16, operate_reinsurance_management_17, operate_reinsurance_management_18
+- operations: create_reinsurance_treaty, record_facultative_placement, review_cession, approve_bordereau, simulate_recoverable, create_claim_recovery, record_exposure_layer, review_reinsurance_management_policy_rule, approve_reinsurance_management_runtime_parameter, simulate_reinsurance_management_schema_extension, create_reinsurance_management_control_assertion, record_reinsurance_management_governed_model, validate_cession_eligibility, reconcile_premium_bordereau, calculate_reinstatement_premium, accumulate_exposure_layer, track_collateral_funds_withheld, settle_claim_recovery
 - emits: ReinsuranceManagementCreated, ReinsuranceManagementUpdated, ReinsuranceManagementApproved, ReinsuranceManagementExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: reinsurance_treaty_policy, facultative_placement_policy, cession_policy, bordereau_policy, recoverable_policy, claim_recovery_policy
