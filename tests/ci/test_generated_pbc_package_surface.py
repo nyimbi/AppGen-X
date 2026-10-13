@@ -21,8 +21,12 @@ from pathlib import Path
 import pytest
 
 from pyAppGen.dsl import schema_from_dsl
-from pyAppGen.gen import generate_app_from_schema
-from pyAppGen.pbc import pbc_composition_dsl, pbc_implementation_contract
+from pyAppGen.gen import _pbc_package_file_contents, generate_app_from_schema
+from pyAppGen.pbc import (
+    IMPLEMENTED_PBC_KEYS,
+    pbc_composition_dsl,
+    pbc_implementation_contract,
+)
 
 COMPOSITION = ("dam_core", "gl_core", "ar_credit")
 STUB_FIELDS = {"id", "code", "status", "version", "created_at", "updated_at"}
@@ -35,6 +39,37 @@ def generated_app(tmp_path_factory):
     schema = schema_from_dsl(dsl, source_name="lego.appgen")
     generate_app_from_schema(schema, output)
     return output
+
+
+@pytest.fixture(scope="module")
+def emitted_package_root(tmp_path_factory):
+    """Every emitted PBC package, written the way `generate_app_from_schema` writes it.
+
+    The other fixtures in this file sample three keys, because a full
+    `generate_app_from_schema` over all 147 takes over two minutes. The three
+    fidelity assertions below are per-package and independent, so the whole
+    corpus is cheap when only the package files are written: the emitter is a
+    pure function of the contract and runs in about four seconds for 147 keys.
+    That matters because the defects this file exists to catch were per-package
+    (a numbered permission in seventeen packages, a doubled table prefix in one),
+    and a three-key sample is a gate over 2% of the surface it names.
+    """
+    root = tmp_path_factory.mktemp("emitted-packages") / "app"
+    (root / "pbcs").mkdir(parents=True)
+    (root / "pbcs" / "__init__.py").write_text(
+        '"""Generated PBC package namespace."""\n', encoding="utf-8"
+    )
+    for key in IMPLEMENTED_PBC_KEYS:
+        contract = pbc_implementation_contract(key)
+        assert contract["ok"], key
+        package = root / "pbcs" / key
+        package.mkdir()
+        (package / "__init__.py").write_text("")
+        for relative, content in _pbc_package_file_contents(contract).items():
+            path = package / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, encoding="utf-8")
+    return root
 
 
 def _load(package_dir: Path, name: str):
@@ -67,8 +102,12 @@ def _load_package_module(app_root: Path, key: str, name: str):
     """
     chain = [("pbcs", app_root / "pbcs"), (f"pbcs.{key}", app_root / "pbcs" / key)]
     for module_name, directory in chain:
-        if module_name in sys.modules:
+        cached = sys.modules.get(module_name)
+        if cached is not None and list(getattr(cached, "__path__", ())) == [str(directory)]:
             continue
+        # A different fixture's app root may already own this synthetic name; the
+        # cache is keyed by name, not by directory, so it is re-registered rather
+        # than skipped, or the import below resolves against the wrong tree.
         spec = importlib.util.spec_from_file_location(
             module_name, directory / "__init__.py", submodule_search_locations=[str(directory)]
         )
@@ -218,20 +257,31 @@ def _source_route_surface(key: str) -> set[tuple[str, str]]:
     permission: seventeen packages write a numbered placeholder
     (`ar_credit.query.13`) into their `routes.py` and the emitted app replaces it
     with the runtime's semantic one, which is the correction, not a drift.
+
+    Both sides are normalized to the bare path. The package's `routes.py` writes
+    some paths prefixed (`/api/pbc/ar_credit/ar/customers`) and some not, while
+    the emitted file is uniformly prefixed, so comparing raw paths reports a
+    mismatch on 106 of 147 keys that is a string prefix and nothing else.
     """
     module = importlib.import_module(f"pyAppGen.pbcs.{key}.routes")
     return {
-        (contract["method"], contract["path"])
+        (contract["method"], _bare_path(key, contract["path"]))
         for contract in module.api_route_contracts()["contracts"]
     }
 
 
+def _bare_path(key: str, path: str) -> str:
+    """Strip the `/api/pbc/<key>` prefix a route may or may not carry."""
+    prefix = f"/api/pbc/{key}"
+    return path[len(prefix):] if path.startswith(prefix) else path
+
+
 def _emitted_route_surface(app_root: Path, key: str) -> set[tuple[str, str]]:
-    """The `(method, path)` set the generated `routes.py` declares."""
+    """The `(method, path)` set the generated `routes.py` declares, bare."""
     module = _load_package_module(app_root, key, "routes")
     surface = set()
     for row in module.ROUTES:
-        surface.add((row["method"], row["path"]))
+        surface.add((row["method"], _bare_path(key, row["path"])))
     return surface
 
 
@@ -303,6 +353,55 @@ def test_the_generated_operations_carry_the_packages_scope_and_event(generated_a
                 assert table.startswith(f"{key}_"), (key, row["path"], table)
 
 
+def _numbered_permissions(root: Path, key: str) -> list[str]:
+    """The numbered placeholder permissions one emitted package carries.
+
+    Read through the corpus predicate, so the canary exercises the same code the
+    gate runs rather than a stricter restatement of it.
+    """
+    return [
+        permission
+        for offender_key, _, permission in _numbered_permission_offenders(root)
+        if offender_key == key
+    ]
+
+
+def test_the_corpus_gate_fails_on_a_planted_numbered_permission(emitted_package_root):
+    """Canary: a numbered permission planted anywhere in the corpus must fail.
+
+    The corpus gate's whole point is coverage beyond the three-key composition,
+    so the canary plants the defect in a package the composition does not use
+    (`notifications`) and asserts the corpus predicate sees it. The patch goes to
+    the emitted copy under `tmp_path` and is restored from the in-memory original,
+    not with `git checkout`, so a failure mid-canary cannot revert real work.
+    """
+    key = "notifications"
+    assert key not in COMPOSITION, "the canary must sit outside the three-key fixture"
+    path = emitted_package_root / "pbcs" / key / "routes.py"
+    original = path.read_text(encoding="utf-8")
+    match = re.search(r"('permission': ')([^']+)(')", original)
+    assert match, "canary target not found; the patch would be a no-op"
+    assert not re.compile(r"\.(command|query)\.\d+$").search(match.group(2)), (
+        "the planted package already carries a numbered permission"
+    )
+    planted = (
+        original[: match.start(2)]
+        + f"{key}.command.7"
+        + original[match.end(2):]
+    )
+    assert planted != original, "the patch did not apply"
+    try:
+        path.write_text(planted, encoding="utf-8")
+        _purge(key)
+        assert _numbered_permissions(emitted_package_root, key) == [f"{key}.command.7"], (
+            "the corpus predicate missed a planted numbered permission"
+        )
+    finally:
+        path.write_text(original, encoding="utf-8")
+        _purge(key)
+    assert _numbered_permissions(emitted_package_root, key) == [], "the canary did not restore"
+
+
 def test_the_fidelity_gate_fails_on_a_planted_route(generated_app):
     """Canary: a generated route the package does not declare must fail the gate.
 
@@ -336,3 +435,79 @@ def test_the_fidelity_gate_fails_on_a_planted_route(generated_app):
     finally:
         path.write_text(original, encoding="utf-8")
         _purge(key)
+
+
+def test_every_emitted_package_carries_its_own_route_surface(emitted_package_root):
+    """All 147 packages, not the three a full app generation can afford.
+
+    The per-package fidelity defects were not confined to the composition the
+    three-key fixture happens to use: seventeen packages wrote a numbered
+    permission, and the doubled table prefix appeared in exactly one. A gate over
+    a three-key sample is a gate over 2% of the surface it claims to cover, so
+    the whole corpus is checked here.
+    """
+    mismatched = []
+    for key in IMPLEMENTED_PBC_KEYS:
+        emitted = _emitted_route_surface(emitted_package_root, key)
+        source = _source_route_surface(key)
+        if emitted != source:
+            mismatched.append((key, sorted(source - emitted)[:3], sorted(emitted - source)[:3]))
+    assert not mismatched, mismatched[:5]
+
+
+def _numbered_permission_offenders(root: Path) -> list[tuple[str, str, str]]:
+    """Every numbered placeholder permission in the emitted corpus.
+
+    The gate and its canary both call this, so the canary cannot pass by
+    reimplementing the predicate more strictly than the gate runs it.
+    """
+    numbered = re.compile(r"\.(command|query)\.\d+$")
+    offenders = []
+    for key in IMPLEMENTED_PBC_KEYS:
+        module = _load_package_module(root, key, "routes")
+        for row in module.ROUTES:
+            if numbered.search(row["permission"]):
+                offenders.append((key, row["path"], row["permission"]))
+    return offenders
+
+
+def test_no_emitted_package_carries_a_numbered_permission(emitted_package_root):
+    """The placeholder permission must be gone from every package, not three.
+
+    Seventeen packages wrote `{key}.command.N` / `{key}.query.N` into their own
+    `routes.py`. A permission the package never declared cannot be granted, so a
+    numbered one is a button nobody can press; the emitted app must name the
+    runtime's semantic permission instead.
+    """
+    offenders = _numbered_permission_offenders(emitted_package_root)
+    assert not offenders, offenders[:5]
+
+
+def test_every_emitted_package_scope_and_event_is_its_own(emitted_package_root):
+    """Every emitted operation must satisfy the facade's own invariant, all 147.
+
+    The emitted `services.py` validates that a command owns tables and reads
+    none with a non-empty event, and that a query reads tables and owns none with
+    no event. Its `service_operation_contracts()["ok"]` is that validation run on
+    itself, and every scope entry must name a table the app actually emits
+    (`<key>_`-prefixed), because the generated migration creates only the
+    contract's tables.
+    """
+    failures = []
+    for key in IMPLEMENTED_PBC_KEYS:
+        module = _load_package_module(emitted_package_root, key, "services")
+        contract = module.service_operation_contracts()
+        if contract["ok"] is not True:
+            failures.append((key, "ok", contract["ok"]))
+            continue
+        for item in contract["contracts"]:
+            if item["operation_kind"] == "command":
+                if not item["owned_tables"] or item["read_tables"] or not item["emitted_event"]:
+                    failures.append((key, item["path"], "command scope"))
+            else:
+                if not item["read_tables"] or item["owned_tables"] or item["emitted_event"] is not None:
+                    failures.append((key, item["path"], "query scope"))
+            for table in item["owned_tables"] + item["read_tables"]:
+                if not table.startswith(f"{key}_"):
+                    failures.append((key, item["path"], table))
+    assert not failures, failures[:5]
