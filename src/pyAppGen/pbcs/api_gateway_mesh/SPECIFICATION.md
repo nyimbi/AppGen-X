@@ -301,6 +301,8 @@ This appendix is generated from the package manifest and is release-gated so the
 - `POST /gateway-rules`
 - `POST /gateway-parameters`
 - `POST /gateway-configuration`
+- `POST /routes/collision-analysis`
+- `POST /routes/safety-case`
 - `GET /service-map`
 - `GET /gateway/contracts/schema`
 - `GET /gateway/contracts/service`

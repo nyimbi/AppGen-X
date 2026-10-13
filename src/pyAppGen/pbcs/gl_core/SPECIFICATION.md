@@ -303,26 +303,24 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### API Routes
 
-- `POST /journals`
-- `GET /trial-balance`
-- `GET /chart-of-accounts`
-- `GET /ledger-events`
-- `POST /ledger-projections`
-- `POST /consensus-commits`
-- `POST /schema-extensions`
-- `GET /temporal-ledger`
-- `POST /probabilistic-postings`
-- `POST /continuous-close-snapshots`
-- `POST /causal-scenarios`
-- `POST /reconciliation-cases`
-- `POST /semantic-documents`
-- `POST /regulatory-rules`
-- `POST /predictive-validations`
-- `POST /audit-proofs`
-- `POST /control-tests`
-- `POST /ledger-federation-links`
-- `POST /resilience-drills`
-- `POST /carbon-execution-windows`
+- `POST /gl/journal-events`
+- `POST /gl/journals/validate`
+- `GET /gl/projections`
+- `GET /gl/trial-balance`
+- `POST /gl/close-snapshots`
+- `POST /gl/reconciliations`
+- `POST /gl/policy-rules`
+- `POST /gl/accounts`
+- `POST /gl/accounts/{account_id}/lifecycle-transitions`
+- `GET /gl/chart-governance`
+- `POST /gl/periods`
+- `POST /gl/periods/{period_id}/lifecycle-transitions`
+- `POST /gl/journals`
+- `POST /gl/journals/{journal_id}/lifecycle-transitions`
+- `POST /gl/journals/{journal_id}/invariant-proof`
+- `POST /gl/events/inbox`
+- `GET /gl/audit-proof`
+- `GET /gl/workbench`
 
 ### Emitted Events
 

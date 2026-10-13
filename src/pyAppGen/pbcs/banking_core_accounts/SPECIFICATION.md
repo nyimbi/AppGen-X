@@ -38,7 +38,7 @@ The package is releasable only when schema, migration, model, service, API route
 
 Tables: deposit_account, account_balance, account_hold, interest_accrual, fee_assessment, statement_cycle, account_service_case, banking_core_accounts_policy_rule, banking_core_accounts_runtime_parameter, banking_core_accounts_schema_extension, banking_core_accounts_control_assertion, banking_core_accounts_governed_model.
 
-APIs: POST /deposit-accounts, POST /account-balances, POST /account-holds, POST /interest-accruals, POST /fee-assessments, GET /banking-core-accounts-workbench.
+APIs: POST /deposit-accounts, POST /deposit-accounts/{account_id}/transitions, GET /deposit-accounts/{account_id}, POST /account-balances, POST /account-holds, POST /interest-accruals, POST /fee-assessments, GET /banking-core-accounts-workbench.
 
 Emits: BankingCoreAccountsCreated, BankingCoreAccountsUpdated, BankingCoreAccountsApproved, BankingCoreAccountsExceptionOpened.
 

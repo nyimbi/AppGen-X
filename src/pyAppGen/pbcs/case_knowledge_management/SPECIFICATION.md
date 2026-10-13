@@ -154,7 +154,7 @@ Release readiness requires the package to prove schema, migrations, models, serv
 
 The following exact catalog values are retained so release audits can prove the deep domain implementation remains traceable to the stable public manifest.
 - tables: support_case, knowledge_article, article_version, semantic_knowledge_index, case_deflection_event, knowledge_approval, content_freshness_signal, agent_assist_recommendation
-- apis: POST /support-cases, POST /knowledge-articles, POST /article-approvals, POST /case-deflections, GET /knowledge-workbench
+- apis: POST /support-cases, POST /support-cases/classify, POST /support-cases/route, POST /support-cases/assign, POST /support-cases/escalate, POST /support-cases/resolve, POST /knowledge-articles, POST /knowledge-articles/approve, POST /knowledge-articles/version, POST /knowledge-feedback, POST /agent/recommendations, POST /agent/document-instructions, GET /knowledge-workbench
 - emits: KnowledgeArticlePublished, CaseDeflected, AgentAssistRecommended, ContentFreshnessFlagged
 - consumes: ServiceTicketOpened, CustomerUpdated, SearchIndexRefreshed
 - ui_fragments: CaseKnowledgeManagementWorkbench, CaseKnowledgeManagementDetail, CaseKnowledgeManagementAssistantPanel

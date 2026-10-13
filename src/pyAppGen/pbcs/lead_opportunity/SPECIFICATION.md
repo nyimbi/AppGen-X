@@ -316,6 +316,9 @@ This appendix is generated from the package manifest and is release-gated so the
 - `POST /leads`
 - `POST /opportunities`
 - `GET /pipeline`
+- `POST /quote-proposal-handoffs`
+- `POST /opportunity-losses`
+- `POST /lead-enrichment`
 
 ### Emitted Events
 

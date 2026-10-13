@@ -293,6 +293,7 @@ This appendix is generated from the package manifest and is release-gated so the
 
 - `POST /composition-workspaces`
 - `POST /composition-workspaces/{id}/pbcs`
+- `GET /composition-selection-impact`
 - `POST /component-registry`
 - `POST /ui-fragments`
 - `POST /layout-bindings`
@@ -301,6 +302,16 @@ This appendix is generated from the package manifest and is release-gated so the
 - `POST /composition-dsl`
 - `POST /composition-publications`
 - `POST /composition/events/inbox`
+- `POST /composition/assistant/document-preview`
+- `POST /composition/assistant/route-intent`
+- `GET /composition/smoke-plan`
+- `GET /composition/artifact-lineage`
+- `GET /composition/documentation-matrix`
+- `GET /composition/security-review`
+- `GET /composition/release-notes`
+- `GET /composition/rehearsal`
+- `GET /composition/agent-competencies`
+- `GET /composition/controls`
 - `GET /composition-workbench`
 - `GET /composition/schema-contract`
 - `GET /composition/service-contract`

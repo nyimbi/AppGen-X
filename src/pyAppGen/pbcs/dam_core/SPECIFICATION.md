@@ -360,9 +360,40 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### API Routes
 
+- `POST /runtime/configuration`
+- `POST /runtime/parameters`
+- `POST /runtime/rules`
+- `POST /events/inbox`
 - `POST /assets`
+- `POST /assets/lifecycle-transitions`
+- `POST /collections`
+- `POST /collection-members`
+- `POST /rights-policies`
+- `POST /license-agreements`
+- `POST /usage-entitlements`
+- `POST /metadata-taxonomies`
+- `POST /tags`
+- `POST /metadata-enrichments`
+- `POST /semantic-annotations`
 - `POST /renditions`
-- `GET /rights`
+- `POST /renditions/complete`
+- `POST /workflows`
+- `POST /review-tasks/complete`
+- `POST /exceptions`
+- `POST /exceptions/resolve`
+- `POST /usage-snapshots`
+- `POST /duplicate-candidates`
+- `POST /lineage`
+- `GET /rights/decision`
+- `GET /assets/intake-readiness`
+- `GET /lifecycle-contract`
+- `GET /workbench`
+- `GET /api-contract`
+- `GET /schema-contract`
+- `GET /service-contract`
+- `GET /release-evidence`
+- `GET /permissions`
+- `GET /agent`
 
 ### Emitted Events
 

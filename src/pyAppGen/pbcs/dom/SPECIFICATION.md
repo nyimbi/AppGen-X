@@ -305,11 +305,17 @@ This appendix is generated from the package manifest and is release-gated so the
 ### API Routes
 
 - `POST /dom/orders`
+- `POST /dom/orders/{id}/tax-projection`
+- `POST /dom/orders/{id}/fraud-screen`
 - `POST /dom/orders/{id}/verify`
 - `POST /dom/orders/{id}/price`
 - `POST /dom/orders/{id}/allocation`
+- `POST /dom/orders/{id}/holds/{hold_id}/release`
+- `POST /dom/orders/{id}/cancellations`
+- `POST /dom/orders/{id}/substitutions`
 - `POST /dom/fulfillment-plans`
 - `POST /dom/shipments`
+- `POST /dom/events/inbox`
 - `GET /dom/workbench`
 
 ### Emitted Events

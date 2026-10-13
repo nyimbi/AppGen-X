@@ -99,6 +99,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 
 - tables: court_case, filing, hearing, docket_entry, party, judgment, court_order, court_case_management_policy_rule, court_case_management_runtime_parameter, court_case_management_schema_extension, court_case_management_control_assertion, court_case_management_governed_model
 - operations: create_court_case, record_filing, review_hearing, approve_docket_entry, simulate_party, create_judgment, record_court_order, review_court_case_management_policy_rule, approve_court_case_management_runtime_parameter, simulate_court_case_management_schema_extension, create_court_case_management_control_assertion, record_court_case_management_governed_model, assign_case_venue_number, review_filing_deficiency, verify_service_of_process, detect_docket_chronology_gap, authorize_court_order_issuance, resolve_cross_case_party_match
+- apis: POST /court-cases, POST /filings, POST /hearings, POST /court-orders, POST /court-orders/enter, POST /docket-entrys, POST /partys, GET /court-case-management/forms, GET /court-case-management/wizards, GET /court-case-management/controls, GET /court-case-management-workbench
 - emits: CourtCaseManagementCreated, CourtCaseManagementUpdated, CourtCaseManagementApproved, CourtCaseManagementExceptionOpened
 - consumes: PolicyChanged, CustomerUpdated, SupplierQualified
 - rules: court_case_policy, filing_policy, hearing_policy, docket_entry_policy, party_policy, judgment_policy

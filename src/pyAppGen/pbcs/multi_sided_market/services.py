@@ -37,7 +37,7 @@ COMMAND_ROUTES = {
     "command_market_clearing_projections": ("POST", "/api/pbc/multi_sided_market/clearing-projections", "multi_sided_market.command.analytics"),
 }
 QUERY_ROUTES = {
-    "query_market_workbench": ("GET", "/api/pbc/multi_sided_market-workbench", "multi_sided_market.query.workbench"),
+    "query_market_workbench": ("GET", "/api/pbc/multi_sided_market/workbench", "multi_sided_market.query.workbench"),
     "query_exchange_match": ("GET", "/api/pbc/multi_sided_market/exchange-match", "multi_sided_market.query.workbench"),
     "query_counterfactual_terms": ("GET", "/api/pbc/multi_sided_market/counterfactual-terms", "multi_sided_market.query.workbench"),
     "query_collusion_anomaly": ("GET", "/api/pbc/multi_sided_market/collusion-anomaly", "multi_sided_market.query.workbench"),

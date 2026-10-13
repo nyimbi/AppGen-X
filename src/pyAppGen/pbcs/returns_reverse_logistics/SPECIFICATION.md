@@ -307,23 +307,18 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### API Routes
 
-- `PUT /returns-reverse-logistics/configuration`
-- `POST /returns-reverse-logistics/parameters`
-- `POST /returns-reverse-logistics/rules`
 - `POST /returns`
 - `POST /labels`
-- `POST /returns/{return_id}/receipts`
 - `POST /inspection-grades`
-- `POST /returns/{return_id}/dispositions`
-- `POST /credit-adjustments`
-- `POST /returns/{return_id}/refund-exchange`
-- `POST /returns/{return_id}/carrier-claims`
-- `GET /returns/{return_id}/customer-status`
-- `POST /returns-reverse-logistics/events/inbox`
 - `GET /returns-reverse-logistics-workbench`
-- `GET /returns-reverse-logistics/schema-contract`
-- `GET /returns-reverse-logistics/service-contract`
-- `GET /returns-reverse-logistics/release-evidence`
+- `POST /receipts`
+- `POST /dispositions`
+- `POST /refund-exchange`
+- `POST /restocking-orders`
+- `POST /repair-refurbishment-orders`
+- `POST /carrier-claims`
+- `POST /customer-status`
+- `POST /exception-cases`
 
 ### Emitted Events
 

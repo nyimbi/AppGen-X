@@ -38,7 +38,7 @@ Package registration, package discovery, and metadata validation are side-effect
 
 Tables: bim_model, model_version, clash_issue, asset_object, handover_package, model_review, digital_twin_link, building_information_modeling_ops_policy_rule, building_information_modeling_ops_runtime_parameter, building_information_modeling_ops_schema_extension, building_information_modeling_ops_control_assertion, building_information_modeling_ops_governed_model.
 
-APIs: POST /bim-models, POST /model-versions, POST /clash-issues, POST /asset-objects, POST /handover-packages, GET /building-information-modeling-ops-workbench.
+APIs: POST /bim-models, POST /model-versions, POST /federations/project-coordinates, POST /federations/model-packages, POST /federations/assemblies, GET /building-information-modeling-ops-workbench, GET /building-information-modeling-ops/forms, GET /building-information-modeling-ops/wizards, GET /building-information-modeling-ops/controls.
 
 Emits: BuildingInformationModelingOpsCreated, BuildingInformationModelingOpsUpdated, BuildingInformationModelingOpsApproved, BuildingInformationModelingOpsExceptionOpened.
 

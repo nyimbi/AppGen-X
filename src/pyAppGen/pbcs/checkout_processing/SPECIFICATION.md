@@ -234,7 +234,13 @@ This appendix is generated from the package manifest and is release-gated so the
 
 - `POST /carts`
 - `POST /checkout`
+- `POST /inventory-confirmations`
+- `POST /payment-authorizations`
+- `POST /payment-captures`
 - `POST /coupons`
+- `GET /checkout-processing-workbench`
+- `GET /controls`
+- `POST /assistant/document-preview`
 
 ### Emitted Events
 

@@ -24348,10 +24348,17 @@ def _pbc_package_file_contents(contract: dict) -> dict[str, str]:
         methods = "    pass\n"
     model_tables = tuple(model["table"] for model in contract["models"])
     operation_contracts = []
-    emitted_events = tuple(event_contract.get("emitted", ()))
-    for position, route in enumerate(routes):
-        operation_kind = "query" if route["service_method"].startswith("query_") else "command"
-        emitted_event = emitted_events[position % len(emitted_events)]["event_type"] if emitted_events and operation_kind == "command" else None
+    for route in routes:
+        # The route record carries the package's own per-operation metadata: the
+        # operation name it dispatches, the table scope it writes or reads, and
+        # the event it emits. The emitted contract used to synthesize all three:
+        # `model_tables` for every command, the same for every query, and an event
+        # picked by `position % len(emitted)`, so a generated `dam_core` app gave
+        # each of its routes the whole table inventory and a rotating event. The
+        # package is the authority, so its values are carried through, and the
+        # kind/scope invariants the facade validates are the package's own.
+        operation_kind = route["operation_kind"]
+        emitted_event = route["emitted_event"] if operation_kind == "command" else None
         operation_contracts.append(
             {
                 "operation": route["service_method"],
@@ -24359,8 +24366,8 @@ def _pbc_package_file_contents(contract: dict) -> dict[str, str]:
                 "method": route["method"],
                 "path": route["route"],
                 "permission": route["permission"],
-                "owned_tables": tuple() if operation_kind == "query" else model_tables,
-                "read_tables": model_tables if operation_kind == "query" else tuple(),
+                "owned_tables": route["owned_tables"] or (tuple() if operation_kind == "query" else model_tables),
+                "read_tables": route["read_tables"] or (model_tables if operation_kind == "query" else tuple()),
                 "emitted_event": emitted_event,
                 "transaction_boundary": "owned_datastore_plus_outbox",
                 "event_contract": "AppGen-X",

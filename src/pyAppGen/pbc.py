@@ -6421,10 +6421,12 @@ def pbc_implementation_contract(key: str) -> dict:
         for position, table in enumerate(service["tables"])
     )
     event_contract = _event_contract(key, service)
-    service_methods = tuple(
-        _api_contract(key, api, position)
-        for position, api in enumerate(service["apis"])
-    )
+    # The package's own route surface is the authority for the app's routes. It
+    # replaces `_api_contract` over the catalog literal, which invented numbered
+    # permissions (`dam_core.command.1`) and had no per-operation table scope or
+    # event. `_package_route_records` reads the package's `routes.py` and falls
+    # back to the literal only for an unimportable package.
+    service_methods = _package_route_records(key)
     # The package's own UI contract is the authority for its fragments and
     # panels. The catalog literal and the `ClassWorkbench`/`ClassDetail`
     # fallback both under-report: for `dam_core` they yield two fragment names
@@ -8042,6 +8044,7 @@ def _pbc_descriptor(key: str, pbc: dict) -> dict:
     # so its inventory is carried alongside rather than overwriting the
     # declared view, and a test asserts the two agree so drift fails CI.
     owned = _owned_tables(key)
+    route_records = _package_route_records(key)
     return {
         "pbc": key,
         # Every descriptive field comes from the package, which is the source of
@@ -8053,13 +8056,15 @@ def _pbc_descriptor(key: str, pbc: dict) -> dict:
         # packages and `template` in 3, each time because the package grew and
         # the literal did not.
         #
-        # `apis` is the one field still read from the literal. It feeds
-        # `_api_contract`, which generates the app's real routes, and the
-        # runtime's own `build_api_contract()` route set disagrees with it in 36
-        # packages (`gl_core` names advanced-capability endpoints the runtime
-        # does not implement; the runtime names operational `/gl/`-prefixed ones
-        # the literal omits). Choosing between two route *designs* is an API
-        # decision, not drift cleanup, so it is left for its own change.
+        # `apis` now comes from the package's own `routes.py` too. It feeds
+        # `_api_contract`, which generates the app's real routes, and the literal
+        # was the last surface still hand-maintained: for `dam_core` it named 3
+        # routes against a package that dispatches 34, and for `gl_core` it named
+        # advanced-capability endpoints (`/temporal-ledger`, `/audit-proofs`) that
+        # no runtime command implements. The package's `routes.py` is the surface
+        # its own `dispatch_route` walks, so it is the one the emitted app must
+        # carry. `_package_route_records` falls back to the literal only when the
+        # package declares no routes or cannot be imported.
         "label": manifest.get("label") or pbc["label"],
         "mesh": manifest.get("mesh") or pbc["mesh"],
         "mesh_label": PBC_MESHES[manifest.get("mesh") or pbc["mesh"]]["label"],
@@ -8075,7 +8080,7 @@ def _pbc_descriptor(key: str, pbc: dict) -> dict:
         ),
         "tables": tables,
         "owned_tables": owned,
-        "apis": pbc["apis"],
+        "apis": tuple(f"{record['method']} {record['path']}" for record in route_records),
         "emits": emits,
         "consumes": consumes,
         # `template` stays on the literal too. It is an optional ERP bridge key,
@@ -8150,6 +8155,43 @@ def _service_contract(key: str) -> dict:
 def _snake(value: str) -> str:
     words = re.findall(r"[A-Z]?[a-z0-9]+|[A-Z]+(?=[A-Z]|$)", value)
     return "_".join(word.lower() for word in words) or value.lower()
+
+
+# A permission the generator invented (`dam_core.command.1`) rather than one the
+# package declares (`dam_core.customer`). Seventeen packages carry the numbered
+# form in their own `routes.py`; it is a placeholder, not a real grant.
+_NUMBERED_ROUTE_PERMISSION = re.compile(r"\.(command|query)\.\d+$")
+
+
+def _declared_route_permission(key: str, operation_kind: str) -> str:
+    """Return a permission from the package's own declared vocabulary.
+
+    Seventeen packages write a numbered placeholder into their own `routes.py`
+    (`ar_credit.command.4`) for routes their `build_api_contract()` does not also
+    name, so no semantic permission is available to join. Inventing a new numbered
+    string is what this change exists to remove, and a permission the package
+    never declared would not be grantable, so the fallback is drawn from the verbs
+    the package itself publishes: `read` for a query, and `create` (else `operate`)
+    for a command. Every one of the seventeen declares `read`; the generic-verb
+    packages declare `create`, and a package that declares neither keeps the
+    numbered form rather than a fabricated one.
+    """
+    try:
+        runtime = importlib.import_module(f"pyAppGen.pbcs.{key}.runtime")
+    except ImportError:
+        runtime = None
+    declared = tuple(
+        _package_declared_surface(key, "permissions", _package_manifest(key), runtime) or ()
+    )
+    if operation_kind == "query":
+        for verb in ("read", "operate"):
+            if f"{key}.{verb}" in declared:
+                return f"{key}.{verb}"
+    else:
+        for verb in ("create", "operate", "admin"):
+            if f"{key}.{verb}" in declared:
+                return f"{key}.{verb}"
+    return f"{key}.{'read' if operation_kind == 'query' else 'operate'}"
 
 
 def _owned_tables(key: str) -> tuple[str, ...]:
@@ -8242,6 +8284,351 @@ def _owned_table_name(key: str, logical: str, owned: tuple[str, ...]) -> str:
     return f"{key}_{logical}"
 
 
+def _route_method_name(key: str, operation_kind: str, path: str) -> str:
+    """Return the generated service method a route dispatches to.
+
+    The emitted `services.py` facade exposes one method per route and routes the
+    call by the `command_`/`query_` prefix (`gen.py`), so the name is derived from
+    the operation kind and path rather than the package's operation label. That
+    keeps the handler a unique dispatch key: nine packages reuse an operation name
+    across two routes (`gl_core`'s `build_projection` serves both `/gl/projections`
+    and `/gl/trial-balance`), and the operation name is carried alongside as data.
+    The prefix follows `operation_kind`, not the HTTP verb, because a POST the
+    package declares read-only must still route to `_query`.
+    """
+    path_name = re.sub(r"[^a-zA-Z0-9]+", "_", path).strip("_").lower() or key
+    return f"{'query' if operation_kind == 'query' else 'command'}_{path_name}"
+
+
+def _first_event(value: object) -> str | None:
+    """Normalize an emitted-event field that packages spell as a string or tuple."""
+    if not value:
+        return None
+    if isinstance(value, (tuple, list)):
+        return next((str(item) for item in value if item), None)
+    return str(value)
+
+
+def _package_route_records(key: str) -> tuple[dict, ...]:
+    """Return the route surface the package itself declares, one record per route.
+
+    A PBC publishes its routes three ways and only the third is both complete and
+    executable: the catalog literal `PBC_CATALOG[key]["apis"]` (hand-maintained),
+    the runtime's `<key>_build_api_contract()["routes"]` (rich dicts for 45
+    packages, bare `"METHOD /path"` strings for 102), and the package's own
+    `routes.py`, whose `API_ROUTE_CONTRACTS` / `api_route_contracts()` is the
+    surface its `dispatch_route` walks. Reading the package is what makes the
+    emitted app's route surface the block's real operations rather than a
+    literal's shadow: `dam_core`'s literal names 3 routes with invented
+    `dam_core.command.1` permissions, while its package declares 34 with
+    `dam_core.configure`-style ones, and `gl_core`'s literal names
+    advanced-capability endpoints (`/temporal-ledger`, `/audit-proofs`) that no
+    runtime command implements.
+
+    Precedence is `API_ROUTE_CONTRACTS` (full per-route metadata, 48 packages),
+    then `api_route_contracts()` (the route set for all 147), then the runtime's
+    dict routes. A package that declares no routes, or one that cannot be
+    imported at all, falls back to the catalog literal through `_api_contract`, so
+    a package is checked against itself wherever it can be.
+    """
+    owned = _owned_tables(key)
+    runtime_permissions = _runtime_route_permissions(key)
+    service_scope = _package_service_scope(key)
+    raw: tuple = ()
+    try:
+        module = importlib.import_module(f"pyAppGen.pbcs.{key}.routes")
+    except ImportError:
+        module = None
+    if module is not None:
+        raw = tuple(getattr(module, "API_ROUTE_CONTRACTS", ()) or ())
+        if not raw:
+            builder = getattr(module, "api_route_contracts", None)
+            if callable(builder):
+                try:
+                    contract = builder()
+                except Exception:
+                    contract = {}
+                raw = tuple(contract.get("contracts") or contract.get("routes") or ())
+    if not raw:
+        runtime_routes = _runtime_dict_routes(key)
+        raw = runtime_routes
+    if not raw:
+        return tuple(
+            _api_contract(key, api, position)
+            for position, api in enumerate(PBC_CATALOG[key].get("apis", ()))
+        )
+    records = []
+    for position, entry in enumerate(raw):
+        record = _normalize_package_route(
+            key, entry, position, owned, runtime_permissions, service_scope
+        )
+        if record is not None:
+            records.append(record)
+    return tuple(records)
+
+
+def _runtime_route_permissions(key: str) -> dict[tuple[str, str], str]:
+    """Map `(method, bare path)` to the semantic permission the runtime declares.
+
+    Seventeen packages write a numbered placeholder into their `routes.py`
+    (`ar_credit.command.1`) while their `build_api_contract()` carries the real
+    one (`ar_credit.customer`). The runtime is the richer statement of intent, so
+    its permission is joined in by route rather than the placeholder shipped.
+    """
+    try:
+        runtime = importlib.import_module(f"pyAppGen.pbcs.{key}.runtime")
+    except ImportError:
+        return {}
+    builder = getattr(runtime, f"{key}_build_api_contract", None)
+    if not callable(builder):
+        return {}
+    try:
+        routes = tuple(builder().get("routes", ()) or ())
+    except Exception:
+        return {}
+    mapping: dict[tuple[str, str], str] = {}
+    for route in routes:
+        if not isinstance(route, dict):
+            continue
+        permission = route.get("requires_permission")
+        route_text = str(route.get("route") or "")
+        method, _, path = route_text.partition(" ")
+        if permission and method and path:
+            mapping[(method.upper(), path)] = str(permission)
+    return mapping
+
+
+def _package_service_scope(key: str) -> dict[tuple[str, str], dict]:
+    """Map `(method, bare path)` to the scope and event the package's service layer declares.
+
+    A package states each route's table scope twice: coarsely in `routes.py` and
+    precisely in its executable `services.py`. `ar_credit`'s `routes.py` gives
+    every command all 34 owned tables, while its `services.py` names the four to
+    seven tables the operation actually writes; `gl_core`'s `routes.py` gives its
+    inbox command nothing, while `services.py` gives it the inbox table. The
+    emitted `services.py` is a structural copy of the source one, so the service
+    layer is the authority for per-operation scope and the event it emits, and
+    `routes.py` remains the authority for which routes exist.
+
+    Only entries carrying a `method` and `path` are joined; some packages publish
+    a service contract of a different shape (`contract_lifecycle`'s form-bound
+    operations), and those are left to the route record's own fields.
+    """
+    try:
+        module = importlib.import_module(f"pyAppGen.pbcs.{key}.services")
+    except ImportError:
+        return {}
+    builder = getattr(module, "service_operation_contracts", None)
+    if not callable(builder):
+        return {}
+    try:
+        contracts = tuple(builder().get("contracts") or ())
+    except Exception:
+        return {}
+    prefix = f"/api/pbc/{key}"
+    mapping: dict[tuple[str, str], dict] = {}
+    for contract in contracts:
+        if not isinstance(contract, dict):
+            continue
+        method = str(contract.get("method") or "").upper()
+        path = str(contract.get("path") or "")
+        if not method or not path:
+            continue
+        bare = path[len(prefix):] if path.startswith(prefix) else path
+        if not bare.startswith("/"):
+            bare = f"/{bare}"
+        mapping[(method, bare)] = contract
+    return mapping
+
+
+def _runtime_dict_routes(key: str) -> tuple[dict, ...]:
+    """Return the runtime's own route dicts, if it declares them as dicts."""
+    try:
+        runtime = importlib.import_module(f"pyAppGen.pbcs.{key}.runtime")
+    except ImportError:
+        return ()
+    builder = getattr(runtime, f"{key}_build_api_contract", None)
+    if not callable(builder):
+        return ()
+    try:
+        routes = tuple(builder().get("routes", ()) or ())
+    except Exception:
+        return ()
+    return routes if routes and isinstance(routes[0], dict) else ()
+
+
+def _normalize_package_route(
+    key: str,
+    entry: object,
+    position: int,
+    owned: tuple[str, ...],
+    runtime_permissions: dict[tuple[str, str], str] | None = None,
+    service_scope: dict[tuple[str, str], dict] | None = None,
+) -> dict | None:
+    """Normalize one package route record into the contract's route shape.
+
+    The record keeps the same keys `_api_contract` produces (`path` bare, `route`
+    prefixed) so every downstream reader is unchanged, and adds the real
+    `permission`, `owned_tables`, `read_tables`, `emitted_event`, `operation`, and
+    `operation_kind` the package declares. A package that omits the table scope or
+    the event (the 99 thin packages) falls back to the package's own owned tables
+    and emitted-event list, never to the numbered permissions the literal forced.
+    A permission the package wrote as a numbered placeholder is replaced by the
+    runtime's semantic one for the same route.
+    """
+    if isinstance(entry, str):
+        method, _, path = entry.partition(" ")
+        entry = {"method": method, "path": path}
+    if not isinstance(entry, dict):
+        return None
+    method = str(entry.get("method") or "").upper()
+    path = str(entry.get("path") or "")
+    if not method and entry.get("route"):
+        method, _, path = str(entry["route"]).partition(" ")
+        method = method.upper()
+    if not method or not path:
+        return None
+    prefix = f"/api/pbc/{key}"
+    bare = path[len(prefix):] if path.startswith(prefix) else path
+    if not bare.startswith("/"):
+        bare = f"/{bare}"
+    operation = (
+        entry.get("operation")
+        or entry.get("command")
+        or entry.get("query")
+        or entry.get("handler")
+    )
+    operation_kind = "query" if method == "GET" else str(entry.get("operation_kind") or "command")
+    permission = (
+        entry.get("permission")
+        or entry.get("required_permission")
+        or f"{key}.{'read' if operation_kind == 'query' else 'operate'}"
+    )
+    if _NUMBERED_ROUTE_PERMISSION.search(permission) and runtime_permissions:
+        permission = runtime_permissions.get((method, bare), permission)
+    if _NUMBERED_ROUTE_PERMISSION.search(permission):
+        permission = _declared_route_permission(key, operation_kind)
+    # The package states each route's scope twice: coarsely in `routes.py` and
+    # precisely in its executable `services.py`. `ar_credit`'s `routes.py` gives
+    # every command all 34 owned tables while its `services.py` names the four to
+    # seven the operation writes, and `gl_core`'s inbox command is empty in
+    # `routes.py` but the inbox table in `services.py`. The emitted `services.py`
+    # is a structural copy of the source one, so the service layer wins whenever
+    # it declares a scope, and the route's own scope is the fallback.
+    service_entry = (service_scope or {}).get((method, bare))
+    route_owned = _resolve_route_tables(key, entry.get("owned_tables"), owned)
+    route_read = _resolve_route_tables(key, entry.get("read_tables"), owned)
+    owned_tables = route_owned
+    read_tables = route_read
+    if isinstance(service_entry, dict):
+        svc_owned = _resolve_route_tables(key, service_entry.get("owned_tables"), owned)
+        svc_read = _resolve_route_tables(key, service_entry.get("read_tables"), owned)
+        if svc_owned or svc_read:
+            owned_tables, read_tables = svc_owned, svc_read
+    if not owned_tables and not read_tables:
+        # 627 routes across 105 packages declare no scope at all, so the fallback
+        # is the package's whole owned set. It is spelled physically here for the
+        # same reason the declared scope is: six packages publish short logical
+        # names in `_owned_tables`, and the emitted app rejects any scope entry
+        # that does not start with `<key>_`.
+        every = _resolve_route_tables(key, owned, owned)
+        if operation_kind == "query":
+            read_tables = every
+        else:
+            owned_tables = every
+    # A package's kind decides which side of the scope the tables land on: the
+    # facade validates that a command owns tables and reads none, and a query the
+    # reverse. A package that puts tables on the wrong side (a query declaring
+    # `owned_tables`) is read on the side its kind requires.
+    if operation_kind == "query":
+        if not read_tables:
+            read_tables = owned_tables
+        owned_tables = ()
+    else:
+        if not owned_tables:
+            owned_tables = read_tables
+        read_tables = ()
+    emitted_event = _first_event(
+        (service_entry or {}).get("emitted_event") if isinstance(service_entry, dict) else None
+    ) or _first_event(entry.get("emitted_event") or entry.get("emits"))
+    if emitted_event is None and operation_kind == "command":
+        emitted = _package_event_types(key)[0]
+        emitted_event = emitted[position % len(emitted)] if emitted else None
+    path_name = re.sub(r"[^a-zA-Z0-9]+", "_", bare).strip("_").lower() or key
+    # The dispatch name's prefix must match `operation_kind`, because the emitted
+    # facade routes a call to `_query`/`_command` by that prefix and validates the
+    # kind against the table scope. Seven routes are a POST the package itself
+    # declares read-only (`gl_core`'s `verify_journal_invariants`, the assistant
+    # document previews), so the prefix follows the declared kind, not the verb.
+    method_name = _route_method_name(key, operation_kind, bare)
+    return {
+        "method": method,
+        "path": bare,
+        "route": f"{prefix}{bare}",
+        "handler": method_name,
+        "service_method": method_name,
+        "operation": operation or method_name,
+        "operation_kind": operation_kind,
+        "permission": permission,
+        "owned_tables": owned_tables,
+        "read_tables": read_tables,
+        "emitted_event": emitted_event,
+        "idempotency_key": entry.get("idempotency_key"),
+        "request_schema": f"{key}.{path_name}.request.v1",
+        "response_schema": f"{key}.{path_name}.response.v1",
+    }
+
+
+def _resolve_route_tables(
+    key: str,
+    value: object,
+    owned: tuple[str, ...],
+) -> tuple[str, ...]:
+    """Resolve a route's table names to the physical spelling the app emits.
+
+    A package names its routes' tables four ways and only one is usable as an
+    emitted scope: the physical name (`dam_core`'s `dam_core_dam_configuration`,
+    absent from `_owned_tables`, whose short names are `asset`,
+    `dam_configuration`), the key-prefixed physical name, the short logical name
+    (`ar_credit`'s `ar_customer`, `time_labor`'s `shift`), and a name carrying no
+    prefix at all (`payroll_engine`'s `payroll_calendar`). The generated app
+    validates that every scope entry starts with `<key>_`, and its migration
+    creates only the service contract's tables, so a scope must name a table the
+    app actually emits.
+
+    A name is therefore kept only when it is already emitted, or when it is
+    owned *and* key-prefixed (a physical name the service contract omits, which
+    the package still owns). Everything else is resolved through
+    `_physical_table_name`, which reads the migration and the owned set rather
+    than reconstructing a name. Reading only `owned` was not enough: six packages
+    publish short logical names there, so `shift` and `payroll_calendar` passed
+    the owned check and shipped unprefixed.
+    """
+    if not value:
+        return ()
+    if isinstance(value, str):
+        value = (value,)
+    emitted = _contract_table_names(key, owned)
+    resolved = []
+    for table in value:
+        name = str(table)
+        # A package can double its own prefix by accident: `dam_core`'s routes
+        # declare `dam_core_dam_core_appgen_outbox_event` for an owned
+        # `dam_core_appgen_outbox_event`. Collapse one prefix when the result is
+        # a table the package really owns, so the emitted scope names a real
+        # table rather than a misspelling of one.
+        doubled = f"{key}_{key}_"
+        if name.startswith(doubled):
+            collapsed = f"{key}_{name[len(doubled):]}"
+            if collapsed in owned or collapsed in emitted:
+                name = collapsed
+        if name not in emitted and not (name in owned and name.startswith(f"{key}_")):
+            name = _physical_table_name(key, name, owned)
+        if name and name not in resolved:
+            resolved.append(name)
+    return tuple(resolved)
+
+
 def _table_contract(
     key: str,
     table: str,
@@ -8292,10 +8679,18 @@ def _table_contract(
 
 
 def _contract_table_names(key: str, owned: tuple[str, ...]) -> frozenset[str]:
-    """Return the physical names of every table this contract emits."""
+    """Return the physical names of every table this contract emits.
+
+    The emitted set is the physical spelling of the manifest's declared tables
+    (`_service_contract`'s `tables`, which `_pbc_descriptor` also carries). It is
+    read from the manifest directly rather than through `_service_contract`, which
+    would re-enter `_pbc_descriptor` and, from there, `_package_route_records` and
+    this resolver, looping forever.
+    """
+    manifest = _package_manifest(key)
+    declared = tuple(manifest.get("tables", ()) or PBC_CATALOG[key].get("tables", ()))
     return frozenset(
-        _physical_table_name(key, table, owned)
-        for table in _service_contract(key)["tables"]
+        _physical_table_name(key, table, owned) for table in declared
     )
 
 

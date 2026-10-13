@@ -297,6 +297,15 @@ This appendix is generated from the package manifest and is release-gated so the
 - `POST /landed-cost`
 - `POST /export-checks`
 - `POST /declarations`
+- `GET /cross-border-trade-workbench`
+- `POST /denied-party-screenings`
+- `POST /document-packets`
+- `POST /broker-handoffs`
+- `POST /carrier-handoffs`
+- `POST /compliance-holds`
+- `POST /compliance-holds/resolve`
+- `POST /country-restriction-policies`
+- `POST /declaration-releases`
 
 ### Emitted Events
 

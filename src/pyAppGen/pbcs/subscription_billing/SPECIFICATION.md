@@ -303,6 +303,16 @@ This appendix is generated from the package manifest and is release-gated so the
 - `POST /subscriptions`
 - `POST /usage`
 - `POST /renewals`
+- `GET /subscription-billing-workbench`
+- `POST /trials`
+- `POST /change-orders`
+- `POST /cancellations`
+- `POST /addons`
+- `POST /credit-memos`
+- `POST /payment-applications`
+- `POST /entitlements`
+- `POST /revenue-recognition`
+- `POST /billing-exceptions`
 
 ### Emitted Events
 

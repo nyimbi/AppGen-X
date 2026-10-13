@@ -40,7 +40,7 @@ Package registration, discovery, metadata validation, and composition planning a
 
 Tables: capital_project, epc_package, permit_milestone, progress_measurement, commissioning_system, project_risk, turnover_package, capital_projects_delivery_policy_rule, capital_projects_delivery_runtime_parameter, capital_projects_delivery_schema_extension, capital_projects_delivery_control_assertion, capital_projects_delivery_governed_model.
 
-APIs: POST /capital-projects, POST /epc-packages, POST /permit-milestones, POST /progress-measurements, POST /commissioning-systems, GET /capital-projects-delivery-workbench.
+APIs: POST /capital-projects, POST /capital-projects/{project_id}/gate-checklists, POST /capital-projects/{project_id}/gate-approvals, GET /capital-projects/{project_id}, POST /epc-packages, POST /permit-milestones, POST /progress-measurements, POST /commissioning-systems, GET /capital-projects-delivery-workbench.
 
 Emits: CapitalProjectsDeliveryCreated, CapitalProjectsDeliveryUpdated, CapitalProjectsDeliveryApproved, CapitalProjectsDeliveryExceptionOpened.
 

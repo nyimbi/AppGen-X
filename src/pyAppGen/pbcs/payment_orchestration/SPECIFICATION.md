@@ -275,6 +275,12 @@ This appendix is generated from the package manifest and is release-gated so the
 - `POST /gateway-routes`
 - `POST /tokens`
 - `GET /payment-orchestration-workbench`
+- `POST /authorizations`
+- `POST /captures`
+- `POST /settlements`
+- `POST /payouts`
+- `POST /refunds`
+- `POST /disputes`
 
 ### Emitted Events
 

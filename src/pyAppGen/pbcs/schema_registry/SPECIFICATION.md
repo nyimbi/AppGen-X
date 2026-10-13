@@ -300,19 +300,9 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### API Routes
 
-- `POST /schemas/subjects`
-- `POST /schemas/versions`
-- `POST /schemas/compatibility-rules`
-- `POST /schemas/consumer-bindings`
-- `POST /schemas/compatibility-checks`
-- `POST /schemas/payload-validations`
-- `POST /schemas/violations`
-- `POST /schemas/projections`
-- `POST /schemas/events/inbox`
-- `GET /schemas/subjects`
-- `GET /schemas/schema-contract`
-- `GET /schemas/service-contract`
-- `GET /schemas/release-evidence`
+- `POST /schemas`
+- `POST /compatibility-checks`
+- `GET /subjects`
 
 ### Emitted Events
 

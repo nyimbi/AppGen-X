@@ -254,24 +254,9 @@ This appendix is generated from the package manifest and is release-gated so the
 
 ### API Routes
 
-- `PUT /iam/configuration`
-- `POST /iam/parameters`
-- `POST /iam/rules`
-- `POST /iam/schema-extensions`
-- `POST /tenants`
-- `POST /principals`
-- `POST /identity-providers`
-- `POST /identity-links`
-- `POST /credential-verifications`
-- `POST /role-assignments`
+- `POST /tokens`
+- `GET /principals`
 - `POST /policy-decisions`
-- `POST /token-grants`
-- `POST /privileged-access-requests`
-- `POST /iam/events/inbox`
-- `GET /iam-workbench`
-- `GET /iam/schema-contract`
-- `GET /iam/service-contract`
-- `GET /iam/release-evidence`
 
 ### Emitted Events
 

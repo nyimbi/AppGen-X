@@ -411,7 +411,14 @@ This appendix is generated from the package manifest and is release-gated so the
 
 - `POST /price-quotes`
 - `POST /promotions`
+- `POST /promotions/approval`
+- `POST /coupon-redemptions`
 - `GET /price-decisions`
+- `POST /price-agreements`
+- `POST /trade-promotion-plans`
+- `POST /price-exceptions`
+- `POST /promotion-accruals`
+- `POST /promotion-settlements`
 
 ### Emitted Events
 

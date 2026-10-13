@@ -329,6 +329,19 @@ This appendix is generated from the package manifest and is release-gated so the
 - `POST /pim-events`
 - `POST /pim-publications`
 - `GET /pim-workbench`
+- `POST /attribute-groups`
+- `POST /attribute-options`
+- `POST /attribute-validation-rules`
+- `POST /translation-memory`
+- `POST /locale-fallback-rules`
+- `POST /product-relationships`
+- `POST /product-bundles`
+- `POST /variant-families`
+- `POST /variant-members`
+- `POST /assortments`
+- `POST /data-stewards`
+- `POST /pim-exceptions`
+- `POST /pim-exceptions/resolve`
 
 ### Emitted Events
 

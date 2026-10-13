@@ -875,8 +875,8 @@ def test_package_pbc_catalog_composes_enterprise_apps(runner: CliRunner) -> None
     assert "consensus_replica" in gl_implementation["manifest"]["tables"]
     assert "audit_proof" in gl_implementation["manifest"]["tables"]
     assert "carbon_execution_window" in gl_implementation["manifest"]["tables"]
-    assert "GET /temporal-ledger" in gl_implementation["manifest"]["apis"]
-    assert "POST /audit-proofs" in gl_implementation["manifest"]["apis"]
+    assert "POST /gl/journal-events" in gl_implementation["manifest"]["apis"]
+    assert "GET /gl/audit-proof" in gl_implementation["manifest"]["apis"]
     assert "LedgerEventAppended" in gl_implementation["manifest"]["emits"]
     assert "AuditProofGenerated" in gl_implementation["manifest"]["emits"]
     assert gl_implementation["services"]["transaction_boundary"] == "owned_datastore_plus_outbox"

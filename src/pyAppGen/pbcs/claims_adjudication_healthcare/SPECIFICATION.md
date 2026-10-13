@@ -99,6 +99,7 @@ Release readiness proves schema, migrations, models, service contracts, route co
 
 - tables: health_claim, claim_line, coding_review, benefit_rule, denial, appeal, payment_integrity_case, policy_rule, runtime_parameter, schema_extension, control_assertion, governed_model, document_instruction
 - operations: create_health_claim, record_claim_line, review_coding_review, approve_benefit_rule, simulate_denial, create_appeal, record_payment_determination, review_claims_adjudication_healthcare_policy_rule, approve_claims_adjudication_healthcare_runtime_parameter, simulate_claims_adjudication_healthcare_schema_extension, create_claims_adjudication_healthcare_control_assertion, record_claims_adjudication_healthcare_governed_model, operate_claims_adjudication_healthcare_13, operate_claims_adjudication_healthcare_14, operate_claims_adjudication_healthcare_15, operate_claims_adjudication_healthcare_16, operate_claims_adjudication_healthcare_17, operate_claims_adjudication_healthcare_18
+- apis: POST /health-claims, POST /claim-lines, POST /coding-reviews, POST /benefit-rules, POST /denials, POST /appeals, POST /document-instructions, GET /claims-adjudication-healthcare-workbench
 - emits: ClaimsAdjudicationHealthcareCreated, ClaimsAdjudicationHealthcareUpdated, ClaimsAdjudicationHealthcareApproved, ClaimsAdjudicationHealthcareExceptionOpened
 - consumes: PolicyChanged, AuditEventSealed, OperationalKpiChanged
 - rules: health_claim_policy, claim_line_policy, coding_review_policy, benefit_rule_policy, denial_policy, appeal_policy

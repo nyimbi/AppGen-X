@@ -154,7 +154,7 @@ Release readiness requires the package to prove schema, migrations, models, serv
 
 The following exact catalog values are retained so release audits can prove the deep domain implementation remains traceable to the stable public manifest.
 - tables: customer_success_account, customer_health_score, onboarding_plan, adoption_signal, renewal_plan, expansion_signal, success_playbook, churn_risk_case
-- apis: POST /success-accounts, POST /health-scores, POST /onboarding-plans, POST /renewal-plans, GET /customer-success-workbench
+- apis: POST /success-accounts, POST /success-plans, POST /health-scores, POST /playbooks, POST /renewal-motions, POST /agent/document-plan, POST /agent/crud-plan, GET /customer-success-workbench
 - emits: CustomerHealthChanged, RenewalPlanCreated, ExpansionSignalDetected, ChurnRiskRaised
 - consumes: CustomerUpdated, SubscriptionRenewed, ServiceTicketResolved
 - ui_fragments: CustomerSuccessManagementWorkbench, CustomerSuccessManagementDetail, CustomerSuccessManagementAssistantPanel

@@ -274,6 +274,7 @@ This appendix is generated from the package manifest and is release-gated so the
 - `POST /mrp/runs/{id}/calculate`
 - `POST /mrp/planned-orders/{id}/release`
 - `POST /mrp/events/inbox`
+- `POST /mrp/schema-extensions`
 - `GET /mrp/workbench`
 
 ### Emitted Events
