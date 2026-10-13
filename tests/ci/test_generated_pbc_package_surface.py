@@ -511,3 +511,60 @@ def test_every_emitted_package_scope_and_event_is_its_own(emitted_package_root):
                 if not table.startswith(f"{key}_"):
                     failures.append((key, item["path"], table))
     assert not failures, failures[:5]
+
+
+def _unreproducible_packages(sleep_seconds: float) -> list[tuple[str, str]]:
+    """Emitted packages whose bytes change across a wall-clock tick.
+
+    A generated app is an artifact: the same source must produce the same bytes,
+    or nothing downstream (a diff, a checksum, a recorded golden file) can trust
+    it. Four packages built their release evidence by running a scenario that
+    stamped rows with `datetime.now()`; the emitter wrote that snapshot verbatim,
+    so the artifact changed every second. The gate and its canary both call this,
+    so the canary cannot pass by reimplementing the predicate more loosely.
+    """
+    import time
+
+    first = {key: _pbc_package_file_contents(pbc_implementation_contract(key)) for key in IMPLEMENTED_PBC_KEYS}
+    time.sleep(sleep_seconds)
+    changed = []
+    for key in IMPLEMENTED_PBC_KEYS:
+        second = _pbc_package_file_contents(pbc_implementation_contract(key))
+        for name, content in first[key].items():
+            if second.get(name) != content:
+                changed.append((key, name))
+    return changed
+
+
+def test_every_emitted_package_is_reproducible():
+    """Every generated package must be a pure function of its source.
+
+    Four packages (`contract_lifecycle`, `customer_success_management`,
+    `case_knowledge_management`, `construction_contracts_commercials`) built their
+    release evidence by running a scenario that stamps rows with the wall clock,
+    and the emitter wrote that snapshot into `release_evidence.py`. Two emissions
+    a second apart differed, so the artifact could not be reproduced or diffed.
+    `_pbc_source_package_contract` now freezes the clock for the build.
+    """
+    changed = _unreproducible_packages(sleep_seconds=1.1)
+    assert not changed, changed[:5]
+
+
+def test_the_reproducibility_gate_fails_on_a_live_clock(monkeypatch):
+    """Canary: disable the freeze and the gate must fail.
+
+    The fix is the freeze itself, so removing it restores the defect. If the gate
+    still passes with the clock live, it is measuring nothing.
+    """
+    import contextlib
+
+    import pyAppGen.pbc as pbc_module
+
+    @contextlib.contextmanager
+    def _live_clock(_key):
+        yield
+
+    monkeypatch.setattr(pbc_module, "_pbc_frozen_clock", _live_clock)
+    changed = _unreproducible_packages(sleep_seconds=1.1)
+    assert changed, "the gate passed with the wall clock live, so it measures nothing"
+

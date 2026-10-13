@@ -8,6 +8,7 @@ event contracts, generated tables, and dependency evidence.
 
 from __future__ import annotations
 
+import contextlib
 import importlib
 import importlib.util
 import json
@@ -15,6 +16,7 @@ import py_compile
 import re
 import sys
 import tempfile
+from datetime import date, datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 
@@ -5607,29 +5609,86 @@ def _pbc_runtime_capabilities(key: str) -> dict:
     return capabilities
 
 
+_PBC_FROZEN_CLOCK = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
+
+class _FrozenDateTime(datetime):
+    """A `datetime` whose `now`/`utcnow` return a fixed instant."""
+
+    @classmethod
+    def now(cls, tz=None):
+        return _PBC_FROZEN_CLOCK.astimezone(tz) if tz is not None else _PBC_FROZEN_CLOCK.replace(tzinfo=None)
+
+    @classmethod
+    def utcnow(cls):
+        return _PBC_FROZEN_CLOCK.replace(tzinfo=None)
+
+
+class _FrozenDate(date):
+    """A `date` whose `today` returns the frozen instant's date."""
+
+    @classmethod
+    def today(cls):
+        return _PBC_FROZEN_CLOCK.date()
+
+
+@contextlib.contextmanager
+def _pbc_frozen_clock(key: str):
+    """Pin a package's wall clock for the duration of its contract build.
+
+    Four packages (`contract_lifecycle`, `customer_success_management`,
+    `case_knowledge_management`, `construction_contracts_commercials`) build their
+    release evidence by *running* a scenario, and that scenario stamps rows with
+    `datetime.now()`/`date.today()`. The emitter writes the resulting evidence
+    verbatim into the generated `release_evidence.py`, so the generated artifact
+    changed bytes every second and could not be reproduced. Rebinding the
+    `datetime` and `date` names those modules imported (not the stdlib classes)
+    keeps the scenario executable while making its output a function of its input.
+    """
+    prefix = f"pyAppGen.pbcs.{key}"
+    patched: list[tuple[object, str, object]] = []
+    for name, module in list(sys.modules.items()):
+        if name != prefix and not name.startswith(f"{prefix}."):
+            continue
+        if getattr(module, "datetime", None) is datetime:
+            patched.append((module, "datetime", datetime))
+            setattr(module, "datetime", _FrozenDateTime)
+        if getattr(module, "date", None) is date:
+            patched.append((module, "date", date))
+            setattr(module, "date", _FrozenDate)
+    try:
+        yield
+    finally:
+        for module, attribute, original in patched:
+            setattr(module, attribute, original)
+
+
 def _pbc_source_package_contract(key: str) -> dict:
     try:
         module = importlib.import_module(f"pyAppGen.pbcs.{key}")
-        contract = module.implementation_contract()
-        register = getattr(module, "register_pbc", None)
-        registration_plan = getattr(module, "registration_plan", None)
-        package_metadata_manifest = getattr(module, "package_metadata_manifest", None)
-        validate_package_metadata = getattr(module, "validate_package_metadata", None)
-        package_discovery_plan = getattr(module, "package_discovery_plan", None)
-        manifest = register() if callable(register) else None
-        registration = (
-            registration_plan()
-            if callable(registration_plan)
-            else {
-                "format": "appgen.pbc-registration-plan.v1",
-                "ok": False,
-                "decision": "blocked",
-                "error": "registration_plan entrypoint is missing or not callable",
-            }
-        )
-        metadata = package_metadata_manifest() if callable(package_metadata_manifest) else None
-        metadata_validation = validate_package_metadata() if callable(validate_package_metadata) else None
-        discovery = package_discovery_plan() if callable(package_discovery_plan) else None
+        # The build runs the package's scenario, which stamps rows with the wall
+        # clock; freeze it so the emitted artifact is a function of the source.
+        with _pbc_frozen_clock(key):
+            contract = module.implementation_contract()
+            register = getattr(module, "register_pbc", None)
+            registration_plan = getattr(module, "registration_plan", None)
+            package_metadata_manifest = getattr(module, "package_metadata_manifest", None)
+            validate_package_metadata = getattr(module, "validate_package_metadata", None)
+            package_discovery_plan = getattr(module, "package_discovery_plan", None)
+            manifest = register() if callable(register) else None
+            registration = (
+                registration_plan()
+                if callable(registration_plan)
+                else {
+                    "format": "appgen.pbc-registration-plan.v1",
+                    "ok": False,
+                    "decision": "blocked",
+                    "error": "registration_plan entrypoint is missing or not callable",
+                }
+            )
+            metadata = package_metadata_manifest() if callable(package_metadata_manifest) else None
+            metadata_validation = validate_package_metadata() if callable(validate_package_metadata) else None
+            discovery = package_discovery_plan() if callable(package_discovery_plan) else None
     except Exception as exc:  # pragma: no cover - exercised by release audit failures
         return {
             "format": "appgen.pbc-source-package.v1",
