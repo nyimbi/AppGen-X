@@ -568,3 +568,59 @@ def test_the_reproducibility_gate_fails_on_a_live_clock(monkeypatch):
     changed = _unreproducible_packages(sleep_seconds=1.1)
     assert changed, "the gate passed with the wall clock live, so it measures nothing"
 
+
+
+GENERIC_RULE_TYPES = ("configuration", "parameter", "release_gate")
+
+
+def _packages_losing_their_rule_types() -> list[tuple[str, tuple, tuple]]:
+    """Packages that declare rule types but whose emitted contract replaces them.
+
+    A PBC names the rules it compiles in one of two spellings: the rich
+    `rule_editor` dict (`gl_core`: `journal_posting`, `close`) or the flat
+    `rule_editors` tuple the 20 domain-depth packages use
+    (`contract_lifecycle`: `clause_fallback_policy`, `approval_threshold_policy`).
+    Reading only the dict substituted the same generic triple for every one of
+    the 20, so a legal-matter block and an insurance block published identical
+    rule types. This returns the packages where a declared surface did not
+    survive into the emitted contract.
+    """
+    lost = []
+    for key in IMPLEMENTED_PBC_KEYS:
+        contract = pbc_implementation_contract(key)
+        source = contract["source_package"].get("ui_contract") or {}
+        declared = tuple((source.get("rule_editor") or {}).get("rule_types") or ()) if isinstance(
+            source.get("rule_editor"), dict
+        ) else ()
+        declared = declared or tuple(source.get("rule_editors") or ())
+        if not declared:
+            continue
+        emitted = tuple(contract["ui"]["rule_editor"]["rule_types"])
+        if emitted != declared:
+            lost.append((key, emitted, declared))
+    return lost
+
+
+def test_every_declared_rule_type_reaches_the_emitted_contract():
+    """A package's rule types are the block's, not a generic placeholder.
+
+    Twenty domain-depth packages declare six real policies each and published the
+    same `configuration`/`parameter`/`release_gate` triple. The workbench's rule
+    card is what an operator reads to learn what the block compiles, so a shared
+    placeholder makes every one of them look alike.
+    """
+    lost = _packages_losing_their_rule_types()
+    assert not lost, lost[:5]
+
+
+def test_the_rule_type_gate_fails_on_the_placeholder(monkeypatch):
+    """Canary: restore the placeholder resolution and the gate must fail.
+
+    The fix is `_package_rule_types` reading the flat spelling; if the gate still
+    passes with that function replaced by the placeholder, it measures nothing.
+    """
+    import pyAppGen.pbc as pbc_module
+
+    monkeypatch.setattr(pbc_module, "_package_rule_types", lambda _ui: GENERIC_RULE_TYPES)
+    lost = _packages_losing_their_rule_types()
+    assert lost, "the gate passed with the placeholder restored, so it measures nothing"

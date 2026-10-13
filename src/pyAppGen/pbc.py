@@ -6458,6 +6458,35 @@ def pbc_agent_capability_release_audit(selected_pbcs: tuple[str, ...] | list[str
     }
 
 
+def _package_rule_types(package_ui: dict) -> tuple[str, ...]:
+    """Return the rule types a package compiles, from either spelling it uses.
+
+    A PBC declares this surface one of two ways. The rich dict (`gl_core` lists
+    `journal_posting`, `close`, `reconciliation`) is the older form, carried by
+    47 packages. The 20 domain-depth packages instead declare a flat
+    `rule_editors` tuple naming the policies they actually compile
+    (`contract_lifecycle`: `clause_fallback_policy`, `approval_threshold_policy`,
+    `renewal_notice_policy`, ...). Reading only the dict replaced every one of
+    those with the same generic `configuration`/`parameter`/`release_gate`
+    triple, so a legal-matter block and an insurance block published identical
+    rule types. The dict wins when present; the flat tuple is read next; the
+    placeholder is the last resort for the 80 packages that declare neither.
+
+    This is a named seam rather than an inline expression so the fidelity gate
+    can be canaried: monkeypatching it to the placeholder must make the gate
+    fail, or the gate is measuring nothing.
+    """
+    editor = package_ui.get("rule_editor")
+    if isinstance(editor, dict):
+        declared = tuple(editor.get("rule_types") or ())
+        if declared:
+            return declared
+    flat = tuple(package_ui.get("rule_editors") or ())
+    if flat:
+        return flat
+    return ("configuration", "parameter", "release_gate")
+
+
 def pbc_implementation_contract(key: str) -> dict:
     """Return the generated implementation contract for one built-in PBC."""
     if key not in PBC_CATALOG:
@@ -6687,9 +6716,9 @@ def pbc_implementation_contract(key: str) -> dict:
                 else False,
             },
             "rule_editor": {
-                "rule_types": tuple((package_ui.get("rule_editor") or {}).get("rule_types") or ("configuration", "parameter", "release_gate"))
-                if isinstance(package_ui.get("rule_editor"), dict)
-                else ("configuration", "parameter", "release_gate"),
+                # A package names its rule types in one of two spellings; see
+                # `_package_rule_types`, which reads both before falling back.
+                "rule_types": _package_rule_types(package_ui),
                 "required_fields": tuple(
                     (package_ui.get("rule_editor") or {}).get("required_fields")
                     or ("rule_id", "tenant", "scope", "status", "condition", "effect")
